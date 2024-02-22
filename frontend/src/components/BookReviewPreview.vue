@@ -1,6 +1,9 @@
 <template>
   <div class="book-container">
-    <h1 class="book-name">{{ book.name }}</h1>
+    <h1 class="book-name">
+      <span>{{ book.sortOrder }}.</span>
+      {{ book.name }}
+    </h1>
     <div class="book-review">{{ trimReview(book.reviews[0].text) }}</div>
     <div class="book-date">{{ book.createdAt }}</div>
   </div>

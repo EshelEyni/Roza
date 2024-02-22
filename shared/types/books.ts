@@ -4,6 +4,7 @@ export interface BookReview {
   reviews: Review[];
   references: Reference[];
   createdAt: Date | string | number | null;
+  sortOrder: number;
 }
 
 export interface Review {

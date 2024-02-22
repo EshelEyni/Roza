@@ -1,6 +1,7 @@
 <template>
   <section class="home-page">
     <h1 class="title">homepage</h1>
+    <BookReviewEdit @review-added="getBooks" />
     <BookReviewList :books="reviews" />
   </section>
 </template>
@@ -9,11 +10,12 @@ import { onMounted, ref } from "vue";
 import bookReviewApiService from "../services/bookReviewApiService";
 import { BookReview } from "../../../shared/types/books";
 import BookReviewList from "../components/BookReviewList.vue";
+import BookReviewEdit from "../components/BookReviewEdit.vue";
 
 const reviews = ref<BookReview[]>([]);
 
 async function getBooks() {
-  const response = await bookReviewApiService.getBooks();
+  const response = await bookReviewApiService.get();
   reviews.value = response.data;
 }
 
@@ -34,4 +36,3 @@ onMounted(getBooks);
   }
 }
 </style>
-../services/bookReviewApiService
