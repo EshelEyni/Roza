@@ -7,6 +7,7 @@ from flask import Flask, current_app
 from flask_cors import CORS
 from pymongo import MongoClient
 from routes.review import review_blueprint
+from routes.book import book_blueprint
 
 
 load_dotenv()
@@ -27,6 +28,7 @@ def create_app():
 
     # Register blueprints
     app.register_blueprint(review_blueprint, url_prefix="/api")
+    app.register_blueprint(book_blueprint, url_prefix="/api")
 
     return app
 

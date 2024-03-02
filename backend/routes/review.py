@@ -72,7 +72,6 @@ def update_review():
         collection = get_collection()
         # Get the review data from the request
         review = json.loads(request.data)
-        print(review)
         # Convert _id from string to ObjectId
         review_id = ObjectId(review["_id"])
         # Ensure _id is removed or converted before update
