@@ -15,7 +15,7 @@ import SideBar from "./components/SideBar.vue";
   padding: 20px;
   width: calc(100% - 25rem);
   min-height: 100vh;
-  margin-left: 25rem;
+  margin-right: 25rem;
   background-color: var(--color-theme);
 }
 </style>

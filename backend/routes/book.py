@@ -106,8 +106,13 @@ def update_book():
         collection = get_collection()
         # Get the updated book data from the request
         book = json.loads(request.data)
+        print(book)
+
+        book_id = ObjectId(book["_id"])
+
+        book.pop("_id", None)
         # Update the book in the collection
-        result = collection.update_one({"_id": ObjectId(book["_id"])}, {"$set": book})
+        result = collection.update_one({"_id": book_id}, {"$set": book})
         response = {
             "status": 200,
             "msg": "Book updated successfully",

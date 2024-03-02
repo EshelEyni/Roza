@@ -26,6 +26,7 @@ export interface Book {
 }
 
 export interface Chapter {
+  bookId: string;
   name: string;
   createdAt: Date | string | number | null;
   sortOrder: number;

@@ -8,7 +8,7 @@
 .side-bar {
   position: fixed;
   top: 0;
-  left: 0;
+  right: 0;
   width: 25rem;
   height: 100%;
   display: flex;
@@ -20,6 +20,6 @@
   background-image: url("/android-chrome-192x192.png");
   background-repeat: no-repeat;
   background-size: 75px;
-  border-right: 1px solid #000;
+  border-left: 1px solid #000;
 }
 </style>
