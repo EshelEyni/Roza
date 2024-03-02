@@ -10,7 +10,7 @@
   </ul>
 </template>
 <script setup lang="ts">
-import { BookReview } from "../../../shared/types/books";
+import { BookReview } from "../../../../shared/types/books";
 import BookReviewPreview from "./BookReviewPreview.vue";
 defineProps<{ books: BookReview[] }>();
 </script>
@@ -25,10 +25,9 @@ defineProps<{ books: BookReview[] }>();
 .book-list {
   direction: rtl;
   list-style: none;
-  padding: 0;
+  padding: 0 3em;
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: 1em;
 }
 </style>

@@ -6,15 +6,26 @@
     </h1>
     <div class="book-review">{{ trimReview(book.reviews[0].text) }}</div>
     <div class="book-date">{{ book.createdAt }}</div>
+    <!-- <div>
+      <button @click="markAsFavorite()">mark as favorite</button>
+    </div> -->
   </div>
 </template>
 
 <script setup lang="ts">
-import { BookReview } from "../../../shared/types/books";
-defineProps<{ book: BookReview }>();
+import { BookReview } from "../../../../shared/types/books";
+import bookReviewApiService from "../../services/bookReviewApiService";
+const props = defineProps<{ book: BookReview }>();
 
 function trimReview(review: string) {
   return review.length > 400 ? review.slice(0, 400) + "..." : review;
+}
+
+async function markAsFavorite() {
+  const { book } = props;
+  const reviewToMark = { ...book, isFavorite: true };
+  await bookReviewApiService.update(reviewToMark);
+  console.log("marked as favorite");
 }
 </script>
 

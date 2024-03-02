@@ -39,8 +39,8 @@
 
 <script setup lang="ts">
 import { ref, defineEmits } from "vue";
-import bookReviewApiService from "../services/bookReviewApiService";
-import { BookReview } from "../../../shared/types/books";
+import bookReviewApiService from "../../services/bookReviewApiService";
+import { BookReview } from "../../../../shared/types/books";
 
 const emit = defineEmits();
 

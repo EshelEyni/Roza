@@ -1,16 +1,12 @@
 <template>
-  <section class="home-page">
+  <section class="page">
     <h1 class="title">homepage</h1>
-    <BookReviewEdit @review-added="getBooks" />
-    <BookReviewList :books="reviews" />
   </section>
 </template>
 <script setup lang="ts">
 import { onMounted, ref } from "vue";
-import bookReviewApiService from "../services/bookReviewApiService";
-import { BookReview } from "../../../shared/types/books";
-import BookReviewList from "../components/BookReviewList.vue";
-import BookReviewEdit from "../components/BookReviewEdit.vue";
+import bookReviewApiService from "../../services/bookReviewApiService";
+import { BookReview } from "../../../../shared/types/books";
 
 const reviews = ref<BookReview[]>([]);
 
@@ -21,8 +17,8 @@ async function getBooks() {
 
 onMounted(getBooks);
 </script>
-<style lang="scss">
-.home-page {
+<style lang="scss" scoped>
+.page {
   width: 100%;
   height: 100%;
   display: flex;

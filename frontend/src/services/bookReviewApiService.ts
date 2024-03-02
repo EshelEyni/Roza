@@ -13,7 +13,16 @@ async function add(book: BookReview) {
   }
 }
 
+async function update(book: BookReview) {
+  try {
+    return await httpService.patch("reviews", book);
+  } catch (error) {
+    console.error("Error updating book review", error);
+  }
+}
+
 export default {
   get,
   add,
+  update,
 };
