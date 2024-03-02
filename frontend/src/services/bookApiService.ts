@@ -5,6 +5,10 @@ async function get() {
   return await httpService.get("books");
 }
 
+async function getById(id: string) {
+  return await httpService.get(`books/${id}`);
+}
+
 async function add(book: Book) {
   try {
     return await httpService.post("books", book);
@@ -23,6 +27,7 @@ async function update(book: Book) {
 
 export default {
   get,
+  getById,
   add,
   update,
 };

@@ -22,13 +22,18 @@ export interface Book {
   name: string;
   createdAt: Date | string | number | null;
   chapters: Chapter[];
+  charachters: Charachter[];
 }
 
 export interface Chapter {
-  _id: string;
   name: string;
   createdAt: Date | string | number | null;
   sortOrder: number;
   description: string;
   text: string;
+}
+
+export interface Charachter {
+  name: string;
+  description: string;
 }

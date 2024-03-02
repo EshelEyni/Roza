@@ -11,7 +11,7 @@
 </template>
 <script setup lang="ts">
 import { BookReview } from "../../../../shared/types/books";
-import BookReviewPreview from "./BookReviewPreview.vue";
+import BookReviewPreview from "./ReviewPreview.vue";
 defineProps<{ books: BookReview[] }>();
 </script>
 <style scoped lang="scss">

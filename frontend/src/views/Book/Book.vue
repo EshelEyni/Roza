@@ -1,15 +1,22 @@
 <template>
   <section class="page">
     <h1>Book</h1>
+    <BookEdit />
+    <BookList :books="books" />
   </section>
 </template>
 <script setup lang="ts">
-import { onMounted } from "vue";
-import bookReviewApiService from "../../services/bookReviewApiService";
+import { onMounted, ref } from "vue";
+import BookEdit from "./components/BookEdit.vue";
+import bookApiService from "../../services/bookApiService";
+import { Book } from "../../../../shared/types/books";
+import BookList from "./components/BookList.vue";
+
+const books = ref<Book[]>([]);
 
 async function getBooks() {
-  const response = await bookReviewApiService.get();
-  console.log(response.data);
+  const response = await bookApiService.get();
+  books.value = response.data;
 }
 
 onMounted(getBooks);
@@ -18,7 +25,6 @@ onMounted(getBooks);
 .page {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: 2em;
   padding: 2em;
   width: 100%;

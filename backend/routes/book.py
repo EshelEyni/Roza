@@ -1,5 +1,6 @@
 # Standard library imports
 import json
+from datetime import datetime
 
 # Related third-party imports
 from flask import Blueprint, current_app, jsonify, request
@@ -74,6 +75,9 @@ def add_book():
         collection = get_collection()
         # Get the book data from the request
         book = json.loads(request.data)
+        book["createdAt"] = datetime.now()
+        book["chapters"] = []
+        book["charachters"] = []
         print(book)
         # Insert the book into the collection
         sortOrder = collection.count_documents({}) + 1

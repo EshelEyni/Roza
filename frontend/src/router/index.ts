@@ -1,14 +1,21 @@
-import { createRouter, createWebHistory } from "vue-router";
+import { createRouter, createWebHistory, RouteRecordRaw } from "vue-router";
 import Review from "../views/Review/Review.vue";
 import Book from "../views/Book/Book.vue";
+import BookDetails from "../views/BookDetails/BookDetails.vue";
+
+const routes: RouteRecordRaw[] = [
+  { path: "/", component: Book },
+  { path: "/reviews", component: Review },
+  {
+    path: "/books",
+    component: BookDetails,
+    name: "books",
+  },
+];
 
 const router = createRouter({
   history: createWebHistory(),
-  routes: [
-    { path: "/", component: Book },
-
-    { path: "/reviews", component: Review },
-  ],
+  routes,
 });
 
 export default router;
