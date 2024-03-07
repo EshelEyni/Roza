@@ -1,7 +1,8 @@
 <template>
   <div class="chapter-preview" @click="handlePreviewClick">
-    <h1>
-      {{ chapter.name }}
+    <h1 class="chapter-title">
+      <span> {{ chapter.sortOrder }}. </span>
+      <span> {{ chapter.name }} </span>
     </h1>
   </div>
 </template>
@@ -22,12 +23,16 @@ function handlePreviewClick() {
 </script>
 <style lang="scss" scoped>
 .chapter-preview {
-  width: 300px;
+  width: 100%;
   border: 1px solid #ccc;
-  padding: 20px;
-  margin: 20px;
+  padding: 1em;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  direction: ltr;
-  text-align: left;
+  direction: rtl;
+  text-align: right;
+  
+  .chapter-title {
+    font-size: 1.5rem;
+    margin: 0;
+  }
 }
 </style>

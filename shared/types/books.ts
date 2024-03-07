@@ -22,7 +22,7 @@ export interface Book {
   name: string;
   createdAt: Date | string | number | null;
   chapters: Chapter[];
-  charachters: Charachter[];
+  characters: Character[];
 }
 
 export interface Chapter {
@@ -34,7 +34,8 @@ export interface Chapter {
   text: string;
 }
 
-export interface Charachter {
+export interface Character {
+  bookId: string;
   name: string;
   description: string;
 }

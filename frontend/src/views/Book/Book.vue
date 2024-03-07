@@ -1,6 +1,6 @@
 <template>
   <section class="page">
-    <h1>Book</h1>
+    <h1>ספרים</h1>
     <BookEdit />
     <BookList :books="books" />
   </section>
@@ -30,5 +30,9 @@ onMounted(getBooks);
   width: 100%;
   height: 100%;
   background-color: var(--color-theme);
+
+  h1 {
+    align-self: center;
+  }
 }
 </style>

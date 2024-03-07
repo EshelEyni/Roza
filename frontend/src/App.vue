@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import SideBar from "./components/SideBar.vue";
+import { VueQueryDevtools } from "@tanstack/vue-query-devtools";
 </script>
 
 <template>
@@ -7,6 +8,7 @@ import SideBar from "./components/SideBar.vue";
     <RouterView />
   </main>
   <SideBar />
+  <VueQueryDevtools />
 </template>
 
 <style scoped lang="scss">

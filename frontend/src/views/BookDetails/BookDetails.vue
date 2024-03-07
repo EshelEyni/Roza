@@ -1,6 +1,6 @@
 <template>
   <div v-if="book" class="book-details">
-    <h1>
+    <h1 class="book-title">
       {{ book.name }}
     </h1>
     <div>
@@ -9,68 +9,55 @@
       </span>
       <span> :פרקים </span>
     </div>
-    <button @click="addChapter" class="btn add-chapter">הוסף פרק</button>
-    <ul class="chapter-list">
-      <li v-for="(chapter, index) in book.chapters" :key="index">
-        <ChapterPreview :chapter="chapter" />
-      </li>
-    </ul>
+    <Filter :filterBy="filterBy" @filterBy="filterBy = $event" />
+    <ChapterList :book="book" v-if="filterBy === 'chapters'" />
+    <CharacterList :book="book" v-else-if="filterBy === 'characters'" />
   </div>
-  <div v-else>No book found</div>
+  <div v-else-if="isError">
+    <p>אופס, משהו השתבש</p>
+  </div>
+  <div v-else-if="isLoading">
+    <BookLoader />
+  </div>
 </template>
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
-import { Book, Chapter } from "../../../../shared/types/books";
+import { ref } from "vue";
+import { useQuery } from "@tanstack/vue-query";
+import { Book } from "../../../../shared/types/books";
 import { useRoute } from "vue-router";
 import bookApiService from "../../services/bookApiService";
-import ChapterPreview from "./components/ChapterPreview.vue";
+import ChapterList from "./components/ChapterList.vue";
+import CharacterList from "./components/CharacterList.vue";
+import Filter from "./components/Filter.vue";
+import BookLoader from "../../components/BookLoader.vue";
 
-const book = ref<Book | null>(null);
 const route = useRoute();
+const bookId = route.query.id as string;
 
-async function getBookDetails() {
-  const bookId = route.query.id;
-  const response = await bookApiService.getById(bookId as string);
-  book.value = await response.data;
-}
+const {
+  data: book,
+  isError,
+  isLoading,
+} = useQuery({
+  queryKey: ["book", bookId],
+  queryFn: () => bookApiService.getById(bookId),
+  enabled: !!bookId,
+  select: (response) => response.data as Book,
+});
 
-async function addChapter() {
-  if (!book.value) return;
-  const chapterCount = book.value.chapters.length || 0;
-  const newChapter: Chapter = {
-    name: "פרק חדש",
-    description: "תיאור חדש",
-    text: "טקסט חדש",
-    createdAt: new Date(),
-    sortOrder: chapterCount + 1,
-    bookId: book.value._id,
-  };
-  book.value?.chapters.push(newChapter);
-  await bookApiService.update(book.value as Book);
-}
-
-onMounted(getBookDetails);
+const filterBy = ref<string>("chapters");
 </script>
 <style lang="scss" scoped>
 .book-details {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
+  gap: 0.5em;
   direction: ltr;
 
-  h1 {
-    font-size: 2rem;
-  }
-
-  .chapter-list {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: flex-start;
-    direction: rtl;
-    list-style: none;
-    padding: 0 3em;
-    gap: 0.5em;
-    width: 100%;
+  .book-title {
+    align-self: center;
+    font-size: 3rem;
   }
 }
 </style>

@@ -1,6 +1,6 @@
 <template>
   <aside class="side-bar">
-    <div>Books</div>
+    <div>ספרים</div>
   </aside>
 </template>
 <script setup lang="ts"></script>
@@ -17,9 +17,20 @@
   padding: 1em 0;
   gap: 2em;
   background-color: var(--color-theme);
-  background-image: url("/android-chrome-192x192.png");
-  background-repeat: no-repeat;
-  background-size: 75px;
   border-left: 1px solid #000;
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: url("/android-chrome-192x192.png");
+    background-repeat: no-repeat;
+    background-size: 75px;
+    transform: scaleX(-1);
+    z-index: -1;
+  }
 }
 </style>
