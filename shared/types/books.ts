@@ -17,12 +17,20 @@ export interface Reference {
   text: string;
 }
 
+export type BookFilterBy =
+  | "chapters"
+  | "characters"
+  | "themes"
+  | "plotlines"
+  | "notes";
+
 export interface Book {
   _id: string;
   name: string;
   createdAt: Date | string | number | null;
   chapters: Chapter[];
   characters: Character[];
+  filterBy: BookFilterBy;
 }
 
 export interface Chapter {

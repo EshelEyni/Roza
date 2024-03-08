@@ -9,7 +9,7 @@
       </span>
       <span> :פרקים </span>
     </div>
-    <Filter :filterBy="filterBy" @filterBy="filterBy = $event" />
+    <Filter :book="book" :filterBy="filterBy" @filterBy="filterBy = $event" />
     <ChapterList :book="book" v-if="filterBy === 'chapters'" />
     <CharacterList :book="book" v-else-if="filterBy === 'characters'" />
   </div>
@@ -23,7 +23,7 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useQuery } from "@tanstack/vue-query";
-import { Book } from "../../../../shared/types/books";
+import { Book, BookFilterBy } from "../../../../shared/types/books";
 import { useRoute } from "vue-router";
 import bookApiService from "../../services/bookApiService";
 import ChapterList from "./components/ChapterList.vue";
@@ -33,6 +33,7 @@ import BookLoader from "../../components/BookLoader.vue";
 
 const route = useRoute();
 const bookId = route.query.id as string;
+const filterBy = ref("chapters" as BookFilterBy);
 
 const {
   data: book,
@@ -40,12 +41,14 @@ const {
   isLoading,
 } = useQuery({
   queryKey: ["book", bookId],
-  queryFn: () => bookApiService.getById(bookId),
+  queryFn: async () => {
+    const res = await bookApiService.getById(bookId);
+    const book = res.data as Book;
+    filterBy.value = book.filterBy;
+    return book;
+  },
   enabled: !!bookId,
-  select: (response) => response.data as Book,
 });
-
-const filterBy = ref<string>("chapters");
 </script>
 <style lang="scss" scoped>
 .book-details {

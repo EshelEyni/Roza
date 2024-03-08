@@ -3,7 +3,7 @@
     <button
       v-for="value in filterValues"
       :key="value.value"
-      @click="emit('filterBy', value.value)"
+      @click="onSetFilter(value.value)"
       :class="{ active: filterBy === value.value }"
     >
       {{ value.label }}
@@ -12,6 +12,22 @@
 </template>
 <script setup lang="ts">
 import { defineEmits, defineProps } from "vue";
+import { useMutation, useQueryClient } from "@tanstack/vue-query";
+import { Book, BookFilterBy } from "../../../../../shared/types/books";
+import bookApiService from "../../../services/bookApiService";
+import { cloneDeep } from "lodash";
+const props = defineProps<{ book: Book; filterBy: BookFilterBy }>();
+const queryClient = useQueryClient();
+const mutation = useMutation({
+  mutationFn: (newBook: Book) => bookApiService.update(newBook),
+  onSuccess: () => {
+    const { book } = props;
+    queryClient.invalidateQueries({
+      queryKey: ["book", book._id],
+    });
+  },
+});
+
 const filterValues = [
   {
     value: "chapters",
@@ -33,9 +49,17 @@ const filterValues = [
     value: "notes",
     label: "הערות",
   },
-];
-defineProps({ filterBy: String });
+] as { value: BookFilterBy; label: string }[];
+
 const emit = defineEmits(["filterBy"]);
+function onSetFilter(value: BookFilterBy) {
+  emit("filterBy", value);
+  const { book } = props;
+  if (!book) return;
+  const newBook = cloneDeep(book) as Book;
+  newBook.filterBy = value;
+  mutation.mutate(newBook);
+}
 </script>
 <style lang="scss" scoped>
 .filter {
