@@ -31,6 +31,7 @@ export interface Book {
   chapters: Chapter[];
   characters: Character[];
   themes: Theme[];
+  plotlines: Plotline[];
   filterBy: BookFilterBy;
 }
 
@@ -51,6 +52,13 @@ export interface Character {
 }
 
 export interface Theme {
+  bookId: string;
+  name: string;
+  description: string;
+  sortOrder: number;
+}
+
+export interface Plotline {
   bookId: string;
   name: string;
   description: string;

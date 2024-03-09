@@ -13,6 +13,7 @@
     <ThemeList v-if="filterBy === 'themes'" />
     <ChapterList v-if="filterBy === 'chapters'" />
     <CharacterList v-else-if="filterBy === 'characters'" />
+    <PlotlineList v-else-if="filterBy === 'plotlines'" />
   </div>
   <div v-else-if="isError">
     <p>אופס, משהו השתבש</p>
@@ -22,7 +23,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref, toRaw } from "vue";
+import { ref } from "vue";
 import { Book, BookFilterBy } from "../../../../shared/types/books";
 import { useRoute } from "vue-router";
 import ChapterList from "./components/ChapterList.vue";
@@ -31,6 +32,7 @@ import Filter from "./components/Filter.vue";
 import BookLoader from "../../components/BookLoader.vue";
 import { useGetBook } from "../../composables/useGetBook";
 import ThemeList from "./components/ThemeList.vue";
+import PlotlineList from "./components/PlotlineList.vue";
 
 const route = useRoute();
 const bookId = route.query.id as string;
@@ -39,7 +41,6 @@ const { book, isError, isLoading } = useGetBook(
   bookId,
   (book: Book) => (filterBy.value = book.filterBy)
 );
-console.log(toRaw(book.value));
 </script>
 <style lang="scss" scoped>
 .book-details {
