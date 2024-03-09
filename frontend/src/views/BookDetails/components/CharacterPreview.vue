@@ -37,7 +37,7 @@ function handleFormSubmit() {
   if (!book) return;
   const newBook = structuredClone(toRaw(book.value)) as Book;
   const characterIndex = newBook.characters.findIndex(
-    (character) => character.name === character.name
+    (c) => c.sortOrder === character.value.sortOrder
   );
   if (characterIndex === -1) return;
   character.value.bookId = newBook._id;

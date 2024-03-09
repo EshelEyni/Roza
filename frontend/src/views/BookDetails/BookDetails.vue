@@ -10,6 +10,7 @@
       <span> :פרקים </span>
     </div>
     <Filter :book="book" :filterBy="filterBy" @filterBy="filterBy = $event" />
+    <ThemeList v-if="filterBy === 'themes'" />
     <ChapterList v-if="filterBy === 'chapters'" />
     <CharacterList v-else-if="filterBy === 'characters'" />
   </div>
@@ -29,6 +30,7 @@ import CharacterList from "./components/CharacterList.vue";
 import Filter from "./components/Filter.vue";
 import BookLoader from "../../components/BookLoader.vue";
 import { useGetBook } from "../../composables/useGetBook";
+import ThemeList from "./components/ThemeList.vue";
 
 const route = useRoute();
 const bookId = route.query.id as string;
@@ -50,6 +52,13 @@ console.log(toRaw(book.value));
   .book-title {
     align-self: center;
     font-size: 3rem;
+  }
+
+  .btn-add {
+    padding: 0.5em 1em;
+    font-weight: 600;
+    font-size: 1.2rem;
+    border-radius: 5px;
   }
 }
 </style>

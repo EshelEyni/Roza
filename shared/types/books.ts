@@ -30,6 +30,7 @@ export interface Book {
   createdAt: Date | string | number | null;
   chapters: Chapter[];
   characters: Character[];
+  themes: Theme[];
   filterBy: BookFilterBy;
 }
 
@@ -43,6 +44,13 @@ export interface Chapter {
 }
 
 export interface Character {
+  bookId: string;
+  name: string;
+  description: string;
+  sortOrder: number;
+}
+
+export interface Theme {
   bookId: string;
   name: string;
   description: string;
