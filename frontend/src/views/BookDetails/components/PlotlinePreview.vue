@@ -7,13 +7,20 @@
         {{ isEditing ? "שמור" : "ערוך" }}
       </button>
     </div>
-
-    <p v-if="!isEditing">{{ plotline.description }}</p>
-    <textarea v-else v-model="plotline.description" />
+    <p
+      class="plotline-preview-description"
+      v-if="!isEditing"
+      v-html="plotlineDescriptionHtml"
+    ></p>
+    <textarea
+      class="plotline-preview-description-text-area"
+      v-else
+      v-model="plotline.description"
+    />
   </div>
 </template>
 <script setup lang="ts">
-import { defineProps, ref, toRaw } from "vue";
+import { defineProps, ref, toRaw, computed } from "vue";
 import { Book, Plotline } from "../../../../../shared/types/books";
 import { useRoute } from "vue-router";
 import { useGetBook } from "../../../composables/useGetBook";
@@ -26,6 +33,10 @@ const updateBook = useUpdateBook(bookId);
 const props = defineProps<{ plotline: Plotline }>();
 const plotline = ref({ ...props.plotline });
 const isEditing = ref(false);
+
+const plotlineDescriptionHtml = computed(() => {
+  return props.plotline.description.replace(/\n/g, "<br>");
+});
 
 function editPlotline() {
   isEditing.value = !isEditing.value;
@@ -48,8 +59,6 @@ function editPlotline() {
   border: 1px solid #000;
   padding: 0.5em;
   border-radius: 5px;
-  min-width: 250px;
-  width: max-content;
 
   .plotline-preview-header {
     display: flex;
@@ -67,6 +76,14 @@ function editPlotline() {
       border-radius: 5px;
       cursor: pointer;
     }
+  }
+
+  .plotline-preview-description {
+    margin: 0;
+  }
+
+  .plotline-preview-description-text-area {
+    padding: 0.25em;
   }
 }
 </style>

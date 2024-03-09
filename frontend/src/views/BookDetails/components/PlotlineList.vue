@@ -49,13 +49,13 @@ async function addPlotline() {
   direction: rtl;
 
   .plotline-list {
-    width: 100%;
     display: flex;
     flex-direction: column;
     direction: rtl;
     list-style: none;
     gap: 0.5em;
-
+    width: max-content;
+    max-width: 100%;
     .plotline-list-item {
       display: flex;
       flex-direction: column;

@@ -4,14 +4,19 @@
       <span> {{ chapter.sortOrder }}. </span>
       <span> {{ chapter.name }} </span>
     </h1>
+    <p v-html="descriptionHtml"></p>
   </div>
 </template>
 <script setup lang="ts">
-import { defineProps } from "vue";
+import { defineProps, computed } from "vue";
 import { Chapter } from "../../../../../shared/types/books";
 import { useRouter } from "vue-router";
 const router = useRouter();
 const props = defineProps<{ chapter: Chapter }>();
+
+const descriptionHtml = computed(() => {
+  return props.chapter.description.replace(/\n/g, "<br>");
+});
 
 function handlePreviewClick() {
   const { chapter } = props;
@@ -30,7 +35,7 @@ function handlePreviewClick() {
   direction: rtl;
   text-align: right;
   cursor: pointer;
-  
+
   .chapter-title {
     font-size: 1.5rem;
     margin: 0;

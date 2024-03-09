@@ -35,7 +35,7 @@ async function addChapter() {
     description: "תיאור חדש",
     text: "טקסט חדש",
     createdAt: new Date(),
-    sortOrder: chapterCount + 1,
+    sortOrder: chapterCount,
     bookId: book.value._id,
   };
   newBook.chapters = [...newBook.chapters, newChapter];

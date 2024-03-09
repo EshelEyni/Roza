@@ -73,6 +73,7 @@ function handleFormSubmit() {
   gap: 1em;
   width: 100%;
   max-width: 450px;
+  height: 50vh;
   direction: rtl;
   background-color: var(--color-theme);
   padding: 2em;
@@ -81,7 +82,7 @@ function handleFormSubmit() {
 
   input {
     padding: 0.5em;
-    font-size: 1.4em;
+    font-size: 2em;
     border: none;
     border-radius: 5px;
     direction: rtl;
@@ -92,12 +93,13 @@ function handleFormSubmit() {
 
   textarea {
     padding: 0.5em;
-    font-size: 1.2em;
+    font-size: 1.8em;
     border: none;
     border-radius: 5px;
     direction: rtl;
     text-align: right;
     width: 100%;
+    height: 100%;
     max-width: 250px;
   }
 

@@ -11,14 +11,20 @@
         {{ isEditing ? "שמור" : "ערוך" }}
       </button>
     </div>
-    <div v-if="isEditing">
-      <textarea v-model="note.text" />
-    </div>
-    <p v-else>{{ note.text }}</p>
+    <p
+      class="note-preview-description"
+      v-if="!isEditing"
+      v-html="noteTextHtml"
+    ></p>
+    <textarea
+      class="note-preview-description-text-area"
+      v-else
+      v-model="note.text"
+    />
   </div>
 </template>
 <script setup lang="ts">
-import { defineProps, ref, toRaw } from "vue";
+import { defineProps, ref, toRaw, computed } from "vue";
 import { Book, Note } from "../../../../../shared/types/books";
 import { useRoute } from "vue-router";
 import { useGetBook } from "../../../composables/useGetBook";
@@ -31,6 +37,10 @@ const updateBook = useUpdateBook(bookId);
 const props = defineProps<{ note: Note }>();
 const note = ref({ ...props.note });
 const isEditing = ref(false);
+
+const noteTextHtml = computed(() => {
+  return props.note.text.replace(/\n/g, "<br>");
+});
 
 function editNote() {
   isEditing.value = !isEditing.value;
@@ -72,6 +82,15 @@ function editNote() {
       border-radius: 5px;
       cursor: pointer;
     }
+  }
+
+  .note-preview-description {
+    margin: 0;
+  }
+
+  .note-preview-description-text-area {
+    padding: 0.5em;
+    width: 100%;
   }
 }
 </style>

@@ -55,6 +55,9 @@ async function addTheme() {
     direction: rtl;
     list-style: none;
     gap: 0.5em;
+    min-width: 250px;
+    width: max-content;
+    max-width: 100%;
 
     .theme-list-item {
       display: flex;
