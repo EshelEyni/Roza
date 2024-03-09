@@ -78,6 +78,9 @@ def add_book():
         book["createdAt"] = datetime.now()
         book["chapters"] = []
         book["charachters"] = []
+        book["themes"] = []
+        book["plotlines"] = []
+        book["notes"] = []
         print(book)
         # Insert the book into the collection
         sortOrder = collection.count_documents({}) + 1

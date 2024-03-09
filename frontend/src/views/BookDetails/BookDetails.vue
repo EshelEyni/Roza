@@ -14,6 +14,7 @@
     <ChapterList v-if="filterBy === 'chapters'" />
     <CharacterList v-else-if="filterBy === 'characters'" />
     <PlotlineList v-else-if="filterBy === 'plotlines'" />
+    <NoteList v-else-if="filterBy === 'notes'" />
   </div>
   <div v-else-if="isError">
     <p>אופס, משהו השתבש</p>
@@ -33,6 +34,7 @@ import BookLoader from "../../components/BookLoader.vue";
 import { useGetBook } from "../../composables/useGetBook";
 import ThemeList from "./components/ThemeList.vue";
 import PlotlineList from "./components/PlotlineList.vue";
+import NoteList from "./components/NoteList.vue";
 
 const route = useRoute();
 const bookId = route.query.id as string;

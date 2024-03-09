@@ -1,14 +1,14 @@
 <template>
-  <div class="plotline-list-container" v-if="book">
-    <h2>קווי עלילה</h2>
-    <button @click="addPlotline" class="btn-add">הוסף קו עלילה חדש</button>
-    <ul class="plotline-list">
+  <div class="note-list-container" v-if="book">
+    <h2>הערות</h2>
+    <button @click="addNote" class="btn-add">הוסף הערה</button>
+    <ul class="note-list">
       <li
-        v-for="(plotline, index) in book.plotlines"
+        v-for="(note, index) in book.notes"
         :key="index"
-        class="plotline-list-item"
+        class="note-list-item"
       >
-        <PlotlinePreview :plotline="plotline" />
+        <NotePreview :note="note" />
       </li>
     </ul>
   </div>
@@ -18,37 +18,36 @@ import { toRaw } from "vue";
 import { useRoute } from "vue-router";
 import { useGetBook } from "../../../composables/useGetBook";
 import { useUpdateBook } from "../../../composables/useUpdateBook";
-import { Book, Plotline } from "../../../../../shared/types/books";
-import PlotlinePreview from "./PlotlinePreview.vue";
+import { Book, Note } from "../../../../../shared/types/books";
+import NotePreview from "./NotePreview.vue";
 
 const route = useRoute();
 const bookId = route.query.id as string;
 const { book } = useGetBook(bookId);
 const updateBook = useUpdateBook(bookId);
 
-async function addPlotline() {
+async function addNote() {
   if (!book.value) return;
   const newBook = structuredClone(toRaw(book.value)) as Book;
-  const plotlineCount = book.value.plotlines.length + 1;
-  const newPlotline: Plotline = {
-    name: "קו עלילה חדש",
-    description: "תיאור חדש",
-    sortOrder: plotlineCount,
+  const noteCount = book.value.notes.length + 1;
+  const newNote: Note = {
+    text: "הערה חדשה",
+    sortOrder: noteCount,
     bookId: book.value._id,
   };
-  newBook.plotlines = [...newBook.plotlines, newPlotline];
+  newBook.notes = [...newBook.notes, newNote];
   updateBook(newBook);
 }
 </script>
 <style lang="scss" scoped>
-.plotline-list-container {
+.note-list-container {
   width: 100%;
   display: flex;
   flex-direction: column;
   gap: 0.5em;
   direction: rtl;
 
-  .plotline-list {
+  .note-list {
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -56,7 +55,7 @@ async function addPlotline() {
     list-style: none;
     gap: 0.5em;
 
-    .plotline-list-item {
+    .note-list-item {
       display: flex;
       flex-direction: column;
       gap: 0.5em;

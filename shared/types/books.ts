@@ -32,6 +32,7 @@ export interface Book {
   characters: Character[];
   themes: Theme[];
   plotlines: Plotline[];
+  notes: Note[];
   filterBy: BookFilterBy;
 }
 
@@ -62,5 +63,11 @@ export interface Plotline {
   bookId: string;
   name: string;
   description: string;
+  sortOrder: number;
+}
+
+export interface Note {
+  bookId: string;
+  text: string;
   sortOrder: number;
 }
