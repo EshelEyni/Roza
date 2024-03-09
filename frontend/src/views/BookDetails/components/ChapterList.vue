@@ -1,5 +1,5 @@
 <template>
-  <div class="chapter-list-container">
+  <div class="chapter-list-container" v-if="book">
     <h1>פרקים</h1>
     <button @click="addChapter" class="btn-add">הוסף פרק</button>
     <ul class="chapter-list">
@@ -14,40 +14,32 @@
   </div>
 </template>
 <script setup lang="ts">
-import { defineProps } from "vue";
+import { toRaw } from "vue";
 import { Book, Chapter } from "../../../../../shared/types/books";
-import { useMutation, useQueryClient } from "@tanstack/vue-query";
-import bookApiService from "../../../services/bookApiService";
 import ChapterPreview from "../components/ChapterPreview.vue";
-import cloneDeep from "lodash/cloneDeep";
+import { useRoute } from "vue-router";
+import { useUpdateBook } from "../../../composables/useUpdateBook";
+import { useGetBook } from "../../../composables/useGetBook";
 
-const props = defineProps<{ book: Book }>();
-const queryClient = useQueryClient();
-const mutation = useMutation({
-  mutationFn: (newBook: Book) => bookApiService.update(newBook),
-  onSuccess: () => {
-    const { book } = props;
-    queryClient.invalidateQueries({
-      queryKey: ["book", book._id],
-    });
-  },
-});
+const route = useRoute();
+const bookId = route.query.id as string;
+const { book } = useGetBook(bookId);
+const updateBook = useUpdateBook(bookId);
 
 async function addChapter() {
-  const { book } = props;
-  if (!book) return;
-  const newBook = cloneDeep(book) as Book;
-  const chapterCount = book.chapters.length || 0;
+  if (!book.value) return;
+  const newBook = structuredClone(toRaw(book.value)) as Book;
+  const chapterCount = book.value.chapters.length + 1;
   const newChapter: Chapter = {
     name: "פרק חדש",
     description: "תיאור חדש",
     text: "טקסט חדש",
     createdAt: new Date(),
     sortOrder: chapterCount + 1,
-    bookId: book._id,
+    bookId: book.value._id,
   };
-  newBook.chapters.push(newChapter);
-  mutation.mutate(newBook);
+  newBook.chapters = [...newBook.chapters, newChapter];
+  updateBook(newBook);
 }
 </script>
 <style lang="scss" scoped>

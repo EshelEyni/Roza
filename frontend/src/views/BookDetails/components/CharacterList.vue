@@ -1,11 +1,11 @@
 <template>
-  <div class="character-list-container">
+  <div class="character-list-container" v-if="book" :key="book._id">
     <h1>דמויות</h1>
     <button @click="handleAddBtnClick" class="btn-add">הוסף דמות</button>
     <ul class="character-list">
       <li
-        v-for="(character, index) in book.characters"
-        :key="index"
+        v-for="character in book.characters"
+        :key="character.sortOrder"
         class="character-list-item"
       >
         <CharacterPreview :character="character" />
@@ -25,43 +25,37 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, toRaw } from "vue";
 import { Book, Character } from "../../../../../shared/types/books";
-import bookApiService from "../../../services/bookApiService";
-import { useMutation, useQueryClient } from "@tanstack/vue-query";
-import { defineProps } from "vue";
-import CharacterPreview from "./ChacterPreview.vue";
-import cloneDeep from "lodash/cloneDeep";
+import CharacterPreview from "./CharacterPreview.vue";
 import Modal from "../../../components/Modal.vue";
+import { useRoute } from "vue-router";
+import { useUpdateBook } from "../../../composables/useUpdateBook";
+import { useGetBook } from "../../../composables/useGetBook";
 
-const props = defineProps<{ book: Book }>();
+const route = useRoute();
+const bookId = route.query.id as string;
+const { book } = useGetBook(bookId);
+
+const updateBook = useUpdateBook(bookId);
+
 const isAdding = ref(false);
 const newCharacter = ref({ name: "", description: "" } as Character);
-
-const queryClient = useQueryClient();
-const mutation = useMutation({
-  mutationFn: (newBook: Book) => bookApiService.update(newBook),
-  onSuccess: () => {
-    const { book } = props;
-    queryClient.invalidateQueries({
-      queryKey: ["book", book._id],
-    });
-  },
-});
 
 function handleAddBtnClick() {
   isAdding.value = true;
 }
 
 function handleFormSubmit() {
-  const { book } = props;
-  if (!book) return;
+  if (!book.value) return;
   if (!newCharacter.value.name) return;
   isAdding.value = false;
-  const newBook = cloneDeep(book) as Book;
+  const newBook = structuredClone(toRaw(book.value)) as Book;
+  const sortOrder = newBook.characters.length + 1;
   newCharacter.value.bookId = newBook._id;
-  newBook.characters.push(newCharacter.value);
-  mutation.mutate(newBook);
+  newCharacter.value.sortOrder = sortOrder;
+  newBook.characters = [...newBook.characters, newCharacter.value];
+  updateBook(newBook);
   newCharacter.value = { ...newCharacter.value, name: "", description: "" };
 }
 </script>

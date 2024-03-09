@@ -5,25 +5,28 @@
   </div>
   <Modal :isVisible="isEditing" @update:isVisible="isEditing = $event">
     <form class="form" @submit.prevent="handleFormSubmit">
-      <input
-        type="text"
-        placeholder="שם הדמות"
-        v-model="props.character.name"
-      />
-      <textarea
-        placeholder="תיאור הדמות"
-        v-model="props.character.description"
-      />
+      <input type="text" placeholder="שם הדמות" v-model="character.name" />
+      <textarea placeholder="תיאור הדמות" v-model="character.description" />
       <button type="submit">הוסף</button>
     </form>
   </Modal>
 </template>
 <script setup lang="ts">
-import { ref, defineProps } from "vue";
-import { Character } from "../../../../../shared/types/books";
+import { ref, defineProps, toRaw } from "vue";
+import { Book, Character } from "../../../../../shared/types/books";
 import Modal from "../../../components/Modal.vue";
+import { useRoute } from "vue-router";
+import { useGetBook } from "../../../composables/useGetBook";
+import { useUpdateBook } from "../../../composables/useUpdateBook";
+
+const route = useRoute();
+const bookId = route.query.id as string;
+const { book } = useGetBook(bookId);
+
+const updateBook = useUpdateBook(bookId);
 
 const props = defineProps<{ character: Character }>();
+const character = ref({ ...props.character });
 const isEditing = ref(false);
 
 function handlePreviewClick() {
@@ -31,7 +34,16 @@ function handlePreviewClick() {
 }
 
 function handleFormSubmit() {
-  console.log("handleFormSubmit");
+  if (!book) return;
+  const newBook = structuredClone(toRaw(book.value)) as Book;
+  const characterIndex = newBook.characters.findIndex(
+    (character) => character.name === character.name
+  );
+  if (characterIndex === -1) return;
+  character.value.bookId = newBook._id;
+  newBook.characters[characterIndex] = toRaw(character.value);
+  updateBook(newBook);
+  isEditing.value = false;
 }
 </script>
 <style lang="scss" scoped>

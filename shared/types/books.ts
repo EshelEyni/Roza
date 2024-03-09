@@ -46,4 +46,5 @@ export interface Character {
   bookId: string;
   name: string;
   description: string;
+  sortOrder: number;
 }

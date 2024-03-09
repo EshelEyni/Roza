@@ -24,32 +24,19 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { Book, Chapter } from "../../../../shared/types/books";
-import bookApiService from "../../services/bookApiService";
 import { useRoute } from "vue-router";
-import { useQuery } from "@tanstack/vue-query";
 import BookLoader from "../../components/BookLoader.vue";
+import { useGetBook } from "../../composables/useGetBook";
 
 const route = useRoute();
 const bookId = route.query.bookId as string;
 const chapter = ref<Chapter | null>(null);
-
-const {
-  data: book,
-  isError,
-  isLoading,
-} = useQuery({
-  queryKey: ["book", bookId],
-  queryFn: async () => {
-    const res = await bookApiService.getById(bookId);
-    const book = res.data as Book;
-    const chapterId = route.query.chapterId;
-    chapter.value =
-      book.chapters.find(
-        (chapter: Chapter) => chapter.sortOrder === Number(chapterId)
-      ) || null;
-    return book;
-  },
-  enabled: !!bookId,
+const { book, isError, isLoading } = useGetBook(bookId, (book: Book) => {
+  const chapterId = route.query.chapterId;
+  chapter.value =
+    book.chapters.find(
+      (chapter: Chapter) => chapter.sortOrder === Number(chapterId)
+    ) || null;
 });
 
 const formattedCreatedAt = computed(() => {

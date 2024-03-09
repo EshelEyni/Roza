@@ -11,22 +11,15 @@
   </div>
 </template>
 <script setup lang="ts">
-import { defineEmits, defineProps } from "vue";
-import { useMutation, useQueryClient } from "@tanstack/vue-query";
+import { defineEmits, defineProps, toRaw } from "vue";
 import { Book, BookFilterBy } from "../../../../../shared/types/books";
-import bookApiService from "../../../services/bookApiService";
-import { cloneDeep } from "lodash";
+import { useRoute } from "vue-router";
+import { useUpdateBook } from "../../../composables/useUpdateBook";
+
+const route = useRoute();
+const bookId = route.query.id as string;
+const updateBook = useUpdateBook(bookId);
 const props = defineProps<{ book: Book; filterBy: BookFilterBy }>();
-const queryClient = useQueryClient();
-const mutation = useMutation({
-  mutationFn: (newBook: Book) => bookApiService.update(newBook),
-  onSuccess: () => {
-    const { book } = props;
-    queryClient.invalidateQueries({
-      queryKey: ["book", book._id],
-    });
-  },
-});
 
 const filterValues = [
   {
@@ -56,9 +49,9 @@ function onSetFilter(value: BookFilterBy) {
   emit("filterBy", value);
   const { book } = props;
   if (!book) return;
-  const newBook = cloneDeep(book) as Book;
+  const newBook = toRaw(book) as Book;
   newBook.filterBy = value;
-  mutation.mutate(newBook);
+  updateBook(newBook);
 }
 </script>
 <style lang="scss" scoped>

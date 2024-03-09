@@ -12,13 +12,11 @@
     "@tanstack/vue-query": "^5.25.0",
     "@tanstack/vue-query-devtools": "^5.25.0",
     "axios": "^1.6.7",
-    "lodash": "^4.17.21",
     "sass": "^1.71.0",
     "vue": "^3.4.15",
     "vue-router": "^4.2.5"
   },
   "devDependencies": {
-    "@types/lodash": "^4.14.202",
     "@types/node": "^20.11.19",
     "@vitejs/plugin-vue": "^5.0.3",
     "@vuedx/typescript-plugin-vue": "^0.7.6",
