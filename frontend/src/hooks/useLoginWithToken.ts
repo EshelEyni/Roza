@@ -1,16 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { User } from "../../../shared/types/user";
 import authApiService from "../services/authApiService";
+import { UseLoginWithTokenResult } from "../types/app";
 
-type UseLoginWithToken = {
-  loggedInUser: User | null | undefined;
-  errorLoggedInUser: unknown;
-  isLoadingLoggedInUser: boolean;
-  isSuccessLoggedInUser: boolean;
-  isErrorLoggedInUser: boolean;
-};
-
-export function useLoginWithToken(): UseLoginWithToken {
+export function useLoginWithToken(): UseLoginWithTokenResult {
   const {
     data: loggedInUser,
     error: errorLoggedInUser,

@@ -21,7 +21,7 @@ export function useGetBooks({ userId }: UseGetBooksParams): UseGetBooksResult {
     enabled: !!userId,
   });
 
-  const isEmpty = isSuccessBooks && !!books && books.length === 0;
+  const isNoBooks = isSuccessBooks && !!books && books.length === 0;
   const isBooksAvailable = isSuccessBooks && !!books && books.length > 0;
 
   return {
@@ -30,7 +30,7 @@ export function useGetBooks({ userId }: UseGetBooksParams): UseGetBooksResult {
     isLoadingBooks,
     isSuccessBooks,
     isErrorBooks,
-    isEmpty,
+    isNoBooks,
     isBooksAvailable,
   };
 }

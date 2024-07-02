@@ -1,6 +1,7 @@
 import { lazy } from "react";
 import { Route } from "./types/app";
 import { ProfileProvider } from "./contexts/ProfileContext";
+import { ReviewsProvider } from "./contexts/ReviewsContext";
 const HomePage = lazy(() => import("./pages/HomePage/HomePage"));
 const ProfileDetails = lazy(
   () => import("./pages/ProfileDetails/ProfileDetails"),
@@ -31,6 +32,7 @@ const routes: Route[] = [
     path: "/reviews",
     component: ReviewsPage,
     authRequired: true,
+    provider: ReviewsProvider,
   },
   {
     path: "books/:id",

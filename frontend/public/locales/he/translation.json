@@ -73,5 +73,11 @@
     "reviews": "ביקורות",
     "references": "הפניות",
     "createdAt": "נוצר בתאריך"
+  },
+  "ReviewsFilter": {
+    "sortBy": "מיין לפי",
+    "asc": "סדר עולה",
+    "desc": "סדר יורד",
+    "search": "חיפוש"
   }
 }

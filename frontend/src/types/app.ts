@@ -1,5 +1,6 @@
 import { FC, LazyExoticComponent, ReactElement, ReactNode } from "react";
 import { Book, BookReview } from "../../../shared/types/books";
+import { User } from "../../../shared/types/user";
 
 type RouteProvider = ({
   children,
@@ -42,4 +43,12 @@ export type UseGetBookReviewsResult = {
   isErrorReviews: boolean;
   isNoReviews: boolean;
   isReviewsAvailable: boolean;
+};
+
+export type UseLoginWithTokenResult = {
+  loggedInUser: User | null | undefined;
+  errorLoggedInUser: unknown;
+  isLoadingLoggedInUser: boolean;
+  isSuccessLoggedInUser: boolean;
+  isErrorLoggedInUser: boolean;
 };

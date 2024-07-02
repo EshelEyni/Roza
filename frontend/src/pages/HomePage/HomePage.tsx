@@ -12,7 +12,8 @@ import { Main } from "../../components/Main";
 import { BookList } from "../../components/BookList";
 import { useGetBookReviews } from "../../hooks/useGetBookReviews";
 import { ReviewList } from "../../components/ReviewList";
-import { Hr } from "../../components/HR";
+import { Hr } from "../../components/Hr";
+import { PageContent } from "../../components/PageContent";
 
 type FormType = "login" | "signup";
 
@@ -100,7 +101,7 @@ const HomePage: FC = () => {
       )}
 
       {loggedInUser && (
-        <section className="flex w-full max-w-[800px] flex-col items-center justify-center gap-1 p-5">
+        <PageContent>
           <h1
             className="cursor-pointer font-alef text-3xl font-bold text-app-700 transition-colors hover:text-app-800 hover:underline"
             onClick={onGoToProfile}
@@ -144,7 +145,7 @@ const HomePage: FC = () => {
               {t("HomePage.btnLogout")}
             </Button>
           </div>
-        </section>
+        </PageContent>
       )}
     </Main>
   );

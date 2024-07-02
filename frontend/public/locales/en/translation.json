@@ -73,5 +73,17 @@
     "reviews": "Reviews",
     "references": "References",
     "createdAt": "Created At"
+  },
+  "ReviewsPage": {
+    "title": "Reviews",
+    "btnAdd": "Add Review",
+    "btnEdit": "Edit",
+    "btnDelete": "Delete"
+  },
+  "ReviewsFilter": {
+    "sortBy": "Sort by",
+    "asc": "Ascending",
+    "desc": "Descending",
+    "search": "Search"
   }
 }
