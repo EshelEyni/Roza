@@ -161,6 +161,30 @@ function capitializeFirstLetter(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
+function formatDateByLang(date: Date | string, lang = "en") {
+  const formmatedDate = new Date(date).toLocaleString(
+    lang === "en" ? "en-US" : "he-IL",
+    {
+      dateStyle: "full",
+    },
+  );
+
+  return formmatedDate;
+}
+
+function formatLang(lang: string): string {
+  return lang === "en" ? "English" : "עברית";
+}
+
+function getLanguages() {
+  const languages = [
+    { name: "English", value: "en" },
+    { name: "עברית", value: "he" },
+  ];
+
+  return languages;
+}
+
 export {
   getCleanTime,
   formatDateToRelativeTime,
@@ -172,4 +196,7 @@ export {
   getBasePathName,
   getDefaultErrorMsg,
   capitializeFirstLetter,
+  formatDateByLang,
+  formatLang,
+  getLanguages,
 };

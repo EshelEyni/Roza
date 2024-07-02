@@ -9,5 +9,33 @@
       "signup": "Signup"
     },
     "btnLogout": "Logout"
+  },
+  "ProfileDetails": {
+    "btnEdit": "Edit",
+    "btnPassword": "Change Password",
+    "btnCancel": "Cancel",
+    "btnSave": "Save"
+  },
+  "ProfileDisplay": {
+    "username": "Username",
+    "fullName": "Full Name",
+    "email": "Email",
+    "language": "Language",
+    "signup": "Signup Date"
+  },
+  "ProfileEdit": {
+    "title": "Edit Profile",
+    "username": "Username",
+    "fullName": "Full Name",
+    "email": "Email",
+    "language": "Language",
+    "btnSubmit": "Update"
+  },
+  "PasswordEdit": {
+    "title": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "newPasswordConfirm": "Confirm Password",
+    "btnSubmit": "Update"
   }
 }

@@ -1,5 +1,6 @@
 import { JsendResponse } from "../../../shared/types/system";
 import { User, UserCredenitials } from "../../../shared/types/user";
+import { UpdatePasswordParams } from "../types/app";
 import httpService from "./httpService";
 import { handleServerResponseData } from "./utilService";
 
@@ -35,4 +36,34 @@ async function logout(): Promise<void> {
   return res;
 }
 
-export default { login, signup, logout, loginWithToken };
+async function update(user: User): Promise<User> {
+  const response = (await httpService.put(
+    `${baseUrl}/update`,
+    user,
+  )) as unknown as JsendResponse;
+
+  return handleServerResponseData<User>(response);
+}
+
+async function updatePassword({
+  currentPassword,
+  newPassword,
+  newPasswordConfirm,
+}: UpdatePasswordParams): Promise<void> {
+  const response = (await httpService.put(`${baseUrl}/updatePassword`, {
+    currentPassword,
+    newPassword,
+    newPasswordConfirm,
+  })) as unknown as JsendResponse;
+
+  return handleServerResponseData<void>(response);
+}
+
+export default {
+  login,
+  signup,
+  logout,
+  loginWithToken,
+  update,
+  updatePassword,
+};

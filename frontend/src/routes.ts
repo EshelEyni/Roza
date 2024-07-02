@@ -1,15 +1,10 @@
-import { FC, LazyExoticComponent, lazy } from "react";
+import { lazy } from "react";
+import { Route } from "./types/app";
+import { ProfileProvider } from "./contexts/ProfileContext";
 const HomePage = lazy(() => import("./pages/HomePage/HomePage"));
 const ProfileDetails = lazy(
   () => import("./pages/ProfileDetails/ProfileDetails"),
 );
-
-export interface Route {
-  path: string;
-  component: LazyExoticComponent<FC>;
-  nestedRoutes?: Route[];
-  authRequired: boolean;
-}
 
 const routes: Route[] = [
   {
@@ -21,6 +16,7 @@ const routes: Route[] = [
     path: "/profile",
     component: ProfileDetails,
     authRequired: true,
+    provider: ProfileProvider,
   },
 ];
 

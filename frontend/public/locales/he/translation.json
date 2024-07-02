@@ -9,5 +9,33 @@
       "signup": "הרשמה"
     },
     "btnLogout": "התנתקות"
+  },
+  "ProfileDetails": {
+    "btnEdit": "עריכה",
+    "btnPassword": "שינוי סיסמה",
+    "btnCancel": "ביטול",
+    "btnSave": "שמירה"
+  },
+  "ProfileDisplay": {
+    "username": "שם משתמש",
+    "fullName": "שם מלא",
+    "email": "אימייל",
+    "language": "שפה",
+    "signup": "תאריך הרשמה"
+  },
+  "ProfileEdit": {
+    "title": "עריכת פרופיל",
+    "username": "שם משתמש",
+    "fullName": "שם מלא",
+    "email": "אימייל",
+    "language": "שפה",
+    "btnSubmit": "עדכון"
+  },
+  "PasswordEdit": {
+    "title": "שינוי סיסמה",
+    "currentPassword": "סיסמה נוכחית",
+    "newPassword": "סיסמה חדשה",
+    "newPasswordConfirm": "אימות סיסמה",
+    "btnSubmit": "עדכון"
   }
 }

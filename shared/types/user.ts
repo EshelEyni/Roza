@@ -15,8 +15,8 @@ export interface User {
   username: string;
   fullname: string;
   email: string;
-  roles: string[];
   language: string;
+  roles: string[];
   createdAt: string;
   updatedAt: string;
 }
