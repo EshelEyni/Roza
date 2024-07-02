@@ -37,5 +37,11 @@
     "newPassword": "סיסמה חדשה",
     "newPasswordConfirm": "אימות סיסמה",
     "btnSubmit": "עדכון"
+  },
+  "AppHeader": {
+    "home": "בית",
+    "profile": "פרופיל",
+    "books": "ספרים",
+    "reviews": "ביקורות"
   }
 }

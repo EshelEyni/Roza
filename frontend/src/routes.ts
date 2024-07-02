@@ -5,7 +5,8 @@ const HomePage = lazy(() => import("./pages/HomePage/HomePage"));
 const ProfileDetails = lazy(
   () => import("./pages/ProfileDetails/ProfileDetails"),
 );
-
+const BooksPage = lazy(() => import("./pages/BooksPage/BooksPage"));
+const ReviewsPage = lazy(() => import("./pages/ReviewsPage/ReviewsPage"));
 const routes: Route[] = [
   {
     path: "/home",
@@ -17,6 +18,16 @@ const routes: Route[] = [
     component: ProfileDetails,
     authRequired: true,
     provider: ProfileProvider,
+  },
+  {
+    path: "/books",
+    component: BooksPage,
+    authRequired: true,
+  },
+  {
+    path: "/reviews",
+    component: ReviewsPage,
+    authRequired: true,
   },
 ];
 

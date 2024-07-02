@@ -37,5 +37,11 @@
     "newPassword": "New Password",
     "newPasswordConfirm": "Confirm Password",
     "btnSubmit": "Update"
+  },
+  "AppHeader": {
+    "home": "Home",
+    "profile": "Profile",
+    "books": "Books",
+    "reviews": "Reviews"
   }
 }

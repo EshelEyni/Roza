@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { useLoginWithToken } from "./hooks/useLoginWithToken";
 import { AuthGuard } from "./guards/AuthGuard";
 import { Route as TypeOfRoute } from "./types/app";
+import { AppHeader } from "./components/AppHeader";
 
 const PageNotFound = lazy(() => import("./pages/PageNotFound"));
 
@@ -53,13 +54,16 @@ function App() {
   }, [i18n.language]);
 
   return (
-    <Suspense fallback={<Loader isPageLoader={true} />}>
-      <Routes>
-        <Route index element={<Navigate replace to="/home" />} />
-        {getRoutes()}
-        <Route path="*" element={<PageNotFound />} />
-      </Routes>
-    </Suspense>
+    <div className="flex min-h-screen flex-col items-center overflow-y-scroll bg-app-100 text-gray-50">
+      <AppHeader />
+      <Suspense fallback={<Loader isPageLoader={true} />}>
+        <Routes>
+          <Route index element={<Navigate replace to="/home" />} />
+          {getRoutes()}
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+      </Suspense>
+    </div>
   );
 }
 
