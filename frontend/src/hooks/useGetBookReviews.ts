@@ -1,14 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { BookReview } from "../../../shared/types/books";
 import reviewsApiService from "../services/reviewsApiService";
-
-type UseGetBookReviewsResult = {
-  reviews: BookReview[] | undefined;
-  errorReviews: unknown;
-  isLoadingReviews: boolean;
-  isSuccessReviews: boolean;
-  isErrorReviews: boolean;
-};
+import { UseGetBookReviewsResult } from "../types/app";
 
 type UseGetBookReviewsParams = {
   userId: string;
@@ -31,11 +23,17 @@ export function useGetBookReviews({
     enabled: !!userId,
   });
 
+  const isNoReviews = isSuccessReviews && !!reviews && reviews.length === 0;
+  const isReviewsAvailable =
+    isSuccessReviews && !!reviews && reviews.length > 0;
+
   return {
     reviews,
     errorReviews,
     isLoadingReviews,
     isSuccessReviews,
     isErrorReviews,
+    isNoReviews,
+    isReviewsAvailable,
   };
 }

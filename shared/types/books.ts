@@ -5,8 +5,8 @@ export interface BookReview {
   reviews: Review[];
   references: Reference[];
   sortOrder: number;
-  createdAt: Date | string | number | null;
-  updatedAt: Date | string | number | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface Review {
@@ -37,8 +37,8 @@ export interface Book {
   plotlines: Plotline[];
   notes: Note[];
   filterBy: BookFilterBy;
-  createdAt: Date | string | null;
-  updatedAt: Date | string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface Chapter {
@@ -47,8 +47,8 @@ export interface Chapter {
   sortOrder: number;
   description: string;
   text: string;
-  createdAt: Date | string | number | null;
-  updatedAt: Date | string | number | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
 }
 
 export interface Character {

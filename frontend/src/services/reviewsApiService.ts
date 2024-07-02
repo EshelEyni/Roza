@@ -7,7 +7,7 @@ const baseUrl = "review";
 
 async function query(userId: string): Promise<BookReview[]> {
   const response = (await httpService.get(
-    `${baseUrl}?userId=${userId}`,
+    `${baseUrl}?userId=${userId}&limit=1000`,
   )) as unknown as JsendResponse;
   return handleServerResponseData<BookReview[]>(response);
 }

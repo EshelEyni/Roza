@@ -1,5 +1,5 @@
 import { FC, LazyExoticComponent, ReactElement, ReactNode } from "react";
-import { Book } from "../../../shared/types/books";
+import { Book, BookReview } from "../../../shared/types/books";
 
 type RouteProvider = ({
   children,
@@ -30,6 +30,16 @@ export type UseGetBooksResult = {
   isLoadingBooks: boolean;
   isSuccessBooks: boolean;
   isErrorBooks: boolean;
-  isEmpty: boolean;
+  isNoBooks: boolean;
   isBooksAvailable: boolean;
+};
+
+export type UseGetBookReviewsResult = {
+  reviews: BookReview[] | undefined;
+  errorReviews: unknown;
+  isLoadingReviews: boolean;
+  isSuccessReviews: boolean;
+  isErrorReviews: boolean;
+  isNoReviews: boolean;
+  isReviewsAvailable: boolean;
 };

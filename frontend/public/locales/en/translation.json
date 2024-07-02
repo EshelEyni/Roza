@@ -44,15 +44,16 @@
     "books": "Books",
     "reviews": "Reviews"
   },
-  "BookList": {
-    "title": "Books"
-  },
   "ErrorMsg": {
     "msg": "An error occurred in the system. Please try again later."
   },
   "EmptyMsg": {
     "books": "No books available.",
     "reviews": "No reviews available."
+  },
+  "BookList": {
+    "title": "Books",
+    "seeAll": "Go to Books"
   },
   "BookPreview": {
     "name": "Book Name",
@@ -61,6 +62,16 @@
     "themes": "Themes",
     "plotlines": "Plotlines",
     "notes": "Notes",
+    "createdAt": "Created At"
+  },
+  "ReviewsList": {
+    "title": "Reviews",
+    "seeAll": "Go to Reviews"
+  },
+  "ReviewPreview": {
+    "name": "Book Name",
+    "reviews": "Reviews",
+    "references": "References",
     "createdAt": "Created At"
   }
 }

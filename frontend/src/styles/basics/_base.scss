@@ -4,15 +4,13 @@
 
 html {
   font-family: var(--font-primary);
-  height: 100%;
-  overflow: hidden;
+
+  @include scrollbar;
 }
 
 body {
   margin: 0;
   padding: 0;
-  height: 100%;
-  overflow: hidden;
   background-color: #eadac7;
 }
 

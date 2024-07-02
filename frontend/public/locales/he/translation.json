@@ -44,15 +44,16 @@
     "books": "ספרים",
     "reviews": "ביקורות"
   },
-  "BookList": {
-    "title": "ספרים"
-  },
   "ErrorMsg": {
     "msg": "התרחשה שגיאה במערכת. אנא נסה שוב מאוחר יותר."
   },
   "EmptyMsg": {
     "books": "אין ספרים זמינים.",
     "reviews": "אין ביקורות זמינות."
+  },
+  "BookList": {
+    "title": "ספרים",
+    "seeAll": "עבור לספרים"
   },
   "BookPreview": {
     "name": "שם הספר",
@@ -61,6 +62,16 @@
     "themes": "נושאים",
     "plotlines": "קווי עלילה",
     "notes": "הערות",
+    "createdAt": "נוצר בתאריך"
+  },
+  "ReviewsList": {
+    "title": "ביקורות",
+    "seeAll": "עבור לביקורות"
+  },
+  "ReviewPreview": {
+    "name": "שם הספר",
+    "reviews": "ביקורות",
+    "references": "הפניות",
     "createdAt": "נוצר בתאריך"
   }
 }

@@ -10,6 +10,9 @@ import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Main } from "../../components/Main";
 import { BookList } from "../../components/BookList";
+import { useGetBookReviews } from "../../hooks/useGetBookReviews";
+import { ReviewList } from "../../components/ReviewList";
+import { Hr } from "../../components/HR";
 
 type FormType = "login" | "signup";
 
@@ -23,10 +26,31 @@ const HomePage: FC = () => {
     isSuccessBooks,
     isErrorBooks,
     isBooksAvailable,
-    isEmpty,
+    isNoBooks,
   } = useGetBooks({
     userId: loggedInUser?.id || "",
   });
+
+  const slicedBooks = books
+    ?.sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+    )
+    .slice(0, 9);
+
+  const {
+    reviews,
+    errorReviews,
+    isLoadingReviews,
+    isSuccessReviews,
+    isErrorReviews,
+    isNoReviews,
+    isReviewsAvailable,
+  } = useGetBookReviews({ userId: loggedInUser?.id || "" });
+
+  const slicedReviews = reviews
+    ?.sort((a, b) => b.sortOrder - a.sortOrder)
+    .slice(0, 9);
 
   const { logout } = useLogout();
   const [openedForm, setOpenedForm] = useState<FormType>("login");
@@ -76,7 +100,7 @@ const HomePage: FC = () => {
       )}
 
       {loggedInUser && (
-        <section className="flex w-full max-w-[800px] flex-col items-center justify-center gap-8 p-5">
+        <section className="flex w-full max-w-[800px] flex-col items-center justify-center gap-1 p-5">
           <h1
             className="cursor-pointer font-alef text-3xl font-bold text-app-700 transition-colors hover:text-app-800 hover:underline"
             onClick={onGoToProfile}
@@ -84,20 +108,38 @@ const HomePage: FC = () => {
             {loggedInUser.username}
           </h1>
 
+          <Hr />
+
           <BookList
-            books={books}
+            books={slicedBooks}
             errorBooks={errorBooks}
             isLoadingBooks={isLoadingBooks}
             isErrorBooks={isErrorBooks}
             isSuccessBooks={isSuccessBooks}
-            isEmpty={isEmpty}
+            isNoBooks={isNoBooks}
             isBooksAvailable={isBooksAvailable}
+            isHomePage={true}
           />
+
+          <Hr />
+
+          <ReviewList
+            reviews={slicedReviews}
+            errorReviews={errorReviews}
+            isLoadingReviews={isLoadingReviews}
+            isSuccessReviews={isSuccessReviews}
+            isErrorReviews={isErrorReviews}
+            isNoReviews={isNoReviews}
+            isReviewsAvailable={isReviewsAvailable}
+            isHomePage={true}
+          />
+
+          <Hr />
 
           <div className="flex w-full justify-end">
             <Button
               onClickFn={onLogout}
-              className="rounded bg-app-600 px-4 py-2 text-white"
+              className="rounded bg-app-600 px-4 py-2 text-white hover:bg-app-700"
             >
               {t("HomePage.btnLogout")}
             </Button>

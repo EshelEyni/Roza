@@ -24,7 +24,7 @@ export const BookPreview: FC<BookPreviewProps> = ({ book }) => {
 
   return (
     <article
-      className="cursor-pointer rounded-lg border border-app-800 bg-app-100 p-2 shadow-lg transition duration-300 hover:scale-105 hover:shadow-xl"
+      className="h-full cursor-pointer rounded-lg border border-app-800 bg-app-100 p-2 shadow-lg transition duration-300 hover:scale-105 hover:shadow-xl"
       onClick={handlePreviewClick}
     >
       <h2 className="mb-2 text-2xl font-bold text-app-800">{book.name}</h2>
