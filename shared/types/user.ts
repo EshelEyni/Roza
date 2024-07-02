@@ -15,7 +15,6 @@ export interface User {
   username: string;
   fullname: string;
   email: string;
-  imgUrl: string;
   roles: string[];
   language: string;
   createdAt: string;

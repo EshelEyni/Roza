@@ -11,7 +11,6 @@ export interface IUser extends Document {
   passwordResetToken?: string;
   passwordResetExpires?: Date;
   fullname: string;
-  imgUrl: string;
   roles: string[];
   createdAt: Date;
   updatedAt: Date;
@@ -23,7 +22,6 @@ export interface IUser extends Document {
   createPasswordResetToken: () => string;
   loginAttempts: number;
   lockedUntil: number;
-  bio: string;
 }
 
 export interface IBook extends Document {

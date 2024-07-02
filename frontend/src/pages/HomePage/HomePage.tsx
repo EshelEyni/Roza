@@ -7,6 +7,8 @@ import { useLogout } from "../../hooks/useLogout";
 import { useGetBooks } from "../../hooks/useGetBooks";
 import { Loader } from "../../components/Loader";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { Main } from "../../components/Main";
 
 type FormType = "login" | "signup";
 
@@ -20,21 +22,28 @@ const HomePage: FC = () => {
   const { logout } = useLogout();
   const [openedForm, setOpenedForm] = useState<FormType>("login");
 
+  const navigate = useNavigate();
+
   const toggleFormTitle =
     openedForm === "login"
       ? t("HomePage.formTitle.login")
       : t("HomePage.formTitle.signup");
 
-  function toggleForm() {
+  function onToggleForm() {
     setOpenedForm(openedForm === "login" ? "signup" : "login");
   }
 
-  function handleLogout() {
+  function onGoToProfile() {
+    if (!loggedInUser) return;
+    navigate(`/profile`);
+  }
+
+  function onLogout() {
     logout();
   }
 
   return (
-    <main className="relative flex h-full w-full flex-col items-center bg-app-100">
+    <Main>
       {isLoadingUser && (
         <Loader className="absolute left-1/2 top-1/2 flex h-96 w-96 -translate-x-1/2 -translate-y-1/2 transform items-center justify-center" />
       )}
@@ -46,7 +55,7 @@ const HomePage: FC = () => {
           <p className="mt-4 font-medium italic text-app-700">
             {toggleFormTitle}{" "}
             <Button
-              onClickFn={toggleForm}
+              onClickFn={onToggleForm}
               className="text-app-700 hover:text-app-900 hover:underline"
             >
               {openedForm === "login"
@@ -58,20 +67,25 @@ const HomePage: FC = () => {
       )}
 
       {loggedInUser && (
-        <section className="flex items-center gap-8 p-5">
-          <h1 className="font-alef text-3xl font-bold text-app-800">
+        <section className="flex w-full max-w-[800px] flex-col items-center justify-center gap-8 p-5">
+          <h1
+            className="cursor-pointer font-alef text-3xl font-bold text-app-700 transition-colors hover:text-app-800 hover:underline"
+            onClick={onGoToProfile}
+          >
             {loggedInUser.username}
           </h1>
 
-          <Button
-            onClickFn={handleLogout}
-            className="rounded bg-app-600 px-4 py-2 text-white"
-          >
-            {t("HomePage.btnLogout")}
-          </Button>
+          <div className="flex w-full justify-end">
+            <Button
+              onClickFn={onLogout}
+              className="rounded bg-app-600 px-4 py-2 text-white"
+            >
+              {t("HomePage.btnLogout")}
+            </Button>
+          </div>
         </section>
       )}
-    </main>
+    </Main>
   );
 };
 
