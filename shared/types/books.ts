@@ -37,8 +37,8 @@ export interface Book {
   plotlines: Plotline[];
   notes: Note[];
   filterBy: BookFilterBy;
-  createdAt: Date | string | number | null;
-  updatedAt: Date | string | number | null;
+  createdAt: Date | string | null;
+  updatedAt: Date | string | null;
 }
 
 export interface Chapter {

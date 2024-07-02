@@ -5,7 +5,7 @@ import { LoginCredentials, User } from "../../../shared/types/user";
 export function useLogin() {
   const queryClient = useQueryClient();
 
-  const { mutate: login, isPending } = useMutation({
+  const { mutate: login, isPending: isPendingLogin } = useMutation({
     mutationFn: async (creds: LoginCredentials) =>
       authApiService.login(creds.username, creds.password),
     onSuccess: (data: User) => {
@@ -13,5 +13,5 @@ export function useLogin() {
     },
   });
 
-  return { login, isPending };
+  return { login, isPendingLogin };
 }

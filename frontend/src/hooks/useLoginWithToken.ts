@@ -4,24 +4,30 @@ import authApiService from "../services/authApiService";
 
 type UseLoginWithToken = {
   loggedInUser: User | null | undefined;
-  error: unknown;
-  isLoading: boolean;
-  isSuccess: boolean;
-  isError: boolean;
+  errorLoggedInUser: unknown;
+  isLoadingLoggedInUser: boolean;
+  isSuccessLoggedInUser: boolean;
+  isErrorLoggedInUser: boolean;
 };
 
 export function useLoginWithToken(): UseLoginWithToken {
   const {
     data: loggedInUser,
-    error,
-    isLoading,
-    isSuccess,
-    isError,
+    error: errorLoggedInUser,
+    isLoading: isLoadingLoggedInUser,
+    isSuccess: isSuccessLoggedInUser,
+    isError: isErrorLoggedInUser,
   } = useQuery({
     queryKey: ["loggedInUser"],
     queryFn: authApiService.loginWithToken,
     retry: 0,
   });
 
-  return { loggedInUser, error, isLoading, isSuccess, isError };
+  return {
+    loggedInUser,
+    errorLoggedInUser,
+    isLoadingLoggedInUser,
+    isSuccessLoggedInUser,
+    isErrorLoggedInUser,
+  };
 }

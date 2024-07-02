@@ -1,4 +1,5 @@
 import { FC, LazyExoticComponent, ReactElement, ReactNode } from "react";
+import { Book } from "../../../shared/types/books";
 
 type RouteProvider = ({
   children,
@@ -21,4 +22,14 @@ export type UpdatePasswordParams = {
   currentPassword: string;
   newPassword: string;
   newPasswordConfirm: string;
+};
+
+export type UseGetBooksResult = {
+  books: Book[] | undefined;
+  errorBooks: unknown;
+  isLoadingBooks: boolean;
+  isSuccessBooks: boolean;
+  isErrorBooks: boolean;
+  isEmpty: boolean;
+  isBooksAvailable: boolean;
 };

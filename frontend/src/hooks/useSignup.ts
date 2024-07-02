@@ -5,12 +5,12 @@ import { UserCredenitials, User } from "../../../shared/types/user";
 export function useSignup() {
   const queryClient = useQueryClient();
 
-  const { mutate: signup, isPending } = useMutation({
+  const { mutate: signup, isPending: isPendingSignup } = useMutation({
     mutationFn: async (creds: UserCredenitials) => authApiService.signup(creds),
     onSuccess: (data: User) => {
       queryClient.setQueryData(["loggedInUser"], data);
     },
   });
 
-  return { signup, isPending };
+  return { signup, isPendingSignup };
 }

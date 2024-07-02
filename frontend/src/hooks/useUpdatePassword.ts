@@ -5,23 +5,24 @@ import { UpdatePasswordParams } from "../types/app";
 export function useUpdatePassword() {
   const queryClient = useQueryClient();
 
-  const { mutate: updateUser, isPending } = useMutation({
-    mutationFn: async ({
-      currentPassword,
-      newPassword,
-      newPasswordConfirm,
-    }: UpdatePasswordParams) =>
-      authApiService.updatePassword({
+  const { mutate: updatePassword, isPending: isPendingUpdatePassword } =
+    useMutation({
+      mutationFn: async ({
         currentPassword,
         newPassword,
         newPasswordConfirm,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: ["loggedInUser"],
-      });
-    },
-  });
+      }: UpdatePasswordParams) =>
+        authApiService.updatePassword({
+          currentPassword,
+          newPassword,
+          newPasswordConfirm,
+        }),
+      onSuccess: () => {
+        queryClient.invalidateQueries({
+          queryKey: ["loggedInUser"],
+        });
+      },
+    });
 
-  return { updateUser, isPending };
+  return { updatePassword, isPendingUpdatePassword };
 }

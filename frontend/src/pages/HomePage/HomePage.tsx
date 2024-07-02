@@ -9,13 +9,22 @@ import { Loader } from "../../components/Loader";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Main } from "../../components/Main";
+import { BookList } from "../../components/BookList";
 
 type FormType = "login" | "signup";
 
 const HomePage: FC = () => {
   const { t } = useTranslation();
-  const { loggedInUser, isLoading: isLoadingUser } = useLoginWithToken();
-  const { books, error, isLoading, isSuccess, isError } = useGetBooks({
+  const { loggedInUser, isLoadingLoggedInUser } = useLoginWithToken();
+  const {
+    books,
+    errorBooks,
+    isLoadingBooks,
+    isSuccessBooks,
+    isErrorBooks,
+    isBooksAvailable,
+    isEmpty,
+  } = useGetBooks({
     userId: loggedInUser?.id || "",
   });
 
@@ -44,10 +53,10 @@ const HomePage: FC = () => {
 
   return (
     <Main>
-      {isLoadingUser && (
+      {isLoadingLoggedInUser && (
         <Loader className="absolute left-1/2 top-1/2 flex h-96 w-96 -translate-x-1/2 -translate-y-1/2 transform items-center justify-center" />
       )}
-      {!loggedInUser && !isLoadingUser && (
+      {!loggedInUser && !isLoadingLoggedInUser && (
         <section className="mt-12 flex h-full flex-col items-center md:min-w-96">
           {openedForm === "login" && <LoginForm />}
           {openedForm === "signup" && <SignupForm />}
@@ -74,6 +83,16 @@ const HomePage: FC = () => {
           >
             {loggedInUser.username}
           </h1>
+
+          <BookList
+            books={books}
+            errorBooks={errorBooks}
+            isLoadingBooks={isLoadingBooks}
+            isErrorBooks={isErrorBooks}
+            isSuccessBooks={isSuccessBooks}
+            isEmpty={isEmpty}
+            isBooksAvailable={isBooksAvailable}
+          />
 
           <div className="flex w-full justify-end">
             <Button

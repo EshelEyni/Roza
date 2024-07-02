@@ -4,12 +4,12 @@ import authApiService from "../services/authApiService";
 export function useLogout() {
   const queryClient = useQueryClient();
 
-  const { mutate: logout, isPending } = useMutation({
+  const { mutate: logout, isPending: isPendingLogout } = useMutation({
     mutationFn: async () => authApiService.logout(),
     onSuccess: () => {
       queryClient.setQueryData(["loggedInUser"], null);
     },
   });
 
-  return { logout, isPending };
+  return { logout, isPendingLogout };
 }

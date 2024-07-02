@@ -43,5 +43,24 @@
     "profile": "Profile",
     "books": "Books",
     "reviews": "Reviews"
+  },
+  "BookList": {
+    "title": "Books"
+  },
+  "ErrorMsg": {
+    "msg": "An error occurred in the system. Please try again later."
+  },
+  "EmptyMsg": {
+    "books": "No books available.",
+    "reviews": "No reviews available."
+  },
+  "BookPreview": {
+    "name": "Book Name",
+    "chapters": "Chapters",
+    "characters": "Characters",
+    "themes": "Themes",
+    "plotlines": "Plotlines",
+    "notes": "Notes",
+    "createdAt": "Created At"
   }
 }

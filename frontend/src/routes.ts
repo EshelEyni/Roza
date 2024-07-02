@@ -7,6 +7,9 @@ const ProfileDetails = lazy(
 );
 const BooksPage = lazy(() => import("./pages/BooksPage/BooksPage"));
 const ReviewsPage = lazy(() => import("./pages/ReviewsPage/ReviewsPage"));
+const BookDetails = lazy(() => import("./pages/BookDetails/BookDetails"));
+const ReviewDetails = lazy(() => import("./pages/ReviewDetails/ReviewDetails"));
+
 const routes: Route[] = [
   {
     path: "/home",
@@ -27,6 +30,16 @@ const routes: Route[] = [
   {
     path: "/reviews",
     component: ReviewsPage,
+    authRequired: true,
+  },
+  {
+    path: "books/:id",
+    component: BookDetails,
+    authRequired: true,
+  },
+  {
+    path: "reviews/:id",
+    component: ReviewDetails,
     authRequired: true,
   },
 ];

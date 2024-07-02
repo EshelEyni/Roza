@@ -43,5 +43,24 @@
     "profile": "פרופיל",
     "books": "ספרים",
     "reviews": "ביקורות"
+  },
+  "BookList": {
+    "title": "ספרים"
+  },
+  "ErrorMsg": {
+    "msg": "התרחשה שגיאה במערכת. אנא נסה שוב מאוחר יותר."
+  },
+  "EmptyMsg": {
+    "books": "אין ספרים זמינים.",
+    "reviews": "אין ביקורות זמינות."
+  },
+  "BookPreview": {
+    "name": "שם הספר",
+    "chapters": "פרקים",
+    "characters": "דמויות",
+    "themes": "נושאים",
+    "plotlines": "קווי עלילה",
+    "notes": "הערות",
+    "createdAt": "נוצר בתאריך"
   }
 }
