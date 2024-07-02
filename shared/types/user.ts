@@ -17,6 +17,7 @@ export interface User {
   email: string;
   imgUrl: string;
   roles: string[];
+  language: string;
   createdAt: string;
   updatedAt: string;
 }

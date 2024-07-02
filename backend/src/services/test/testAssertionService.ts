@@ -8,8 +8,7 @@ function assertUser(user: User) {
       username: expect.any(String),
       fullname: expect.any(String),
       email: expect.any(String),
-      imgUrl: expect.any(String),
-      isAdmin: expect.any(Boolean),
+      language: expect.any(String),
     }),
   );
 

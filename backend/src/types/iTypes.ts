@@ -6,6 +6,7 @@ export interface IUser extends Document {
   password: string;
   passwordConfirm: string;
   email: string;
+  language: string;
   passwordChangedAt?: Date;
   passwordResetToken?: string;
   passwordResetExpires?: Date;

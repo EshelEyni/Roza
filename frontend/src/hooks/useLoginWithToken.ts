@@ -20,6 +20,7 @@ export function useLoginWithToken(): UseLoginWithToken {
   } = useQuery({
     queryKey: ["loggedInUser"],
     queryFn: authApiService.loginWithToken,
+    retry: 0,
   });
 
   return { loggedInUser, error, isLoading, isSuccess, isError };

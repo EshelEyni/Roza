@@ -1,0 +1,13 @@
+{
+  "HomePage": {
+    "formTitle": {
+      "login": "אין לך חשבון?",
+      "signup": "כבר יש לך חשבון?"
+    },
+    "btnForm": {
+      "login": "התחברות",
+      "signup": "הרשמה"
+    },
+    "btnLogout": "התנתקות"
+  }
+}

@@ -51,6 +51,7 @@ const userSchema: Schema<IUser> = new Schema(
       },
     },
     roles: { type: [String], default: ["user"] },
+    language: { type: String, default: "" },
     active: { type: Boolean, default: true },
     loginAttempts: { type: Number, default: 0 },
     lockedUntil: { type: Number, default: 0 },

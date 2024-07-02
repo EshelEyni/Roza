@@ -46,6 +46,11 @@ module.exports = {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
       },
+      fontFamily: {
+        bellefair: ["Bellefair", "sans-serif"],
+        alef: ["Alef", "sans-serif"],
+        alefBold: ["Alef-Bold", "sans-serif"],
+      },
     },
   },
   plugins: [require("tailwindcss-animate")],
