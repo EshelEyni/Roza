@@ -47,4 +47,13 @@ const bookSchema = new Schema<IBook>(
   },
 );
 
+bookSchema.index({
+  name: "text",
+  "chapters.text": "text",
+  "characters.description": "text",
+  "themes.description": "text",
+  "plotlines.description": "text",
+  "notes.text": "text",
+});
+
 export { bookSchema };

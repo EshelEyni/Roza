@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import authApiService from "../services/authApiService";
-import { UserCredenitials, User } from "../../../shared/types/user";
+import authApiService from "../../../services/authApiService";
+import { UserCredenitials, User } from "../../../../../shared/types/user";
 
 export function useSignup() {
   const queryClient = useQueryClient();

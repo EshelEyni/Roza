@@ -79,5 +79,25 @@
     "asc": "סדר עולה",
     "desc": "סדר יורד",
     "search": "חיפוש"
+  },
+  "BookFilter": {
+    "sortBy": "מיין לפי",
+    "asc": "סדר עולה",
+    "desc": "סדר יורד",
+    "search": "חיפוש"
+  },
+  "BookDetails": {
+    "btnEdit": "עריכה",
+    "btnDelete": "מחיקה"
+  },
+  "BookDetailsFilter": {
+    "chapters": "פרקים",
+    "characters": "דמויות",
+    "themes": "נושאים",
+    "plotlines": "קווי עלילה",
+    "notes": "הערות"
+  },
+  "NotePreview": {
+    "titlePrefix": "מספר ההערה"
   }
 }

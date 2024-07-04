@@ -8,11 +8,14 @@ import { PasswordEdit } from "./PasswordEdit";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../components/Button";
 import classNames from "classnames";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 const ProfileDetails: FC = () => {
   const { tab, setTab } = useProfile();
   const { loggedInUser } = useLoginWithToken();
   const { t } = useTranslation();
+
+  useDocumentTitle(`Roza / Profile - ${loggedInUser?.fullname || ""}`);
 
   if (!loggedInUser) return null;
   return (

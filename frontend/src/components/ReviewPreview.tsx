@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { BookReview } from "../../../shared/types/books";
-import { useLoginWithToken } from "../hooks/useLoginWithToken";
+import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
 import { useTranslation } from "react-i18next";
 import { formatDateByLang } from "../services/utilService";
 import { useNavigate } from "react-router-dom";

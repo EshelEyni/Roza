@@ -1,17 +1,18 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { Model } from "mongoose";
-import { NextFunction, Request, Response } from "express";
-import { DeepMockProxy, mockDeep } from "jest-mock-extended";
-import { APIFeatures } from "../util/utilService";
+import { NextFunction } from "express";
 import { createOne, deleteOne, getAll, getOne, updateOne } from "./factoryService";
 import { asyncErrorCatcher } from "../error/errorService";
 import { logger } from "../logger/loggerService";
 import { getMongoId } from "../test/testUtilService";
 
-const ModelMock = mockDeep<Model<any>>();
-const APIFeaturesMock = mockDeep<APIFeatures<any>>();
-const resMock: DeepMockProxy<Response> = mockDeep<Response>();
-const reqMock = mockDeep<Request>();
+const APIFeaturesMock = {
+  filter: jest.fn(),
+  sort: jest.fn(),
+  limitFields: jest.fn(),
+  paginate: jest.fn(),
+  getQuery: jest.fn(),
+};
+
 const nextMock = jest.fn() as jest.MockedFunction<NextFunction>;
 
 jest.mock("../util/utilService", () => ({
@@ -31,6 +32,16 @@ jest.mock("../util/utilService", () => ({
 });
 
 describe("Factory Service", () => {
+  const resMock = {
+    status: jest.fn(),
+    json: jest.fn(),
+  } as any;
+  const reqMock = {
+    query: {},
+    params: {},
+    body: {},
+  } as any;
+
   function setMocks() {
     APIFeaturesMock.filter.mockReturnThis();
     APIFeaturesMock.sort.mockReturnThis();
@@ -43,6 +54,11 @@ describe("Factory Service", () => {
   }
 
   describe("getAll", () => {
+    const ModelMock = {
+      find: jest.fn(),
+      collection: { collectionName: "testItems" },
+    } as any;
+
     beforeEach(() => {
       setMocks();
     });
@@ -116,6 +132,11 @@ describe("Factory Service", () => {
 
   describe("getOne", () => {
     let id: string, mockData: any, error: Error, queryMock: any;
+
+    const ModelMock = {
+      findById: jest.fn(),
+      collection: { collectionName: "testItems" },
+    } as any;
 
     beforeEach(() => {
       setMocks();
@@ -200,6 +221,11 @@ describe("Factory Service", () => {
   });
 
   describe("createOne", () => {
+    const ModelMock = {
+      create: jest.fn(),
+      collection: { collectionName: "testItems" },
+    } as any;
+
     beforeEach(() => {
       setMocks();
     });
@@ -327,6 +353,11 @@ describe("Factory Service", () => {
 
   describe("deleteOne", () => {
     let mockData: any;
+
+    const ModelMock = {
+      findByIdAndDelete: jest.fn(),
+      collection: { collectionName: "testItems" },
+    } as any;
 
     beforeEach(() => {
       setMocks();

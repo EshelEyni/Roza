@@ -39,4 +39,6 @@ const bookReviewSchema = new Schema<IBookReview>(
   },
 );
 
+bookReviewSchema.index({ name: "text", "reviews.text": "text", "references.text": "text" });
+
 export { bookReviewSchema };

@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { FC, useEffect } from "react";
-import { useLoginWithToken } from "../hooks/useLoginWithToken";
+import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
 
 type AuthGuardProps = {
   component: React.ReactNode;

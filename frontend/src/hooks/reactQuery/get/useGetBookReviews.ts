@@ -1,14 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import reviewsApiService from "../services/reviewsApiService";
-import { UseGetBookReviewsResult } from "../types/app";
+import reviewsApiService from "../../../services/reviewsApiService";
+import { ReviewQueryParams, UseGetBookReviewsResult } from "../../../types/app";
 
-type UseGetBookReviewsParams = {
-  userId: string;
+type useGetBookReviewsParams = ReviewQueryParams & {
+  enabled?: boolean;
 };
 
 export function useGetBookReviews({
-  userId,
-}: UseGetBookReviewsParams): UseGetBookReviewsResult {
+  enabled = true,
+  limit,
+  sort,
+  searchTerm,
+}: useGetBookReviewsParams): UseGetBookReviewsResult {
   const {
     data: reviews,
     error: errorReviews,
@@ -16,11 +19,11 @@ export function useGetBookReviews({
     isSuccess: isSuccessReviews,
     isError: isErrorReviews,
   } = useQuery({
-    queryKey: ["reviews", userId],
+    queryKey: ["reviews", limit, sort, searchTerm],
     queryFn: async () => {
-      return reviewsApiService.query(userId);
+      return reviewsApiService.query({ limit, sort, searchTerm });
     },
-    enabled: !!userId,
+    enabled,
   });
 
   const isNoReviews = isSuccessReviews && !!reviews && reviews.length === 0;

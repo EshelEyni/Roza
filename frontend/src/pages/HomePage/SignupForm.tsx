@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { UserCredenitials } from "../../../../shared/types/user";
-import { useSignup } from "../../hooks/useSignup";
+import { useSignup } from "../../hooks/ReactQuery/update/useSignup";
 import { Button } from "../../components/Button";
 
 export const SignupForm: FC = () => {

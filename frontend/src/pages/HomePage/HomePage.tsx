@@ -1,23 +1,26 @@
 import { FC, useState } from "react";
-import { useLoginWithToken } from "../../hooks/useLoginWithToken";
+import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
 import { Button } from "../../components/Button";
-import { useLogout } from "../../hooks/useLogout";
-import { useGetBooks } from "../../hooks/useGetBooks";
+import { useLogout } from "../../hooks/reactQuery/update/useLogout";
+import { useGetBooks } from "../../hooks/reactQuery/get/useGetBooks";
 import { Loader } from "../../components/Loader";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
 import { Main } from "../../components/Main";
 import { BookList } from "../../components/BookList";
-import { useGetBookReviews } from "../../hooks/useGetBookReviews";
+import { useGetBookReviews } from "../../hooks/reactQuery/get/useGetBookReviews";
 import { ReviewList } from "../../components/ReviewList";
 import { Hr } from "../../components/Hr";
 import { PageContent } from "../../components/PageContent";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 type FormType = "login" | "signup";
 
 const HomePage: FC = () => {
+  useDocumentTitle("Roza / Home");
+
   const { t } = useTranslation();
   const { loggedInUser, isLoadingLoggedInUser } = useLoginWithToken();
   const {
@@ -29,7 +32,9 @@ const HomePage: FC = () => {
     isBooksAvailable,
     isNoBooks,
   } = useGetBooks({
-    userId: loggedInUser?.id || "",
+    enabled: !!loggedInUser,
+    limit: 9,
+    sort: "-createdAt",
   });
 
   const slicedBooks = books
@@ -47,11 +52,13 @@ const HomePage: FC = () => {
     isErrorReviews,
     isNoReviews,
     isReviewsAvailable,
-  } = useGetBookReviews({ userId: loggedInUser?.id || "" });
+  } = useGetBookReviews({
+    enabled: !!loggedInUser,
+    limit: 9,
+    sort: "-sortOrder",
+  });
 
-  const slicedReviews = reviews
-    ?.sort((a, b) => b.sortOrder - a.sortOrder)
-    .slice(0, 9);
+  const slicedReviews = reviews?.slice(0, 9);
 
   const { logout } = useLogout();
   const [openedForm, setOpenedForm] = useState<FormType>("login");

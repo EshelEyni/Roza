@@ -1,16 +1,16 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { UseGetBookReviewsResult, UseLoginWithTokenResult } from "../types/app";
-import { useGetBookReviews } from "../hooks/useGetBookReviews";
-import { useLoginWithToken } from "../hooks/useLoginWithToken";
+import { useGetBookReviews } from "../hooks/reactQuery/get/useGetBookReviews";
+import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
 import { BookReview } from "../../../shared/types/books";
 
 type ReviewsContextType = UseLoginWithTokenResult &
   UseGetBookReviewsResult & {
     filteredReviews: BookReview[] | undefined;
-    sortOrder: "asc" | "desc";
-    searchKeyword: string;
-    onSortReviews: (order: "asc" | "desc") => BookReview[] | undefined;
-    onSearchReviews: (keyword: string) => BookReview[] | undefined;
+    sortOrder: string;
+    searchTerm: string;
+    onSortReviews: (order: "asc" | "desc") => void;
+    onSearchReviews: (keyword: string) => void;
   };
 
 type ReviewsProviderProps = {
@@ -23,8 +23,8 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
   const [filteredReviews, setFilteredReviews] = useState<
     BookReview[] | undefined
   >(undefined);
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
-  const [searchKeyword, setSearchKeyword] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<string>("sortOrder");
+  const [searchTerm, setSearchTerm] = useState<string>("");
 
   const {
     loggedInUser,
@@ -42,40 +42,19 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
     isErrorReviews,
     isNoReviews,
     isReviewsAvailable,
-  } = useGetBookReviews({ userId: loggedInUser?.id || "" });
-
-  function sortReviews(order: "asc" | "desc"): BookReview[] | undefined {
-    if (!reviews) return;
-    const sortedReviews = reviews.sort((a, b) => {
-      if (order === "asc") return a.sortOrder - b.sortOrder;
-      return b.sortOrder - a.sortOrder;
-    });
-
-    setFilteredReviews(sortedReviews);
-  }
-
-  function searchReviews(keyword: string): BookReview[] | undefined {
-    if (!reviews) return;
-    const lowerKeyword = keyword.toLowerCase();
-    const searchedReviews = reviews.filter(r => {
-      const nameMatch = r.name.toLowerCase().includes(lowerKeyword);
-      const reviewsMatch = r.reviews.some(review =>
-        review.text.toLowerCase().includes(lowerKeyword),
-      );
-      return nameMatch || reviewsMatch;
-    });
-
-    setFilteredReviews(searchedReviews);
-  }
+  } = useGetBookReviews({
+    enabled: !!loggedInUser,
+    limit: 10000,
+    sort: sortOrder,
+    searchTerm,
+  });
 
   function onSortReviews(order: "asc" | "desc") {
     setSortOrder(order);
-    return sortReviews(order);
   }
 
   function onSearchReviews(keyword: string) {
-    setSearchKeyword(keyword);
-    return searchReviews(keyword);
+    setSearchTerm(keyword);
   }
 
   const value: ReviewsContextType = {
@@ -93,7 +72,7 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
     isReviewsAvailable,
     filteredReviews,
     sortOrder,
-    searchKeyword,
+    searchTerm,
     onSortReviews,
     onSearchReviews,
   };

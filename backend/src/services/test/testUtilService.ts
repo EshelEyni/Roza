@@ -33,8 +33,8 @@ type CreateTestBookOptions = {
   plotlines?: Plotline[];
   notes?: Note[];
   filterBy?: BookFilterBy;
-  createdAt?: Date | string | number | null;
-  updatedAt?: Date | string | number | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 };
 
 export interface CreateTestBookReviewOptions {
@@ -44,8 +44,8 @@ export interface CreateTestBookReviewOptions {
   reviews?: Review[];
   references?: Reference[];
   sortOrder?: number;
-  createdAt?: Date | string | number | null;
-  updatedAt?: Date | string | number | null;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
 }
 
 async function createManyTestUsers(numOfUsers: number): Promise<User[]> {

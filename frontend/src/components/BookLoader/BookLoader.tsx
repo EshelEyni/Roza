@@ -6,7 +6,7 @@ type BookLoaderProps = {
 };
 
 export const BookLoader: FC<BookLoaderProps> = ({
-  className = "relative flex items-center justify-center w-48 h-48",
+  className = "relative flex items-center justify-center w-48 h-48 mx-auto",
 }) => {
   return (
     <div className={className}>

@@ -52,3 +52,23 @@ export type UseLoginWithTokenResult = {
   isSuccessLoggedInUser: boolean;
   isErrorLoggedInUser: boolean;
 };
+
+export type BookQueryParams = {
+  sort: string;
+  limit: number;
+  searchTerm?: string;
+};
+
+export type ReviewQueryParams = {
+  sort: string;
+  limit: number;
+  searchTerm?: string;
+};
+
+export type UseGetBookResult = {
+  book: Book | undefined;
+  errorBook: unknown;
+  isLoadingBook: boolean;
+  isSuccessBook: boolean;
+  isErrorBook: boolean;
+};

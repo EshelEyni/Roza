@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { GiNotebook, GiBookPile, GiHouse } from "react-icons/gi";
 import { RiUserFill } from "react-icons/ri";
 import { Link } from "react-router-dom";
+import { Logo } from "./Logo";
 type NavLinks = {
   name: string;
   icon: JSX.Element;
@@ -49,6 +50,7 @@ export const AppHeader: FC = () => {
           </Link>
         ))}
       </nav>
+      <Logo className="h-14 w-14 md:h-12 md:w-12" />
     </header>
   );
 };

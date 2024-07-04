@@ -1,6 +1,6 @@
 import React from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { useUpdatePassword } from "../../hooks/useUpdatePassword";
+import { useUpdatePassword } from "../../hooks/ReactQuery/update/useUpdatePassword";
 import { useTranslation } from "react-i18next";
 
 interface PasswordFormValues {

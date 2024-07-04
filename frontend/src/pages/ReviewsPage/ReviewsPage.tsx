@@ -4,8 +4,11 @@ import { ReviewList } from "../../components/ReviewList";
 import { PageContent } from "../../components/PageContent";
 import { useReviews } from "../../contexts/ReviewsContext";
 import { ReviewsFilter } from "./ReviewsFilter";
+import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 const ReviewsPage: FC = () => {
+  useDocumentTitle("Roza / Reviews");
+
   const {
     filteredReviews,
     errorReviews,

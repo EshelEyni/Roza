@@ -35,6 +35,7 @@ class APIFeatures<T> {
       match => `$${match}`,
     );
     this.query = this.query.find(JSON.parse(queryStr));
+
     return this;
   }
 

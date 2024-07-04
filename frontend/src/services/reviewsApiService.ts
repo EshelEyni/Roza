@@ -2,13 +2,18 @@ import { JsendResponse } from "../../../shared/types/system";
 import { BookReview } from "../../../shared/types/books";
 import httpService from "./httpService";
 import { handleServerResponseData } from "./utilService";
+import { ReviewQueryParams } from "../types/app";
 
 const baseUrl = "review";
 
-async function query(userId: string): Promise<BookReview[]> {
-  const response = (await httpService.get(
-    `${baseUrl}?userId=${userId}&limit=1000&sort=sortOrder`,
-  )) as unknown as JsendResponse;
+async function query({
+  limit = 10000,
+  sort = "sortOrder",
+  searchTerm = "",
+}: ReviewQueryParams): Promise<BookReview[]> {
+  let url = `${baseUrl}?limit=${limit}&sort=${sort}`;
+  if (searchTerm) url += `&searchTerm=${searchTerm}`;
+  const response = (await httpService.get(url)) as unknown as JsendResponse;
   return handleServerResponseData<BookReview[]>(response);
 }
 

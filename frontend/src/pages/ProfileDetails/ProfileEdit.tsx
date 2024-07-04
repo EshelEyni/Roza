@@ -1,6 +1,6 @@
 import React from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { useUpdateUser } from "../../hooks/useUpdateUser";
+import { useUpdateUser } from "../../hooks/ReactQuery/update/useUpdateUser";
 import { useLoginWithToken } from "../../hooks/useLoginWithToken";
 import { useTranslation } from "react-i18next";
 import { formatLang, getLanguages } from "../../services/utilService";

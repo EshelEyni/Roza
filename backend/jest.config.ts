@@ -3,7 +3,7 @@ import type { Config } from "@jest/types";
 // const isGlobalTesting = true;
 const isGlobalTesting = false;
 
-const currPath = "routers/review";
+const currPath = "services/factory";
 const baseDir = isGlobalTesting ? "<rootDir>" : `<rootDir>/src/${currPath}`;
 // const specifiedPath = baseDir + "/Add.test.ts";
 // const collectCoverage = true;
@@ -28,6 +28,7 @@ const config: Config.InitialOptions = {
   roots: [baseDir],
   testMatch: [`${baseDir}/**/*test.ts`],
   // testMatch: [specifiedPath],
+  
 };
 
 export default config;

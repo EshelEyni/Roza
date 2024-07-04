@@ -1,12 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import bookApiService from "../services/bookApiService";
-import { UseGetBooksResult } from "../types/app";
+import bookApiService from "../../../services/bookApiService";
+import { BookQueryParams, UseGetBooksResult } from "../../../types/app";
 
-type UseGetBooksParams = {
-  userId: string;
+type useGetBooksParams = BookQueryParams & {
+  enabled?: boolean;
 };
 
-export function useGetBooks({ userId }: UseGetBooksParams): UseGetBooksResult {
+export function useGetBooks({
+  enabled = true,
+  limit,
+  sort,
+  searchTerm,
+}: useGetBooksParams): UseGetBooksResult {
   const {
     data: books,
     error: errorBooks,
@@ -14,11 +19,11 @@ export function useGetBooks({ userId }: UseGetBooksParams): UseGetBooksResult {
     isSuccess: isSuccessBooks,
     isError: isErrorBooks,
   } = useQuery({
-    queryKey: ["books", userId],
+    queryKey: ["books", limit, sort, searchTerm],
     queryFn: async () => {
-      return bookApiService.query(userId);
+      return bookApiService.query({ limit, sort, searchTerm });
     },
-    enabled: !!userId,
+    enabled,
   });
 
   const isNoBooks = isSuccessBooks && !!books && books.length === 0;

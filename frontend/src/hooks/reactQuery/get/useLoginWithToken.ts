@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import authApiService from "../services/authApiService";
-import { UseLoginWithTokenResult } from "../types/app";
+import authApiService from "../../../services/authApiService";
+import { UseLoginWithTokenResult } from "../../../types/app";
 
 export function useLoginWithToken(): UseLoginWithTokenResult {
   const {

@@ -1,36 +1,35 @@
 import { FC } from "react";
-import { useReviews } from "../../contexts/ReviewsContext";
 import { useTranslation } from "react-i18next";
+import { useBooks } from "../../contexts/BooksContext";
 import { debounce } from "../../services/utilService";
 
-export const ReviewsFilter: FC = () => {
-  const { sortOrder, searchTerm, onSortReviews, onSearchReviews } =
-    useReviews();
+export const BookFilter: FC = () => {
+  const { sortOrder, searchTerm, onSortBooks, onSearchBooks } = useBooks();
   const { t } = useTranslation();
 
-  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const inputValue = e.target.value;
-    onSearchReviews(!inputValue ? "" : inputValue);
+    onSearchBooks(!inputValue ? "" : inputValue);
   }
 
   return (
     <div className="mb-4 flex w-full items-center justify-center gap-8">
       <label className="mr-4 rounded-lg bg-app-500 p-2">
-        {t("ReviewsFilter.sortBy")}:
+        {t("BookFilter.sortBy")}:
         <select
           value={sortOrder}
-          onChange={e => onSortReviews(e.target.value as "asc" | "desc")}
+          onChange={e => onSortBooks(e.target.value)}
           className="ml-2 rounded-lg bg-app-500 p-1"
         >
-          <option value="asc">{t("ReviewsFilter.asc")}</option>
-          <option value="desc">{t("ReviewsFilter.desc")}</option>
+          <option value="createdAt">{t("BookFilter.asc")}</option>
+          <option value="-createdAt">{t("BookFilter.desc")}</option>
         </select>
       </label>
       <label className="rounded-lg bg-app-500 p-2">
-        {t("ReviewsFilter.search")}:
+        {t("BookFilter.search")}:
         <input
           type="text"
-          value={searchTerm}
+          defaultValue={searchTerm}
           onChange={debounce(e => handleInputChange(e), 500).debouncedFunc}
           className="ml-2 rounded-lg bg-app-500 p-1"
         />

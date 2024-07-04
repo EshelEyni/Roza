@@ -85,5 +85,25 @@
     "asc": "Ascending",
     "desc": "Descending",
     "search": "Search"
+  },
+  "BookFilter": {
+    "sortBy": "Sort by",
+    "asc": "Ascending",
+    "desc": "Descending",
+    "search": "Search"
+  },
+  "BookDetails": {
+    "btnEdit": "Edit",
+    "btnDelete": "Delete"
+  },
+  "BookDetailsFilter": {
+    "chapters": "Chapters",
+    "characters": "Characters",
+    "themes": "Themes",
+    "plotlines": "Plotlines",
+    "notes": "Notes"
+  },
+  "NotePreview": {
+    "titlePrefix": "Note Number"
   }
 }
