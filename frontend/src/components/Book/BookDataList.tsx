@@ -1,5 +1,6 @@
 import { FC } from "react";
 import {
+  BoodDataItemType,
   Chapter,
   Character,
   Note,
@@ -11,7 +12,7 @@ import { BookDataPreview } from "./BookDataPreview";
 type BookDataListProps = {
   data: Chapter[] | Character[] | Theme[] | Plotline[] | Note[];
   isRendered: boolean;
-  type: "chapter" | "character" | "theme" | "plotline" | "note";
+  type: BoodDataItemType;
 };
 
 export const BookDataList: FC<BookDataListProps> = ({

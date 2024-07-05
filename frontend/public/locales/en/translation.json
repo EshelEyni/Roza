@@ -53,7 +53,9 @@
   },
   "BookList": {
     "title": "Books",
-    "seeAll": "Go to Books"
+    "seeAll": "Go to Books",
+    "btnAdd": "Add Book",
+    "name": "Book Name"
   },
   "BookPreview": {
     "name": "Book Name",
@@ -92,9 +94,17 @@
     "desc": "Descending",
     "search": "Search"
   },
-  "BookDetails": {
+  "BookPage": {
     "btnEdit": "Edit",
-    "btnDelete": "Delete"
+    "btnDelete": "Delete",
+    "btnSave": "Save",
+    "btnAdd": {
+      "chapters": "Add Chapter",
+      "characters": "Add Character",
+      "themes": "Add Theme",
+      "plotlines": "Add Plotline",
+      "notes": "Add Note"
+    }
   },
   "BookDetailsFilter": {
     "chapters": "Chapters",

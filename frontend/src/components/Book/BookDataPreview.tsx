@@ -1,5 +1,6 @@
 import { FC } from "react";
 import {
+  BoodDataItemType,
   Chapter,
   Character,
   Note,
@@ -10,7 +11,7 @@ import { useTranslation } from "react-i18next";
 
 type BookDataPreviewProps = {
   dataItem: Chapter | Character | Theme | Plotline | Note;
-  type: "chapter" | "character" | "theme" | "plotline" | "note";
+  type: BoodDataItemType;
 };
 
 export const BookDataPreview: FC<BookDataPreviewProps> = ({
@@ -21,30 +22,30 @@ export const BookDataPreview: FC<BookDataPreviewProps> = ({
 
   function getTitle(dataItem: Chapter | Character | Theme | Plotline | Note) {
     switch (type) {
-      case "chapter":
+      case "chapters":
         return (dataItem as Character).name;
-      case "character":
+      case "characters":
         return (dataItem as Chapter).name;
-      case "theme":
+      case "themes":
         return (dataItem as Theme).name;
-      case "plotline":
+      case "plotlines":
         return (dataItem as Plotline).name;
-      case "note":
+      case "notes":
         return `${t("NotePreview.titlePrefix")} ${dataItem.sortOrder}`;
     }
   }
 
   function getText(dataItem: Chapter | Character | Theme | Plotline | Note) {
     switch (type) {
-      case "chapter":
-        return (dataItem as Chapter).text;
-      case "character":
+      case "chapters":
+        return (dataItem as Chapter).description;
+      case "characters":
         return (dataItem as Character).description;
-      case "theme":
+      case "themes":
         return (dataItem as Theme).description;
-      case "plotline":
+      case "plotlines":
         return (dataItem as Plotline).description;
-      case "note":
+      case "notes":
         return (dataItem as Note).text;
     }
   }
@@ -53,7 +54,7 @@ export const BookDataPreview: FC<BookDataPreviewProps> = ({
   const text = getText(dataItem);
 
   return (
-    <article className="cursor-pointer rounded-lg border border-app-900 p-4">
+    <article className="scrollbar-hidden h-full max-h-[350px] cursor-pointer overflow-y-auto rounded-lg border border-app-900 p-4 shadow-lg transition duration-300 hover:scale-105 hover:shadow-xl">
       <h2 className="mb-4 text-xl font-bold text-app-800">{title}</h2>
       <p className="text-app-900">{text}</p>
     </article>

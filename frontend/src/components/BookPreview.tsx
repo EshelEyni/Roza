@@ -19,7 +19,7 @@ export const BookPreview: FC<BookPreviewProps> = ({ book }) => {
   const navigate = useNavigate();
 
   function handlePreviewClick() {
-    navigate(`/books/${book.id}`);
+    navigate(`/book/${book.id}`);
   }
 
   return (

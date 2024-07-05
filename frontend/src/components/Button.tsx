@@ -10,7 +10,7 @@ type ButtonProps = {
 
 export const Button: FC<ButtonProps> = ({
   children,
-  className,
+  className = "rounded-md bg-app-500 px-4 py-2 text-white hover:bg-app-600",
   onClickFn,
   type = "button",
   disabled = false,

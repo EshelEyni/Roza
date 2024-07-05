@@ -10,9 +10,8 @@ const ProfileDetails = lazy(
 );
 const BooksPage = lazy(() => import("./pages/BooksPage/BooksPage"));
 const ReviewsPage = lazy(() => import("./pages/ReviewsPage/ReviewsPage"));
-const BookDetails = lazy(() => import("./pages/BookDetails/BookDetails"));
+const BookPage = lazy(() => import("./pages/Book/Book"));
 const ReviewDetails = lazy(() => import("./pages/ReviewDetails/ReviewDetails"));
-const BookEditPage = lazy(() => import("./pages/BookEditPage/BookEditPage"));
 
 const routes: Route[] = [
   {
@@ -39,19 +38,14 @@ const routes: Route[] = [
     provider: ReviewsProvider,
   },
   {
-    path: "books/:id",
-    component: BookDetails,
+    path: "book/:id",
+    component: BookPage,
     authRequired: true,
     provider: BookProvider,
   },
   {
     path: "reviews/:id",
     component: ReviewDetails,
-    authRequired: true,
-  },
-  {
-    path: "book-edit/:id",
-    component: BookEditPage,
     authRequired: true,
   },
 ];

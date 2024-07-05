@@ -3,7 +3,7 @@ import { Main } from "../../components/Main";
 import { PageContent } from "../../components/PageContent";
 import { useBooks } from "../../contexts/BooksContext";
 import { BookList } from "../../components/BookList";
-import { BookFilter } from "./BookFilter";
+import { BooksFilter } from "./BooksFilter";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 const BooksPage: FC = () => {
@@ -22,7 +22,7 @@ const BooksPage: FC = () => {
   return (
     <Main>
       <PageContent>
-        <BookFilter />
+        <BooksFilter />
         <BookList
           books={books}
           errorBooks={errorBooks}

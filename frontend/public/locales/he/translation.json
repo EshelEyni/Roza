@@ -53,7 +53,9 @@
   },
   "BookList": {
     "title": "ספרים",
-    "seeAll": "עבור לספרים"
+    "seeAll": "עבור לספרים",
+    "btnAdd": "הוספת ספר",
+    "name": "שם הספר"
   },
   "BookPreview": {
     "name": "שם הספר",
@@ -86,14 +88,22 @@
     "desc": "סדר יורד",
     "search": "חיפוש"
   },
-  "BookDetails": {
+  "BookPage": {
     "btnEdit": "עריכה",
-    "btnDelete": "מחיקה"
+    "btnDelete": "מחיקה",
+    "btnSave": "שמירה",
+    "btnAdd": {
+      "chapters": "הוספת פרק",
+      "characters": "הוספת דמות",
+      "themes": "הוספת נושא",
+      "plotlines": "הוספת קו עלילה",
+      "notes": "הוספת הערה"
+    }
   },
   "BookDetailsFilter": {
     "chapters": "פרקים",
     "characters": "דמויות",
-    "themes": "נושאים",
+    "themes": "תמות",
     "plotlines": "קווי עלילה",
     "notes": "הערות"
   },

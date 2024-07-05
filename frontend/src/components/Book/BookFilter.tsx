@@ -1,12 +1,14 @@
 import { FC } from "react";
-import { useBook } from "../../contexts/BookContext";
 import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
-import { BookFilterBy } from "../../../../shared/types/books";
+import { Book, BookFilterBy } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
 import classNames from "classnames";
 
-export const BookDetailsFilter: FC = () => {
-  const { book } = useBook();
+type BookDetailsFilterProps = {
+  book: Book | null;
+};
+
+export const BookFilter: FC<BookDetailsFilterProps> = ({ book }) => {
   const tabs = [
     "chapters",
     "characters",
@@ -24,12 +26,12 @@ export const BookDetailsFilter: FC = () => {
   }
 
   return (
-    <div>
+    <div className="flex flex-wrap gap-2">
       {tabs.map(tab => (
         <button
           key={tab}
           className={classNames(
-            "mr-2 rounded-md px-4 py-2",
+            "rounded-md px-4 py-2",
             "focus:outline-none focus:ring-2 focus:ring-app-500 focus:ring-offset-2",
             {
               "bg-app-500 text-white": book?.filterBy === tab,

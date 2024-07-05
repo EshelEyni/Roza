@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useBooks } from "../../contexts/BooksContext";
 import { debounce } from "../../services/utilService";
 
-export const BookFilter: FC = () => {
+export const BooksFilter: FC = () => {
   const { sortOrder, searchTerm, onSortBooks, onSearchBooks } = useBooks();
   const { t } = useTranslation();
 

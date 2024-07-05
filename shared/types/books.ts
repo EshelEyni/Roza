@@ -41,7 +41,10 @@ export interface Book {
   updatedAt: Date | string;
 }
 
+export type BookDataItem = Chapter | Character | Theme | Plotline | Note;
+
 export interface Chapter {
+  readonly id: string;
   bookId: string;
   name: string;
   sortOrder: number;
@@ -52,6 +55,7 @@ export interface Chapter {
 }
 
 export interface Character {
+  readonly id: string;
   bookId: string;
   name: string;
   description: string;
@@ -61,6 +65,7 @@ export interface Character {
 }
 
 export interface Theme {
+  readonly id: string;
   bookId: string;
   name: string;
   description: string;
@@ -70,6 +75,7 @@ export interface Theme {
 }
 
 export interface Plotline {
+  readonly id: string;
   bookId: string;
   name: string;
   description: string;
@@ -85,3 +91,5 @@ export interface Note {
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
 }
+
+export type BoodDataItemType = "chapters" | "characters" | "themes" | "plotlines" | "notes";
