@@ -2,8 +2,9 @@ import { FC, cloneElement } from "react";
 import { useTranslation } from "react-i18next";
 import { GiNotebook, GiBookPile, GiHouse } from "react-icons/gi";
 import { RiUserFill } from "react-icons/ri";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Logo } from "./Logo";
+import { GoBackBtn } from "./GoBackBtn";
 type NavLinks = {
   name: string;
   icon: JSX.Element;
@@ -12,6 +13,8 @@ type NavLinks = {
 
 export const AppHeader: FC = () => {
   const { t } = useTranslation();
+  const location = useLocation();
+
   const navLinks: NavLinks[] = [
     {
       name: t("AppHeader.home"),
@@ -35,6 +38,15 @@ export const AppHeader: FC = () => {
     },
   ];
 
+  function isGoBackBtnVisible() {
+    const path = location.pathname;
+    const isVisible =
+      (/\/book(\/|$)/.test(path) && !/\/books(\/|$)/.test(path)) ||
+      (/\/review(\/|$)/.test(path) && !/\/reviews(\/|$)/.test(path));
+
+    return isVisible;
+  }
+
   return (
     <header className="flex w-full items-center justify-between bg-app-700 px-3 py-2 md:px-3 md:py-1">
       <nav className="flex items-center gap-2 md:gap-3">
@@ -50,7 +62,10 @@ export const AppHeader: FC = () => {
           </Link>
         ))}
       </nav>
-      <Logo className="h-14 w-14 md:h-12 md:w-12" />
+      <div className="flex items-center gap-2">
+        <Logo className="h-14 w-14 md:h-12 md:w-12" isLink={true} />
+        {isGoBackBtnVisible() && <GoBackBtn />}
+      </div>
     </header>
   );
 };
