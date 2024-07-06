@@ -113,7 +113,16 @@
     "plotlines": "Plotlines",
     "notes": "Notes"
   },
-  "NotePreview": {
-    "titlePrefix": "Note Number"
+  "BookDataPreview": {
+    "name": {
+      "chapters": "Chapter Name",
+      "characters": "Character Name",
+      "themes": "Theme Name",
+      "plotlines": "Plotline Name",
+      "notes": "Note Number"
+    },
+    "description": "Description",
+    "text": "Text",
+    "noteTitlePrefix": "Note Number"
   }
 }

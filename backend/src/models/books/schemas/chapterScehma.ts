@@ -1,9 +1,10 @@
-import { Schema } from "mongoose";
+import { Document, Schema } from "mongoose";
+import { IChapter } from "../../../types/iTypes";
 
-const chapterSchema = new Schema(
+const chapterSchema = new Schema<IChapter>(
   {
     bookId: {
-      type: String,
+      type: Schema.Types.ObjectId,
       required: [true, "Please provide a book id"],
     },
     name: {
@@ -23,8 +24,28 @@ const chapterSchema = new Schema(
       type: String,
       default: "",
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
-  { timestamps: true },
+  {
+    toObject: {
+      virtuals: true,
+      transform: (_: Document, ret: Record<string, unknown>) => {
+        delete ret._id;
+        return ret;
+      },
+    },
+    toJSON: {
+      virtuals: true,
+      transform: (_: Document, ret: Record<string, unknown>) => {
+        delete ret._id;
+        return ret;
+      },
+    },
+    timestamps: true,
+  },
 );
 
 export { chapterSchema };

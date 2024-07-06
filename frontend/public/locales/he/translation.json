@@ -107,7 +107,16 @@
     "plotlines": "קווי עלילה",
     "notes": "הערות"
   },
-  "NotePreview": {
-    "titlePrefix": "מספר ההערה"
+  "BookDataPreview": {
+    "name": {
+      "chapters": "שם הפרק",
+      "characters": "שם הדמות",
+      "themes": "שם התמה",
+      "plotlines": "שם קו העלילה",
+      "notes": "מספר ההערה"
+    },
+    "description": "תיאור",
+    "text": "טקסט",
+    "noteTitlePrefix": "מספר ההערה"
   }
 }

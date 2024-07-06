@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { useLoginWithToken } from "../../hooks/useLoginWithToken";
+import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { Main } from "../../components/Main";
 import { useProfile } from "../../contexts/ProfileContext";
 import { ProfileDisplay } from "./ProfileDisplay";

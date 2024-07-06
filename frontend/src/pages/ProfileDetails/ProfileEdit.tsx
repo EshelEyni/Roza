@@ -1,7 +1,7 @@
 import React from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { useUpdateUser } from "../../hooks/ReactQuery/update/useUpdateUser";
-import { useLoginWithToken } from "../../hooks/useLoginWithToken";
+import { useUpdateUser } from "../../hooks/reactQuery/update/useUpdateUser";
+import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { useTranslation } from "react-i18next";
 import { formatLang, getLanguages } from "../../services/utilService";
 import { Button } from "../../components/Button";
@@ -17,7 +17,7 @@ interface UserFormValues {
 
 export const ProfileEdit: React.FC = () => {
   const { loggedInUser } = useLoginWithToken();
-  const { updateUser, isPending } = useUpdateUser();
+  const { updateUser, isPendindUpdateUser } = useUpdateUser();
   const languages = getLanguages();
   const userLang = formatLang(loggedInUser?.language || "");
   const { t } = useTranslation();
@@ -127,7 +127,7 @@ export const ProfileEdit: React.FC = () => {
       <button
         type="submit"
         className="rounded bg-app-600 p-2 text-white"
-        disabled={isPending}
+        disabled={isPendindUpdateUser}
       >
         {t("ProfileEdit.btnSubmit")}
       </button>

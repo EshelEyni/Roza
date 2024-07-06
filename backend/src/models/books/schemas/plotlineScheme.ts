@@ -1,4 +1,4 @@
-import { Schema } from "mongoose";
+import { Document, Schema } from "mongoose";
 
 import { IPlotline } from "../../../types/iTypes";
 
@@ -21,8 +21,28 @@ const plotlineSchema = new Schema<IPlotline>(
       type: Number,
       default: 0,
     },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
   },
-  { timestamps: true },
+  {
+    toObject: {
+      virtuals: true,
+      transform: (_: Document, ret: Record<string, unknown>) => {
+        delete ret._id;
+        return ret;
+      },
+    },
+    toJSON: {
+      virtuals: true,
+      transform: (_: Document, ret: Record<string, unknown>) => {
+        delete ret._id;
+        return ret;
+      },
+    },
+    timestamps: true,
+  },
 );
 
 export { plotlineSchema };

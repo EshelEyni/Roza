@@ -8,10 +8,11 @@ const HomePage = lazy(() => import("./pages/HomePage/HomePage"));
 const ProfileDetails = lazy(
   () => import("./pages/ProfileDetails/ProfileDetails"),
 );
-const BooksPage = lazy(() => import("./pages/BooksPage/BooksPage"));
+const BooksPage = lazy(() => import("./pages/Books/BooksPage"));
 const ReviewsPage = lazy(() => import("./pages/ReviewsPage/ReviewsPage"));
-const BookPage = lazy(() => import("./pages/Book/Book"));
+const BookDetails = lazy(() => import("./pages/BookDetails/BookDetails"));
 const ReviewDetails = lazy(() => import("./pages/ReviewDetails/ReviewDetails"));
+const BookEdit = lazy(() => import("./pages/BookEdit/BookEdit"));
 
 const routes: Route[] = [
   {
@@ -39,9 +40,14 @@ const routes: Route[] = [
   },
   {
     path: "book/:id",
-    component: BookPage,
+    component: BookDetails,
     authRequired: true,
     provider: BookProvider,
+  },
+  {
+    path: "book-edit/:bookId/:dataItem/:dataItemId",
+    component: BookEdit,
+    authRequired: true,
   },
   {
     path: "reviews/:id",

@@ -1,6 +1,6 @@
 import { FC } from "react";
 import {
-  BoodDataItemType,
+  BooKDataItemType,
   Chapter,
   Character,
   Note,
@@ -11,7 +11,7 @@ import { useTranslation } from "react-i18next";
 
 type BookDataPreviewProps = {
   dataItem: Chapter | Character | Theme | Plotline | Note;
-  type: BoodDataItemType;
+  type: BooKDataItemType;
 };
 
 export const BookDataPreview: FC<BookDataPreviewProps> = ({
@@ -21,32 +21,39 @@ export const BookDataPreview: FC<BookDataPreviewProps> = ({
   const { t } = useTranslation();
 
   function getTitle(dataItem: Chapter | Character | Theme | Plotline | Note) {
+    const name = t(`BookDataPreview.name.${type}`);
+
     switch (type) {
       case "chapters":
-        return (dataItem as Character).name;
+        return (dataItem as Character).name || name;
       case "characters":
-        return (dataItem as Chapter).name;
+        return (dataItem as Chapter).name || name;
       case "themes":
-        return (dataItem as Theme).name;
+        return (dataItem as Theme).name || name;
       case "plotlines":
-        return (dataItem as Plotline).name;
+        return (dataItem as Plotline).name || name;
       case "notes":
-        return `${t("NotePreview.titlePrefix")} ${dataItem.sortOrder}`;
+        return `${t("BookDataPreview.noteTitlePrefix")} ${dataItem.sortOrder}`;
     }
   }
 
   function getText(dataItem: Chapter | Character | Theme | Plotline | Note) {
+    const { description, text } = {
+      description: t("BookDataPreview.description"),
+      text: t("BookDataPreview.text"),
+    };
+
     switch (type) {
       case "chapters":
-        return (dataItem as Chapter).description;
+        return (dataItem as Chapter).description || description;
       case "characters":
-        return (dataItem as Character).description;
+        return (dataItem as Character).description || description;
       case "themes":
-        return (dataItem as Theme).description;
+        return (dataItem as Theme).description || description;
       case "plotlines":
-        return (dataItem as Plotline).description;
+        return (dataItem as Plotline).description || description;
       case "notes":
-        return (dataItem as Note).text;
+        return (dataItem as Note).text || text;
     }
   }
 

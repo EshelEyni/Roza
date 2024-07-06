@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { useTranslation } from "react-i18next";
-import { useLoginWithToken } from "../../hooks/useLoginWithToken";
+import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { formatDateByLang, formatLang } from "../../services/utilService";
 
 export const ProfileDisplay: FC = () => {

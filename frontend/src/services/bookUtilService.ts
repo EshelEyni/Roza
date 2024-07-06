@@ -1,5 +1,6 @@
 import {
-  BoodDataItemType,
+  BasicBookDataItem,
+  BooKDataItemType,
   Book,
   BookDataItem,
   Chapter,
@@ -30,7 +31,7 @@ function getDefaultBookDataItem({
   type,
 }: {
   bookId: string;
-  type: BoodDataItemType;
+  type: BooKDataItemType;
 }): BookDataItem {
   switch (type) {
     case "chapters":
@@ -48,62 +49,54 @@ function getDefaultBookDataItem({
   }
 }
 
-function getDefaultChapter(bookId: string): Chapter {
+function getDefaultBasicBookDataItem(bookId: string): BasicBookDataItem {
   return {
-    bookId,
     id: "",
-    name: "",
+    bookId,
     sortOrder: 0,
-    description: "",
-    text: "",
+    isDeleted: false,
     createdAt: new Date(),
     updatedAt: new Date(),
+  };
+}
+
+function getDefaultChapter(bookId: string): Chapter {
+  return {
+    ...getDefaultBasicBookDataItem(bookId),
+    name: "",
+    description: "",
+    text: "",
   };
 }
 
 function getDefaultCharacter(bookId: string): Character {
   return {
-    bookId,
-    id: "",
+    ...getDefaultBasicBookDataItem(bookId),
     name: "",
     description: "",
-    sortOrder: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
   };
 }
 
 function getDefaultTheme(bookId: string): Theme {
   return {
-    bookId,
-    id: "",
+    ...getDefaultBasicBookDataItem(bookId),
     name: "",
     description: "",
-    sortOrder: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
   };
 }
 
 function getDefaultPlotline(bookId: string): Plotline {
   return {
-    bookId,
-    id: "",
+    ...getDefaultBasicBookDataItem(bookId),
     name: "",
     description: "",
-    sortOrder: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
   };
 }
 
 function getDefaultNote(bookId: string): Note {
   return {
-    bookId,
-    sortOrder: 0,
+    ...getDefaultBasicBookDataItem(bookId),
     text: "",
-    createdAt: new Date(),
-    updatedAt: new Date(),
   };
 }
 

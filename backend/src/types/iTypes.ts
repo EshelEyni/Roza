@@ -1,5 +1,5 @@
 import mongoose, { Document } from "mongoose";
-import { BookFilterBy } from "../../../shared/types/books";
+import { BooKDataItemType } from "../../../shared/types/books";
 
 export interface IUser extends Document {
   username: string;
@@ -32,54 +32,42 @@ export interface IBook extends Document {
   themes: ITheme[];
   plotlines: IPlotline[];
   notes: INote[];
-  filterBy: BookFilterBy;
+  filterBy: BooKDataItemType;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface IChapter extends Document {
+export interface IBasicBookDataItem extends Document {
   bookId: mongoose.Types.ObjectId;
-  name: string;
+  isDeleted: boolean;
   sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface IChapter extends IBasicBookDataItem {
+  name: string;
   description: string;
   text: string;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-export interface ICharacter extends Document {
-  bookId: mongoose.Types.ObjectId;
+export interface ICharacter extends IBasicBookDataItem {
   name: string;
   description: string;
-  sortOrder: number;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-export interface ITheme extends Document {
-  bookId: mongoose.Types.ObjectId;
+export interface ITheme extends IBasicBookDataItem {
   name: string;
   description: string;
-  sortOrder: number;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-export interface IPlotline extends Document {
-  bookId: mongoose.Types.ObjectId;
+export interface IPlotline extends IBasicBookDataItem {
   name: string;
   description: string;
-  sortOrder: number;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
-export interface INote extends Document {
-  bookId: mongoose.Types.ObjectId;
+export interface INote extends IBasicBookDataItem {
   text: string;
-  sortOrder: number;
-  createdAt: Date;
-  updatedAt: Date;
 }
 
 export interface IBookReview extends Document {

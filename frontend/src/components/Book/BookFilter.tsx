@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
-import { Book, BookFilterBy } from "../../../../shared/types/books";
+import { Book, BooKDataItemType } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
 import classNames from "classnames";
 
@@ -15,12 +15,12 @@ export const BookFilter: FC<BookDetailsFilterProps> = ({ book }) => {
     "themes",
     "plotlines",
     "notes",
-  ] as BookFilterBy[];
+  ] as BooKDataItemType[];
 
   const { updateBook } = useUpdateBook();
   const { t } = useTranslation();
 
-  function handleFilterBy(tab: BookFilterBy) {
+  function handleFilterBy(tab: BooKDataItemType) {
     if (!book) return;
     updateBook({ ...book, filterBy: tab });
   }

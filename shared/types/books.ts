@@ -20,13 +20,6 @@ export interface Reference {
   imgUrls: string[];
 }
 
-export type BookFilterBy =
-  | "chapters"
-  | "characters"
-  | "themes"
-  | "plotlines"
-  | "notes";
-
 export interface Book {
   id: string;
   userId: string;
@@ -36,60 +29,50 @@ export interface Book {
   themes: Theme[];
   plotlines: Plotline[];
   notes: Note[];
-  filterBy: BookFilterBy;
+  filterBy: BooKDataItemType;
   createdAt: Date | string;
   updatedAt: Date | string;
+}
+
+export interface BasicBookDataItem {
+  readonly id: string;
+  bookId: string;
+  sortOrder: number;
+  isDeleted: boolean;
+  createdAt: Date | string | number | null;
+  updatedAt: Date | string | number | null;
 }
 
 export type BookDataItem = Chapter | Character | Theme | Plotline | Note;
 
-export interface Chapter {
-  readonly id: string;
-  bookId: string;
-  name: string;
-  sortOrder: number;
-  description: string;
+export interface Chapter extends BasicBookDataItem {
   text: string;
-  createdAt: Date | string;
-  updatedAt: Date | string;
-}
-
-export interface Character {
-  readonly id: string;
-  bookId: string;
   name: string;
   description: string;
-  sortOrder: number;
-  createdAt: Date | string | number | null;
-  updatedAt: Date | string | number | null;
 }
 
-export interface Theme {
-  readonly id: string;
-  bookId: string;
+export interface Character extends BasicBookDataItem {
   name: string;
   description: string;
-  sortOrder: number;
-  createdAt: Date | string | number | null;
-  updatedAt: Date | string | number | null;
 }
 
-export interface Plotline {
-  readonly id: string;
-  bookId: string;
+export interface Theme extends BasicBookDataItem {
   name: string;
   description: string;
-  sortOrder: number;
-  createdAt: Date | string | number | null;
-  updatedAt: Date | string | number | null;
 }
 
-export interface Note {
-  bookId: string;
+export interface Plotline extends BasicBookDataItem {
+  name: string;
+  description: string;
+}
+
+export interface Note extends BasicBookDataItem {
   text: string;
-  sortOrder: number;
-  createdAt: Date | string | number | null;
-  updatedAt: Date | string | number | null;
 }
 
-export type BoodDataItemType = "chapters" | "characters" | "themes" | "plotlines" | "notes";
+export type BooKDataItemType =
+  | "chapters"
+  | "characters"
+  | "themes"
+  | "plotlines"
+  | "notes";

@@ -10,15 +10,14 @@ import { useTranslation } from "react-i18next";
 import { BookDataList } from "../../components/Book/BookDataList";
 import { DisplayEditField } from "../../components/JobApplicationField";
 import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
-import { BoodDataItemType } from "../../../../shared/types/books";
 import { getDefaultBookDataItem } from "../../services/bookUtilService";
 import { Button } from "../../components/Button";
 
-const BookPage: FC = () => {
+const BookDetails: FC = () => {
   const [bookName, setBookName] = useState<string>("");
   const { book, errorBook, isErrorBook, isLoadingBook, isSuccessBook } =
     useBook();
-  const { updateBook } = useUpdateBook();
+  const { updateBook } = useUpdateBook(book?.filterBy);
 
   const filterBy = book?.filterBy || "chapters";
 
@@ -34,8 +33,9 @@ const BookPage: FC = () => {
     setBookName("");
   }
 
-  function handleAddBookDataItem(type: BoodDataItemType) {
+  function handleAddBookDataItem() {
     if (!book) return;
+    const type = book.filterBy;
     const newItem = getDefaultBookDataItem({ bookId: book.id, type });
     updateBook({ ...book, [type]: [...book[type], newItem] });
   }
@@ -81,7 +81,7 @@ const BookPage: FC = () => {
               <BookFilter book={book} />
               <Button
                 className="rounded-md bg-app-500 px-4 py-2 text-white hover:bg-app-600"
-                onClickFn={() => handleAddBookDataItem("chapters")}
+                onClickFn={handleAddBookDataItem}
               >
                 {t(`BookPage.btnAdd.${book.filterBy}`)}
               </Button>
@@ -124,4 +124,4 @@ const BookPage: FC = () => {
   );
 };
 
-export default BookPage;
+export default BookDetails;
