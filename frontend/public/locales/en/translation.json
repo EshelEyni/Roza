@@ -123,6 +123,14 @@
     },
     "description": "Description",
     "text": "Text",
-    "noteTitlePrefix": "Note Number"
+    "noteTitlePrefix": "Note Number",
+    "btnOpen": "Open",
+    "btnEdit": "Edit",
+    "btnDelete": "Delete",
+    "btnCancel": "Cancel",
+    "confirmDeleteMsg": {
+      "title": "Delete Item",
+      "msg": "Are you sure you want to delete the item?"
+    }
   }
 }

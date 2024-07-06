@@ -282,7 +282,7 @@ const ModalHoverOpen: FC<ModalHoverActivatorProps> = ({
 const Window: FC<WindowProps> = ({
   children,
   name,
-  className,
+  className = "fixed left-1/2 top-1/2 z-[150] flex min-w-[300px] -translate-x-1/2 -translate-y-1/2 transform flex-col items-center gap-12 overflow-auto rounded-lg bg-app-100 p-4 shadow-lg md:min-w-[400px]",
   elementId = "root",
   style = {},
   hoverControl = false,

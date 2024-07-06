@@ -39,7 +39,7 @@ const routes: Route[] = [
     provider: ReviewsProvider,
   },
   {
-    path: "book/:id",
+    path: "book/:id/:dataItem?/:dataItemId?",
     component: BookDetails,
     authRequired: true,
     provider: BookProvider,

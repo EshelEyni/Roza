@@ -117,6 +117,14 @@
     },
     "description": "תיאור",
     "text": "טקסט",
-    "noteTitlePrefix": "מספר ההערה"
+    "noteTitlePrefix": "מספר ההערה",
+    "btnOpen": "פתח",
+    "btnEdit": "ערוך",
+    "btnDelete": "מחק",
+    "btnCancel": "ביטול",
+    "confirmDeleteMsg": {
+      "title": "מחיקת פריט",
+      "msg": "האם אתה בטוח שברצונך למחוק את הפריט?"
+    }
   }
 }
