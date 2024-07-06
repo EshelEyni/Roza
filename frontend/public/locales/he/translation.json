@@ -108,15 +108,6 @@
     "notes": "הערות"
   },
   "BookDataPreview": {
-    "name": {
-      "chapters": "שם הפרק",
-      "characters": "שם הדמות",
-      "themes": "שם התמה",
-      "plotlines": "שם קו העלילה",
-      "notes": "מספר ההערה"
-    },
-    "description": "תיאור",
-    "text": "טקסט",
     "noteTitlePrefix": "מספר ההערה",
     "btnOpen": "פתח",
     "btnEdit": "ערוך",
@@ -126,5 +117,26 @@
       "title": "מחיקת פריט",
       "msg": "האם אתה בטוח שברצונך למחוק את הפריט?"
     }
+  },
+  "DataBookItemDetails": {
+    "pageTitle": {
+      "chapters": "פרטי פרק",
+      "characters": "פרטי דמות",
+      "themes": "פרטי נושא",
+      "plotlines": "פרטי קו עלילה",
+      "notes": "פרטי הערה"
+    },
+    "noteTitle": "מספר ההערה"
+  },
+  "useGetTitleTextBookItem": {
+    "name": {
+      "chapters": "שם הפרק",
+      "characters": "שם הדמות",
+      "themes": "שם התמה",
+      "plotlines": "שם קו העלילה",
+      "notes": "מספר ההערה"
+    },
+    "description": "תיאור",
+    "text": "טקסט"
   }
 }

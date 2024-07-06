@@ -25,6 +25,11 @@ const plotlineSchema = new Schema<IPlotline>(
       type: Boolean,
       default: false,
     },
+    type: {
+      type: String,
+      enum: ["plotlines"],
+      default: "plotlines",
+    },
   },
   {
     toObject: {

@@ -7,12 +7,12 @@ type AuthGuardProps = {
 };
 
 export const AuthGuard: FC<AuthGuardProps> = ({ component }) => {
-  const { loggedInUser } = useLoginWithToken();
+  const { loggedInUser, isFetchedLoggedInUser } = useLoginWithToken();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loggedInUser) navigate("/home");
-  }, [loggedInUser, navigate]);
+    if (!loggedInUser && isFetchedLoggedInUser) navigate("/home");
+  }, [loggedInUser, isFetchedLoggedInUser, navigate]);
 
   return <>{component}</>;
 };

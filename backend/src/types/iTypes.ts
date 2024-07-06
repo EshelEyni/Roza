@@ -49,25 +49,30 @@ export interface IChapter extends IBasicBookDataItem {
   name: string;
   description: string;
   text: string;
+  type: "chapters";
 }
 
 export interface ICharacter extends IBasicBookDataItem {
   name: string;
   description: string;
+  type: "characters";
 }
 
 export interface ITheme extends IBasicBookDataItem {
   name: string;
   description: string;
+  type: "themes";
 }
 
 export interface IPlotline extends IBasicBookDataItem {
   name: string;
   description: string;
+  type: "plotlines";
 }
 
 export interface INote extends IBasicBookDataItem {
   text: string;
+  type: "notes";
 }
 
 export interface IBookReview extends Document {

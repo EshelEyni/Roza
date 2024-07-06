@@ -19,6 +19,11 @@ const noteSchema = new Schema<INote>(
       type: Boolean,
       default: false,
     },
+    type: {
+      type: String,
+      enum: ["notes"],
+      default: "notes",
+    },
   },
   {
     toObject: {

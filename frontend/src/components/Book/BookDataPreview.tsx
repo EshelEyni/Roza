@@ -13,6 +13,7 @@ import { Button } from "../Button";
 import { Modal } from "../Modal";
 import { useBook } from "../../contexts/BookContext";
 import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
+import { useGetTitleTextBookItem } from "../../hooks/useGetTitleTextBookItem";
 
 type BookDataPreviewProps = {
   dataItem: Chapter | Character | Theme | Plotline | Note;
@@ -26,10 +27,11 @@ export const BookDataPreview: FC<BookDataPreviewProps> = ({
   const { book } = useBook();
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { getTitle, getText } = useGetTitleTextBookItem();
   const { updateBook } = useUpdateBook();
 
-  const title = getTitle(dataItem);
-  const text = getText(dataItem);
+  const title = getTitle(dataItem, type);
+  const text = getText(dataItem, type);
   const btns = [
     {
       title: t("BookDataPreview.btnOpen"),
@@ -40,43 +42,6 @@ export const BookDataPreview: FC<BookDataPreviewProps> = ({
       onClick: onEditItem,
     },
   ];
-
-  function getTitle(dataItem: Chapter | Character | Theme | Plotline | Note) {
-    const name = t(`BookDataPreview.name.${type}`);
-
-    switch (type) {
-      case "chapters":
-        return (dataItem as Character).name || name;
-      case "characters":
-        return (dataItem as Chapter).name || name;
-      case "themes":
-        return (dataItem as Theme).name || name;
-      case "plotlines":
-        return (dataItem as Plotline).name || name;
-      case "notes":
-        return `${t("BookDataPreview.noteTitlePrefix")} ${dataItem.sortOrder}`;
-    }
-  }
-
-  function getText(dataItem: Chapter | Character | Theme | Plotline | Note) {
-    const { description, text } = {
-      description: t("BookDataPreview.description"),
-      text: t("BookDataPreview.text"),
-    };
-
-    switch (type) {
-      case "chapters":
-        return (dataItem as Chapter).description || description;
-      case "characters":
-        return (dataItem as Character).description || description;
-      case "themes":
-        return (dataItem as Theme).description || description;
-      case "plotlines":
-        return (dataItem as Plotline).description || description;
-      case "notes":
-        return (dataItem as Note).text || text;
-    }
-  }
 
   function onOpenItem() {
     navigate(`${type}/${dataItem.id}`);

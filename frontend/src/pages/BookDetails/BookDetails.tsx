@@ -12,14 +12,33 @@ import { DisplayEditField } from "../../components/JobApplicationField";
 import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
 import { getDefaultBookDataItem } from "../../services/bookUtilService";
 import { Button } from "../../components/Button";
+import { Book, BookDataItem } from "../../../../shared/types/books";
+import { DataBookItemDetails } from "./DataBookItemDetails";
 
 const BookDetails: FC = () => {
   const [bookName, setBookName] = useState<string>("");
-  const { book, errorBook, isErrorBook, isLoadingBook, isSuccessBook } =
-    useBook();
+  const {
+    book,
+    errorBook,
+    isErrorBook,
+    isLoadingBook,
+    isSuccessBook,
+    dataItem,
+    dataItemId,
+  } = useBook();
   const { updateBook } = useUpdateBook(book?.filterBy);
 
   const filterBy = book?.filterBy || "chapters";
+  const isDetailsBookShowing =
+    isSuccessBook && book && !dataItem && !dataItemId;
+  const isDataItemDetailsShowing =
+    isSuccessBook &&
+    book &&
+    dataItem &&
+    dataItemId &&
+    (book[dataItem as keyof Book] as BookDataItem[]).find(
+      i => i.id === dataItemId,
+    );
 
   const { t } = useTranslation();
 
@@ -47,7 +66,7 @@ const BookDetails: FC = () => {
         {isErrorBook && (
           <ErrorMsg msg={errorBook instanceof Error ? errorBook.message : ""} />
         )}
-        {isSuccessBook && book && (
+        {isDetailsBookShowing && (
           <div className="flex w-full flex-col gap-1">
             <DisplayEditField>
               <div className="flex w-full items-center justify-between gap-4">
@@ -119,6 +138,7 @@ const BookDetails: FC = () => {
             />
           </div>
         )}
+        {isDataItemDetailsShowing && <DataBookItemDetails />}
       </PageContent>
     </Main>
   );

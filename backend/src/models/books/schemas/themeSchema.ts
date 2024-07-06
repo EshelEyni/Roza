@@ -24,6 +24,11 @@ const themeSchema = new Schema<ITheme>(
       type: Boolean,
       default: false,
     },
+    type: {
+      type: String,
+      enum: ["themes"],
+      default: "themes",
+    },
   },
   {
     toObject: {

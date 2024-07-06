@@ -51,6 +51,7 @@ export type UseLoginWithTokenResult = {
   isLoadingLoggedInUser: boolean;
   isSuccessLoggedInUser: boolean;
   isErrorLoggedInUser: boolean;
+  isFetchedLoggedInUser: boolean;
 };
 
 export type BookQueryParams = {

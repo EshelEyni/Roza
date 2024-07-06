@@ -9,6 +9,7 @@ export function useLoginWithToken(): UseLoginWithTokenResult {
     isLoading: isLoadingLoggedInUser,
     isSuccess: isSuccessLoggedInUser,
     isError: isErrorLoggedInUser,
+    isFetched: isFetchedLoggedInUser,
   } = useQuery({
     queryKey: ["loggedInUser"],
     queryFn: authApiService.loginWithToken,
@@ -21,5 +22,6 @@ export function useLoginWithToken(): UseLoginWithTokenResult {
     isLoadingLoggedInUser,
     isSuccessLoggedInUser,
     isErrorLoggedInUser,
+    isFetchedLoggedInUser,
   };
 }

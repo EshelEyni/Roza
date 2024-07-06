@@ -24,6 +24,11 @@ const characterSchema = new Schema<ICharacter>(
       type: Boolean,
       default: false,
     },
+    type: {
+      type: String,
+      enum: ["characters"],
+      default: "characters",
+    },
   },
   {
     toObject: {

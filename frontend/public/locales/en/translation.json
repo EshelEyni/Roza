@@ -114,15 +114,6 @@
     "notes": "Notes"
   },
   "BookDataPreview": {
-    "name": {
-      "chapters": "Chapter Name",
-      "characters": "Character Name",
-      "themes": "Theme Name",
-      "plotlines": "Plotline Name",
-      "notes": "Note Number"
-    },
-    "description": "Description",
-    "text": "Text",
     "noteTitlePrefix": "Note Number",
     "btnOpen": "Open",
     "btnEdit": "Edit",
@@ -132,5 +123,26 @@
       "title": "Delete Item",
       "msg": "Are you sure you want to delete the item?"
     }
+  },
+  "DataBookItemDetails": {
+    "pageTitle": {
+      "chapters": "Chapter Details",
+      "characters": "Character Details",
+      "themes": "Theme Details",
+      "plotlines": "Plotline Details",
+      "notes": "Note Details"
+    },
+    "noteTitle": "Note Number"
+  },
+  "useGetTitleTextBookItem": {
+    "name": {
+      "chapters": "Chapter Name",
+      "characters": "Character Name",
+      "themes": "Theme Name",
+      "plotlines": "Plotline Name",
+      "notes": "Note Number"
+    },
+    "description": "Description",
+    "text": "Text"
   }
 }

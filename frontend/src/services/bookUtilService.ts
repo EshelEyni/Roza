@@ -66,6 +66,7 @@ function getDefaultChapter(bookId: string): Chapter {
     name: "",
     description: "",
     text: "",
+    type: "chapters",
   };
 }
 
@@ -74,6 +75,7 @@ function getDefaultCharacter(bookId: string): Character {
     ...getDefaultBasicBookDataItem(bookId),
     name: "",
     description: "",
+    type: "characters",
   };
 }
 
@@ -82,6 +84,7 @@ function getDefaultTheme(bookId: string): Theme {
     ...getDefaultBasicBookDataItem(bookId),
     name: "",
     description: "",
+    type: "themes",
   };
 }
 
@@ -90,6 +93,7 @@ function getDefaultPlotline(bookId: string): Plotline {
     ...getDefaultBasicBookDataItem(bookId),
     name: "",
     description: "",
+    type: "plotlines",
   };
 }
 
@@ -97,6 +101,7 @@ function getDefaultNote(bookId: string): Note {
   return {
     ...getDefaultBasicBookDataItem(bookId),
     text: "",
+    type: "notes",
   };
 }
 

@@ -49,25 +49,30 @@ export interface Chapter extends BasicBookDataItem {
   text: string;
   name: string;
   description: string;
+  type: "chapters";
 }
 
 export interface Character extends BasicBookDataItem {
   name: string;
   description: string;
+  type: "characters";
 }
 
 export interface Theme extends BasicBookDataItem {
   name: string;
   description: string;
+  type: "themes";
 }
 
 export interface Plotline extends BasicBookDataItem {
   name: string;
   description: string;
+  type: "plotlines";
 }
 
 export interface Note extends BasicBookDataItem {
   text: string;
+  type: "notes";
 }
 
 export type BooKDataItemType =

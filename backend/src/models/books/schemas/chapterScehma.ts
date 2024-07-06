@@ -28,6 +28,11 @@ const chapterSchema = new Schema<IChapter>(
       type: Boolean,
       default: false,
     },
+    type: {
+      type: String,
+      enum: ["chapters"],
+      default: "chapters",
+    },
   },
   {
     toObject: {
