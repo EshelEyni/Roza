@@ -5,6 +5,7 @@ import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
 import { tokenService } from "../../services/token/tokenService";
 import { isValidMongoId } from "../../services/util/utilService";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
+import { ObjectId } from "mongodb";
 
 const checkUserAuthentication = asyncErrorCatcher(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -22,7 +23,7 @@ const checkUserAuthentication = asyncErrorCatcher(
     const userCollection = db.collection("users");
 
     const user = await userCollection.findOne({
-      _id: new mongoose.Types.ObjectId(id),
+      _id: new ObjectId(id),
     });
 
     if (!user)
@@ -48,7 +49,7 @@ const checkAdminAuthorization = asyncErrorCatcher(
     const db = mongoose.connection;
     const userCollection = db.collection("users");
     const user = await userCollection.findOne({
-      _id: new mongoose.Types.ObjectId(loggedInUserId),
+      _id: new ObjectId(loggedInUserId),
     });
     if (!user) throw new AppError("User not found", 404);
     if (!user.roles.includes("admin"))
