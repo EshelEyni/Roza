@@ -149,6 +149,16 @@ function isNoteType(item: BookDataItem): item is Note {
   return item.type === "notes";
 }
 
+function sendEmail(options: {
+  email: string;
+  subject: string;
+  message: string;
+}) {
+  console.log(
+    `Email sent to ${options.email} with subject: ${options.subject} and message: ${options.message}`
+  );
+}
+
 export {
   AnyObject,
   APIFeatures,
@@ -164,4 +174,5 @@ export {
   isThemeType,
   isPlotlineType,
   isNoteType,
+  sendEmail,
 };
