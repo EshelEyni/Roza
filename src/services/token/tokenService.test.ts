@@ -1,6 +1,5 @@
 import jwt from "jsonwebtoken";
 import { Request } from "express";
-require("dotenv").config();
 import tokenService from "./tokenService";
 import { AppError } from "../error/errorService";
 

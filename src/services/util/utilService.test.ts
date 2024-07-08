@@ -15,8 +15,6 @@ import { AppError } from "../error/errorService";
 import { ParsedReqQuery } from "../../types/system";
 import { getMongoId } from "../test/testUtilService";
 
-require("dotenv").config();
-
 jest.mock("nodemailer", () => ({
   createTransport: jest.fn().mockReturnValue({
     sendMail: jest.fn().mockResolvedValue(true),

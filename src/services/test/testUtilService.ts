@@ -1,5 +1,4 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-require("dotenv").config();
 import mongoose from "mongoose";
 import tokenService from "../token/tokenService";
 import { ObjectId } from "mongodb";

@@ -2,7 +2,6 @@
 import mongoose from "mongoose";
 import { AppError } from "../error/errorService";
 import ansiColors from "ansi-colors";
-require("dotenv").config();
 
 async function connectToTestDB({ isRemoteDB = false } = {}) {
   try {

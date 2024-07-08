@@ -1,5 +1,4 @@
 import mongoose, { Model, Query, Document } from "mongoose";
-require("dotenv").config();
 import { AppError } from "../error/errorService";
 import { ObjectId } from "mongodb";
 import {
