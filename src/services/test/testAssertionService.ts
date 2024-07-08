@@ -1,5 +1,4 @@
-import { Book, BookReview } from "../../types/books";
-import { User } from "../../types/user";
+import { Book, BookReview, User } from "@rozaeyni/common-types";
 
 function assertUser(user: User) {
   expect(user).toEqual(
@@ -9,10 +8,12 @@ function assertUser(user: User) {
       fullname: expect.any(String),
       email: expect.any(String),
       language: expect.any(String),
-    }),
+    })
   );
 
-  expect(typeof user.createdAt === "string" || typeof user.createdAt === "object").toBeTruthy();
+  expect(
+    typeof user.createdAt === "string" || typeof user.createdAt === "object"
+  ).toBeTruthy();
 }
 
 function assertBook(book: Book) {
@@ -27,11 +28,15 @@ function assertBook(book: Book) {
       plotlines: expect.any(Array),
       notes: expect.any(Array),
       filterBy: expect.any(String),
-    }),
+    })
   );
 
-  expect(typeof book.createdAt === "string" || typeof book.createdAt === "object").toBeTruthy();
-  expect(typeof book.updatedAt === "string" || typeof book.updatedAt === "object").toBeTruthy();
+  expect(
+    typeof book.createdAt === "string" || typeof book.createdAt === "object"
+  ).toBeTruthy();
+  expect(
+    typeof book.updatedAt === "string" || typeof book.updatedAt === "object"
+  ).toBeTruthy();
 }
 
 function assertBookReview(bookReview: BookReview) {
@@ -43,15 +48,17 @@ function assertBookReview(bookReview: BookReview) {
       reviews: expect.any(Array),
       references: expect.any(Array),
       sortOrder: expect.any(Number),
-    }),
+    })
   );
 
   expect(
-    typeof bookReview.createdAt === "string" || typeof bookReview.createdAt === "object",
+    typeof bookReview.createdAt === "string" ||
+      typeof bookReview.createdAt === "object"
   ).toBeTruthy();
 
   expect(
-    typeof bookReview.updatedAt === "string" || typeof bookReview.updatedAt === "object",
+    typeof bookReview.updatedAt === "string" ||
+      typeof bookReview.updatedAt === "object"
   ).toBeTruthy();
 }
 

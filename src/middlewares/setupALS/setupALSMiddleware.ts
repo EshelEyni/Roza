@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { asyncLocalStorage } from "../../services/ALSService";
 import { tokenService } from "../../services/token/tokenService";
 import { asyncErrorCatcher } from "../../services/error/errorService";
-import { alStoreType } from "../../types/system";
+import { alStoreType } from "@rozaeyni/common-types";
 
 const setupAsyncLocalStorage = asyncErrorCatcher(
   async (req: Request, res: Response, next: NextFunction) => {

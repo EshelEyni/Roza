@@ -1,5 +1,5 @@
 import { AsyncLocalStorage } from "async_hooks";
-import { alStoreType } from "../types/system";
+import { alStoreType } from "@rozaeyni/common-types";
 const asyncLocalStorage = new AsyncLocalStorage();
 
 function getLoggedInUserIdFromReq(): string {

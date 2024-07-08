@@ -14,8 +14,9 @@ import {
   Reference,
   Review,
   Theme,
-} from "../../types/books";
-import { User, UserCredenitials } from "../../types/user";
+  User,
+  UserCredenitials,
+} from "@rozaeyni/common-types";
 
 type CreateTestUserOptions = {
   id?: string;

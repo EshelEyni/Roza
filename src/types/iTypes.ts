@@ -1,5 +1,5 @@
 import mongoose, { Document } from "mongoose";
-import { BooKDataItemType } from "./books";
+import { BooKDataItemType } from "@rozaeyni/common-types";
 
 export interface IUser extends Document {
   username: string;

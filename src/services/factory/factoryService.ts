@@ -7,7 +7,7 @@ import {
 } from "../error/errorService";
 import { logger } from "../logger/loggerService";
 import { APIFeatures, validateIds } from "../util/utilService";
-import { ParsedReqQuery } from "../../types/system";
+import { ParsedReqQuery } from "@rozaeyni/common-types";
 
 const getAll = <T>(model: Model<T>) =>
   asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {

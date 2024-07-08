@@ -12,7 +12,7 @@ import {
   getUniqueStringIds,
 } from "./utilService";
 import { AppError } from "../error/errorService";
-import { ParsedReqQuery } from "../../types/system";
+import { ParsedReqQuery } from "@rozaeyni/common-types";
 import { getMongoId } from "../test/testUtilService";
 
 jest.mock("nodemailer", () => ({

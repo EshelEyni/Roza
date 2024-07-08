@@ -8,8 +8,8 @@ import {
   Note,
   Plotline,
   Theme,
-} from "../../types/books";
-import { ParsedReqQuery } from "../../types/system";
+  ParsedReqQuery,
+} from "@rozaeyni/common-types";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyObject = { [key: string]: any };
