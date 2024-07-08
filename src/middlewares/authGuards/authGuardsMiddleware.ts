@@ -9,6 +9,8 @@ import { ObjectId } from "mongodb";
 
 const checkUserAuthentication = asyncErrorCatcher(
   async (req: Request, res: Response, next: NextFunction) => {
+    const { cookies } = req;
+    console.log("cookies", cookies);
     const token = tokenService.getTokenFromRequest(req);
     if (!token)
       return next(
