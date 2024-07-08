@@ -9,7 +9,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "clean": "del-cli ./build",
-    "build": "npm run clean && tsc"
+    "build": "npm run clean && tsc",
+    "git-add-commit": "git add . && git commit -m \"Updates\"",
+    "version-patch": "npm version patch",
+    "publish": "npm publish",
+    "update-and-publish": "npm run git-add-commit && npm run version-patch && npm run build && npm run publish && cd .. && npm run update-common-all"
   },
   "author": "",
   "license": "ISC",
