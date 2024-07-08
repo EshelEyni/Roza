@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { asyncLocalStorage } from "../../services/ALSService";
-import tokenService from "../../services/token/tokenService";
-import setupAsyncLocalStorage from "./setupALSMiddleware";
+import { tokenService } from "../../services/token/tokenService";
+import { setupAsyncLocalStorage } from "./setupALSMiddleware";
 import { Request, Response, NextFunction } from "express";
 
 jest.mock("../../services/ALSService", () => ({

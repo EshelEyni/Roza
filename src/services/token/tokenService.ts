@@ -7,13 +7,16 @@ function getTokenFromRequest(req: Request) {
   const isTokenInHeaders =
     req.headers.authorization && req.headers.authorization.startsWith("Bearer");
   // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-  const tokenFromHeaders = isTokenInHeaders ? req.headers.authorization!.split(" ")[1] : null;
+  const tokenFromHeaders = isTokenInHeaders
+    ? req.headers.authorization!.split(" ")[1]
+    : null;
   const token = cookies?.loginToken || tokenFromHeaders;
   return token;
 }
 
 function signToken(id: string) {
-  if (!process.env.JWT_SECRET_CODE) throw new AppError("jwtSecretCode not found in config", 500);
+  if (!process.env.JWT_SECRET_CODE)
+    throw new AppError("jwtSecretCode not found in config", 500);
   if (!process.env.JWT_EXPIRATION_TIME)
     throw new AppError("jwtExpirationTime not found in config", 500);
 
@@ -25,9 +28,12 @@ function signToken(id: string) {
   return token;
 }
 
-async function verifyToken(token: string): Promise<{ id: string; timeStamp: number } | null> {
+async function verifyToken(
+  token: string
+): Promise<{ id: string; timeStamp: number } | null> {
   try {
-    if (!process.env.JWT_SECRET_CODE) throw new AppError("jwtSecretCode not found in config", 500);
+    if (!process.env.JWT_SECRET_CODE)
+      throw new AppError("jwtSecretCode not found in config", 500);
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET_CODE) as {
       id: string;
@@ -41,4 +47,6 @@ async function verifyToken(token: string): Promise<{ id: string; timeStamp: numb
   }
 }
 
-export default { getTokenFromRequest, signToken, verifyToken };
+const tokenService = { getTokenFromRequest, signToken, verifyToken };
+
+export { tokenService };

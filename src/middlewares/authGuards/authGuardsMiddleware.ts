@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 
 import mongoose from "mongoose";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
-import tokenService from "../../services/token/tokenService";
+import { tokenService } from "../../services/token/tokenService";
 import { isValidMongoId } from "../../services/util/utilService";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
 

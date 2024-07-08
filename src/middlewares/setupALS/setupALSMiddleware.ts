@@ -1,9 +1,8 @@
 import { Request, Response, NextFunction } from "express";
 import { asyncLocalStorage } from "../../services/ALSService";
-import tokenService from "../../services/token/tokenService";
+import { tokenService } from "../../services/token/tokenService";
 import { asyncErrorCatcher } from "../../services/error/errorService";
 import { alStoreType } from "../../types/system";
-
 
 const setupAsyncLocalStorage = asyncErrorCatcher(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -17,7 +16,7 @@ const setupAsyncLocalStorage = asyncErrorCatcher(
       alsStore.loggedInUserId = verifiedToken.id;
       next();
     });
-  },
+  }
 );
 
-export default setupAsyncLocalStorage;
+export { setupAsyncLocalStorage };

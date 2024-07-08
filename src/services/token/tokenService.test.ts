@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import { Request } from "express";
-import tokenService from "./tokenService";
+import { tokenService } from "./tokenService";
 import { AppError } from "../error/errorService";
 
 jest.mock("jsonwebtoken");
@@ -40,9 +40,13 @@ describe("Token Service", () => {
     it("should sign and return a token", () => {
       (jwt.sign as jest.Mock).mockReturnValue("signed_token");
       const token = tokenService.signToken("test_id");
-      expect(jwt.sign).toHaveBeenCalledWith({ id: "test_id" }, process.env.JWT_SECRET_CODE, {
-        expiresIn: process.env.JWT_EXPIRATION_TIME,
-      });
+      expect(jwt.sign).toHaveBeenCalledWith(
+        { id: "test_id" },
+        process.env.JWT_SECRET_CODE,
+        {
+          expiresIn: process.env.JWT_EXPIRATION_TIME,
+        }
+      );
       expect(token).toBe("signed_token");
     });
 
@@ -63,9 +67,15 @@ describe("Token Service", () => {
 
   describe("verifyToken", () => {
     it("should verify and return the payload of a token", async () => {
-      (jwt.verify as jest.Mock).mockReturnValue({ id: "test_id", iat: 1234567890 });
+      (jwt.verify as jest.Mock).mockReturnValue({
+        id: "test_id",
+        iat: 1234567890,
+      });
       const payload = await tokenService.verifyToken("test_token");
-      expect(jwt.verify).toHaveBeenCalledWith("test_token", process.env.JWT_SECRET_CODE);
+      expect(jwt.verify).toHaveBeenCalledWith(
+        "test_token",
+        process.env.JWT_SECRET_CODE
+      );
       expect(payload).toEqual({ id: "test_id", timeStamp: 1234567890 });
     });
 

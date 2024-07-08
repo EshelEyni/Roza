@@ -1,4 +1,4 @@
-import requestSanitizer from "./HTMLSanitizerMiddleware";
+import { requestSanitizer } from "./HTMLSanitizerMiddleware";
 import { Request, Response, NextFunction } from "express";
 
 const mockRequest = (body = {}, params = {}, query = {}) => {
@@ -42,14 +42,21 @@ describe("requestSanitizer Middleware", () => {
   });
 
   it("should sanitize request params", () => {
-    const req = mockRequest({}, { key: "<script>Alert('XSS Attack!')</script>" });
+    const req = mockRequest(
+      {},
+      { key: "<script>Alert('XSS Attack!')</script>" }
+    );
     requestSanitizer(req, mockResponse(), mockNext);
     expect(req.params.key).not.toContain("<script>");
     expect(mockNext).toHaveBeenCalled();
   });
 
   it("should sanitize request query", () => {
-    const req = mockRequest({}, {}, { key: "<script>Alert('XSS Attack!')</script>" });
+    const req = mockRequest(
+      {},
+      {},
+      { key: "<script>Alert('XSS Attack!')</script>" }
+    );
     requestSanitizer(req, mockResponse(), mockNext);
     expect(req.query.key).not.toContain("<script>");
     expect(mockNext).toHaveBeenCalled();

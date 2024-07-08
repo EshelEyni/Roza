@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import mongoose from "mongoose";
-import tokenService from "../token/tokenService";
+import { tokenService } from "../token/tokenService";
 import { ObjectId } from "mongodb";
 import { getLoggedInUserIdFromReq } from "../ALSService";
 import {
