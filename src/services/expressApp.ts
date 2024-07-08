@@ -21,8 +21,8 @@ export const createExpressApp = (routers: {
   [path: string]: express.Router;
 }): express.Express => {
   const app = express();
+  app.set("trust proxy", 1);
   app.use(compression());
-
   app.use(helmet());
   app.use(cookieParser());
   app.use(express.json({ limit: "15kb" }));
@@ -45,7 +45,7 @@ export const createExpressApp = (routers: {
         "http://127.0.0.1:5173",
         "http://localhost:5173",
         "http://10.0.0.5:5173",
-        "http://172.17.32.1:5173/"
+        "http://172.17.32.1:5173/",
       ],
       credentials: true,
     };
