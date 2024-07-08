@@ -1,6 +1,6 @@
 {
   "name": "@rozaeyni/common",
-  "version": "1.0.20",
+  "version": "1.0.21",
   "main": "build/src/index.js",
   "types": "build/src/index.d.ts",
   "files": [
