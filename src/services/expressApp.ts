@@ -17,7 +17,7 @@ import { AppError, errorHandler } from "./error/errorService";
 
 const isProdEnv = process.env.NODE_ENV === "production";
 
-export const createApp = (routers: {
+export const createExpressApp = (routers: {
   [path: string]: express.Router;
 }): express.Express => {
   const app = express();

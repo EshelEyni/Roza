@@ -13,6 +13,7 @@ export * from "./services/token/tokenService";
 export * from "./services/util/utilService";
 export * from "./services/ALSService";
 export * from "./services/rateLimiterService";
+export * from "./services/expressApp";
 
 
 export * from "./types/iTypes";
