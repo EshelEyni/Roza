@@ -149,7 +149,7 @@ function isNoteType(item: BookDataItem): item is Note {
   return item.type === "notes";
 }
 
-function sendEmail(options: {
+async function sendEmail(options: {
   email: string;
   subject: string;
   message: string;
