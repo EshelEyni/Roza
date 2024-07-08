@@ -14,6 +14,12 @@ export interface IAsyncLocalStorageStore {
   loggedInUser?: User;
 }
 
+export type alStoreType = Record<string, string>;
+
+export interface ParsedReqQuery {
+  [key: string]: string | undefined;
+}
+
 export interface UserMsg {
   type: "info" | "success" | "error" | "warning" | "";
   text: string;
