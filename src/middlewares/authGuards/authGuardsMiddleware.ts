@@ -29,14 +29,14 @@ const checkUserAuthentication = asyncErrorCatcher(
       return next(
         new AppError("The user belonging to this token does not exist.", 401)
       );
-    const changedPasswordAfter = user.changedPasswordAfter(timeStamp);
-    if (changedPasswordAfter)
-      return next(
-        new AppError(
-          "User recently changed password! Please log in again.",
-          401
-        )
-      );
+    // const changedPasswordAfter = user.changedPasswordAfter(timeStamp);
+    // if (changedPasswordAfter)
+    //   return next(
+    //     new AppError(
+    //       "User recently changed password! Please log in again.",
+    //       401
+    //     )
+    //   );
     next();
   }
 );
