@@ -14,6 +14,7 @@ export * from "./services/util/utilService";
 export * from "./services/ALSService";
 export * from "./services/rateLimiterService";
 export * from "./services/expressApp";
+export * from "./services/serverSetup";
 
 
 export * from "./types/iTypes";
