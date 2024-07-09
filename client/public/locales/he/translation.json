@@ -1,0 +1,143 @@
+{
+  "HomePage": {
+    "formTitle": {
+      "login": "אין לך חשבון?",
+      "signup": "כבר יש לך חשבון?"
+    },
+    "btnForm": {
+      "login": "התחברות",
+      "signup": "הרשמה"
+    },
+    "btnLogout": "התנתקות"
+  },
+  "ProfileDetails": {
+    "btnEdit": "עריכה",
+    "btnPassword": "שינוי סיסמה",
+    "btnCancel": "ביטול",
+    "btnSave": "שמירה"
+  },
+  "ProfileDisplay": {
+    "username": "שם משתמש",
+    "fullName": "שם מלא",
+    "email": "אימייל",
+    "language": "שפה",
+    "signup": "תאריך הרשמה"
+  },
+  "ProfileEdit": {
+    "title": "עריכת פרופיל",
+    "username": "שם משתמש",
+    "fullName": "שם מלא",
+    "email": "אימייל",
+    "language": "שפה",
+    "btnSubmit": "עדכון"
+  },
+  "PasswordEdit": {
+    "title": "שינוי סיסמה",
+    "currentPassword": "סיסמה נוכחית",
+    "newPassword": "סיסמה חדשה",
+    "newPasswordConfirm": "אימות סיסמה",
+    "btnSubmit": "עדכון"
+  },
+  "AppHeader": {
+    "home": "בית",
+    "profile": "פרופיל",
+    "books": "ספרים",
+    "reviews": "ביקורות"
+  },
+  "ErrorMsg": {
+    "msg": "התרחשה שגיאה במערכת. אנא נסה שוב מאוחר יותר."
+  },
+  "EmptyMsg": {
+    "books": "אין ספרים זמינים.",
+    "reviews": "אין ביקורות זמינות."
+  },
+  "BookList": {
+    "title": "ספרים",
+    "seeAll": "עבור לספרים",
+    "btnAdd": "הוספת ספר",
+    "name": "שם הספר"
+  },
+  "BookPreview": {
+    "name": "שם הספר",
+    "chapters": "פרקים",
+    "characters": "דמויות",
+    "themes": "נושאים",
+    "plotlines": "קווי עלילה",
+    "notes": "הערות",
+    "createdAt": "נוצר בתאריך"
+  },
+  "ReviewsList": {
+    "title": "ביקורות",
+    "seeAll": "עבור לביקורות"
+  },
+  "ReviewPreview": {
+    "name": "שם הספר",
+    "reviews": "ביקורות",
+    "references": "הפניות",
+    "createdAt": "נוצר בתאריך"
+  },
+  "ReviewsFilter": {
+    "sortBy": "מיין לפי",
+    "asc": "סדר עולה",
+    "desc": "סדר יורד",
+    "search": "חיפוש"
+  },
+  "BookFilter": {
+    "sortBy": "מיין לפי",
+    "asc": "סדר עולה",
+    "desc": "סדר יורד",
+    "search": "חיפוש"
+  },
+  "BookPage": {
+    "btnAdd": {
+      "chapters": "הוספת פרק",
+      "characters": "הוספת דמות",
+      "themes": "הוספת נושא",
+      "plotlines": "הוספת קו עלילה",
+      "notes": "הוספת הערה"
+    }
+  },
+  "BookDetailsFilter": {
+    "chapters": "פרקים",
+    "characters": "דמויות",
+    "themes": "תמות",
+    "plotlines": "קווי עלילה",
+    "notes": "הערות"
+  },
+  "BookDataPreview": {
+    "noteTitlePrefix": "מספר ההערה",
+    "btnOpen": "פתח",
+    "btnEdit": "ערוך",
+    "btnDelete": "מחק",
+    "btnCancel": "ביטול",
+    "confirmDeleteMsg": {
+      "title": "מחיקת פריט",
+      "msg": "האם אתה בטוח שברצונך למחוק את הפריט?"
+    }
+  },
+  "DataBookItemDetails": {
+    "pageTitle": {
+      "chapters": "פרטי פרק",
+      "characters": "פרטי דמות",
+      "themes": "פרטי נושא",
+      "plotlines": "פרטי קו עלילה",
+      "notes": "פרטי הערה"
+    },
+    "noteTitle": "מספר ההערה",
+    "btnEdit": "ערוך"
+  },
+  "useGetTitleTextBookItem": {
+    "name": {
+      "chapters": "שם הפרק",
+      "characters": "שם הדמות",
+      "themes": "שם התמה",
+      "plotlines": "שם קו העלילה",
+      "notes": "מספר ההערה"
+    },
+    "description": "תיאור",
+    "text": "טקסט"
+  },
+  "btnEdit": "עריכה",
+  "btnDelete": "מחיקה",
+  "btnSave": "שמירה"
+}

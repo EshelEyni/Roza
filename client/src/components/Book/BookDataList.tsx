@@ -1,0 +1,31 @@
+import { FC } from "react";
+import { BookDataPreview } from "./BookDataPreview";
+import { useBook } from "../../contexts/BookContext";
+import { BookDataItem, BooKDataItemType } from "@rozaeyni/common-types";
+
+type BookDataListProps = {
+  isRendered: boolean;
+  type: BooKDataItemType;
+  isBookEdit?: boolean;
+};
+
+export const BookDataList: FC<BookDataListProps> = ({
+  isRendered,
+  type,
+  isBookEdit = false,
+}) => {
+  const { book } = useBook();
+  if (!isRendered || !book) return null;
+  const data = book[type] as BookDataItem[];
+  return (
+    <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {data
+        .filter(d => !d.isDeleted)
+        .map(d => (
+          <li key={d.id}>
+            <BookDataPreview dataItem={d} type={type} isBookEdit={isBookEdit} />
+          </li>
+        ))}
+    </ul>
+  );
+};

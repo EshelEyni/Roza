@@ -1,0 +1,149 @@
+{
+  "HomePage": {
+    "formTitle": {
+      "login": "Don't have an account?",
+      "signup": "Already have an account?"
+    },
+    "btnForm": {
+      "login": "Login",
+      "signup": "Signup"
+    },
+    "btnLogout": "Logout"
+  },
+  "ProfileDetails": {
+    "btnEdit": "Edit",
+    "btnPassword": "Change Password",
+    "btnCancel": "Cancel",
+    "btnSave": "Save"
+  },
+  "ProfileDisplay": {
+    "username": "Username",
+    "fullName": "Full Name",
+    "email": "Email",
+    "language": "Language",
+    "signup": "Signup Date"
+  },
+  "ProfileEdit": {
+    "title": "Edit Profile",
+    "username": "Username",
+    "fullName": "Full Name",
+    "email": "Email",
+    "language": "Language",
+    "btnSubmit": "Update"
+  },
+  "PasswordEdit": {
+    "title": "Change Password",
+    "currentPassword": "Current Password",
+    "newPassword": "New Password",
+    "newPasswordConfirm": "Confirm Password",
+    "btnSubmit": "Update"
+  },
+  "AppHeader": {
+    "home": "Home",
+    "profile": "Profile",
+    "books": "Books",
+    "reviews": "Reviews"
+  },
+  "ErrorMsg": {
+    "msg": "An error occurred in the system. Please try again later."
+  },
+  "EmptyMsg": {
+    "books": "No books available.",
+    "reviews": "No reviews available."
+  },
+  "BookList": {
+    "title": "Books",
+    "seeAll": "Go to Books",
+    "btnAdd": "Add Book",
+    "name": "Book Name"
+  },
+  "BookPreview": {
+    "name": "Book Name",
+    "chapters": "Chapters",
+    "characters": "Characters",
+    "themes": "Themes",
+    "plotlines": "Plotlines",
+    "notes": "Notes",
+    "createdAt": "Created At"
+  },
+  "ReviewsList": {
+    "title": "Reviews",
+    "seeAll": "Go to Reviews"
+  },
+  "ReviewPreview": {
+    "name": "Book Name",
+    "reviews": "Reviews",
+    "references": "References",
+    "createdAt": "Created At"
+  },
+  "ReviewsPage": {
+    "title": "Reviews",
+    "btnAdd": "Add Review",
+    "btnEdit": "Edit",
+    "btnDelete": "Delete"
+  },
+  "ReviewsFilter": {
+    "sortBy": "Sort by",
+    "asc": "Ascending",
+    "desc": "Descending",
+    "search": "Search"
+  },
+  "BookFilter": {
+    "sortBy": "Sort by",
+    "asc": "Ascending",
+    "desc": "Descending",
+    "search": "Search"
+  },
+  "BookPage": {
+    "btnAdd": {
+      "chapters": "Add Chapter",
+      "characters": "Add Character",
+      "themes": "Add Theme",
+      "plotlines": "Add Plotline",
+      "notes": "Add Note"
+    }
+  },
+  "BookDetailsFilter": {
+    "chapters": "Chapters",
+    "characters": "Characters",
+    "themes": "Themes",
+    "plotlines": "Plotlines",
+    "notes": "Notes"
+  },
+  "BookDataPreview": {
+    "noteTitlePrefix": "Note Number",
+    "btnOpen": "Open",
+    "btnEdit": "Edit",
+    "btnDelete": "Delete",
+    "btnCancel": "Cancel",
+    "confirmDeleteMsg": {
+      "title": "Delete Item",
+      "msg": "Are you sure you want to delete the item?"
+    }
+  },
+  "DataBookItemDetails": {
+    "pageTitle": {
+      "chapters": "Chapter Details",
+      "characters": "Character Details",
+      "themes": "Theme Details",
+      "plotlines": "Plotline Details",
+      "notes": "Note Details"
+    },
+    "noteTitle": "Note Number",
+    "btnEdit": "Edit"
+  },
+  "useGetTitleTextBookItem": {
+    "name": {
+      "chapters": "Chapter Name",
+      "characters": "Character Name",
+      "themes": "Theme Name",
+      "plotlines": "Plotline Name",
+      "notes": "Note Number"
+    },
+    "description": "Description",
+    "text": "Text"
+  },
+  "btnEdit": "Edit",
+  "btnDelete": "Delete",
+  "btnSave": "Save"
+}

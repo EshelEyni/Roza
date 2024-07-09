@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: book-depl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: book
+  template:
+    metadata:
+      labels:
+        app: book
+    spec:
+      containers:
+        - name: book
+          image: esheleyni/roza-book
+          env:
+            - name: DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: roza-secret
+                  key: DB_URL
+            - name: LOCAL_DB_URL
+              valueFrom:
+                secretKeyRef:
+                  name: roza-secret
+                  key: LOCAL_DB_URL
+            - name: DEV_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: roza-secret
+                  key: DEV_DB_NAME
+            - name: PROD_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: roza-secret
+                  key: PROD_DB_NAME
+            - name: TEST_DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: roza-secret
+                  key: TEST_DB_NAME
+            - name: JWT_SECRET_CODE
+              valueFrom:
+                secretKeyRef:
+                  name: roza-secret
+                  key: JWT_SECRET_CODE
+            - name: JWT_EXPIRATION_TIME
+              valueFrom:
+                secretKeyRef:
+                  name: roza-secret
+                  key: JWT_EXPIRATION_TIME              
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: book-srv
+spec:
+  selector:
+    app: book
+  ports:
+    - name: book
+      protocol: TCP
+      port: 3000
+      targetPort: 3000

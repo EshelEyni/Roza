@@ -1,0 +1,17 @@
+{
+  "name": "roza---ms",
+  "version": "1.0.1",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "update-common-auth": "cd authServer && npm install @rozaeyni/common@latest",
+    "update-common-book-review": "cd bookReviewServer && npm install @rozaeyni/common@latest",
+    "update-common-book": "cd bookServer && npm install @rozaeyni/common@latest",
+    "update-common-all": "concurrently \"npm run update-common-auth\" \"npm run update-common-book-review\" \"npm run update-common-book\""
+  },
+  "devDependencies": {
+    "concurrently": "^7.0.0"
+  },
+  "author": "",
+  "license": "ISC"
+}

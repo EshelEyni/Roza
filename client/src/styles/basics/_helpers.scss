@@ -1,0 +1,7 @@
+.page-loader {
+  @include progress-bar;
+}
+
+.scrollbar-hidden {
+  @include scrollbar-hidden;
+}
