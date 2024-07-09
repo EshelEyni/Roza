@@ -42,10 +42,11 @@ export const createExpressApp = (routers: {
   } else {
     const corsOptions = {
       origin: [
-        "http://127.0.0.1:5173",
         "http://localhost:5173",
-        "http://10.0.0.5:5173",
+        "http://localhost:5173/",
+        "http://127.0.0.1:5173",
         "http://172.17.32.1:5173/",
+        "http://10.0.0.5:5173",
         "http://10.0.0.5:5173/",
       ],
       credentials: true,
