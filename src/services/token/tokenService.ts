@@ -10,7 +10,7 @@ function getTokenFromRequest(req: Request) {
   const tokenFromHeaders = isTokenInHeaders
     ? req.headers.authorization!.split(" ")[1]
     : null;
-  const token = cookies?.loginToken || tokenFromHeaders;
+  const token = cookies?.rozaJwt || tokenFromHeaders;
   return token;
 }
 
