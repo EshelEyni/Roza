@@ -89,9 +89,6 @@
     "search": "חיפוש"
   },
   "BookPage": {
-    "btnEdit": "עריכה",
-    "btnDelete": "מחיקה",
-    "btnSave": "שמירה",
     "btnAdd": {
       "chapters": "הוספת פרק",
       "characters": "הוספת דמות",
@@ -126,7 +123,8 @@
       "plotlines": "פרטי קו עלילה",
       "notes": "פרטי הערה"
     },
-    "noteTitle": "מספר ההערה"
+    "noteTitle": "מספר ההערה",
+    "btnEdit": "ערוך"
   },
   "useGetTitleTextBookItem": {
     "name": {
@@ -138,5 +136,8 @@
     },
     "description": "תיאור",
     "text": "טקסט"
-  }
+  },
+  "btnEdit": "עריכה",
+  "btnDelete": "מחיקה",
+  "btnSave": "שמירה"
 }

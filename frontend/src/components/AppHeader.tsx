@@ -42,7 +42,9 @@ export const AppHeader: FC = () => {
     const path = location.pathname;
     const isVisible =
       (/\/book(\/|$)/.test(path) && !/\/books(\/|$)/.test(path)) ||
-      (/\/review(\/|$)/.test(path) && !/\/reviews(\/|$)/.test(path));
+      /\/book-edit(\/|$)/.test(path) ||
+      (/\/review(\/|$)/.test(path) && !/\/reviews(\/|$)/.test(path)) ||
+      /\/review-edit(\/|$)/.test(path);
 
     return isVisible;
   }
@@ -51,10 +53,10 @@ export const AppHeader: FC = () => {
     <header className="flex w-full items-center justify-between bg-app-700 px-3 py-2 md:px-3 md:py-1">
       <nav className="flex items-center gap-2 md:gap-3">
         {navLinks.map(({ name, icon, link }) => (
-          <Link key={name} to={link} color="blue">
+          <Link key={name} to={link}>
             {cloneElement(icon, {
               className:
-                "text-app-100 cursor-pointer md:text-5xl text-white transition duration-300 ease-in-out hover:text-sky-600 md:hidden text-2xl hover:text-app-300",
+                "text-app-100 cursor-pointer transition duration-300 ease-in-out md:hidden text-3xl hover:text-app-300",
             })}
             <span className="hidden text-xl font-medium uppercase text-app-100 transition duration-300  ease-in-out hover:text-app-300 md:block">
               {name}

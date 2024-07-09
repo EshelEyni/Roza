@@ -1,14 +1,12 @@
 import { FC } from "react";
 import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
-import { Book, BooKDataItemType } from "../../../../shared/types/books";
+import { BooKDataItemType } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
 import classNames from "classnames";
+import { useBook } from "../../contexts/BookContext";
 
-type BookDetailsFilterProps = {
-  book: Book | null;
-};
-
-export const BookFilter: FC<BookDetailsFilterProps> = ({ book }) => {
+export const BookFilter: FC = () => {
+  const { book } = useBook();
   const tabs = [
     "chapters",
     "characters",

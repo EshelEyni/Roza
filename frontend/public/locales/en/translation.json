@@ -95,9 +95,6 @@
     "search": "Search"
   },
   "BookPage": {
-    "btnEdit": "Edit",
-    "btnDelete": "Delete",
-    "btnSave": "Save",
     "btnAdd": {
       "chapters": "Add Chapter",
       "characters": "Add Character",
@@ -132,7 +129,8 @@
       "plotlines": "Plotline Details",
       "notes": "Note Details"
     },
-    "noteTitle": "Note Number"
+    "noteTitle": "Note Number",
+    "btnEdit": "Edit"
   },
   "useGetTitleTextBookItem": {
     "name": {
@@ -144,5 +142,8 @@
     },
     "description": "Description",
     "text": "Text"
-  }
+  },
+  "btnEdit": "Edit",
+  "btnDelete": "Delete",
+  "btnSave": "Save"
 }

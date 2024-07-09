@@ -4,11 +4,20 @@ import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useGetBook } from "../hooks/reactQuery/get/useGetBook";
 import { useParams } from "react-router-dom";
 import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
+import {
+  Book,
+  BookDataItem,
+  BooKDataItemType,
+} from "../../../shared/types/books";
 
 type BookContextType = UseLoginWithTokenResult &
   UseGetBookResult & {
     dataItem?: string;
     dataItemId?: string;
+    filterBy: BooKDataItemType;
+    isDetailsBookShowing: boolean;
+    isDataItemDetailsShowing: boolean;
+    bookDataItemTypes: BooKDataItemType[];
   };
 
 type BookDetailsParams = {
@@ -39,7 +48,28 @@ function BookProvider({ children }: BookProviderProps) {
     errorLoggedInUser,
     isSuccessLoggedInUser,
     isErrorLoggedInUser,
+    isFetchedLoggedInUser,
   } = useLoginWithToken();
+
+  const bookDataItemTypes = [
+    "chapters",
+    "characters",
+    "themes",
+    "plotlines",
+    "notes",
+  ] as BooKDataItemType[];
+
+  const filterBy = book?.filterBy || "chapters";
+  const isDetailsBookShowing =
+    isSuccessBook && !!book && !dataItem && !dataItemId;
+  const isDataItemDetailsShowing =
+    isSuccessBook &&
+    !!book &&
+    !!dataItem &&
+    !!dataItemId &&
+    !!(book[dataItem as keyof Book] as BookDataItem[]).find(
+      i => i.id === dataItemId,
+    );
 
   const value: BookContextType = {
     loggedInUser,
@@ -47,6 +77,7 @@ function BookProvider({ children }: BookProviderProps) {
     errorLoggedInUser,
     isSuccessLoggedInUser,
     isErrorLoggedInUser,
+    isFetchedLoggedInUser,
     book,
     errorBook,
     isLoadingBook,
@@ -54,6 +85,10 @@ function BookProvider({ children }: BookProviderProps) {
     isErrorBook,
     dataItem,
     dataItemId,
+    filterBy,
+    isDetailsBookShowing,
+    isDataItemDetailsShowing,
+    bookDataItemTypes,
   };
 
   return (

@@ -41,18 +41,7 @@ async function add(user: User): Promise<IUser> {
 }
 
 async function update(id: string, user: User): Promise<User> {
-  const allowedFields: Array<keyof User> = [
-    "username",
-    "email",
-    "fullname",
-    "imgUrl",
-    "email",
-    "height",
-    "weight",
-    "targetCaloricIntakePerDay",
-    "totalDailyEnergyExpenditure",
-    "workoutSchedule",
-  ];
+  const allowedFields: Array<keyof User> = ["username", "email", "fullname", "email"];
 
   const filteredUser = filterObj(user, ...allowedFields);
 
@@ -65,7 +54,7 @@ async function update(id: string, user: User): Promise<User> {
 }
 
 async function remove(userId: string): Promise<User> {
-  const userRemoved = await UserModel.findByIdAndRemove(userId).exec();
+  const userRemoved = await UserModel.findByIdAndDelete(userId).exec();
   return userRemoved as unknown as User;
 }
 

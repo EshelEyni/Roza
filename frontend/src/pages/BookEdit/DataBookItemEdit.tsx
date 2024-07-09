@@ -1,14 +1,14 @@
 import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
-import { useTranslation } from "react-i18next";
-import { Hr } from "../../components/Hr";
-import { Book, BookDataItem, Chapter } from "../../../../shared/types/books";
-import { isChapterType } from "../../../../shared/services/utilService";
 import { useGetTitleTextBookItem } from "../../hooks/useGetTitleTextBookItem";
+import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
+import { Book, BookDataItem, Chapter } from "../../../../shared/types/books";
+import { Hr } from "../../components/Hr";
 import { Button } from "../../components/Button";
+import { isChapterType } from "../../../../shared/services/utilService";
 
-export const DataBookItemDetails: FC = () => {
+export const DataBookItemEdit: FC = () => {
   const { book, dataItem, dataItemId } = useBook();
   const { getTitle, getText } = useGetTitleTextBookItem();
   const { t } = useTranslation();

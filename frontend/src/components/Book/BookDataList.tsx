@@ -1,34 +1,29 @@
 import { FC } from "react";
-import {
-  BooKDataItemType,
-  Chapter,
-  Character,
-  Note,
-  Plotline,
-  Theme,
-} from "../../../../shared/types/books";
+import { BookDataItem, BooKDataItemType } from "../../../../shared/types/books";
 import { BookDataPreview } from "./BookDataPreview";
+import { useBook } from "../../contexts/BookContext";
 
 type BookDataListProps = {
-  data: Chapter[] | Character[] | Theme[] | Plotline[] | Note[];
   isRendered: boolean;
   type: BooKDataItemType;
+  isBookEdit?: boolean;
 };
 
 export const BookDataList: FC<BookDataListProps> = ({
-  data,
   isRendered,
   type,
+  isBookEdit = false,
 }) => {
-  if (!isRendered) return null;
-
+  const { book } = useBook();
+  if (!isRendered || !book) return null;
+  const data = book[type] as BookDataItem[];
   return (
     <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
       {data
         .filter(d => !d.isDeleted)
         .map(d => (
           <li key={d.id}>
-            <BookDataPreview dataItem={d} type={type} />
+            <BookDataPreview dataItem={d} type={type} isBookEdit={isBookEdit} />
           </li>
         ))}
     </ul>
