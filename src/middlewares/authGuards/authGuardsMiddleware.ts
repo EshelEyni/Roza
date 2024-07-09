@@ -9,9 +9,8 @@ import { ObjectId } from "mongodb";
 
 const checkUserAuthentication = asyncErrorCatcher(
   async (req: Request, res: Response, next: NextFunction) => {
-    const { cookies } = req;
-    console.log("cookies", cookies);
     const token = tokenService.getTokenFromRequest(req);
+    console.log("token", token);
     if (!token)
       return next(
         new AppError("You are not logged in! Please log in to get access.", 401)
