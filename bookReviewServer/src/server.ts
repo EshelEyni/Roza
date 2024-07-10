@@ -3,7 +3,7 @@ import app from "./app";
 import { startServer } from "@rozaeyni/common";
 
 const isLocalDev = process.env.NODE_ENV === "development";
-
 const port = isLocalDev ? 3020 : 3000;
+const name = "Book Review";
 
-startServer(app, port);
+startServer({ app, port, name });

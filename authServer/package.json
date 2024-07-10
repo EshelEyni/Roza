@@ -5,14 +5,14 @@
   "main": "index.ts",
   "scripts": {
     "dev": "set NODE_ENV=development&& nodemon",
-    "dev-k8s": "set NODE_ENV=development-k8s && nodemon",    
+    "dev-k8s": "set NODE_ENV=development-k8s && nodemon",
     "prod": "set NODE_ENV=production&& node build/server.js",
     "test": "set NODE_ENV=test&& jest --watchAll --runInBand --detectOpenHandles"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@rozaeyni/common": "^1.0.28",
+    "@rozaeyni/common": "^1.0.29",
     "@rozaeyni/common-types": "^1.0.1",
     "bcryptjs": "^2.4.3",
     "cookie-parser": "^1.4.6",
