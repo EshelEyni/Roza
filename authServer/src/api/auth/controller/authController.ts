@@ -18,9 +18,9 @@ const loginWithToken = asyncErrorCatcher(async (req: Request, res: Response) => 
     });
   };
   try {
-    const { loginToken } = req.cookies;
-    if (!loginToken) throw new AppError("You are not logged in", 401);
-    const { user, token } = await authService.loginWithToken(loginToken);
+    const { rozaJwt } = req.cookies;
+    if (!rozaJwt) throw new AppError("You are not logged in", 401);
+    const { user, token } = await authService.loginWithToken(rozaJwt);
     _sendUserTokenSuccessResponse(res, token, user);
   } catch (err) {
     const isProdEnv = process.env.NODE_ENV === "production";
@@ -38,7 +38,7 @@ const signup = asyncErrorCatcher(async (req: Request, res: Response) => {
 });
 
 const logout = asyncErrorCatcher(async (req: Request, res: Response) => {
-  res.clearCookie("loginToken");
+  res.clearCookie("rozaJwt");
   res.send({
     status: "success",
     data: {
@@ -93,10 +93,12 @@ const resetPassword = asyncErrorCatcher(async (req: Request, res: Response) => {
 
 const _sendUserTokenSuccessResponse = (res: Response, token: string, user: User, status = 200) => {
   const NINETY_DAYS = 90 * 24 * 60 * 60 * 1000;
-  res.cookie("loginToken", token, {
+  const isProd = process.env.NODE_ENV === "production";
+
+  res.cookie("rozaJwt", token, {
     expires: new Date(Date.now() + NINETY_DAYS),
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    secure: isProd,
   });
 
   res.status(status).send({

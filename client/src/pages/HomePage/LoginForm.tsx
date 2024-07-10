@@ -10,7 +10,12 @@ export const LoginForm: FC = () => {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginCredentials>();
+  } = useForm<LoginCredentials>({
+    defaultValues: {
+      username: "",
+      password: "",
+    },
+  });
 
   const onSubmit: SubmitHandler<LoginCredentials> = data => {
     login(data);

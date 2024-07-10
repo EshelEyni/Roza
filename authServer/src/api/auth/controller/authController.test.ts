@@ -51,7 +51,7 @@ describe("auth Controller", () => {
   const next: jest.Mock = jest.fn();
 
   function assertUserTokenSuccesRes() {
-    expect(res.cookie).toHaveBeenCalledWith("loginToken", mockToken, {
+    expect(res.cookie).toHaveBeenCalledWith("rozaJwt", mockToken, {
       httpOnly: true,
       expires: expect.any(Date),
       secure: false,
@@ -132,7 +132,7 @@ describe("auth Controller", () => {
     });
 
     it("should send a succesfull response with the user if a valid token is provided", async () => {
-      req.cookies = { loginToken: mockToken };
+      req.cookies = { rozaJwt: mockToken };
       (authService.loginWithToken as jest.Mock).mockResolvedValue({
         user: mockUser,
         token: mockToken,
@@ -167,7 +167,7 @@ describe("auth Controller", () => {
 
     it("should return a succesfull response with no user if an error occurs in production environment", async () => {
       process.env.NODE_ENV = "production";
-      req.cookies = { loginToken: mockToken };
+      req.cookies = { rozaJwt: mockToken };
       (authService.loginWithToken as jest.Mock).mockRejectedValue(new Error("error"));
 
       const sut = loginWithToken as any;
@@ -184,7 +184,7 @@ describe("auth Controller", () => {
 
     it("should return an error failed response if an error occurs in development environment", async () => {
       process.env.NODE_ENV = "development";
-      req.cookies = { loginToken: mockToken };
+      req.cookies = { rozaJwt: mockToken };
       (authService.loginWithToken as jest.Mock).mockImplementationOnce(() => {
         throw new AppError("error", 400);
       });
@@ -254,7 +254,7 @@ describe("auth Controller", () => {
     it("should clear loginToken cookie and send a successful response", async () => {
       const sut = logout as any;
       await sut(req as Request, res as Response, next);
-      expect(res.clearCookie).toHaveBeenCalledWith("loginToken");
+      expect(res.clearCookie).toHaveBeenCalledWith("rozaJwt");
       expect(res.send).toHaveBeenCalledWith(
         expect.objectContaining({
           status: "success",

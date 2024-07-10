@@ -49,7 +49,7 @@ describe("auth Router", () => {
       birthdate: new Date("1990-01-01"),
     });
     token = getLoginTokenStrForTest(createdUser.id);
-    cleanToken = token.replace("loginToken=", "");
+    cleanToken = token.replace("rozaJwt=", "");
 
     if (!createResetToken) return;
     resetToken = createdUser.createPasswordResetToken();
@@ -90,7 +90,7 @@ describe("auth Router", () => {
       process.env.NODE_ENV = "production";
       const response = await request(app)
         .post("/login/with-token")
-        .set("Cookie", ["loginToken=invalid-token"]);
+        .set("Cookie", ["rozaJwt=invalid-token"]);
       expect(response.status).toBe(200);
       expect(response.body).toEqual({
         status: "success",
@@ -102,7 +102,7 @@ describe("auth Router", () => {
     it("should send a a 400 error if an invalid token is provided in test or development evnironment", async () => {
       const response = await request(app)
         .post("/login/with-token")
-        .set("Cookie", ["loginToken=invalid-token"]);
+        .set("Cookie", ["rozaJwt=invalid-token"]);
       expect(response.body.status).toBe("fail");
       expect(response.body.message).toBe("Invalid token");
     });
@@ -248,7 +248,7 @@ describe("auth Router", () => {
         },
       });
       expect(response.get("Set-Cookie")).toEqual([
-        "loginToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+        "rozaJwt=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT",
       ]);
     });
   });
