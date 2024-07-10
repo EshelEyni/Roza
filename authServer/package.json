@@ -5,6 +5,7 @@
   "main": "index.ts",
   "scripts": {
     "dev": "set NODE_ENV=development&& nodemon",
+    "dev-k8s": "set NODE_ENV=development-k8s && nodemon",    
     "prod": "set NODE_ENV=production&& node build/server.js",
     "test": "set NODE_ENV=test&& jest --watchAll --runInBand --detectOpenHandles"
   },

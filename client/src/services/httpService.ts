@@ -1,14 +1,22 @@
 import axios, { Method } from "axios";
 const isProd = process.env.NODE_ENV === "production";
 
-const BASE_URL = isProd ? "/api/" : "http://roza.dev/api/";
+type HTTPParams = {
+  endpoint: string;
+  method?: Method;
+  data?: object | null;
+  port?: number;
+};
 
-async function ajax(
-  endpoint: string,
-  method: Method = "GET",
-  data: object | null = null,
-) {
+async function ajax({
+  endpoint,
+  method = "GET",
+  data = null,
+  port,
+}: HTTPParams) {
   try {
+    const BASE_URL = getBaseUrl(port);
+
     const res = await axios({
       url: `${BASE_URL}${endpoint}`,
       method,
@@ -31,20 +39,61 @@ async function ajax(
   }
 }
 
+function getBaseUrl(port?: number) {
+  const env = process.env.NODE_ENV;
+
+  switch (env) {
+    case "production":
+      return "/api/";
+    case "development-k8s":
+      return "http://roza.dev/api/";
+    case "development":
+      if (!port) throw new Error("Port is required in development mode");
+      return `http://localhost:${port || 3000}/api/`;
+    default:
+      throw new Error("NODE_ENV is not set");
+  }
+}
+
 export default {
-  get(endpoint: string, data?: object) {
-    return ajax(endpoint, "GET", data);
+  get({ port, endpoint, data }: HTTPParams) {
+    return ajax({
+      port,
+      endpoint,
+      method: "GET",
+      data,
+    });
   },
-  post(endpoint: string, data?: object) {
-    return ajax(endpoint, "POST", data);
+  post({ port, endpoint, data }: HTTPParams) {
+    return ajax({
+      port,
+      endpoint,
+      method: "POST",
+      data,
+    });
   },
-  put(endpoint: string, data?: object) {
-    return ajax(endpoint, "PUT", data);
+  put({ port, endpoint, data }: HTTPParams) {
+    return ajax({
+      port,
+      endpoint,
+      method: "PUT",
+      data,
+    });
   },
-  patch(endpoint: string, data?: object) {
-    return ajax(endpoint, "PATCH", data);
+  patch({ port, endpoint, data }: HTTPParams) {
+    return ajax({
+      port,
+      endpoint,
+      method: "PATCH",
+      data,
+    });
   },
-  delete(endpoint: string, data?: object) {
-    return ajax(endpoint, "DELETE", data);
+  delete({ port, endpoint, data }: HTTPParams) {
+    return ajax({
+      port,
+      endpoint,
+      method: "DELETE",
+      data,
+    });
   },
 };
