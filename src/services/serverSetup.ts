@@ -5,7 +5,13 @@ import { Express } from "express";
 import { AppError } from "./error/errorService";
 import { logger } from "./logger/loggerService";
 
-export const startServer = (app: Express, port: number) => {
+type StartServerParams = {
+  name: string;
+  port: number;
+  app: Express;
+};
+
+export const startServer = ({ name, port, app }: StartServerParams) => {
   const { DB_URL, NODE_ENV, PROD_DB_NAME, DEV_DB_NAME, TEST_DB_NAME } =
     process.env;
 
@@ -23,7 +29,7 @@ export const startServer = (app: Express, port: number) => {
     });
 
   const server = app.listen(port, () => {
-    logger.info(`Server is running on port: ${port}`);
+    logger.info(`${name} server is running on port: ${port}`);
   });
 
   process.on("uncaughtException", (err: Error) => {
