@@ -117,11 +117,11 @@
   },
   "DataBookItemDetails": {
     "pageTitle": {
-      "chapters": "פרטי פרק",
-      "characters": "פרטי דמות",
-      "themes": "פרטי נושא",
-      "plotlines": "פרטי קו עלילה",
-      "notes": "פרטי הערה"
+      "chapters": "פרק",
+      "characters": "דמות",
+      "themes": "נושא",
+      "plotlines": "קו עלילה",
+      "notes": "הערה"
     },
     "noteTitle": "מספר ההערה",
     "btnEdit": "ערוך"
@@ -139,5 +139,6 @@
   },
   "btnEdit": "עריכה",
   "btnDelete": "מחיקה",
-  "btnSave": "שמירה"
+  "btnSave": "שמירה",
+  "book": "ספר"
 }

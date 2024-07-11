@@ -123,11 +123,11 @@
   },
   "DataBookItemDetails": {
     "pageTitle": {
-      "chapters": "Chapter Details",
-      "characters": "Character Details",
-      "themes": "Theme Details",
-      "plotlines": "Plotline Details",
-      "notes": "Note Details"
+      "chapters": "Chapter",
+      "characters": "Character",
+      "themes": "Theme",
+      "plotlines": "Plotline",
+      "notes": "Note"
     },
     "noteTitle": "Note Number",
     "btnEdit": "Edit"
@@ -145,5 +145,6 @@
   },
   "btnEdit": "Edit",
   "btnDelete": "Delete",
-  "btnSave": "Save"
+  "btnSave": "Save",
+  "book": "Book"
 }

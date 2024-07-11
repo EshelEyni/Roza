@@ -11,7 +11,12 @@ import {
 export function useGetTitleTextBookItem() {
   const { t } = useTranslation();
 
-  function getTitle(dataItem: BookDataItem, type: string) {
+  function getTitle(
+    dataItem: BookDataItem | null | undefined,
+    type: string | null | undefined,
+  ): string {
+    if (!type || !dataItem) return "";
+
     const name = t(`useGetTitleTextBookItem.name.${type}`);
 
     switch (type) {
@@ -25,10 +30,16 @@ export function useGetTitleTextBookItem() {
         return (dataItem as Plotline).name || name;
       case "notes":
         return `${t("BookDataPreview.noteTitlePrefix")} ${dataItem.sortOrder}`;
+      default:
+        return "";
     }
   }
 
-  function getText(dataItem: BookDataItem, type: string) {
+  function getText(
+    dataItem: BookDataItem | null | undefined,
+    type: string | null | undefined,
+  ): string {
+    if (!type || !dataItem) return "";
     const { description, text } = {
       description: t("useGetTitleTextBookItem.description"),
       text: t("useGetTitleTextBookItem.text"),
@@ -45,6 +56,8 @@ export function useGetTitleTextBookItem() {
         return (dataItem as Plotline).description || description;
       case "notes":
         return (dataItem as Note).text || text;
+      default:
+        return "";
     }
   }
   return { getTitle, getText };

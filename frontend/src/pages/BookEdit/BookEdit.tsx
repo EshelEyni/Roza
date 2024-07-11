@@ -22,7 +22,7 @@ const BookEdit: FC = () => {
     isDataItemDetailsShowing,
     bookDataItemTypes,
   } = useBook();
-  console.log(book);
+
   return (
     <Main>
       <PageContent>

@@ -28,7 +28,7 @@ export const ErrorFallBack: FC<ErrorFallBackProps> = ({
           </div>
         )}
 
-        <div className="mt-6 flex justify-center space-x-4">
+        <div className="mt-6 flex justify-center gap-4 space-x-4">
           <button
             onClick={() => window.location.reload()}
             className="rounded bg-gray-800 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-gray-300"
