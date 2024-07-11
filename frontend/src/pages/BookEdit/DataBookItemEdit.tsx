@@ -9,25 +9,25 @@ import { Button } from "../../components/Button";
 import { isChapterType } from "../../../../shared/services/utilService";
 
 export const DataBookItemEdit: FC = () => {
-  const { book, dataItem, dataItemId } = useBook();
+  const { book, dataItemType, dataItemId } = useBook();
   const { getTitle, getText } = useGetTitleTextBookItem();
   const { t } = useTranslation();
   const navigate = useNavigate();
 
   function navigateToEdit() {
     if (!book) return;
-    navigate(`/book-edit/${book.id}/${dataItem}/${dataItemId}`);
+    navigate(`/book-edit/${book.id}/${dataItemType}/${dataItemId}`);
   }
 
-  if (!book || !dataItem || !dataItemId) return null;
+  if (!book || !dataItemType || !dataItemId) return null;
 
-  const item = (book[dataItem as keyof Book] as BookDataItem[]).find(
+  const item = (book[dataItemType as keyof Book] as BookDataItem[]).find(
     i => i.id === dataItemId,
   );
   if (!item) return null;
-  const pageTitle = t(`DataBookItemDetails.pageTitle.${dataItem}`);
-  const itemTitle = getTitle(item, dataItem);
-  const text = getText(item, dataItem);
+  const pageTitle = t(`DataBookItemDetails.pageTitle.${dataItemType}`);
+  const itemTitle = getTitle(item, dataItemType);
+  const text = getText(item, dataItemType);
   const chatperText = (item as Chapter).text;
 
   return (

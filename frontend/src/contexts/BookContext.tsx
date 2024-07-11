@@ -12,7 +12,7 @@ import {
 
 type BookContextType = UseLoginWithTokenResult &
   UseGetBookResult & {
-    dataItem?: string;
+    dataItemType?: string;
     dataItemId?: string;
     filterBy: BooKDataItemType;
     isDetailsBookShowing: boolean;
@@ -22,7 +22,7 @@ type BookContextType = UseLoginWithTokenResult &
 
 type BookDetailsParams = {
   id: string;
-  dataItem?: string;
+  dataItemType?: string;
   dataItemId?: string;
 };
 
@@ -35,7 +35,7 @@ const BooksContext = createContext<BookContextType | undefined>(undefined);
 function BookProvider({ children }: BookProviderProps) {
   const params = useParams<BookDetailsParams>();
 
-  const { id, dataItem, dataItemId } = params;
+  const { id, dataItemType, dataItemId } = params;
 
   const { book, errorBook, isErrorBook, isLoadingBook, isSuccessBook } =
     useGetBook(id);
@@ -61,13 +61,13 @@ function BookProvider({ children }: BookProviderProps) {
 
   const filterBy = book?.filterBy || "chapters";
   const isDetailsBookShowing =
-    isSuccessBook && !!book && !dataItem && !dataItemId;
+    isSuccessBook && !!book && !dataItemType && !dataItemId;
   const isDataItemDetailsShowing =
     isSuccessBook &&
     !!book &&
-    !!dataItem &&
+    !!dataItemType &&
     !!dataItemId &&
-    !!(book[dataItem as keyof Book] as BookDataItem[]).find(
+    !!(book[dataItemType as keyof Book] as BookDataItem[]).find(
       i => i.id === dataItemId,
     );
 
@@ -83,7 +83,7 @@ function BookProvider({ children }: BookProviderProps) {
     isLoadingBook,
     isSuccessBook,
     isErrorBook,
-    dataItem,
+    dataItemType,
     dataItemId,
     filterBy,
     isDetailsBookShowing,
