@@ -4,19 +4,19 @@ import express from "express";
 import helmet from "helmet";
 import compression from "compression";
 import ExpressMongoSanitize from "express-mongo-sanitize";
-import requestSanitizer from "../../middlewares/HTMLSanitizer/HTMLSanitizerMiddleware";
+import requestSanitizer from "./middlewares/HTMLSanitizer/HTMLSanitizerMiddleware";
 import hpp from "hpp";
 import path from "path";
 import cookieParser from "cookie-parser";
 import cors from "cors";
-import { requestLogger } from "../../middlewares/logger/loggerMiddleware";
-import { AppError, errorHandler } from "../../services/error/errorService";
-import setupAsyncLocalStorage from "../../middlewares/setupALS/setupALSMiddleware";
-import userRouter from "../../routers/user/userRouter";
-import authRouter from "../../routers/auth/authRouter";
-import bookRouter from "../../routers/book/bookRouter";
-import reviewRouter from "../../routers/review/reviewRouter";
-import { requestLimiter } from "../../services/rateLimiterService";
+import { requestLogger } from "./middlewares/logger/loggerMiddleware";
+import { AppError, errorHandler } from "./services/error/errorService";
+import setupAsyncLocalStorage from "./middlewares/setupALS/setupALSMiddleware";
+import userRouter from "./routers/user/userRouter";
+import authRouter from "./routers/auth/authRouter";
+import bookRouter from "./routers/book/bookRouter";
+import reviewRouter from "./routers/review/reviewRouter";
+import { requestLimiter } from "./services/rateLimiterService";
 
 const isProdEnv = process.env.NODE_ENV === "production";
 

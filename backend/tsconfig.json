@@ -16,10 +16,10 @@
     "composite": true,
     "baseUrl": ".",
     "paths": {
-      "*": ["src/*", "../shared/*"]
+      "*": ["src/*"]
     }
   },
-  "include": ["src/**/*.ts", "../shared/**/*.ts"],
+  "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "**/*.test.ts"],
   "lib": ["esnext"],
   "references": [{ "path": "../shared/tsconfig.json" }]

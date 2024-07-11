@@ -5,5 +5,5 @@
   "env": {
     "NODE_ENV": "development"
   },
-  "exec": "npx ts-node --transpile-only src/servers/main/server.ts"
+  "exec": "npx ts-node --transpile-only src/server.ts"
 }
