@@ -36,10 +36,7 @@ export const DataBookItemDetails: FC = () => {
             {t("DataBookItemDetails.btnEdit")}
           </Button>
           <Modal>
-            <Modal.OpenBtn
-              className="rounded-md bg-app-500 px-4 py-1 text-white hover:bg-app-600"
-              modalName="deleteBookDataItem"
-            >
+            <Modal.OpenBtn modalName="deleteBookDataItem">
               <button>{t("BookDataPreview.btnDelete")}</button>
             </Modal.OpenBtn>
 
@@ -56,10 +53,7 @@ export const DataBookItemDetails: FC = () => {
                 <Modal.CloseBtn className="rounded-md bg-app-500 px-3 py-1 text-white hover:bg-app-600">
                   <div>{t("BookDataPreview.btnCancel")}</div>
                 </Modal.CloseBtn>
-                <Button
-                  onClickFn={onDeleteItem}
-                  className="rounded-md bg-app-500 px-3 py-1 text-white hover:bg-app-600"
-                >
+                <Button onClickFn={onDeleteItem}>
                   {t("BookDataPreview.btnDelete")}
                 </Button>
               </div>

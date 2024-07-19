@@ -14,6 +14,7 @@ import { useGetTitleTextBookItem } from "../hooks/useGetTitleTextBookItem";
 import { useTranslation } from "react-i18next";
 import { isChapterType } from "../../../shared/services/utilService";
 import { useUpdateBook } from "../hooks/reactQuery/update/useUpdateBook";
+import { markItemAsDeleted, updateBookData } from "../services/bookUtilService";
 
 type BookContextType = UseLoginWithTokenResult &
   UseGetBookResult & {
@@ -30,6 +31,7 @@ type BookContextType = UseLoginWithTokenResult &
     chatperText: string;
     onNavigateToEdit: () => void;
     onDeleteItem: () => void;
+    onUpdateItem: (newItem: BookDataItem) => void;
   };
 
 type BookDetailsParams = {
@@ -102,38 +104,30 @@ function BookProvider({ children }: BookProviderProps) {
     navigate(url);
   }
 
+  function onUpdateItem(newItem: BookDataItem) {
+    if (!book || !dataItemType || !dataItemId || !item) return;
+
+    const updatedBook = updateBookData({
+      book,
+      dataItemType: dataItemType as BooKDataItemType,
+
+      newItem,
+    });
+
+    updateBook(updatedBook);
+  }
+
   function onDeleteItem() {
     if (!book || !dataItemType || !dataItemId || !item) return;
-    function updateDeletedStatus<T extends { id: string }>(
-      items: T[],
-      id: string,
-    ): T[] {
-      return items.map(item =>
-        item.id === id ? { ...item, isDeleted: true } : item,
-      );
-    }
 
-    const newBook = { ...book };
+    const updatedBook = markItemAsDeleted({
+      book,
+      dataItemType: dataItemType as BooKDataItemType,
+      dataItemId,
+    });
 
-    switch (dataItemType) {
-      case "chapters":
-        newBook.chapters = updateDeletedStatus(newBook.chapters, item.id);
-        break;
-      case "characters":
-        newBook.characters = updateDeletedStatus(newBook.characters, item.id);
-        break;
-      case "themes":
-        newBook.themes = updateDeletedStatus(newBook.themes, item.id);
-        break;
-      case "plotlines":
-        newBook.plotlines = updateDeletedStatus(newBook.plotlines, item.id);
-        break;
-      case "notes":
-        newBook.notes = updateDeletedStatus(newBook.notes, item.id);
-        break;
-    }
-
-    updateBook(newBook);
+    updateBook(updatedBook);
+    navigate(`/book/${book.id}`);
   }
 
   useEffect(() => {
@@ -175,6 +169,7 @@ function BookProvider({ children }: BookProviderProps) {
     chatperText,
     onNavigateToEdit,
     onDeleteItem,
+    onUpdateItem,
   };
 
   return (

@@ -1,4 +1,4 @@
-import { Document, Schema } from "mongoose";
+import { Schema } from "mongoose";
 import { ITheme } from "../../../types/iTypes";
 
 const themeSchema = new Schema<ITheme>(
@@ -33,17 +33,9 @@ const themeSchema = new Schema<ITheme>(
   {
     toObject: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     toJSON: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     timestamps: true,
   },

@@ -1,4 +1,4 @@
-import { Document, Schema } from "mongoose";
+import { Schema } from "mongoose";
 import { IReview } from "../../../types/iTypes";
 
 const reviewSchema = new Schema<IReview>(
@@ -12,17 +12,9 @@ const reviewSchema = new Schema<IReview>(
   {
     toObject: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     toJSON: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     timestamps: true,
   },

@@ -1,4 +1,4 @@
-import { Document, Schema } from "mongoose";
+import { Schema } from "mongoose";
 import { INote } from "../../../types/iTypes";
 
 const noteSchema = new Schema<INote>(
@@ -28,17 +28,9 @@ const noteSchema = new Schema<INote>(
   {
     toObject: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     toJSON: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     timestamps: true,
   },

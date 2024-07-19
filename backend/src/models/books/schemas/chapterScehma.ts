@@ -1,4 +1,4 @@
-import { Document, Schema } from "mongoose";
+import { Schema } from "mongoose";
 import { IChapter } from "../../../types/iTypes";
 
 const chapterSchema = new Schema<IChapter>(
@@ -37,17 +37,9 @@ const chapterSchema = new Schema<IChapter>(
   {
     toObject: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     toJSON: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     timestamps: true,
   },

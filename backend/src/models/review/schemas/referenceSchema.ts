@@ -1,10 +1,10 @@
-import { Document, Schema } from "mongoose";
+import { Schema } from "mongoose";
 import { IReference } from "./../../../types/iTypes";
 
 const referenceSchema = new Schema<IReference>(
   {
     page: {
-      type: Number,
+      type: String,
     },
     text: {
       type: String,
@@ -17,17 +17,9 @@ const referenceSchema = new Schema<IReference>(
   {
     toObject: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     toJSON: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     timestamps: true,
   },

@@ -12,6 +12,9 @@ export function useUpdateBook(dataItemType?: BooKDataItemType) {
       queryClient.invalidateQueries({
         queryKey: ["book", data.id],
       });
+      queryClient.invalidateQueries({
+        queryKey: ["books"],
+      });
       if (!dataItemType) return;
       const dataItemId = data[dataItemType][data[dataItemType].length - 1].id;
       navigate(`/book-edit/${data.id}/${dataItemType}/${dataItemId}`);

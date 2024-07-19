@@ -92,7 +92,7 @@ export interface IReview extends Document {
 }
 
 export interface IReference extends Document {
-  page: number;
+  page: string;
   text: string;
   imgUrls: string[];
   createdAt: Date | string | number | null;

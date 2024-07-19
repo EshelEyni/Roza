@@ -1,4 +1,4 @@
-import { Document, Schema } from "mongoose";
+import { Schema } from "mongoose";
 import { ICharacter } from "../../../types/iTypes";
 
 const characterSchema = new Schema<ICharacter>(
@@ -33,17 +33,9 @@ const characterSchema = new Schema<ICharacter>(
   {
     toObject: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     toJSON: {
       virtuals: true,
-      transform: (_: Document, ret: Record<string, unknown>) => {
-        delete ret._id;
-        return ret;
-      },
     },
     timestamps: true,
   },

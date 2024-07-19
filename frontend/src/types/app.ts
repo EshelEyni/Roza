@@ -1,6 +1,13 @@
 import { FC, LazyExoticComponent, ReactElement, ReactNode } from "react";
-import { Book, BookReview } from "../../../shared/types/books";
+import {
+  Book,
+  BookReview,
+  CustomElement,
+  CustomText,
+} from "../../../shared/types/books";
 import { User } from "../../../shared/types/user";
+import { BaseEditor } from "slate";
+import { ReactEditor } from "slate-react";
 
 type RouteProvider = ({
   children,
@@ -72,4 +79,43 @@ export type UseGetBookResult = {
   isLoadingBook: boolean;
   isSuccessBook: boolean;
   isErrorBook: boolean;
+};
+
+export type SlateEditor = BaseEditor & ReactEditor;
+
+declare module "slate" {
+  interface CustomTypes {
+    Editor: SlateEditor;
+    Element: CustomElement;
+    Text: CustomText;
+  }
+}
+
+export type MarkFormat = "bold" | "italic" | "underline";
+
+export type BlockFormat =
+  | "heading-one"
+  | "heading-two"
+  | "block-quote"
+  | "numbered-list"
+  | "bulleted-list"
+  | "left"
+  | "center"
+  | "right"
+  | "justify";
+
+export type SlateEditorFormat = MarkFormat | BlockFormat;
+
+export type TextEditorButton = MarkButton | BlockButton;
+
+export type MarkButton = {
+  format: MarkFormat;
+  icon: JSX.Element;
+  type: "mark";
+};
+
+export type BlockButton = {
+  format: BlockFormat;
+  icon: JSX.Element;
+  type: "block";
 };

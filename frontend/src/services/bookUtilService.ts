@@ -105,4 +105,53 @@ function getDefaultNote(bookId: string): Note {
   };
 }
 
-export { getDefaultBook, getDefaultBookDataItem };
+const bookDataMapping: { [key in BooKDataItemType]: keyof Book } = {
+  chapters: "chapters",
+  characters: "characters",
+  themes: "themes",
+  plotlines: "plotlines",
+  notes: "notes",
+};
+
+function updateBookData<T extends BookDataItem>({
+  book,
+  dataItemType,
+  newItem,
+}: {
+  book: Book;
+  dataItemType: BooKDataItemType;
+  newItem: T;
+}): Book {
+  const key = bookDataMapping[dataItemType];
+  return {
+    ...book,
+    [key]: (book[key] as T[]).map(item =>
+      item.id === newItem.id ? newItem : item,
+    ),
+  };
+}
+
+function markItemAsDeleted({
+  book,
+  dataItemType,
+  dataItemId,
+}: {
+  book: Book;
+  dataItemType: BooKDataItemType;
+  dataItemId: string;
+}): Book {
+  const key = bookDataMapping[dataItemType];
+  return {
+    ...book,
+    [key]: (book[key] as BookDataItem[]).map(item =>
+      item.id === dataItemId ? { ...item, isDeleted: true } : item,
+    ),
+  };
+}
+
+export {
+  getDefaultBook,
+  getDefaultBookDataItem,
+  updateBookData,
+  markItemAsDeleted,
+};

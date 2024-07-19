@@ -39,11 +39,8 @@ export const BookTitle: FC<BookTitleProps> = ({ isBookEdit = false }) => {
       ) : (
         <div className="flex w-full items-center justify-between gap-4">
           <h1 className="mb-4 text-4xl font-bold text-app-800">{book.name}</h1>
-          <Button
-            className="rounded-md bg-app-500 px-4 py-2 text-white hover:bg-app-600"
-            onClickFn={onNavigateToEdit}
-          >
-            <button>{t("btnEdit")}</button>
+          <Button onClickFn={onNavigateToEdit}>
+            <span>{t("btnEdit")}</span>
           </Button>
         </div>
       )}

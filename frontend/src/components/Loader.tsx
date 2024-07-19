@@ -8,7 +8,7 @@ type LoaderProps = {
 
 export const Loader: FC<LoaderProps> = ({
   isPageLoader = false,
-  className = "w-96 h-96 flex items-center justify-center",
+  className = "w-96 h-96 flex items-center justify-center mt-24",
 }) => {
   if (isPageLoader)
     return (

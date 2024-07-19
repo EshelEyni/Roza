@@ -85,9 +85,7 @@ const HomePage: FC = () => {
 
   return (
     <Main>
-      {isLoadingLoggedInUser && (
-        <Loader className="absolute left-1/2 top-1/2 flex h-96 w-96 -translate-x-1/2 -translate-y-1/2 transform items-center justify-center" />
-      )}
+      {isLoadingLoggedInUser && <Loader />}
       {!loggedInUser && !isLoadingLoggedInUser && (
         <section className="mt-12 flex h-full flex-col items-center md:min-w-96">
           {openedForm === "login" && <LoginForm />}
