@@ -1,9 +1,9 @@
 import { FC } from "react";
 import { RenderElementProps } from "slate-react";
-import { CustomElement } from "../../../../shared/types/books";
+import { SlateCustomElement } from "../../../../shared/types/books";
 
 interface ElementProps extends RenderElementProps {
-  element: CustomElement;
+  element: SlateCustomElement;
 }
 
 export const TextElement: FC<ElementProps> = ({

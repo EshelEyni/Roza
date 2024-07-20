@@ -146,5 +146,7 @@
   "btnEdit": "Edit",
   "btnDelete": "Delete",
   "btnSave": "Save",
-  "book": "Book"
+  "book": "Book",
+  "description": "Description",
+  "text": "Text"
 }

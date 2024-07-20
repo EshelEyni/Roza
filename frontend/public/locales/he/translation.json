@@ -140,5 +140,7 @@
   "btnEdit": "עריכה",
   "btnDelete": "מחיקה",
   "btnSave": "שמירה",
-  "book": "ספר"
+  "book": "ספר",
+  "description": "תיאור",
+  "text": "טקסט"
 }

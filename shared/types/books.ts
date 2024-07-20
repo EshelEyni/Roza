@@ -82,13 +82,13 @@ export type BooKDataItemType =
   | "plotlines"
   | "notes";
 
-export type CustomElement = {
+export type SlateCustomElement = {
   type: string;
-  children: CustomText[];
+  children: SlateCustomText[];
   align?: "left" | "center" | "right" | "justify";
 };
 
-export type CustomText = {
+export type SlateCustomText = {
   text: string;
   bold?: boolean;
   italic?: boolean;

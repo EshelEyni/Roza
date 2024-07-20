@@ -2,8 +2,8 @@ import { FC, LazyExoticComponent, ReactElement, ReactNode } from "react";
 import {
   Book,
   BookReview,
-  CustomElement,
-  CustomText,
+  SlateCustomElement,
+  SlateCustomText,
 } from "../../../shared/types/books";
 import { User } from "../../../shared/types/user";
 import { BaseEditor } from "slate";
@@ -86,8 +86,8 @@ export type SlateEditor = BaseEditor & ReactEditor;
 declare module "slate" {
   interface CustomTypes {
     Editor: SlateEditor;
-    Element: CustomElement;
-    Text: CustomText;
+    Element: SlateCustomElement;
+    Text: SlateCustomText;
   }
 }
 

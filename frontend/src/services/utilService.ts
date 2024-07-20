@@ -1,3 +1,4 @@
+import { SlateCustomElement } from "../../../shared/types/books";
 import {
   AnyFunction,
   JsendResponse,
@@ -185,6 +186,10 @@ function getLanguages() {
   return languages;
 }
 
+function getDefaultSlateElement(text = ""): SlateCustomElement[] {
+  return [{ type: "paragraph", children: [{ text }] }];
+}
+
 export {
   getCleanTime,
   formatDateToRelativeTime,
@@ -199,4 +204,5 @@ export {
   formatDateByLang,
   formatLang,
   getLanguages,
+  getDefaultSlateElement,
 };

@@ -10,12 +10,27 @@ import { debounce } from "../../services/utilService";
 import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
 import { SlateEditor } from "../../components/SlateTextEditor/TextEditor";
 import { Book } from "../../../../shared/types/books";
+import { useTranslation } from "react-i18next";
 
 export const DataBookItemEdit: FC = () => {
-  const { book, dataItemType, dataItemId, item, itemTitle, text, chatperText } =
-    useBook();
-
+  const {
+    book,
+    dataItemType,
+    dataItemId,
+    item,
+    itemTitle,
+    textEl,
+    chatperTextEl,
+  } = useBook();
   const { updateBook } = useUpdateBook();
+  const { t } = useTranslation();
+  const { description, text } = {
+    description: t("description"),
+    text: t("text"),
+  };
+
+  const firstEditorTitle =
+    (item && (isNoteType(item) ? text : description)) || "";
 
   function handleNameInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     if (!book || !dataItemType || !dataItemId || !item) return;
@@ -83,6 +98,29 @@ export const DataBookItemEdit: FC = () => {
     updateBook(newBook);
   }
 
+  function handleTextChange(text: string) {
+    if (!book || !dataItemType || !dataItemId || !item) return;
+
+    const field = isNoteType(item) ? "text" : "description";
+
+    handleDataItemFieldUpdate({
+      dataItemType: dataItemType as keyof Book,
+      dataItemId,
+      field,
+      value: JSON.stringify(text),
+    });
+  }
+
+  function handleChapterTextChange(text: string) {
+    if (!book || !dataItemType || !dataItemId || !item) return;
+    handleDataItemFieldUpdate({
+      dataItemType: dataItemType as keyof Book,
+      dataItemId,
+      field: "text",
+      value: JSON.stringify(text),
+    });
+  }
+
   if (!book || !dataItemType || !dataItemId || !item) return null;
 
   return (
@@ -104,24 +142,25 @@ export const DataBookItemEdit: FC = () => {
         )}
       </div>
       <Hr />
+      <h2 className="self-start text-2xl font-bold text-app-800">
+        {firstEditorTitle}
+      </h2>
       <SlateEditor
-        defaultValue={[
-          {
-            type: "paragraph",
-            children: [{ text: text }],
-          },
-        ]}
-        onChange={newValue => {
-          console.log("newValue", newValue);
-        }}
+        defaultValue={textEl}
+        onChange={debounce(value => handleTextChange(value), 500).debouncedFunc}
       />
 
       {isChapterType(item) && (
         <>
           <Hr />
-          <p className="w-full text-lg font-normal text-app-800">
-            {chatperText}
-          </p>
+          <h2 className="self-start text-2xl font-bold text-app-800">{text}</h2>
+          <SlateEditor
+            defaultValue={chatperTextEl}
+            onChange={
+              debounce(value => handleChapterTextChange(value), 500)
+                .debouncedFunc
+            }
+          />
         </>
       )}
     </div>

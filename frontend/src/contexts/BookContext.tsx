@@ -8,11 +8,10 @@ import {
   Book,
   BookDataItem,
   BooKDataItemType,
-  Chapter,
+  SlateCustomElement,
 } from "../../../shared/types/books";
 import { useGetTitleTextBookItem } from "../hooks/useGetTitleTextBookItem";
 import { useTranslation } from "react-i18next";
-import { isChapterType } from "../../../shared/services/utilService";
 import { useUpdateBook } from "../hooks/reactQuery/update/useUpdateBook";
 import { markItemAsDeleted, updateBookData } from "../services/bookUtilService";
 
@@ -29,6 +28,8 @@ type BookContextType = UseLoginWithTokenResult &
     itemTitle: string;
     text: string;
     chatperText: string;
+    textEl: SlateCustomElement[];
+    chatperTextEl: SlateCustomElement[];
     onNavigateToEdit: () => void;
     onDeleteItem: () => void;
     onUpdateItem: (newItem: BookDataItem) => void;
@@ -83,14 +84,16 @@ function BookProvider({ children }: BookProviderProps) {
     !!(book[dataItemType as keyof Book] as BookDataItem[]).find(
       i => i.id === dataItemId,
     );
-  const { getTitle, getText } = useGetTitleTextBookItem();
+  const { getTitle, getText, getChapterText, getChapterTextEl, getTextEl } =
+    useGetTitleTextBookItem();
   const { t } = useTranslation();
 
   const pageTitle = t(`DataBookItemDetails.pageTitle.${dataItemType}`);
   const itemTitle = getTitle(item, dataItemType);
   const text = getText(item, dataItemType);
-  const chatperText =
-    item && isChapterType(item) ? (item as Chapter)?.text : "";
+  const chatperText = getChapterText(item);
+  const textEl = getTextEl(item, dataItemType);
+  const chatperTextEl = getChapterTextEl(item);
 
   const { updateBook } = useUpdateBook();
   const navigate = useNavigate();
@@ -167,6 +170,8 @@ function BookProvider({ children }: BookProviderProps) {
     itemTitle,
     text,
     chatperText,
+    textEl,
+    chatperTextEl,
     onNavigateToEdit,
     onDeleteItem,
     onUpdateItem,
