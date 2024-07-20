@@ -5,13 +5,14 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../Button";
 import { debounce } from "../../services/utilService";
 import { GoBackBtn } from "../GoBackBtn";
+import { Modal } from "../Modal";
 
 type BookTitleProps = {
   isBookEdit?: boolean;
 };
 
 export const BookTitle: FC<BookTitleProps> = ({ isBookEdit = false }) => {
-  const { book, isSuccessBook, onNavigateToEdit } = useBook();
+  const { book, isSuccessBook, onNavigateToEdit, onArchiveBook } = useBook();
   const { updateBook } = useUpdateBook();
   const { t } = useTranslation();
 
@@ -39,9 +40,38 @@ export const BookTitle: FC<BookTitleProps> = ({ isBookEdit = false }) => {
       ) : (
         <div className="flex w-full items-center justify-between gap-4">
           <h1 className="mb-4 text-4xl font-bold text-app-800">{book.name}</h1>
-          <Button onClickFn={onNavigateToEdit}>
-            <span>{t("btnEdit")}</span>
-          </Button>
+
+          <div className="flex items-center justify-between gap-2">
+            <Button onClickFn={onNavigateToEdit}>
+              <span>{t("btnEdit")}</span>
+            </Button>
+
+            <Modal>
+              <Modal.OpenBtn modalName="archiveBook">
+                <div>{t("btnDelete")}</div>
+              </Modal.OpenBtn>
+
+              <Modal.Window name="archiveBook">
+                <div className="flex w-full flex-col gap-4">
+                  <div className="flex w-full flex-col gap-2">
+                    <h3 className="text-center text-2xl font-medium text-app-800">
+                      {t("archiveBookMsg.title")}
+                    </h3>
+                    <p>{t("archiveBookMsg.msg")}</p>
+                    <div className="mt-4 flex items-center justify-center gap-2">
+                      <Modal.CloseBtn>
+                        <span>{t("btnCancel")}</span>
+                      </Modal.CloseBtn>
+
+                      <Button onClickFn={onArchiveBook}>
+                        <span>{t("btnDelete")}</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </Modal.Window>
+            </Modal>
+          </div>
         </div>
       )}
     </div>

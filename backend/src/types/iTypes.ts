@@ -35,6 +35,7 @@ export interface IBook extends Document {
   filterBy: BooKDataItemType;
   createdAt: Date;
   updatedAt: Date;
+  isArchived: boolean;
 }
 
 export interface IBasicBookDataItem extends Document {
@@ -83,6 +84,7 @@ export interface IBookReview extends Document {
   sortOrder: number;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
+  isArchived: boolean;
 }
 
 export interface IReview extends Document {

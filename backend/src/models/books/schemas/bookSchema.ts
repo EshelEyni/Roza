@@ -27,6 +27,10 @@ const bookSchema = new Schema<IBook>(
       enum: ["chapters", "characters", "themes", "plotlines", "notes"],
       default: "chapters",
     },
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     toObject: {

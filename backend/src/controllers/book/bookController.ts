@@ -13,7 +13,7 @@ const getBooks = asyncErrorCatcher(async (req: Request, res: Response, next: Nex
   if (!loggedInUserId) return next(new AppError("User not logged in", 401));
   const { limit, sort, searchTerm } = req.query;
 
-  const query = BookModel.find({ userId: loggedInUserId })
+  const query = BookModel.find({ userId: loggedInUserId, isArchived: false })
     .limit(limit ? parseInt(limit.toString()) : 10)
     .sort(sort ? sort.toString() : "sortOrder");
 
@@ -79,7 +79,7 @@ const getBooks = asyncErrorCatcher(async (req: Request, res: Response, next: Nex
 const getBookById = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const loggedInUserId = getLoggedInUserIdFromReq();
-  const book = await BookModel.findOne({ _id: id, userId: loggedInUserId });
+  const book = await BookModel.findOne({ _id: id, userId: loggedInUserId, isArchived: false });
   if (!book) throw new AppError(`No book was found with the id: ${id}`, 404);
 
   res.json({

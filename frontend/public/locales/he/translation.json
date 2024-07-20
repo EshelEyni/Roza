@@ -140,8 +140,14 @@
   "btnEdit": "עריכה",
   "btnDelete": "מחיקה",
   "btnSave": "שמירה",
+  "btnAdd": "הוספה",
+  "btnCancel": "ביטול",
   "book": "ספר",
   "description": "תיאור",
   "text": "טקסט",
-  "goToDetails": "עבור לפרטים"
+  "goToDetails": "עבור לפרטים",
+  "archiveBookMsg": {
+    "title": "מחיקת ספר",
+    "msg": "האם אתה בטוח שברצונך למחוק את הספר?"
+  }
 }

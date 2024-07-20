@@ -146,8 +146,14 @@
   "btnEdit": "Edit",
   "btnDelete": "Delete",
   "btnSave": "Save",
+  "btnAdd": "Add",
+  "btnCancel": "Cancel",
   "book": "Book",
   "description": "Description",
   "text": "Text",
-  "goToDetails": "Go to Details"
+  "goToDetails": "Go to Details",
+  "archiveBookMsg": {
+    "title": "Delete Book",
+    "msg": "Are you sure you want to archive the book?"
+  }
 }

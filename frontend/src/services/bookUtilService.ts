@@ -23,6 +23,7 @@ function getDefaultBook(userId = "", name = ""): Book {
     filterBy: "chapters",
     createdAt: new Date(),
     updatedAt: new Date(),
+    isArchived: false,
   };
 }
 

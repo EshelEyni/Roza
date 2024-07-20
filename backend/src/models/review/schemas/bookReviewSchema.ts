@@ -19,6 +19,10 @@ const bookReviewSchema = new Schema<IBookReview>(
     sortOrder: {
       type: Number,
     },
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     toObject: {

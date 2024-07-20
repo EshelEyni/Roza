@@ -34,6 +34,7 @@ type BookContextType = UseLoginWithTokenResult &
     onDeleteItem: () => void;
     onUpdateItem: (newItem: BookDataItem) => void;
     onGoToDetails: () => void;
+    onArchiveBook: () => void;
   };
 
 type BookDetailsParams = {
@@ -142,6 +143,13 @@ function BookProvider({ children }: BookProviderProps) {
     navigate(url);
   }
 
+  function onArchiveBook() {
+    if (!book) return;
+    const updatedBook = { ...book, isArchived: true };
+    updateBook(updatedBook);
+    navigate("/books");
+  }
+
   useEffect(() => {
     if (!book || !dataItemType || !dataItemId) return;
     const item =
@@ -185,6 +193,7 @@ function BookProvider({ children }: BookProviderProps) {
     onDeleteItem,
     onUpdateItem,
     onGoToDetails,
+    onArchiveBook,
   };
 
   return (

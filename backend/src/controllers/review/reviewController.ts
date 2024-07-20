@@ -14,7 +14,7 @@ const getBookReviews = asyncErrorCatcher(
     if (!loggedInUserId) return next(new AppError("User not logged in", 401));
     const { limit, sort, searchTerm } = req.query;
 
-    const query = BookReviewModel.find({ userId: loggedInUserId })
+    const query = BookReviewModel.find({ userId: loggedInUserId, isArchived: false })
       .limit(limit ? parseInt(limit.toString()) : 10)
       .sort(sort ? sort.toString() : "sortOrder");
 
@@ -56,7 +56,11 @@ const getBookReviewById = asyncErrorCatcher(
     const { id } = req.params;
     const loggedInUserId = getLoggedInUserIdFromReq();
 
-    const review = await BookReviewModel.findOne({ _id: id, userId: loggedInUserId });
+    const review = await BookReviewModel.findOne({
+      _id: id,
+      userId: loggedInUserId,
+      isArchived: false,
+    });
 
     if (!review) return next(new AppError("Review not found", 404));
 

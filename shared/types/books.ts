@@ -32,6 +32,7 @@ export interface Book {
   filterBy: BooKDataItemType;
   createdAt: Date | string;
   updatedAt: Date | string;
+  isArchived: boolean;
 }
 
 export interface BasicBookDataItem {
