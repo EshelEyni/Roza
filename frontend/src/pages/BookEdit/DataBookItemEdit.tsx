@@ -11,6 +11,7 @@ import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
 import { SlateEditor } from "../../components/SlateTextEditor/TextEditor";
 import { Book } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
+import { Button } from "../../components/Button";
 
 export const DataBookItemEdit: FC = () => {
   const {
@@ -21,6 +22,7 @@ export const DataBookItemEdit: FC = () => {
     itemTitle,
     textEl,
     chatperTextEl,
+    onGoToDetails,
   } = useBook();
   const { updateBook } = useUpdateBook();
   const { t } = useTranslation();
@@ -163,6 +165,11 @@ export const DataBookItemEdit: FC = () => {
           />
         </>
       )}
+
+      <Hr />
+      <div className="flex w-full items-center justify-end gap-4 bg-app-100">
+        <Button onClickFn={onGoToDetails}>{t("goToDetails")}</Button>
+      </div>
     </div>
   );
 };

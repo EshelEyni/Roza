@@ -84,7 +84,7 @@ export type BooKDataItemType =
 
 export type SlateCustomElement = {
   type: string;
-  children: SlateCustomText[];
+  children: SlateCustomText[] | SlateCustomElement[];
   align?: "left" | "center" | "right" | "justify";
 };
 
@@ -93,5 +93,4 @@ export type SlateCustomText = {
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
-  code?: boolean;
 };

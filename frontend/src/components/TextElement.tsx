@@ -1,0 +1,74 @@
+import { FC } from "react";
+import {
+  SlateCustomElement,
+  SlateCustomText,
+} from "../../../shared/types/books";
+
+type TextElementProps = {
+  element: SlateCustomElement;
+};
+
+export const TextElement: FC<TextElementProps> = ({ element }) => {
+  const style = { textAlign: element.align };
+
+  const renderText = (c: SlateCustomText | SlateCustomElement, i?: number) => {
+    if ("children" in c) return;
+    if (c.bold) return <strong key={i}>{c.text}</strong>;
+    if (c.italic) return <em key={i}>{c.text}</em>;
+    if (c.underline) return <u key={i}>{c.text}</u>;
+    return <span key={i}>{c.text}</span>;
+  };
+
+  switch (element.type) {
+    case "block-quote":
+      return (
+        <blockquote style={style}>
+          {element.children.map((c, i) => renderText(c, i))}
+        </blockquote>
+      );
+    case "bulleted-list":
+      return (
+        <ul style={style} className="list-disc">
+          {element.children.map((c, i) => (
+            <TextElement key={i} element={c as SlateCustomElement} />
+          ))}
+        </ul>
+      );
+    case "heading-one":
+      return (
+        <h1 style={style} className="text-3xl">
+          {element.children.map((c, i) => renderText(c, i))}
+        </h1>
+      );
+    case "heading-two":
+      return (
+        <h2 style={style} className="text-2xl">
+          {element.children.map((c, i) => renderText(c, i)).join(" ")}
+        </h2>
+      );
+    case "list-item":
+      return (
+        <li
+          style={{
+            ...style,
+            listStyle: "inherit",
+            listStylePosition: "inside",
+          }}
+        >
+          {element.children.map((c, i) => renderText(c, i))}
+        </li>
+      );
+    case "numbered-list":
+      return (
+        <ol style={style} className="list-decimal">
+          {element.children.map((c, i) => (
+            <TextElement key={i} element={c as SlateCustomElement} />
+          ))}
+        </ol>
+      );
+    default:
+      return (
+        <p style={style}>{element.children.map((c, i) => renderText(c, i))}</p>
+      );
+  }
+};

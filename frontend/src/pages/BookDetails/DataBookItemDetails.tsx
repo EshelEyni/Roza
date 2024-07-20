@@ -6,6 +6,7 @@ import { isChapterType } from "../../../../shared/services/utilService";
 import { Button } from "../../components/Button";
 import { Modal } from "../../components/Modal";
 import { BookItemTitle } from "../../components/Book/BookItemTitle";
+import { TextElement } from "../../components/TextElement";
 
 export const DataBookItemDetails: FC = () => {
   const {
@@ -14,8 +15,8 @@ export const DataBookItemDetails: FC = () => {
     dataItemId,
     item,
     itemTitle,
-    text,
-    chatperText,
+    textEl,
+    chatperTextEl,
     onNavigateToEdit,
     onDeleteItem,
   } = useBook();
@@ -62,13 +63,19 @@ export const DataBookItemDetails: FC = () => {
         </div>
       </div>
       <Hr />
-      <p className="w-full text-lg font-normal text-app-800">{text}</p>
+      <div className="w-full font-normal text-app-800">
+        {textEl.map((el, i) => (
+          <TextElement element={el} key={i} />
+        ))}
+      </div>
       {isChapterType(item) && (
         <>
           <Hr />
-          <p className="w-full text-lg font-normal text-app-800">
-            {chatperText}
-          </p>
+          <div className="w-full font-normal text-app-800">
+            {chatperTextEl.map((el, i) => (
+              <TextElement element={el} key={i} />
+            ))}
+          </div>
         </>
       )}
     </div>

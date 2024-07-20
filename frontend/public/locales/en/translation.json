@@ -148,5 +148,6 @@
   "btnSave": "Save",
   "book": "Book",
   "description": "Description",
-  "text": "Text"
+  "text": "Text",
+  "goToDetails": "Go to Details"
 }

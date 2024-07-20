@@ -7,7 +7,7 @@ import {
   RenderLeafProps,
 } from "slate-react";
 import { createEditor, Descendant } from "slate";
-import { TextElement } from "./TextElement";
+import { TextEditorElement } from "./TextEditorElement";
 import { Leaf } from "./Leaf";
 import { TextEditorBtnList } from "./TextEditorBtnList";
 
@@ -24,7 +24,7 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
   const [value, setValue] = useState<Descendant[]>(defaultValue);
 
   const renderElement = useCallback(
-    (props: RenderElementProps) => <TextElement {...props} />,
+    (props: RenderElementProps) => <TextEditorElement {...props} />,
     [],
   );
   const renderLeaf = useCallback(

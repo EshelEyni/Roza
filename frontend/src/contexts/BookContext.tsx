@@ -33,6 +33,7 @@ type BookContextType = UseLoginWithTokenResult &
     onNavigateToEdit: () => void;
     onDeleteItem: () => void;
     onUpdateItem: (newItem: BookDataItem) => void;
+    onGoToDetails: () => void;
   };
 
 type BookDetailsParams = {
@@ -133,6 +134,14 @@ function BookProvider({ children }: BookProviderProps) {
     navigate(`/book/${book.id}`);
   }
 
+  function onGoToDetails() {
+    if (!book || !dataItemType || !dataItemId || !item) return;
+    let url = `/book/${book.id}`;
+    if (dataItemType) url += `/${dataItemType}`;
+    if (dataItemId) url += `/${dataItemId}`;
+    navigate(url);
+  }
+
   useEffect(() => {
     if (!book || !dataItemType || !dataItemId) return;
     const item =
@@ -175,6 +184,7 @@ function BookProvider({ children }: BookProviderProps) {
     onNavigateToEdit,
     onDeleteItem,
     onUpdateItem,
+    onGoToDetails,
   };
 
   return (

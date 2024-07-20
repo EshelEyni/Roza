@@ -73,3 +73,8 @@ input {
   border: none;
   outline: none;
 }
+
+/* Custom blockquote styles */
+blockquote {
+  @apply  mx-10 italic; /* Using Tailwind's utility classes */
+}

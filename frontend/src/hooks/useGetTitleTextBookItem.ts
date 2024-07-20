@@ -6,6 +6,7 @@ import {
   Note,
   Plotline,
   SlateCustomElement,
+  SlateCustomText,
   Theme,
 } from "../../../shared/types/books";
 import { getDefaultSlateElement } from "../services/utilService";
@@ -97,7 +98,7 @@ export function useGetTitleTextBookItem() {
 
     return (
       (JSON.parse(dataItem.text) as SlateCustomElement[])
-        .map(el => el.children.map(c => c.text))
+        .map(el => el.children.map(c => (c as SlateCustomText).text))
         .join(" ") || text
     );
   }
@@ -142,7 +143,7 @@ export function useGetTitleTextBookItem() {
 
     const parsedText = JSON.parse(itemTextElStr) as SlateCustomElement[];
     const itemText = parsedText
-      .map(el => el.children.map(c => c.text))
+      .map(el => el.children.map(c => (c as SlateCustomText).text))
       .join(" ");
 
     if (!itemText) return isNoteType(dataItem) ? text : description;

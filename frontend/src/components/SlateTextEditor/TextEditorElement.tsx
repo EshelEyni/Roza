@@ -6,7 +6,7 @@ interface ElementProps extends RenderElementProps {
   element: SlateCustomElement;
 }
 
-export const TextElement: FC<ElementProps> = ({
+export const TextEditorElement: FC<ElementProps> = ({
   attributes,
   children,
   element,
@@ -21,31 +21,38 @@ export const TextElement: FC<ElementProps> = ({
       );
     case "bulleted-list":
       return (
-        <ul style={style} {...attributes}>
+        <ul style={style} {...attributes} className="list-disc">
           {children}
         </ul>
       );
     case "heading-one":
       return (
-        <h1 style={style} {...attributes}>
+        <h1 style={style} {...attributes} className="text-3xl">
           {children}
         </h1>
       );
     case "heading-two":
       return (
-        <h2 style={style} {...attributes}>
+        <h2 style={style} {...attributes} className="text-2xl">
           {children}
         </h2>
       );
     case "list-item":
       return (
-        <li style={style} {...attributes}>
+        <li
+          style={{
+            ...style,
+            listStyle: "inherit",
+            listStylePosition: "inside",
+          }}
+          {...attributes}
+        >
           {children}
         </li>
       );
     case "numbered-list":
       return (
-        <ol style={style} {...attributes}>
+        <ol style={style} {...attributes} className="list-decimal">
           {children}
         </ol>
       );
