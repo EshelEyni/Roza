@@ -1,4 +1,3 @@
-import { getOne, createOne, updateOne, deleteOne } from "../../services/factory/factoryService";
 import { BookModel } from "../../models/books/bookModel";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
 import { NextFunction, Request, Response } from "express";
@@ -77,9 +76,40 @@ const getBooks = asyncErrorCatcher(async (req: Request, res: Response, next: Nex
     data: sortedBooks,
   });
 });
-const getBookById = getOne(BookModel);
-const addBook = createOne(BookModel);
-const updateBook = updateOne(BookModel);
-const removeBook = deleteOne(BookModel);
+const getBookById = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params;
+  const loggedInUserId = getLoggedInUserIdFromReq();
+  const book = await BookModel.findOne({ _id: id, userId: loggedInUserId });
+  if (!book) throw new AppError(`No book was found with the id: ${id}`, 404);
 
-export { getBooks, getBookById, addBook, updateBook, removeBook };
+  res.json({
+    status: "success",
+    data: book,
+  });
+});
+
+const addBook = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
+  const loggedInUserId = getLoggedInUserIdFromReq();
+  const book = await BookModel.create({ ...req.body, userId: loggedInUserId });
+
+  res.status(201).json({
+    status: "success",
+    data: book,
+  });
+});
+
+const updateBook = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params;
+  const loggedInUserId = getLoggedInUserIdFromReq();
+  const book = await BookModel.findOneAndUpdate({ _id: id, userId: loggedInUserId }, req.body, {
+    new: true,
+    runValidators: true,
+  });
+
+  res.json({
+    status: "success",
+    data: book,
+  });
+});
+
+export { getBooks, getBookById, addBook, updateBook };

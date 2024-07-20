@@ -78,12 +78,4 @@ describe("Review Router", () => {
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("success");
   });
-
-  it("should delete a review", async () => {
-    const book = await BookReviewModel.create(createTestBookReview());
-    const { id } = book;
-    const response = await request(app).delete(`/${id}`);
-
-    expect(response.status).toBe(204);
-  });
 });

@@ -40,9 +40,4 @@ async function update(review: BookReview): Promise<BookReview> {
   return handleServerResponseData<BookReview>(response);
 }
 
-async function remove(id: string): Promise<void> {
-  const res = await httpService.delete(`${baseUrl}/${id}`);
-  return res;
-}
-
-export default { query, getById, add, update, remove };
+export default { query, getById, add, update };

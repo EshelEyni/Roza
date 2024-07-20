@@ -82,11 +82,4 @@ describe("Book Router", () => {
     assertBook(responseBook);
     expect(responseBook.name).toBe(body.name);
   });
-
-  it("should delete a book", async () => {
-    const book = await BookModel.create(createTestBook());
-    const { id } = book;
-    const response = await request(app).delete(`/${id}`);
-    expect(response.status).toBe(204);
-  });
 });

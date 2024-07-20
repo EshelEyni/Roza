@@ -4,7 +4,6 @@ import {
   getBookReviewById,
   addBookReview,
   updateBookReview,
-  removeBookReview,
 } from "../../controllers/review/reviewController";
 import { checkUserAuthentication } from "../../middlewares/authGuards/authGuardsMiddleware";
 
@@ -14,6 +13,5 @@ router.get("/", getBookReviews);
 router.get("/:id([a-fA-F0-9]{24})", getBookReviewById);
 router.post("/", addBookReview);
 router.patch("/:id", updateBookReview);
-router.delete("/:id", removeBookReview);
 
 export default router;
