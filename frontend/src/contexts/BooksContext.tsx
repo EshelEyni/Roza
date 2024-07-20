@@ -2,6 +2,7 @@ import { createContext, useContext, useState } from "react";
 import { UseGetBooksResult, UseLoginWithTokenResult } from "../types/app";
 import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
 import { useGetBooks } from "../hooks/reactQuery/get/useGetBooks";
+import { useIntersectionPagination } from "../hooks/useIntersectionPagination";
 
 type BooksContextType = UseLoginWithTokenResult &
   UseGetBooksResult & {
@@ -9,6 +10,8 @@ type BooksContextType = UseLoginWithTokenResult &
     searchTerm: string;
     onSortBooks: (order: string) => void;
     onSearchBooks: (keyword: string) => void;
+    intersectionRef: React.MutableRefObject<null>;
+    paginationIdx: number;
   };
 
 type BooksProviderProps = {
@@ -20,6 +23,7 @@ const BooksContext = createContext<BooksContextType | undefined>(undefined);
 function BooksProvider({ children }: BooksProviderProps) {
   const [sortOrder, setSortOrder] = useState<string>("createdAt");
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const { intersectionRef, paginationIdx } = useIntersectionPagination();
 
   const {
     loggedInUser,
@@ -27,6 +31,7 @@ function BooksProvider({ children }: BooksProviderProps) {
     errorLoggedInUser,
     isSuccessLoggedInUser,
     isErrorLoggedInUser,
+    isFetchedLoggedInUser,
   } = useLoginWithToken();
 
   const {
@@ -39,7 +44,7 @@ function BooksProvider({ children }: BooksProviderProps) {
     isBooksAvailable,
   } = useGetBooks({
     enabled: !!loggedInUser,
-    limit: 10000,
+    limit: paginationIdx * 12,
     sort: sortOrder,
     searchTerm,
   });
@@ -58,6 +63,7 @@ function BooksProvider({ children }: BooksProviderProps) {
     errorLoggedInUser,
     isSuccessLoggedInUser,
     isErrorLoggedInUser,
+    isFetchedLoggedInUser,
     books,
     errorBooks,
     isLoadingBooks,
@@ -69,6 +75,8 @@ function BooksProvider({ children }: BooksProviderProps) {
     searchTerm,
     onSortBooks,
     onSearchBooks,
+    intersectionRef,
+    paginationIdx,
   };
 
   return (

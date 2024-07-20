@@ -3,6 +3,7 @@ import { UseGetBookReviewsResult, UseLoginWithTokenResult } from "../types/app";
 import { useGetBookReviews } from "../hooks/reactQuery/get/useGetBookReviews";
 import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
 import { BookReview } from "../../../shared/types/books";
+import { useIntersectionPagination } from "../hooks/useIntersectionPagination";
 
 type ReviewsContextType = UseLoginWithTokenResult &
   UseGetBookReviewsResult & {
@@ -11,6 +12,8 @@ type ReviewsContextType = UseLoginWithTokenResult &
     searchTerm: string;
     onSortReviews: (order: "asc" | "desc") => void;
     onSearchReviews: (keyword: string) => void;
+    intersectionRef: React.MutableRefObject<null>;
+    paginationIdx: number;
   };
 
 type ReviewsProviderProps = {
@@ -25,6 +28,7 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
   >(undefined);
   const [sortOrder, setSortOrder] = useState<string>("sortOrder");
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const { intersectionRef, paginationIdx } = useIntersectionPagination();
 
   const {
     loggedInUser,
@@ -32,6 +36,7 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
     errorLoggedInUser,
     isSuccessLoggedInUser,
     isErrorLoggedInUser,
+    isFetchedLoggedInUser,
   } = useLoginWithToken();
 
   const {
@@ -44,7 +49,7 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
     isReviewsAvailable,
   } = useGetBookReviews({
     enabled: !!loggedInUser,
-    limit: 10000,
+    limit: paginationIdx * 12,
     sort: sortOrder,
     searchTerm,
   });
@@ -63,6 +68,7 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
     errorLoggedInUser,
     isSuccessLoggedInUser,
     isErrorLoggedInUser,
+    isFetchedLoggedInUser,
     reviews,
     errorReviews,
     isLoadingReviews,
@@ -75,6 +81,8 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
     searchTerm,
     onSortReviews,
     onSearchReviews,
+    intersectionRef,
+    paginationIdx,
   };
 
   useEffect(() => {

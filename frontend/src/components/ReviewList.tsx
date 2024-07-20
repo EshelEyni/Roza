@@ -10,6 +10,7 @@ import { Button } from "./Button";
 
 type ReviewListProps = UseGetBookReviewsResult & {
   isHomePage?: boolean;
+  intersectionRef?: React.MutableRefObject<null>;
 };
 
 export const ReviewList: FC<ReviewListProps> = ({
@@ -18,8 +19,8 @@ export const ReviewList: FC<ReviewListProps> = ({
   isLoadingReviews,
   isErrorReviews,
   isNoReviews,
-  isReviewsAvailable,
   isHomePage = false,
+  intersectionRef,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -33,7 +34,6 @@ export const ReviewList: FC<ReviewListProps> = ({
       <h3 className="w-fit border-b border-app-800 text-3xl font-medium text-app-800">
         {t("ReviewsList.title")}
       </h3>
-      {isLoadingReviews && <BookLoader />}
       {isErrorReviews && (
         <ErrorMsg
           msg={errorReviews instanceof Error ? errorReviews.message : ""}
@@ -41,7 +41,7 @@ export const ReviewList: FC<ReviewListProps> = ({
       )}
       {isNoReviews && <EmptyMsg msg={t("EmptyMsg.books")} />}
 
-      {isReviewsAvailable && !!reviews && (
+      {!!reviews && (
         <ul className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {reviews.map(r => (
             <li key={r.id} className="flex-1">
@@ -50,6 +50,11 @@ export const ReviewList: FC<ReviewListProps> = ({
           ))}
         </ul>
       )}
+      {isLoadingReviews && <BookLoader />}
+      {!!reviews && !!intersectionRef && (
+        <div ref={intersectionRef} className="h-12 w-full bg-transparent" />
+      )}
+
       {isHomePage && (
         <div className="mt-3 flex items-center justify-end">
           <Button

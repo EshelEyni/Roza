@@ -14,6 +14,7 @@ import { useAddBook } from "../hooks/reactQuery/add/useAddBook";
 
 type BookListProps = UseGetBooksResult & {
   isHomePage?: boolean;
+  intersectionRef?: React.MutableRefObject<null>;
 };
 
 export const BookList: FC<BookListProps> = ({
@@ -22,8 +23,8 @@ export const BookList: FC<BookListProps> = ({
   isLoadingBooks,
   isErrorBooks,
   isNoBooks,
-  isBooksAvailable,
   isHomePage = false,
+  intersectionRef,
 }) => {
   const { loggedInUser } = useLoginWithToken();
   const [newBook, setNewBook] = useState(getDefaultBook());
@@ -52,10 +53,7 @@ export const BookList: FC<BookListProps> = ({
         </h3>
         {!isHomePage && (
           <Modal>
-            <Modal.OpenBtn
-              className="cursor-pointer rounded-md bg-app-600 px-3 py-1 text-white hover:bg-app-700"
-              modalName="addBook"
-            >
+            <Modal.OpenBtn modalName="addBook">
               <div>{t("BookList.btnAdd")}</div>
             </Modal.OpenBtn>
 
@@ -93,13 +91,12 @@ export const BookList: FC<BookListProps> = ({
           </Modal>
         )}
       </div>
-      {isLoadingBooks && <BookLoader />}
       {isErrorBooks && (
         <ErrorMsg msg={errorBooks instanceof Error ? errorBooks.message : ""} />
       )}
       {isNoBooks && <EmptyMsg msg={t("EmptyMsg.books")} />}
 
-      {isBooksAvailable && !!books && (
+      {!!books && (
         <ul className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {books.map(b => (
             <li key={b.id}>
@@ -108,6 +105,11 @@ export const BookList: FC<BookListProps> = ({
           ))}
         </ul>
       )}
+      {isLoadingBooks && <BookLoader />}
+      {!!books && !!intersectionRef && (
+        <div ref={intersectionRef} className="h-12 w-full bg-transparent" />
+      )}
+
       {isHomePage && (
         <div className="mt-3 flex items-center justify-end">
           <Button

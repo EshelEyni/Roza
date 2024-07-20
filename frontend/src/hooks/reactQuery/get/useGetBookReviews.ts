@@ -27,8 +27,7 @@ export function useGetBookReviews({
   });
 
   const isNoReviews = isSuccessReviews && !!reviews && reviews.length === 0;
-  const isReviewsAvailable =
-    isSuccessReviews && !!reviews && reviews.length > 0;
+  const isReviewsAvailable = !!reviews && reviews.length > 0;
 
   return {
     reviews,
