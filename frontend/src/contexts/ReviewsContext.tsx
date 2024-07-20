@@ -54,7 +54,7 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
     searchTerm,
   });
 
-  function onSortReviews(order: "asc" | "desc") {
+  function onSortReviews(order: string) {
     setSortOrder(order);
   }
 

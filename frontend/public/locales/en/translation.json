@@ -68,7 +68,9 @@
   },
   "ReviewsList": {
     "title": "Reviews",
-    "seeAll": "Go to Reviews"
+    "seeAll": "Go to Reviews",
+    "btnAdd": "Add Review",
+    "name": "Review Name"
   },
   "ReviewPreview": {
     "name": "Book Name",

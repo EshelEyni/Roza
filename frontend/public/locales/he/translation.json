@@ -68,7 +68,9 @@
   },
   "ReviewsList": {
     "title": "ביקורות",
-    "seeAll": "עבור לביקורות"
+    "seeAll": "עבור לביקורות",
+    "btnAdd": "הוספת ביקורת",
+    "name": "שם ביקורת"
   },
   "ReviewPreview": {
     "name": "שם הספר",

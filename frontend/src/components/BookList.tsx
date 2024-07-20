@@ -14,6 +14,7 @@ import { useAddBook } from "../hooks/reactQuery/add/useAddBook";
 
 type BookListProps = UseGetBooksResult & {
   isHomePage?: boolean;
+  paginationIdx?: number;
   intersectionRef?: React.MutableRefObject<null>;
 };
 
@@ -24,6 +25,7 @@ export const BookList: FC<BookListProps> = ({
   isErrorBooks,
   isNoBooks,
   isHomePage = false,
+  paginationIdx,
   intersectionRef,
 }) => {
   const { loggedInUser } = useLoginWithToken();
@@ -106,9 +108,12 @@ export const BookList: FC<BookListProps> = ({
         </ul>
       )}
       {isLoadingBooks && <BookLoader />}
-      {!!books && !!intersectionRef && (
-        <div ref={intersectionRef} className="h-12 w-full bg-transparent" />
-      )}
+      {!!books &&
+        paginationIdx &&
+        books.length >= paginationIdx * 12 &&
+        !!intersectionRef && (
+          <div ref={intersectionRef} className="h-12 w-full bg-transparent" />
+        )}
 
       {isHomePage && (
         <div className="mt-3 flex items-center justify-end">

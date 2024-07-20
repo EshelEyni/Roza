@@ -17,6 +17,7 @@ const ReviewsPage: FC = () => {
     isErrorReviews,
     isNoReviews,
     isReviewsAvailable,
+    paginationIdx,
     intersectionRef,
   } = useReviews();
 
@@ -32,6 +33,7 @@ const ReviewsPage: FC = () => {
           isErrorReviews={isErrorReviews}
           isNoReviews={isNoReviews}
           isReviewsAvailable={isReviewsAvailable}
+          paginationIdx={paginationIdx}
           intersectionRef={intersectionRef}
         />
       </PageContent>

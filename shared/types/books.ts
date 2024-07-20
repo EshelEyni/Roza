@@ -7,6 +7,7 @@ export interface BookReview {
   sortOrder: number;
   createdAt: Date | string;
   updatedAt: Date | string;
+  isArchived: boolean;
 }
 
 export interface Review {

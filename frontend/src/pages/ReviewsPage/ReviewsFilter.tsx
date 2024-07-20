@@ -22,8 +22,8 @@ export const ReviewsFilter: FC = () => {
           onChange={e => onSortReviews(e.target.value as "asc" | "desc")}
           className="ml-2 rounded-lg bg-app-500 p-1"
         >
-          <option value="asc">{t("ReviewsFilter.asc")}</option>
-          <option value="desc">{t("ReviewsFilter.desc")}</option>
+          <option value="sortOrder">{t("ReviewsFilter.asc")}</option>
+          <option value="-sortOrder">{t("ReviewsFilter.desc")}</option>
         </select>
       </label>
       <label className="rounded-lg bg-app-500 p-2">

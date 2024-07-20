@@ -43,6 +43,22 @@ const bookReviewSchema = new Schema<IBookReview>(
   },
 );
 
+bookReviewSchema.pre("save", async function (next) {
+  const userId = this.get("userId");
+  const lastSortOrder = (await this.model("BookReview")
+    .findOne(
+      { userId },
+      {
+        sortOrder: 1,
+      },
+      { sort: { sortOrder: -1 }, lean: true },
+    )
+    .exec()) as IBookReview;
+  if (this.isNew) this.sortOrder = lastSortOrder ? lastSortOrder.sortOrder + 1 : 0;
+
+  next();
+});
+
 bookReviewSchema.index({ name: "text", "reviews.text": "text", "references.text": "text" });
 
 export { bookReviewSchema };

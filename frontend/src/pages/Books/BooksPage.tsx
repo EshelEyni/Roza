@@ -17,6 +17,7 @@ const BooksPage: FC = () => {
     isErrorBooks,
     isNoBooks,
     isBooksAvailable,
+    paginationIdx,
     intersectionRef,
   } = useBooks();
 
@@ -32,6 +33,7 @@ const BooksPage: FC = () => {
           isErrorBooks={isErrorBooks}
           isNoBooks={isNoBooks}
           isBooksAvailable={isBooksAvailable}
+          paginationIdx={paginationIdx}
           intersectionRef={intersectionRef}
         />
       </PageContent>
