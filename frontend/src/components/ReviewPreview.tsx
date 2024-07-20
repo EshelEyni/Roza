@@ -19,7 +19,7 @@ export const ReviewPreview: FC<ReviewPreviewProps> = ({ review }) => {
   const navigate = useNavigate();
 
   function handlePreviewClick() {
-    navigate(`/reviews/${review.id}`);
+    navigate(`/review/${review.id}`);
   }
 
   return (

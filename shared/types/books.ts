@@ -16,7 +16,7 @@ export interface Review {
 }
 
 export interface Reference {
-  page: number;
+  page: string;
   text: string;
   imgUrls: string[];
 }

@@ -4,6 +4,7 @@ import { ProfileProvider } from "./contexts/ProfileContext";
 import { ReviewsProvider } from "./contexts/ReviewsContext";
 import { BooksProvider } from "./contexts/BooksContext";
 import { BookProvider } from "./contexts/BookContext";
+import { BookReviewProvider } from "./contexts/ReviewContext";
 const HomePage = lazy(() => import("./pages/HomePage/HomePage"));
 const ProfileDetails = lazy(
   () => import("./pages/ProfileDetails/ProfileDetails"),
@@ -13,6 +14,7 @@ const ReviewsPage = lazy(() => import("./pages/ReviewsPage/ReviewsPage"));
 const BookDetails = lazy(() => import("./pages/BookDetails/BookDetails"));
 const ReviewDetails = lazy(() => import("./pages/ReviewDetails/ReviewDetails"));
 const BookEdit = lazy(() => import("./pages/BookEdit/BookEdit"));
+const BookReviewEdit = lazy(() => import("./pages/ReviewEdit/ReviewEdit"));
 
 const routes: Route[] = [
   {
@@ -51,9 +53,16 @@ const routes: Route[] = [
     provider: BookProvider,
   },
   {
-    path: "reviews/:id",
+    path: "review/:id",
     component: ReviewDetails,
     authRequired: true,
+    provider: BookReviewProvider,
+  },
+  {
+    path: "review-edit/:id",
+    component: BookReviewEdit,
+    authRequired: true,
+    provider: BookReviewProvider,
   },
 ];
 

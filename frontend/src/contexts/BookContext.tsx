@@ -47,7 +47,7 @@ type BookProviderProps = {
   children: React.ReactNode;
 };
 
-const BooksContext = createContext<BookContextType | undefined>(undefined);
+const BookContext = createContext<BookContextType | undefined>(undefined);
 
 function BookProvider({ children }: BookProviderProps) {
   const [item, setItem] = useState<BookDataItem | null>(null);
@@ -145,8 +145,7 @@ function BookProvider({ children }: BookProviderProps) {
 
   function onArchiveBook() {
     if (!book) return;
-    const updatedBook = { ...book, isArchived: true };
-    updateBook(updatedBook);
+    updateBook({ ...book, isArchived: true });
     navigate("/books");
   }
 
@@ -196,13 +195,11 @@ function BookProvider({ children }: BookProviderProps) {
     onArchiveBook,
   };
 
-  return (
-    <BooksContext.Provider value={value}>{children}</BooksContext.Provider>
-  );
+  return <BookContext.Provider value={value}>{children}</BookContext.Provider>;
 }
 
 const useBook = () => {
-  const context = useContext(BooksContext);
+  const context = useContext(BookContext);
   if (!context) throw new Error("useBook must be used within a BookProvider");
 
   return context;

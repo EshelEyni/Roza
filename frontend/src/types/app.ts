@@ -81,6 +81,14 @@ export type UseGetBookResult = {
   isErrorBook: boolean;
 };
 
+export type UseGetBookReviewResult = {
+  bookReview: BookReview | undefined;
+  errorBookReview: unknown;
+  isLoadingBookReview: boolean;
+  isSuccessBookReview: boolean;
+  isErrorBookReview: boolean;
+};
+
 export type SlateEditor = BaseEditor & ReactEditor;
 
 declare module "slate" {

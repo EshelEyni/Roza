@@ -30,7 +30,7 @@ export const ReviewsFilter: FC = () => {
         {t("ReviewsFilter.search")}:
         <input
           type="text"
-          value={searchTerm}
+          defaultValue={searchTerm}
           onChange={debounce(e => handleInputChange(e), 500).debouncedFunc}
           className="ml-2 rounded-lg bg-app-500 p-1"
         />

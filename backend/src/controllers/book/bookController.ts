@@ -76,6 +76,7 @@ const getBooks = asyncErrorCatcher(async (req: Request, res: Response, next: Nex
     data: sortedBooks,
   });
 });
+
 const getBookById = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const loggedInUserId = getLoggedInUserIdFromReq();

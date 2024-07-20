@@ -3,21 +3,23 @@ import { BookReview } from "../../../../../shared/types/books";
 import { useNavigate } from "react-router-dom";
 import reviewsApiService from "../../../services/reviewsApiService";
 
-export function useAddBookReview() {
+export function useUpdateBookReview() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-
-  const { mutate: addBookReview, isPending: isPendingAddBookReview } =
+  const { mutate: updateBookReview, isPending: isPendingUpdateBookReview } =
     useMutation({
-      mutationFn: async (review: BookReview) => reviewsApiService.add(review),
+      mutationFn: async (review: BookReview) =>
+        reviewsApiService.update(review),
       onSuccess: data => {
+        queryClient.invalidateQueries({
+          queryKey: ["review", data.id],
+        });
         queryClient.invalidateQueries({
           queryKey: ["reviews"],
         });
-
-        navigate(`/review/${data.id}`);
+        navigate(`/review-edit/${data.id}`);
       },
     });
 
-  return { addBookReview, isPendingAddBookReview };
+  return { updateBookReview, isPendingUpdateBookReview };
 }

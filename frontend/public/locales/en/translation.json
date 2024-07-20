@@ -157,5 +157,11 @@
   "archiveBookMsg": {
     "title": "Delete Book",
     "msg": "Are you sure you want to archive the book?"
-  }
+  },
+  "archiveReviewMsg": {
+    "title": "Delete Review",
+    "msg": "Are you sure you want to archive the review?"
+  },
+  "reviews": "Reviews",
+  "references": "References"
 }
