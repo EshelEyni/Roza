@@ -39,13 +39,13 @@ function geRouteElement(route: TypeOfRoute) {
 
 function App() {
   const { i18n } = useTranslation();
-  const { loggedInUser } = useLoginWithToken();
+  const { loggedInUser, isFetchedLoggedInUser } = useLoginWithToken();
 
   useEffect(() => {
-    if (loggedInUser && loggedInUser.language) {
+    if (loggedInUser && loggedInUser.language && isFetchedLoggedInUser) {
       i18n.changeLanguage(loggedInUser.language);
     } else i18n.changeLanguage(i18n.options.fallbackLng as string);
-  }, [i18n, loggedInUser]);
+  }, [i18n, loggedInUser, isFetchedLoggedInUser]);
 
   useEffect(() => {
     const direction = i18n.language === "he" ? "rtl" : "ltr";

@@ -11,7 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { Main } from "../../components/Main";
 import { BookList } from "../../components/BookList";
 import { useGetBookReviews } from "../../hooks/reactQuery/get/useGetBookReviews";
-import { ReviewList } from "../../components/ReviewList";
+import { BookReviewList } from "../../components/BookReviewList";
 import { Hr } from "../../components/Hr";
 import { PageContent } from "../../components/PageContent";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
@@ -129,7 +129,7 @@ const HomePage: FC = () => {
 
           <Hr />
 
-          <ReviewList
+          <BookReviewList
             reviews={slicedReviews}
             errorReviews={errorReviews}
             isLoadingReviews={isLoadingReviews}

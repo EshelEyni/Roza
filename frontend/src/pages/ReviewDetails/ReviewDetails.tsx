@@ -6,6 +6,7 @@ import { Loader } from "../../components/Loader";
 import { ErrorMsg } from "../../components/ErrorMsg";
 import { Reviewtitle } from "../../components/Reviewtitle";
 import { Hr } from "../../components/Hr";
+import { ReviewList } from "./ReviewList";
 
 const ReviewDetails: FC = () => {
   const {
@@ -15,7 +16,6 @@ const ReviewDetails: FC = () => {
     isSuccessBookReview,
     isErrorBookReview,
   } = useBookReview();
-
   return (
     <Main>
       <PageContent>
@@ -31,6 +31,8 @@ const ReviewDetails: FC = () => {
           <div className="flex w-full flex-col gap-1">
             <Reviewtitle />
             <Hr />
+
+            <ReviewList reviews={bookReview.reviews} />
           </div>
         )}
       </PageContent>

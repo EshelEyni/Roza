@@ -18,7 +18,7 @@ type ReviewListProps = UseGetBookReviewsResult & {
   intersectionRef?: React.MutableRefObject<null>;
 };
 
-export const ReviewList: FC<ReviewListProps> = ({
+export const BookReviewList: FC<ReviewListProps> = ({
   reviews,
   errorReviews,
   isLoadingReviews,

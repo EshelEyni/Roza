@@ -163,5 +163,6 @@
     "msg": "Are you sure you want to archive the review?"
   },
   "reviews": "Reviews",
-  "references": "References"
+  "references": "References",
+  "createdAt": "Created At"
 }

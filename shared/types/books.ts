@@ -12,7 +12,7 @@ export interface BookReview {
 
 export interface Review {
   text: string;
-  createdAt: Date | string | number | null;
+  createdAt: Date | string;
 }
 
 export interface Reference {
