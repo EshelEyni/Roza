@@ -32,7 +32,7 @@ const BookEdit: FC = () => {
         )}
         {isDetailsBookShowing && !!book && (
           <div className="flex w-full flex-col gap-1">
-            <BookTitle isBookEdit={true} />
+            <BookTitle isEdit={true} />
             <Hr />
 
             <div className="flex flex-wrap items-center justify-between gap-8">
@@ -45,7 +45,7 @@ const BookEdit: FC = () => {
                 key={type}
                 isRendered={filterBy === type}
                 type={type}
-                isBookEdit={true}
+                isEdit={true}
               />
             ))}
           </div>

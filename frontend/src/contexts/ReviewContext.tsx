@@ -4,11 +4,16 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
 import { useGetBookReview } from "../hooks/reactQuery/get/useGetBookReview";
 import { useUpdateBookReview } from "../hooks/reactQuery/update/updateReview";
+import { getDefaultReview } from "../services/reviewUtilService";
+import { Review } from "../../../shared/types/books";
 
 type BookReviewContextType = UseLoginWithTokenResult &
   UseGetBookReviewResult & {
     onNavigateToEdit: () => void;
     onArchiveReview: () => void;
+    onAddReview: () => void;
+    onRemoveReview: (reviewId: string) => void;
+    onUpdateReview: (review: Review) => void;
   };
 
 const BookReviewContext = createContext<BookReviewContextType | undefined>(
@@ -49,6 +54,31 @@ function BookReviewProvider({ children }: { children: React.ReactNode }) {
     navigate("/reviews");
   }
 
+  function onAddReview() {
+    if (!bookReview) return;
+    const newBookReview = { ...bookReview };
+    bookReview.reviews.push(getDefaultReview());
+    updateBookReview(newBookReview);
+  }
+
+  function onRemoveReview(reviewId: string) {
+    if (!bookReview) return;
+    const newBookReview = { ...bookReview };
+    newBookReview.reviews = newBookReview.reviews.map(review =>
+      review.id === reviewId ? { ...review, isArchived: true } : review,
+    );
+    updateBookReview(newBookReview);
+  }
+
+  function onUpdateReview(review: Review) {
+    if (!bookReview) return;
+    const newBookReview = { ...bookReview };
+    newBookReview.reviews = newBookReview.reviews.map(r =>
+      r.id === review.id ? review : r,
+    );
+    updateBookReview(newBookReview);
+  }
+
   const value = {
     bookReview,
     errorBookReview,
@@ -63,6 +93,9 @@ function BookReviewProvider({ children }: { children: React.ReactNode }) {
     isFetchedLoggedInUser,
     onNavigateToEdit,
     onArchiveReview,
+    onAddReview,
+    onRemoveReview,
+    onUpdateReview,
   };
 
   return (

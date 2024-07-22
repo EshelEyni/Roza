@@ -11,8 +11,10 @@ export interface BookReview {
 }
 
 export interface Review {
+  readonly id: string;
   text: string;
   createdAt: Date | string;
+  isArchived: boolean;
 }
 
 export interface Reference {

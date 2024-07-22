@@ -12,9 +12,13 @@ const ProfileDetails = lazy(
 const BooksPage = lazy(() => import("./pages/Books/BooksPage"));
 const ReviewsPage = lazy(() => import("./pages/ReviewsPage/ReviewsPage"));
 const BookDetails = lazy(() => import("./pages/BookDetails/BookDetails"));
-const ReviewDetails = lazy(() => import("./pages/ReviewDetails/ReviewDetails"));
+const ReviewDetails = lazy(
+  () => import("./pages/BookReviewDetails/BookReviewDetails"),
+);
 const BookEdit = lazy(() => import("./pages/BookEdit/BookEdit"));
-const BookReviewEdit = lazy(() => import("./pages/ReviewEdit/ReviewEdit"));
+const BookReviewEdit = lazy(
+  () => import("./pages/BookReviewEdit/BookReviewEdit"),
+);
 
 const routes: Route[] = [
   {

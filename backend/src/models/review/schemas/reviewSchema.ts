@@ -8,6 +8,10 @@ const reviewSchema = new Schema<IReview>(
       required: [true, "Please provide a text"],
       trim: true,
     },
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     toObject: {

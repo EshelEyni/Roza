@@ -6,9 +6,9 @@ import { Loader } from "../../components/Loader";
 import { ErrorMsg } from "../../components/ErrorMsg";
 import { Reviewtitle } from "../../components/Reviewtitle";
 import { Hr } from "../../components/Hr";
-import { ReviewList } from "./ReviewList";
+import { ReviewList } from "../BookReviewDetails/ReviewList";
 
-const ReviewDetails: FC = () => {
+const BookReviewEdit: FC = () => {
   const {
     bookReview,
     errorBookReview,
@@ -16,6 +16,7 @@ const ReviewDetails: FC = () => {
     isSuccessBookReview,
     isErrorBookReview,
   } = useBookReview();
+
   return (
     <Main>
       <PageContent>
@@ -29,10 +30,10 @@ const ReviewDetails: FC = () => {
         )}
         {isSuccessBookReview && !!bookReview && (
           <div className="flex w-full flex-col gap-1">
-            <Reviewtitle />
+            <Reviewtitle isEdit={true} />
             <Hr />
 
-            <ReviewList reviews={bookReview.reviews} />
+            <ReviewList reviews={bookReview.reviews} isEdit={true} />
           </div>
         )}
       </PageContent>
@@ -40,4 +41,4 @@ const ReviewDetails: FC = () => {
   );
 };
 
-export default ReviewDetails;
+export default BookReviewEdit;

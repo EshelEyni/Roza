@@ -89,6 +89,7 @@ export interface IBookReview extends Document {
 
 export interface IReview extends Document {
   text: string;
+  isArchived: boolean;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
 }
@@ -97,6 +98,7 @@ export interface IReference extends Document {
   page: string;
   text: string;
   imgUrls: string[];
+  isArchived: boolean;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
 }

@@ -5,10 +5,10 @@ import { PageTitle } from "../PageTitle";
 import { useTranslation } from "react-i18next";
 
 type BookTitleProps = {
-  isBookEdit?: boolean;
+  isEdit?: boolean;
 };
 
-export const BookTitle: FC<BookTitleProps> = ({ isBookEdit = false }) => {
+export const BookTitle: FC<BookTitleProps> = ({ isEdit = false }) => {
   const { book, isSuccessBook, onNavigateToEdit, onArchiveBook } = useBook();
   const { updateBook } = useUpdateBook();
   const { t } = useTranslation();
@@ -22,7 +22,7 @@ export const BookTitle: FC<BookTitleProps> = ({ isBookEdit = false }) => {
   if (!isSuccessBook || !book) return null;
   return (
     <PageTitle
-      isEdit={isBookEdit}
+      isEdit={isEdit}
       entityName={book.name}
       handleInputChange={handleInputChange}
       onNavigateToEdit={onNavigateToEdit}

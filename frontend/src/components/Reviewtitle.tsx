@@ -5,10 +5,10 @@ import { PageTitle } from "./PageTitle";
 import { useTranslation } from "react-i18next";
 
 type ReviewtitleProps = {
-  isReviewEdit?: boolean;
+  isEdit?: boolean;
 };
 
-export const Reviewtitle: FC<ReviewtitleProps> = ({ isReviewEdit = false }) => {
+export const Reviewtitle: FC<ReviewtitleProps> = ({ isEdit = false }) => {
   const { bookReview, isSuccessBookReview, onNavigateToEdit, onArchiveReview } =
     useBookReview();
   const { updateBookReview } = useUpdateBookReview();
@@ -22,7 +22,7 @@ export const Reviewtitle: FC<ReviewtitleProps> = ({ isReviewEdit = false }) => {
   if (!isSuccessBookReview || !bookReview) return null;
   return (
     <PageTitle
-      isEdit={isReviewEdit}
+      isEdit={isEdit}
       entityName={bookReview.name}
       handleInputChange={handleInputChange}
       onNavigateToEdit={onNavigateToEdit}

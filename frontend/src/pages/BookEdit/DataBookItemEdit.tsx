@@ -9,7 +9,7 @@ import { BookItemTitle } from "../../components/Book/BookItemTitle";
 import { debounce } from "../../services/utilService";
 import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
 import { SlateEditor } from "../../components/SlateTextEditor/TextEditor";
-import { Book } from "../../../../shared/types/books";
+import { Book, SlateCustomElement } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../components/Button";
 
@@ -100,7 +100,7 @@ export const DataBookItemEdit: FC = () => {
     updateBook(newBook);
   }
 
-  function handleTextChange(text: string) {
+  function handleTextChange(text: SlateCustomElement[]) {
     if (!book || !dataItemType || !dataItemId || !item) return;
 
     const field = isNoteType(item) ? "text" : "description";
@@ -113,7 +113,7 @@ export const DataBookItemEdit: FC = () => {
     });
   }
 
-  function handleChapterTextChange(text: string) {
+  function handleChapterTextChange(text: SlateCustomElement[]) {
     if (!book || !dataItemType || !dataItemId || !item) return;
     handleDataItemFieldUpdate({
       dataItemType: dataItemType as keyof Book,

@@ -6,13 +6,13 @@ import { useBook } from "../../contexts/BookContext";
 type BookDataListProps = {
   isRendered: boolean;
   type: BooKDataItemType;
-  isBookEdit?: boolean;
+  isEdit?: boolean;
 };
 
 export const BookDataList: FC<BookDataListProps> = ({
   isRendered,
   type,
-  isBookEdit = false,
+  isEdit = false,
 }) => {
   const { book } = useBook();
   if (!isRendered || !book) return null;
@@ -23,7 +23,7 @@ export const BookDataList: FC<BookDataListProps> = ({
         .filter(d => !d.isDeleted)
         .map(d => (
           <li key={d.id}>
-            <BookDataPreview dataItem={d} type={type} isBookEdit={isBookEdit} />
+            <BookDataPreview dataItem={d} type={type} isEdit={isEdit} />
           </li>
         ))}
     </ul>

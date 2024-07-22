@@ -164,5 +164,9 @@
   },
   "reviews": "Reviews",
   "references": "References",
-  "createdAt": "Created At"
+  "createdAt": "Created At",
+  "removeReviewMsg": {
+    "title": "Delete Review",
+    "msg": "Are you sure you want to delete the review?"
+  }
 }

@@ -13,6 +13,10 @@ const referenceSchema = new Schema<IReference>(
     imgUrls: {
       type: [String],
     },
+    isArchived: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     toObject: {

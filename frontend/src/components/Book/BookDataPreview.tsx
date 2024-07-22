@@ -13,13 +13,13 @@ import { useGetTitleTextBookItem } from "../../hooks/useGetTitleTextBookItem";
 type BookDataPreviewProps = {
   dataItem: Chapter | Character | Theme | Plotline | Note;
   type: BooKDataItemType;
-  isBookEdit?: boolean;
+  isEdit?: boolean;
 };
 
 export const BookDataPreview: FC<BookDataPreviewProps> = ({
   dataItem,
   type,
-  isBookEdit = false,
+  isEdit = false,
 }) => {
   const navigate = useNavigate();
   const { getTitle, getText } = useGetTitleTextBookItem();
@@ -36,7 +36,7 @@ export const BookDataPreview: FC<BookDataPreviewProps> = ({
   }
 
   function handlePreviewClick() {
-    if (!isBookEdit) onOpenItem();
+    if (!isEdit) onOpenItem();
     else onEditItem();
   }
 

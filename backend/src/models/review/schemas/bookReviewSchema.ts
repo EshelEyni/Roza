@@ -1,5 +1,5 @@
-import { Document, Schema } from "mongoose";
-import { IBookReview } from "../../../types/iTypes";
+import { Document, Query, Schema } from "mongoose";
+import { IBookReview, IReference, IReview } from "../../../types/iTypes";
 import { referenceSchema } from "./referenceSchema";
 import { reviewSchema } from "./reviewSchema";
 
@@ -58,6 +58,23 @@ bookReviewSchema.pre("save", async function (next) {
 
   next();
 });
+
+bookReviewSchema.pre(/^find/, async function (this: Query<Document, Document>, next) {
+  this.find({ isArchived: { $ne: true } });
+
+  next();
+});
+
+bookReviewSchema.post(/^find/, async function (data, next) {
+  if (!data) return next();
+  if (Array.isArray(data)) for (const doc of data) filterArchivedItems(doc);
+  else filterArchivedItems(data);
+});
+
+function filterArchivedItems(doc: IBookReview) {
+  doc.reviews = doc.reviews.filter((r: IReview) => !r.isArchived);
+  doc.references = doc.references.filter((r: IReference) => !r.isArchived);
+}
 
 bookReviewSchema.index({ name: "text", "reviews.text": "text", "references.text": "text" });
 
