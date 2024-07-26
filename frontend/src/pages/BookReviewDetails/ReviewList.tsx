@@ -13,23 +13,28 @@ type ReviewListProps = {
 };
 
 export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
-  const { onAddReview } = useBookReview();
+  const { updateBookReviewEntity, onNavigateToEdit } = useBookReview();
   const { t } = useTranslation();
-  if (!reviews.length) return null;
+
+  function handleAddReview() {
+    updateBookReviewEntity({ type: "addReview" });
+    if (!isEdit) onNavigateToEdit();
+  }
+
   return (
     <div className="w-full font-normal text-app-800">
       <div className="mb-1 flex items-center justify-between">
         <h2 className="mb-2 text-2xl font-bold text-app-800">{t("reviews")}</h2>
-        <Button onClickFn={onAddReview}>{t("btnAdd")}</Button>
+        <Button onClickFn={handleAddReview}>{t("btnAdd")}</Button>
       </div>
 
       <ul className="flex flex-col gap-2">
-        {reviews.map((review, idx) => (
-          <li key={idx}>
+        {reviews.map(review => (
+          <li key={review.id}>
             {isEdit ? (
-              <ReviewEdit key={idx} review={review} />
+              <ReviewEdit review={review} />
             ) : (
-              <ReviewDisplay key={idx} review={review} />
+              <ReviewDisplay review={review} />
             )}
             <Hr />
           </li>

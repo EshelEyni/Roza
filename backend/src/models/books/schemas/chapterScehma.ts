@@ -24,7 +24,7 @@ const chapterSchema = new Schema<IChapter>(
       type: String,
       default: "",
     },
-    isDeleted: {
+    isArchived: {
       type: Boolean,
       default: false,
     },

@@ -40,7 +40,7 @@ export interface IBook extends Document {
 
 export interface IBasicBookDataItem extends Document {
   bookId: mongoose.Types.ObjectId;
-  isDeleted: boolean;
+  isArchived: boolean;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
@@ -97,8 +97,14 @@ export interface IReview extends Document {
 export interface IReference extends Document {
   page: string;
   text: string;
-  imgUrls: string[];
+  imgs: IImage[];
   isArchived: boolean;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
+  sortOrder: number;
+}
+
+export interface IImage extends Document {
+  data: Buffer;
+  contentType: string;
 }

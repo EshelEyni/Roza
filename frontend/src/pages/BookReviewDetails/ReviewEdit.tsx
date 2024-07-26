@@ -12,12 +12,20 @@ type ReviewEditProps = {
 
 export const ReviewEdit: FC<ReviewEditProps> = ({ review }) => {
   const parsedText = JSON.parse(review.text) as SlateCustomElement[];
-  const { onRemoveReview, onUpdateReview } = useBookReview();
+  const { updateBookReviewEntity } = useBookReview();
   const { t } = useTranslation();
 
   function handleChange(text: SlateCustomElement[]) {
     const updatedReview = { ...review, text: JSON.stringify(text) };
     onUpdateReview(updatedReview);
+  }
+
+  function onRemoveReview(reviewId: string) {
+    updateBookReviewEntity({ type: "removeReview", reviewId });
+  }
+
+  function onUpdateReview(updatedReview: Review) {
+    updateBookReviewEntity({ type: "updateReview", review: updatedReview });
   }
 
   return (

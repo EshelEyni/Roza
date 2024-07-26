@@ -15,7 +15,7 @@ const noteSchema = new Schema<INote>(
       type: Number,
       default: 0,
     },
-    isDeleted: {
+    isArchived: {
       type: Boolean,
       default: false,
     },

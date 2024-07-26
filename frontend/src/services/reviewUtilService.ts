@@ -1,4 +1,4 @@
-import { BookReview, Review } from "../../../shared/types/books";
+import { BookReview, Reference, Review } from "../../../shared/types/books";
 import { getDefaultSlateElement } from "./utilService";
 
 function getDefaultBookReview(userId = "", name = ""): BookReview {
@@ -24,4 +24,16 @@ function getDefaultReview(): Review {
   };
 }
 
-export { getDefaultBookReview, getDefaultReview };
+function getDefaultReference({ sortOrder = 0 }): Reference {
+  return {
+    id: "",
+    text: "",
+    imgUrls: [],
+    page: "",
+    isArchived: false,
+    sortOrder,
+    createdAt: new Date(),
+  };
+}
+
+export { getDefaultBookReview, getDefaultReview, getDefaultReference };

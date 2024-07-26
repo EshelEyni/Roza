@@ -1,3 +1,4 @@
+import { Reference, Review } from "./books";
 import { User } from "./user";
 
 export type AnyFunction = (...args: any[]) => any;
@@ -26,3 +27,11 @@ export interface UserMsg {
     fn: Function;
   };
 }
+
+export type updateBookReviewEntityAction =
+  | { type: "addReview" }
+  | { type: "removeReview"; reviewId: string }
+  | { type: "updateReview"; review: Review }
+  | { type: "addReference" }
+  | { type: "removeReference"; referenceId: string }
+  | { type: "updateReference"; reference: Reference };

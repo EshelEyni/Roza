@@ -20,7 +20,7 @@ const characterSchema = new Schema<ICharacter>(
       type: Number,
       default: 0,
     },
-    isDeleted: {
+    isArchived: {
       type: Boolean,
       default: false,
     },

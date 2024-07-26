@@ -4,13 +4,17 @@ import { useUpdateBookReview } from "../hooks/reactQuery/update/updateReview";
 import { PageTitle } from "./PageTitle";
 import { useTranslation } from "react-i18next";
 
-type ReviewtitleProps = {
+type ReviewTitleProps = {
   isEdit?: boolean;
 };
 
-export const Reviewtitle: FC<ReviewtitleProps> = ({ isEdit = false }) => {
-  const { bookReview, isSuccessBookReview, onNavigateToEdit, onArchiveReview } =
-    useBookReview();
+export const ReviewTitle: FC<ReviewTitleProps> = ({ isEdit = false }) => {
+  const {
+    bookReview,
+    isSuccessBookReview,
+    onNavigateToEdit,
+    onArchiveBookReview,
+  } = useBookReview();
   const { updateBookReview } = useUpdateBookReview();
   const { t } = useTranslation();
 
@@ -27,7 +31,7 @@ export const Reviewtitle: FC<ReviewtitleProps> = ({ isEdit = false }) => {
       handleInputChange={handleInputChange}
       onNavigateToEdit={onNavigateToEdit}
       modalName="archiveReview"
-      onDeleteEntity={onArchiveReview}
+      onDeleteEntity={onArchiveBookReview}
       archiveTitle={t("archiveReviewMsg.title")}
       archiveMsg={t("archiveReviewMsg.msg")}
     />

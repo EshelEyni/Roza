@@ -1,5 +1,10 @@
 import { Schema } from "mongoose";
-import { IReference } from "./../../../types/iTypes";
+import { IImage, IReference } from "./../../../types/iTypes";
+
+const imageSchema = new Schema<IImage>({
+  data: Buffer,
+  contentType: String,
+});
 
 const referenceSchema = new Schema<IReference>(
   {
@@ -10,12 +15,16 @@ const referenceSchema = new Schema<IReference>(
       type: String,
       trim: true,
     },
-    imgUrls: {
-      type: [String],
+    imgs: {
+      type: [imageSchema],
     },
     isArchived: {
       type: Boolean,
       default: false,
+    },
+    sortOrder: {
+      type: Number,
+      default: 0,
     },
   },
   {

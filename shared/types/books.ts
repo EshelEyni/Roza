@@ -18,9 +18,13 @@ export interface Review {
 }
 
 export interface Reference {
+  readonly id: string;
   page: string;
   text: string;
-  imgUrls: string[];
+  imgs: any[];
+  isArchived: boolean;
+  sortOrder: number;
+  createdAt: Date | string;
 }
 
 export interface Book {

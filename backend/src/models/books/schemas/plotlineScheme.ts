@@ -21,7 +21,7 @@ const plotlineSchema = new Schema<IPlotline>(
       type: Number,
       default: 0,
     },
-    isDeleted: {
+    isArchived: {
       type: Boolean,
       default: false,
     },

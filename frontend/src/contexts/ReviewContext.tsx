@@ -4,16 +4,17 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
 import { useGetBookReview } from "../hooks/reactQuery/get/useGetBookReview";
 import { useUpdateBookReview } from "../hooks/reactQuery/update/updateReview";
-import { getDefaultReview } from "../services/reviewUtilService";
-import { Review } from "../../../shared/types/books";
+import {
+  getDefaultReference,
+  getDefaultReview,
+} from "../services/reviewUtilService";
+import { updateBookReviewEntityAction } from "../../../shared/types/system";
 
 type BookReviewContextType = UseLoginWithTokenResult &
   UseGetBookReviewResult & {
     onNavigateToEdit: () => void;
-    onArchiveReview: () => void;
-    onAddReview: () => void;
-    onRemoveReview: (reviewId: string) => void;
-    onUpdateReview: (review: Review) => void;
+    onArchiveBookReview: () => void;
+    updateBookReviewEntity: (action: updateBookReviewEntityAction) => void;
   };
 
 const BookReviewContext = createContext<BookReviewContextType | undefined>(
@@ -48,34 +49,60 @@ function BookReviewProvider({ children }: { children: React.ReactNode }) {
     navigate(`/review-edit/${bookReview.id}`);
   }
 
-  function onArchiveReview() {
+  function onArchiveBookReview() {
     if (!bookReview) return;
     updateBookReview({ ...bookReview, isArchived: true });
     navigate("/reviews");
   }
 
-  function onAddReview() {
+  function updateBookReviewEntity(action: updateBookReviewEntityAction) {
     if (!bookReview) return;
-    const newBookReview = { ...bookReview };
-    bookReview.reviews.push(getDefaultReview());
-    updateBookReview(newBookReview);
-  }
 
-  function onRemoveReview(reviewId: string) {
-    if (!bookReview) return;
     const newBookReview = { ...bookReview };
-    newBookReview.reviews = newBookReview.reviews.map(review =>
-      review.id === reviewId ? { ...review, isArchived: true } : review,
-    );
-    updateBookReview(newBookReview);
-  }
 
-  function onUpdateReview(review: Review) {
-    if (!bookReview) return;
-    const newBookReview = { ...bookReview };
-    newBookReview.reviews = newBookReview.reviews.map(r =>
-      r.id === review.id ? review : r,
-    );
+    switch (action.type) {
+      case "addReview":
+        newBookReview.reviews.push(getDefaultReview());
+        break;
+
+      case "removeReview":
+        newBookReview.reviews = newBookReview.reviews.map(review =>
+          review.id === action.reviewId
+            ? { ...review, isArchived: true }
+            : review,
+        );
+        break;
+
+      case "updateReview":
+        newBookReview.reviews = newBookReview.reviews.map(r =>
+          r.id === action.review.id ? action.review : r,
+        );
+        break;
+
+      case "addReference":
+        newBookReview.references.push(
+          getDefaultReference({ sortOrder: newBookReview.references.length }),
+        );
+        break;
+
+      case "removeReference":
+        newBookReview.references = newBookReview.references.map(reference =>
+          reference.id === action.referenceId
+            ? { ...reference, isArchived: true }
+            : reference,
+        );
+        break;
+
+      case "updateReference":
+        newBookReview.references = newBookReview.references.map(r =>
+          r.id === action.reference.id ? action.reference : r,
+        );
+        break;
+
+      default:
+        throw new Error("Unknown action type");
+    }
+
     updateBookReview(newBookReview);
   }
 
@@ -92,10 +119,8 @@ function BookReviewProvider({ children }: { children: React.ReactNode }) {
     isErrorLoggedInUser,
     isFetchedLoggedInUser,
     onNavigateToEdit,
-    onArchiveReview,
-    onAddReview,
-    onRemoveReview,
-    onUpdateReview,
+    onArchiveBookReview,
+    updateBookReviewEntity,
   };
 
   return (
