@@ -1,10 +1,5 @@
 import { Schema } from "mongoose";
-import { IImage, IReference } from "./../../../types/iTypes";
-
-const imageSchema = new Schema<IImage>({
-  data: Buffer,
-  contentType: String,
-});
+import { IReference } from "./../../../types/iTypes";
 
 const referenceSchema = new Schema<IReference>(
   {
@@ -16,7 +11,7 @@ const referenceSchema = new Schema<IReference>(
       trim: true,
     },
     imgs: {
-      type: [imageSchema],
+      type: [String],
     },
     isArchived: {
       type: Boolean,

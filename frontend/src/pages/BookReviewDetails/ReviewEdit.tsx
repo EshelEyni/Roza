@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { Review, SlateCustomElement } from "../../../../shared/types/books";
 import { SlateEditor } from "../../components/SlateTextEditor/TextEditor";
-import { debounce } from "../../services/utilService";
+import { debounce, getDefaultSlateElement } from "../../services/utilService";
 import { useBookReview } from "../../contexts/ReviewContext";
 import { useTranslation } from "react-i18next";
 import { Modal } from "../../components/Modal";
@@ -11,7 +11,10 @@ type ReviewEditProps = {
 };
 
 export const ReviewEdit: FC<ReviewEditProps> = ({ review }) => {
-  const parsedText = JSON.parse(review.text) as SlateCustomElement[];
+  const parsedText = review.text
+    ? (JSON.parse(review.text) as SlateCustomElement[])
+    : getDefaultSlateElement();
+
   const { updateBookReviewEntity } = useBookReview();
   const { t } = useTranslation();
 

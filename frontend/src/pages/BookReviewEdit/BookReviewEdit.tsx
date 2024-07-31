@@ -8,6 +8,7 @@ import { ReviewTitle } from "../../components/Reviewtitle";
 import { Hr } from "../../components/Hr";
 import { ReviewList } from "../BookReviewDetails/ReviewList";
 import { ReferenceList } from "../BookReviewDetails/ReferenceList";
+import { StructureEdit } from "./StructureEdit";
 
 const BookReviewEdit: FC = () => {
   const {
@@ -35,7 +36,10 @@ const BookReviewEdit: FC = () => {
             <Hr />
 
             <ReviewList reviews={bookReview.reviews} isEdit={true} />
+            <Hr />
             <ReferenceList references={bookReview.references} isEdit={true} />
+            <Hr />
+            <StructureEdit structure={bookReview.structure} />
           </div>
         )}
       </PageContent>

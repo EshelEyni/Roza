@@ -4,6 +4,7 @@ export interface BookReview {
   name: string;
   reviews: Review[];
   references: Reference[];
+  structure: string;
   sortOrder: number;
   createdAt: Date | string;
   updatedAt: Date | string;
@@ -21,7 +22,7 @@ export interface Reference {
   readonly id: string;
   page: string;
   text: string;
-  imgs: any[];
+  imgs: string[];
   isArchived: boolean;
   sortOrder: number;
   createdAt: Date | string;

@@ -8,6 +8,7 @@ function getDefaultBookReview(userId = "", name = ""): BookReview {
     name,
     reviews: [],
     references: [],
+    structure: "",
     sortOrder: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -28,7 +29,7 @@ function getDefaultReference({ sortOrder = 0 }): Reference {
   return {
     id: "",
     text: "",
-    imgUrls: [],
+    imgs: [],
     page: "",
     isArchived: false,
     sortOrder,

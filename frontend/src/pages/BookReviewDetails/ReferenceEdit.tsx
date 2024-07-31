@@ -10,6 +10,7 @@ type ReferenceEditProps = {
 export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
   //   const { updateBookReviewEntity } = useBookReview();
 
+  if (!reference) return null;
   return (
     <div>
       <h2>{reference.id}</h2>

@@ -34,4 +34,5 @@ export type updateBookReviewEntityAction =
   | { type: "updateReview"; review: Review }
   | { type: "addReference" }
   | { type: "removeReference"; referenceId: string }
-  | { type: "updateReference"; reference: Reference };
+  | { type: "updateReference"; reference: Reference }
+  | { type: "updateStructure"; structure: string };

@@ -34,14 +34,14 @@ export const ReferenceList: FC<ReferenceListProps> = ({
       </div>
 
       <ul className="flex flex-col gap-2">
-        {references.map(reference => (
+        {references.map((reference, i) => (
           <li key={reference.id}>
             {isEdit ? (
               <ReferenceEdit reference={reference} />
             ) : (
               <ReferenceDisplay reference={reference} />
             )}
-            <Hr />
+            {i < references.length - 1 && <Hr />}
           </li>
         ))}
       </ul>

@@ -168,5 +168,6 @@
   "removeReviewMsg": {
     "title": "Delete Review",
     "msg": "Are you sure you want to delete the review?"
-  }
+  },
+  "structure": "Structure"
 }

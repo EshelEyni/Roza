@@ -81,6 +81,7 @@ export interface IBookReview extends Document {
   name: string;
   reviews: IReview[];
   references: IReference[];
+  structure: string;
   sortOrder: number;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
@@ -97,14 +98,9 @@ export interface IReview extends Document {
 export interface IReference extends Document {
   page: string;
   text: string;
-  imgs: IImage[];
+  imgs: string[];
   isArchived: boolean;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
   sortOrder: number;
-}
-
-export interface IImage extends Document {
-  data: Buffer;
-  contentType: string;
 }

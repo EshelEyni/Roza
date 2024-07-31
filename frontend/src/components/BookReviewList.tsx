@@ -82,13 +82,13 @@ export const BookReviewList: FC<ReviewListProps> = ({
                   />
                 </div>
 
-                <div className="mt-4 flex items-center justify-end">
-                  <Button
-                    onClickFn={handleAddBook}
-                    className="rounded-md bg-app-600 px-4 py-2 text-white hover:bg-app-700"
-                  >
-                    {t("ReviewsList.btnAdd")}
-                  </Button>
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <Modal.CloseBtn>
+                    <span>{t("btnCancel")}</span>
+                  </Modal.CloseBtn>
+                  <Modal.CloseBtn onClickFn={handleAddBook}>
+                    <span>{t("ReviewsList.btnAdd")}</span>
+                  </Modal.CloseBtn>
                 </div>
               </div>
             </Modal.Window>

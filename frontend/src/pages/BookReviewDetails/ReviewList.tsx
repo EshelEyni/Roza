@@ -29,14 +29,14 @@ export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
       </div>
 
       <ul className="flex flex-col gap-2">
-        {reviews.map(review => (
+        {reviews.map((review, i) => (
           <li key={review.id}>
             {isEdit ? (
               <ReviewEdit review={review} />
             ) : (
               <ReviewDisplay review={review} />
             )}
-            <Hr />
+            {i < reviews.length - 1 && <Hr />}
           </li>
         ))}
       </ul>

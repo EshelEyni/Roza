@@ -16,6 +16,11 @@ const bookReviewSchema = new Schema<IBookReview>(
     },
     reviews: [reviewSchema],
     references: [referenceSchema],
+    structure: {
+      type: String,
+      default: "[]",
+      trim: true,
+    },
     sortOrder: {
       type: Number,
     },
@@ -72,8 +77,11 @@ bookReviewSchema.post(/^find/, async function (data, next) {
 });
 
 function filterArchivedItems(doc: IBookReview) {
-  doc.reviews = doc.reviews.filter((r: IReview) => !r.isArchived);
-  doc.references = doc.references.filter((r: IReference) => !r.isArchived);
+  if (!doc) return;
+  if (doc.reviews && doc.reviews.length)
+    doc.reviews = doc.reviews.filter((r: IReview) => !r.isArchived);
+  if (doc.references && doc.references.length)
+    doc.references = doc.references.filter((r: IReference) => !r.isArchived);
 }
 
 bookReviewSchema.index({ name: "text", "reviews.text": "text", "references.text": "text" });

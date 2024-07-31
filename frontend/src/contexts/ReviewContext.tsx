@@ -98,6 +98,9 @@ function BookReviewProvider({ children }: { children: React.ReactNode }) {
           r.id === action.reference.id ? action.reference : r,
         );
         break;
+      case "updateStructure":
+        newBookReview.structure = action.structure;
+        break;
 
       default:
         throw new Error("Unknown action type");
