@@ -10,9 +10,9 @@ import {
   useCallback,
 } from "react";
 import { createPortal } from "react-dom";
-import { useOutsideClick } from "../hooks/useOutsideClick";
-import { debounce } from "../services/utilService";
-import { MainScreen } from "./MainScreen";
+import { useOutsideClick } from "../../hooks/useOutsideClick";
+import { debounce } from "../../services/utilService";
+import { MainScreen } from "../Gen/MainScreen";
 
 type ModalPosition = {
   top?: number;

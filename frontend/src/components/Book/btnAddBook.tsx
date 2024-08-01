@@ -2,7 +2,7 @@ import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
 import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
 import { getDefaultBookDataItem } from "../../services/bookUtilService";
-import { Button } from "../Button";
+import { Button } from "../Buttons/Button";
 import { useTranslation } from "react-i18next";
 
 export const BtnAddBook: FC = () => {

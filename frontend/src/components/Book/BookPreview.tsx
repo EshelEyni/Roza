@@ -1,8 +1,8 @@
 import { FC } from "react";
-import { Book, BooKDataItemType } from "../../../shared/types/books";
+import { Book, BooKDataItemType } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
-import { formatDateByLang } from "../services/utilService";
-import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
+import { formatDateByLang } from "../../services/utilService";
+import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { useNavigate } from "react-router-dom";
 
 type BookPreviewProps = {
@@ -23,7 +23,7 @@ export const BookPreview: FC<BookPreviewProps> = ({ book }) => {
   }
 
   function getItemsLength(type: BooKDataItemType) {
-    return book[type].filter(b => !b.isDeleted).length;
+    return book[type].length;
   }
 
   return (

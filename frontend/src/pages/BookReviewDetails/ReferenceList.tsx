@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { Reference } from "../../../../shared/types/books";
-import { Hr } from "../../components/Hr";
-import { Button } from "../../components/Button";
+import { Hr } from "../../components/Gen/Hr";
+import { Button } from "../../components/Buttons/Button";
 import { useTranslation } from "react-i18next";
 import { ReferenceEdit } from "./ReferenceEdit";
 import { ReferenceDisplay } from "./ReferenceDisplay";

@@ -75,6 +75,7 @@ bookReviewSchema.post(/^find/, async function (data, next) {
   if (!data) return next();
   if (Array.isArray(data)) for (const doc of data) filterArchivedItems(doc);
   else filterArchivedItems(data);
+  next();
 });
 
 function filterArchivedItems(doc: IBookReview) {

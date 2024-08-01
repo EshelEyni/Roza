@@ -1,7 +1,7 @@
 import { FC } from "react";
-import { GoBackBtn } from "./GoBackBtn";
-import { debounce } from "../services/utilService";
-import { Button } from "./Button";
+import { GoBackBtn } from "../Buttons/GoBackBtn";
+import { debounce } from "../../services/utilService";
+import { Button } from "../Buttons/Button";
 import { Modal } from "./Modal";
 import { useTranslation } from "react-i18next";
 

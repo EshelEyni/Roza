@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
 import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
-import { PageTitle } from "../PageTitle";
+import { PageTitle } from "../App/PageTitle";
 import { useTranslation } from "react-i18next";
 
 type BookTitleProps = {

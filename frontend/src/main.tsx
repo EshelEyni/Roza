@@ -5,7 +5,7 @@ import "./index.css";
 import "./styles/main.scss";
 import { BrowserRouter as Router } from "react-router-dom";
 import { ErrorBoundary } from "react-error-boundary";
-import { ErrorFallBack } from "./components/ErrorFallBack";
+import { ErrorFallBack } from "./components/App/ErrorFallBack";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { I18nextProvider } from "react-i18next";

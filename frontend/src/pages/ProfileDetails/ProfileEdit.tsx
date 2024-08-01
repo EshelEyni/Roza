@@ -4,7 +4,7 @@ import { useUpdateUser } from "../../hooks/reactQuery/update/useUpdateUser";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { useTranslation } from "react-i18next";
 import { formatLang, getLanguages } from "../../services/utilService";
-import { Button } from "../../components/Button";
+import { Button } from "../../components/Buttons/Button";
 import classNames from "classnames";
 
 interface UserFormValues {

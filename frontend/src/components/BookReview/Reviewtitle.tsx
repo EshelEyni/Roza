@@ -1,7 +1,7 @@
 import { FC } from "react";
-import { useBookReview } from "../contexts/ReviewContext";
-import { useUpdateBookReview } from "../hooks/reactQuery/update/updateReview";
-import { PageTitle } from "./PageTitle";
+import { useBookReview } from "../../contexts/ReviewContext";
+import { useUpdateBookReview } from "../../hooks/reactQuery/update/updateReview";
+import { PageTitle } from "../App/PageTitle";
 import { useTranslation } from "react-i18next";
 
 type ReviewTitleProps = {

@@ -1,16 +1,16 @@
 import { FC, useState } from "react";
 import { BookPreview } from "./BookPreview";
-import { UseGetBooksResult } from "../types/app";
+import { UseGetBooksResult } from "../../types/app";
 import { useTranslation } from "react-i18next";
-import { BookLoader } from "./BookLoader/BookLoader";
-import { ErrorMsg } from "./ErrorMsg";
-import { EmptyMsg } from "./EmptyMsg";
+import { BookLoader } from "../Loaders/BookLoader/BookLoader";
+import { ErrorMsg } from "../Msg/ErrorMsg";
+import { EmptyMsg } from "../Msg/EmptyMsg";
 import { useNavigate } from "react-router-dom";
-import { Button } from "./Button";
-import { Modal } from "./Modal";
-import { getDefaultBook } from "../services/bookUtilService";
-import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
-import { useAddBook } from "../hooks/reactQuery/add/useAddBook";
+import { Button } from "../Buttons/Button";
+import { Modal } from "../App/Modal";
+import { getDefaultBook } from "../../services/bookUtilService";
+import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
+import { useAddBook } from "../../hooks/reactQuery/add/useAddBook";
 
 type BookListProps = UseGetBooksResult & {
   isHomePage?: boolean;

@@ -4,8 +4,8 @@ import { useTranslation } from "react-i18next";
 import { ReviewDisplay } from "./ReviewDisplay";
 import { ReviewEdit } from "./ReviewEdit";
 import { useBookReview } from "../../contexts/ReviewContext";
-import { Button } from "../../components/Button";
-import { Hr } from "../../components/Hr";
+import { Button } from "../../components/Buttons/Button";
+import { Hr } from "../../components/Gen/Hr";
 
 type ReviewListProps = {
   reviews: Review[];

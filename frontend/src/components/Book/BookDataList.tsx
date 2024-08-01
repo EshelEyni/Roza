@@ -19,13 +19,11 @@ export const BookDataList: FC<BookDataListProps> = ({
   const data = book[type] as BookDataItem[];
   return (
     <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {data
-        .filter(d => !d.isDeleted)
-        .map(d => (
-          <li key={d.id}>
-            <BookDataPreview dataItem={d} type={type} isEdit={isEdit} />
-          </li>
-        ))}
+      {data.map(d => (
+        <li key={d.id}>
+          <BookDataPreview dataItem={d} type={type} isEdit={isEdit} />
+        </li>
+      ))}
     </ul>
   );
 };

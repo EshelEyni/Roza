@@ -1,12 +1,12 @@
 import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
 import { useTranslation } from "react-i18next";
-import { Hr } from "../../components/Hr";
+import { Hr } from "../../components/Gen/Hr";
 import { isChapterType } from "../../../../shared/services/utilService";
-import { Button } from "../../components/Button";
+import { Button } from "../../components/Buttons/Button";
 import { Modal } from "../../components/Modal";
 import { BookItemTitle } from "../../components/Book/BookItemTitle";
-import { TextElement } from "../../components/TextElement";
+import { TextElement } from "../../components/Gen/TextElement";
 
 export const DataBookItemDetails: FC = () => {
   const {

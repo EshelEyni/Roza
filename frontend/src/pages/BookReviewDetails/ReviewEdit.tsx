@@ -4,7 +4,7 @@ import { SlateEditor } from "../../components/SlateTextEditor/TextEditor";
 import { debounce } from "../../services/utilService";
 import { useBookReview } from "../../contexts/ReviewContext";
 import { useTranslation } from "react-i18next";
-import { Modal } from "../../components/Modal";
+import { Modal } from "../../components/App/Modal";
 
 type ReviewEditProps = {
   review: Review;

@@ -56,7 +56,7 @@ function getDefaultBasicBookDataItem(bookId: string): BasicBookDataItem {
     id: "",
     bookId,
     sortOrder: 0,
-    isDeleted: false,
+    isArchived: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   };
@@ -146,7 +146,7 @@ function markItemAsDeleted({
   return {
     ...book,
     [key]: (book[key] as BookDataItem[]).map(item =>
-      item.id === dataItemId ? { ...item, isDeleted: true } : item,
+      item.id === dataItemId ? { ...item, isArchived: true } : item,
     ),
   };
 }

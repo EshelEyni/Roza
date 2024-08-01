@@ -2,7 +2,7 @@ import { FC } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { LoginCredentials } from "../../../../shared/types/user";
 import { useLogin } from "../../hooks/ReactQuery/update/useLogin";
-import { Button } from "../../components/Button";
+import { Button } from "../../components/Buttons/Button";
 
 export const LoginForm: FC = () => {
   const { login, isPending } = useLogin();

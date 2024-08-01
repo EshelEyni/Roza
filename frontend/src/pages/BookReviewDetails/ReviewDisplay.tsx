@@ -2,7 +2,7 @@ import { FC } from "react";
 import { Review } from "../../../../shared/types/books";
 import { formatDateByLang } from "../../services/utilService";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
-import { TextElement } from "../../components/TextElement";
+import { TextElement } from "../../components/Gen/TextElement";
 import { useTranslation } from "react-i18next";
 
 type ReviewDisplayProps = {

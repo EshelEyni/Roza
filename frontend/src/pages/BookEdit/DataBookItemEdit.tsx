@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
-import { Hr } from "../../components/Hr";
+import { Hr } from "../../components/Gen/Hr";
 import {
   isChapterType,
   isNoteType,
@@ -11,7 +11,7 @@ import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
 import { SlateEditor } from "../../components/SlateTextEditor/TextEditor";
 import { Book, SlateCustomElement } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
-import { Button } from "../../components/Button";
+import { Button } from "../../components/Buttons/Button";
 
 export const DataBookItemEdit: FC = () => {
   const {

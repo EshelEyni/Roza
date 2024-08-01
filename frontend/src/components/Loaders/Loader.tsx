@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { Logo } from "./Logo";
+import { Logo } from "../App/Logo";
 
 type LoaderProps = {
   isPageLoader?: boolean;

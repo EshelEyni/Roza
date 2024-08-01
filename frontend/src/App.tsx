@@ -1,12 +1,12 @@
 import { Suspense, lazy, useEffect } from "react";
-import { Loader } from "./components/Loader";
+import { Loader } from "./components/Loaders/Loader";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { routes } from "./routes";
 import { useTranslation } from "react-i18next";
 import { useLoginWithToken } from "./hooks/reactQuery/get/useLoginWithToken";
 import { AuthGuard } from "./guards/AuthGuard";
 import { Route as TypeOfRoute } from "./types/app";
-import { AppHeader } from "./components/AppHeader";
+import { AppHeader } from "./components/App/AppHeader";
 
 const PageNotFound = lazy(() => import("./pages/PageNotFound"));
 

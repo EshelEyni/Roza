@@ -1,8 +1,8 @@
 import { FC } from "react";
-import { Main } from "../../components/Main";
-import { PageContent } from "../../components/PageContent";
+import { Main } from "../../components/Gen/Main";
+import { PageContent } from "../../components/Gen/PageContent";
 import { useBooks } from "../../contexts/BooksContext";
-import { BookList } from "../../components/BookList";
+import { BookList } from "../../components/Book/BookList";
 import { BooksFilter } from "./BooksFilter";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 

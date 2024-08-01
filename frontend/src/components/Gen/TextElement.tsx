@@ -2,7 +2,7 @@ import { FC } from "react";
 import {
   SlateCustomElement,
   SlateCustomText,
-} from "../../../shared/types/books";
+} from "../../../../shared/types/books";
 
 type TextElementProps = {
   element: SlateCustomElement;

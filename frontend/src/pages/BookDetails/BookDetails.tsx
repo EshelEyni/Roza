@@ -1,11 +1,11 @@
 import { FC } from "react";
-import { Main } from "../../components/Main";
-import { PageContent } from "../../components/PageContent";
-import { Loader } from "../../components/Loader";
-import { ErrorMsg } from "../../components/ErrorMsg";
+import { Main } from "../../components/Gen/Main";
+import { PageContent } from "../../components/Gen/PageContent";
+import { Loader } from "../../components/Loaders/Loader";
+import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 import { useBook } from "../../contexts/BookContext";
 import { BookFilter } from "../../components/Book/BookFilter";
-import { Hr } from "../../components/Hr";
+import { Hr } from "../../components/Gen/Hr";
 import { BookDataList } from "../../components/Book/BookDataList";
 import { DataBookItemDetails } from "./DataBookItemDetails";
 import { BookTitle } from "../../components/Book/BookTitle";

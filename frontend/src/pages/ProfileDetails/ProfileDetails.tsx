@@ -1,12 +1,12 @@
 import { FC } from "react";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
-import { Main } from "../../components/Main";
+import { Main } from "../../components/Gen/Main";
 import { useProfile } from "../../contexts/ProfileContext";
 import { ProfileDisplay } from "./ProfileDisplay";
 import { ProfileEdit } from "./ProfileEdit";
 import { PasswordEdit } from "./PasswordEdit";
 import { useTranslation } from "react-i18next";
-import { Button } from "../../components/Button";
+import { Button } from "../../components/Buttons/Button";
 import classNames from "classnames";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 

@@ -2,7 +2,7 @@ import { FC } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { UserCredenitials } from "../../../../shared/types/user";
 import { useSignup } from "../../hooks/ReactQuery/update/useSignup";
-import { Button } from "../../components/Button";
+import { Button } from "../../components/Buttons/Button";
 
 export const SignupForm: FC = () => {
   const { signup, isPending } = useSignup();

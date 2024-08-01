@@ -47,7 +47,7 @@ export interface BasicBookDataItem {
   readonly id: string;
   bookId: string;
   sortOrder: number;
-  isDeleted: boolean;
+  isArchived: boolean;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
 }

@@ -1,11 +1,11 @@
 import { FC } from "react";
 import { useBookReview } from "../../contexts/ReviewContext";
-import { Main } from "../../components/Main";
-import { PageContent } from "../../components/PageContent";
-import { Loader } from "../../components/Loader";
-import { ErrorMsg } from "../../components/ErrorMsg";
-import { ReviewTitle } from "../../components/Reviewtitle";
-import { Hr } from "../../components/Hr";
+import { Main } from "../../components/Gen/Main";
+import { PageContent } from "../../components/Gen/PageContent";
+import { Loader } from "../../components/Loaders/Loader";
+import { ErrorMsg } from "../../components/Msg/ErrorMsg";
+import { ReviewTitle } from "../../components/BookReview/Reviewtitle";
+import { Hr } from "../../components/Gen/Hr";
 import { ReviewList } from "../BookReviewDetails/ReviewList";
 import { ReferenceList } from "../BookReviewDetails/ReferenceList";
 import { StructureEdit } from "./StructureEdit";
