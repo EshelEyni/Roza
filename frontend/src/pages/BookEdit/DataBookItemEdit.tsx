@@ -54,7 +54,7 @@ export const DataBookItemEdit: FC = () => {
     dataItemType: keyof Book;
     dataItemId: string;
     field: string;
-    value: string;
+    value: string | SlateCustomElement[];
   }) {
     if (
       !book ||
@@ -109,7 +109,7 @@ export const DataBookItemEdit: FC = () => {
       dataItemType: dataItemType as keyof Book,
       dataItemId,
       field,
-      value: JSON.stringify(text),
+      value: text,
     });
   }
 
@@ -119,7 +119,7 @@ export const DataBookItemEdit: FC = () => {
       dataItemType: dataItemType as keyof Book,
       dataItemId,
       field: "text",
-      value: JSON.stringify(text),
+      value: text,
     });
   }
 

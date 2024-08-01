@@ -1,5 +1,5 @@
 import mongoose, { Document } from "mongoose";
-import { BooKDataItemType } from "../../../shared/types/books";
+import { BooKDataItemType, SlateCustomElement, SlateCustomText } from "../../../shared/types/books";
 
 export interface IUser extends Document {
   username: string;
@@ -48,31 +48,31 @@ export interface IBasicBookDataItem extends Document {
 
 export interface IChapter extends IBasicBookDataItem {
   name: string;
-  description: string;
-  text: string;
+  description: ISlateCustomElement[];
+  text: ISlateCustomElement[];
   type: "chapters";
 }
 
 export interface ICharacter extends IBasicBookDataItem {
   name: string;
-  description: string;
+  description: ISlateCustomElement[];
   type: "characters";
 }
 
 export interface ITheme extends IBasicBookDataItem {
   name: string;
-  description: string;
+  description: ISlateCustomElement[];
   type: "themes";
 }
 
 export interface IPlotline extends IBasicBookDataItem {
   name: string;
-  description: string;
+  description: ISlateCustomElement[];
   type: "plotlines";
 }
 
 export interface INote extends IBasicBookDataItem {
-  text: string;
+  text: ISlateCustomElement[];
   type: "notes";
 }
 
@@ -81,7 +81,7 @@ export interface IBookReview extends Document {
   name: string;
   reviews: IReview[];
   references: IReference[];
-  structure: string;
+  structure: ISlateCustomElement[];
   sortOrder: number;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
@@ -89,7 +89,7 @@ export interface IBookReview extends Document {
 }
 
 export interface IReview extends Document {
-  text: string;
+  text: ISlateCustomElement[];
   isArchived: boolean;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
@@ -97,10 +97,14 @@ export interface IReview extends Document {
 
 export interface IReference extends Document {
   page: string;
-  text: string;
+  text: ISlateCustomElement[];
   imgs: string[];
   isArchived: boolean;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
   sortOrder: number;
 }
+
+export interface ISlateCustomElement extends SlateCustomElement, Document {}
+
+export interface ISlateCustomText extends SlateCustomText, Document {}

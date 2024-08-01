@@ -1,0 +1,15 @@
+{
+  "name": "roza",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "concurrently \"npm:dev:backend\" \"npm:dev:frontend\" \"npm:dev:translate\"",
+    "dev:backend": "cd backend && code . && npm run dev",
+    "dev:frontend": "cd frontend && code . && npm run dev",
+    "dev:translate": "cd frontend\\public\\locales && code ."
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

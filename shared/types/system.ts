@@ -1,4 +1,4 @@
-import { Reference, Review } from "./books";
+import { Reference, Review, SlateCustomElement } from "./books";
 import { User } from "./user";
 
 export type AnyFunction = (...args: any[]) => any;
@@ -35,4 +35,4 @@ export type updateBookReviewEntityAction =
   | { type: "addReference" }
   | { type: "removeReference"; referenceId: string }
   | { type: "updateReference"; reference: Reference }
-  | { type: "updateStructure"; structure: string };
+  | { type: "updateStructure"; structure: SlateCustomElement[] };

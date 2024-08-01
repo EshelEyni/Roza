@@ -4,9 +4,9 @@ import { NextFunction, Request, Response } from "express";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
 import { Book } from "../../../../shared/types/books";
 
-interface BookWithScore extends Book {
-  score: number;
-}
+// interface BookWithScore extends Book {
+//   score: number;
+// }
 
 const getBooks = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
   const loggedInUserId = getLoggedInUserIdFromReq();
@@ -23,57 +23,57 @@ const getBooks = asyncErrorCatcher(async (req: Request, res: Response, next: Nex
   }
 
   const books = (await query.exec()) as unknown as Book[];
-  let sortedBooks = books;
-  if (searchTerm && typeof searchTerm === "string") {
-    sortedBooks = (books as BookWithScore[]).sort((a, b) => {
-      const aNameMatch = a.name.includes(searchTerm) ? 1 : 0;
-      const bNameMatch = b.name.includes(searchTerm) ? 1 : 0;
+  // let sortedBooks = books;
+  // if (searchTerm && typeof searchTerm === "string") {
+  //   sortedBooks = (books as BookWithScore[]).sort((a, b) => {
+  //     const aNameMatch = a.name.includes(searchTerm) ? 1 : 0;
+  //     const bNameMatch = b.name.includes(searchTerm) ? 1 : 0;
 
-      // Sort by name match first
-      if (aNameMatch !== bNameMatch) return bNameMatch - aNameMatch;
+  //     // Sort by name match first
+  //     if (aNameMatch !== bNameMatch) return bNameMatch - aNameMatch;
 
-      const aChaptersMatch = a.chapters.some(c => c.text.includes(searchTerm)) ? 1 : 0;
-      const bChaptersMatch = b.chapters.some(c => c.text.includes(searchTerm)) ? 1 : 0;
+  //     const aChaptersMatch = a.chapters.some(c => c.text.includes(searchTerm)) ? 1 : 0;
+  //     const bChaptersMatch = b.chapters.some(c => c.text.includes(searchTerm)) ? 1 : 0;
 
-      if (aChaptersMatch !== bChaptersMatch) {
-        return bChaptersMatch - aChaptersMatch; // Sort by chapters match next
-      }
+  //     if (aChaptersMatch !== bChaptersMatch) {
+  //       return bChaptersMatch - aChaptersMatch; // Sort by chapters match next
+  //     }
 
-      const aCharactersMatch = a.characters.some(c => c.description.includes(searchTerm)) ? 1 : 0;
-      const bCharactersMatch = b.characters.some(c => c.description.includes(searchTerm)) ? 1 : 0;
+  //     const aCharactersMatch = a.characters.some(c => c.description.includes(searchTerm)) ? 1 : 0;
+  //     const bCharactersMatch = b.characters.some(c => c.description.includes(searchTerm)) ? 1 : 0;
 
-      if (aCharactersMatch !== bCharactersMatch) {
-        return bCharactersMatch - aCharactersMatch; // Sort by characters match next
-      }
+  //     if (aCharactersMatch !== bCharactersMatch) {
+  //       return bCharactersMatch - aCharactersMatch; // Sort by characters match next
+  //     }
 
-      const aThemesMatch = a.themes.some(t => t.description.includes(searchTerm)) ? 1 : 0;
-      const bThemesMatch = b.themes.some(t => t.description.includes(searchTerm)) ? 1 : 0;
+  //     const aThemesMatch = a.themes.some(t => t.description.includes(searchTerm)) ? 1 : 0;
+  //     const bThemesMatch = b.themes.some(t => t.description.includes(searchTerm)) ? 1 : 0;
 
-      // Sort by themes match next
-      if (aThemesMatch !== bThemesMatch) return bThemesMatch - aThemesMatch;
+  //     // Sort by themes match next
+  //     if (aThemesMatch !== bThemesMatch) return bThemesMatch - aThemesMatch;
 
-      const aPlotlinesMatch = a.plotlines.some(p => p.description.includes(searchTerm)) ? 1 : 0;
-      const bPlotlinesMatch = b.plotlines.some(p => p.description.includes(searchTerm)) ? 1 : 0;
+  //     const aPlotlinesMatch = a.plotlines.some(p => p.description.includes(searchTerm)) ? 1 : 0;
+  //     const bPlotlinesMatch = b.plotlines.some(p => p.description.includes(searchTerm)) ? 1 : 0;
 
-      // Sort by plotlines match next
-      if (aPlotlinesMatch !== bPlotlinesMatch) return bPlotlinesMatch - aPlotlinesMatch;
+  //     // Sort by plotlines match next
+  //     if (aPlotlinesMatch !== bPlotlinesMatch) return bPlotlinesMatch - aPlotlinesMatch;
 
-      const aNotesMatch = a.notes.some(n => n.text.includes(searchTerm)) ? 1 : 0;
-      const bNotesMatch = b.notes.some(n => n.text.includes(searchTerm)) ? 1 : 0;
+  //     const aNotesMatch = a.notes.some(n => n.text.includes(searchTerm)) ? 1 : 0;
+  //     const bNotesMatch = b.notes.some(n => n.text.includes(searchTerm)) ? 1 : 0;
 
-      // Sort by notes match next
-      if (aNotesMatch !== bNotesMatch) return bNotesMatch - aNotesMatch;
+  //     // Sort by notes match next
+  //     if (aNotesMatch !== bNotesMatch) return bNotesMatch - aNotesMatch;
 
-      // Use text score as the final tie-breaker
-      return (b.score || 0) - (a.score || 0);
-    });
-  }
+  //     // Use text score as the final tie-breaker
+  //     return (b.score || 0) - (a.score || 0);
+  //   });
+  // }
 
   res.json({
     status: "success",
     requestedAt: new Date().toISOString(),
-    results: sortedBooks.length,
-    data: sortedBooks,
+    results: books.length,
+    data: books,
   });
 });
 

@@ -3,6 +3,7 @@ require("dotenv").config();
 import { AppError } from "../error/errorService";
 import { ObjectId } from "mongodb";
 import { ParsedReqQuery } from "../../types/app";
+import { ISlateCustomElement } from "../../types/iTypes";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyObject = { [key: string]: any };
@@ -121,6 +122,10 @@ function getIsraeliDate(): Date {
   return israelTime;
 }
 
+function getDefaultSlateElement(text = ""): ISlateCustomElement[] {
+  return [{ type: "paragraph", children: [{ text }] }] as ISlateCustomElement[];
+}
+
 export {
   AnyObject,
   APIFeatures,
@@ -131,4 +136,5 @@ export {
   getUniqueStringIds,
   shuffleArray,
   getIsraeliDate,
+  getDefaultSlateElement,
 };

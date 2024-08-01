@@ -1,5 +1,7 @@
 import { Schema } from "mongoose";
 import { ITheme } from "../../../types/iTypes";
+import { SlateCustomElementSchema } from "../../schemas/slateElementSchema";
+import { getDefaultSlateElement } from "../../../services/util/utilService";
 
 const themeSchema = new Schema<ITheme>(
   {
@@ -13,8 +15,8 @@ const themeSchema = new Schema<ITheme>(
       trim: true,
     },
     description: {
-      type: String,
-      default: "",
+      type: [SlateCustomElementSchema],
+      default: getDefaultSlateElement(),
     },
     sortOrder: {
       type: Number,

@@ -1,5 +1,7 @@
 import { Schema } from "mongoose";
 import { IChapter } from "../../../types/iTypes";
+import { SlateCustomElementSchema } from "../../schemas/slateElementSchema";
+import { getDefaultSlateElement } from "../../../services/util/utilService";
 
 const chapterSchema = new Schema<IChapter>(
   {
@@ -17,12 +19,12 @@ const chapterSchema = new Schema<IChapter>(
       default: 0,
     },
     description: {
-      type: String,
-      default: "",
+      type: [SlateCustomElementSchema],
+      default: getDefaultSlateElement(),
     },
     text: {
-      type: String,
-      default: "",
+      type: [SlateCustomElementSchema],
+      default: getDefaultSlateElement(),
     },
     isArchived: {
       type: Boolean,

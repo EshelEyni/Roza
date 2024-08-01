@@ -8,7 +8,7 @@ function getDefaultBookReview(userId = "", name = ""): BookReview {
     name,
     reviews: [],
     references: [],
-    structure: "",
+    structure: getDefaultSlateElement(),
     sortOrder: 0,
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -19,7 +19,7 @@ function getDefaultBookReview(userId = "", name = ""): BookReview {
 function getDefaultReview(): Review {
   return {
     id: "",
-    text: JSON.stringify(getDefaultSlateElement()),
+    text: getDefaultSlateElement(),
     createdAt: new Date(),
     isArchived: false,
   };
@@ -28,7 +28,7 @@ function getDefaultReview(): Review {
 function getDefaultReference({ sortOrder = 0 }): Reference {
   return {
     id: "",
-    text: "",
+    text: getDefaultSlateElement(),
     imgs: [],
     page: "",
     isArchived: false,

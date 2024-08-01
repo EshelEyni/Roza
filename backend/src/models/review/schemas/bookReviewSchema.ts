@@ -2,6 +2,8 @@ import { Document, Query, Schema } from "mongoose";
 import { IBookReview, IReference, IReview } from "../../../types/iTypes";
 import { referenceSchema } from "./referenceSchema";
 import { reviewSchema } from "./reviewSchema";
+import { SlateCustomElementSchema } from "../../schemas/slateElementSchema";
+import { getDefaultSlateElement } from "../../../services/util/utilService";
 
 const bookReviewSchema = new Schema<IBookReview>(
   {
@@ -17,9 +19,8 @@ const bookReviewSchema = new Schema<IBookReview>(
     reviews: [reviewSchema],
     references: [referenceSchema],
     structure: {
-      type: String,
-      default: "[]",
-      trim: true,
+      type: [SlateCustomElementSchema],
+      default: getDefaultSlateElement(),
     },
     sortOrder: {
       type: Number,

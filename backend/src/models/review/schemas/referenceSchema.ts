@@ -1,5 +1,7 @@
 import { Schema } from "mongoose";
 import { IReference } from "./../../../types/iTypes";
+import { SlateCustomElementSchema } from "../../schemas/slateElementSchema";
+import { getDefaultSlateElement } from "../../../services/util/utilService";
 
 const referenceSchema = new Schema<IReference>(
   {
@@ -7,8 +9,8 @@ const referenceSchema = new Schema<IReference>(
       type: String,
     },
     text: {
-      type: String,
-      trim: true,
+      type: [SlateCustomElementSchema],
+      default: getDefaultSlateElement(),
     },
     imgs: {
       type: [String],

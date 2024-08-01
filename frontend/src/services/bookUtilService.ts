@@ -9,6 +9,7 @@ import {
   Plotline,
   Theme,
 } from "../../../shared/types/books";
+import { getDefaultSlateElement } from "./utilService";
 
 function getDefaultBook(userId = "", name = ""): Book {
   return {
@@ -65,8 +66,8 @@ function getDefaultChapter(bookId: string): Chapter {
   return {
     ...getDefaultBasicBookDataItem(bookId),
     name: "",
-    description: "",
-    text: "",
+    description: getDefaultSlateElement(),
+    text: getDefaultSlateElement(),
     type: "chapters",
   };
 }
@@ -75,7 +76,7 @@ function getDefaultCharacter(bookId: string): Character {
   return {
     ...getDefaultBasicBookDataItem(bookId),
     name: "",
-    description: "",
+    description: getDefaultSlateElement(),
     type: "characters",
   };
 }
@@ -84,7 +85,7 @@ function getDefaultTheme(bookId: string): Theme {
   return {
     ...getDefaultBasicBookDataItem(bookId),
     name: "",
-    description: "",
+    description: getDefaultSlateElement(),
     type: "themes",
   };
 }
@@ -93,7 +94,7 @@ function getDefaultPlotline(bookId: string): Plotline {
   return {
     ...getDefaultBasicBookDataItem(bookId),
     name: "",
-    description: "",
+    description: getDefaultSlateElement(),
     type: "plotlines",
   };
 }
@@ -101,7 +102,7 @@ function getDefaultPlotline(bookId: string): Plotline {
 function getDefaultNote(bookId: string): Note {
   return {
     ...getDefaultBasicBookDataItem(bookId),
-    text: "",
+    text: getDefaultSlateElement(),
     type: "notes",
   };
 }

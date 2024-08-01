@@ -1,5 +1,7 @@
 import { Schema } from "mongoose";
 import { INote } from "../../../types/iTypes";
+import { SlateCustomElementSchema } from "../../schemas/slateElementSchema";
+import { getDefaultSlateElement } from "../../../services/util/utilService";
 
 const noteSchema = new Schema<INote>(
   {
@@ -8,8 +10,8 @@ const noteSchema = new Schema<INote>(
       required: [true, "Please provide a book id"],
     },
     text: {
-      type: String,
-      required: [true, "Please provide a note"],
+      type: [SlateCustomElementSchema],
+      default: getDefaultSlateElement(),
     },
     sortOrder: {
       type: Number,

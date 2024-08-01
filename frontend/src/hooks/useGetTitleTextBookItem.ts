@@ -52,7 +52,7 @@ export function useGetTitleTextBookItem() {
       text: t("useGetTitleTextBookItem.text"),
     };
 
-    let itemText = "";
+    let itemText = null;
 
     switch (type) {
       case "chapters": {
@@ -79,7 +79,8 @@ export function useGetTitleTextBookItem() {
 
     if (!itemText)
       return getDefaultSlateElement(isNoteType(dataItem) ? text : description);
-    return JSON.parse(itemText);
+
+    return itemText;
   }
 
   function getChapterTextEl(
@@ -87,7 +88,7 @@ export function useGetTitleTextBookItem() {
   ): SlateCustomElement[] {
     if (!dataItem || !isChapterType(dataItem) || !dataItem.text)
       return getDefaultSlateElement();
-    return JSON.parse(dataItem.text) as SlateCustomElement[];
+    return dataItem.text;
   }
 
   function getChapterText(dataItem: BookDataItem | null | undefined): string {
@@ -97,7 +98,7 @@ export function useGetTitleTextBookItem() {
     };
 
     return (
-      (JSON.parse(dataItem.text) as SlateCustomElement[])
+      dataItem.text
         .map(el => el.children.map(c => (c as SlateCustomText).text))
         .join(" ") || text
     );
@@ -114,40 +115,39 @@ export function useGetTitleTextBookItem() {
       text: t("useGetTitleTextBookItem.text"),
     };
 
-    let itemTextElStr = "";
+    let itemText = null;
 
     switch (type) {
       case "chapters": {
-        itemTextElStr = (dataItem as Character).description;
+        itemText = (dataItem as Chapter).description;
         break;
       }
       case "characters": {
-        itemTextElStr = (dataItem as Chapter).description;
+        itemText = (dataItem as Character).description;
         break;
       }
       case "themes": {
-        itemTextElStr = (dataItem as Theme).description;
+        itemText = (dataItem as Theme).description;
         break;
       }
       case "plotlines": {
-        itemTextElStr = (dataItem as Plotline).description;
+        itemText = (dataItem as Plotline).description;
         break;
       }
       case "notes": {
-        itemTextElStr = (dataItem as Note).text;
+        itemText = (dataItem as Note).text;
         break;
       }
     }
 
-    if (!itemTextElStr) return isNoteType(dataItem) ? text : description;
+    if (!itemText) return isNoteType(dataItem) ? text : description;
 
-    const parsedText = JSON.parse(itemTextElStr) as SlateCustomElement[];
-    const itemText = parsedText
+    const itemTextStr = itemText
       .map(el => el.children.map(c => (c as SlateCustomText).text))
       .join(" ");
 
-    if (!itemText) return isNoteType(dataItem) ? text : description;
-    return itemText;
+    if (!itemTextStr) return isNoteType(dataItem) ? text : description;
+    return itemTextStr;
   }
 
   return { getTitle, getText, getChapterText, getTextEl, getChapterTextEl };

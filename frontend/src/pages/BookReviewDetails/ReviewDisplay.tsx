@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { Review, SlateCustomElement } from "../../../../shared/types/books";
+import { Review } from "../../../../shared/types/books";
 import { formatDateByLang } from "../../services/utilService";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { TextElement } from "../../components/TextElement";
@@ -12,7 +12,6 @@ type ReviewDisplayProps = {
 export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review }) => {
   const { loggedInUser } = useLoginWithToken();
 
-  const parsedText = JSON.parse(review.text) as SlateCustomElement[];
   const formattedDate = review.createdAt
     ? formatDateByLang(review.createdAt, loggedInUser?.language || "en")
     : null;
@@ -21,7 +20,7 @@ export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review }) => {
 
   return (
     <div className="flex flex-col gap-2">
-      {parsedText.map((el, i) => (
+      {review.text.map((el, i) => (
         <TextElement key={i} element={el} />
       ))}
 

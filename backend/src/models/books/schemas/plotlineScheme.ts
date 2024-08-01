@@ -1,6 +1,8 @@
 import { Schema } from "mongoose";
 
 import { IPlotline } from "../../../types/iTypes";
+import { SlateCustomElementSchema } from "../../schemas/slateElementSchema";
+import { getDefaultSlateElement } from "../../../services/util/utilService";
 
 const plotlineSchema = new Schema<IPlotline>(
   {
@@ -14,8 +16,8 @@ const plotlineSchema = new Schema<IPlotline>(
       trim: true,
     },
     description: {
-      type: String,
-      default: "",
+      type: [SlateCustomElementSchema],
+      default: getDefaultSlateElement(),
     },
     sortOrder: {
       type: Number,

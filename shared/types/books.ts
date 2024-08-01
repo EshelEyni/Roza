@@ -4,7 +4,7 @@ export interface BookReview {
   name: string;
   reviews: Review[];
   references: Reference[];
-  structure: string;
+  structure: SlateCustomElement[];
   sortOrder: number;
   createdAt: Date | string;
   updatedAt: Date | string;
@@ -13,7 +13,7 @@ export interface BookReview {
 
 export interface Review {
   readonly id: string;
-  text: string;
+  text: SlateCustomElement[];
   createdAt: Date | string;
   isArchived: boolean;
 }
@@ -21,7 +21,7 @@ export interface Review {
 export interface Reference {
   readonly id: string;
   page: string;
-  text: string;
+  text: SlateCustomElement[];
   imgs: string[];
   isArchived: boolean;
   sortOrder: number;
@@ -55,32 +55,32 @@ export interface BasicBookDataItem {
 export type BookDataItem = Chapter | Character | Theme | Plotline | Note;
 
 export interface Chapter extends BasicBookDataItem {
-  text: string;
   name: string;
-  description: string;
+  description: SlateCustomElement[];
+  text: SlateCustomElement[];
   type: "chapters";
 }
 
 export interface Character extends BasicBookDataItem {
   name: string;
-  description: string;
+  description: SlateCustomElement[];
   type: "characters";
 }
 
 export interface Theme extends BasicBookDataItem {
   name: string;
-  description: string;
+  description: SlateCustomElement[];
   type: "themes";
 }
 
 export interface Plotline extends BasicBookDataItem {
   name: string;
-  description: string;
+  description: SlateCustomElement[];
   type: "plotlines";
 }
 
 export interface Note extends BasicBookDataItem {
-  text: string;
+  text: SlateCustomElement[];
   type: "notes";
 }
 
@@ -91,15 +91,15 @@ export type BooKDataItemType =
   | "plotlines"
   | "notes";
 
-export type SlateCustomElement = {
+export interface SlateCustomElement {
   type: string;
   children: SlateCustomText[] | SlateCustomElement[];
   align?: "left" | "center" | "right" | "justify";
-};
+}
 
-export type SlateCustomText = {
+export interface SlateCustomText {
   text: string;
   bold?: boolean;
   italic?: boolean;
   underline?: boolean;
-};
+}
