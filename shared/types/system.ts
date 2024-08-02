@@ -32,7 +32,9 @@ export type updateBookReviewEntityAction =
   | { type: "addReview" }
   | { type: "removeReview"; reviewId: string }
   | { type: "updateReview"; review: Review }
+  | { type: "toggleMinimizeReviews"; isMinimized: boolean }
   | { type: "addReference" }
   | { type: "removeReference"; referenceId: string }
   | { type: "updateReference"; reference: Reference }
-  | { type: "updateStructure"; structure: SlateCustomElement[] };
+  | { type: "updateStructure"; structure: SlateCustomElement[] }
+  | { type: "toggleMinimizeReferences"; isMinimized: boolean };

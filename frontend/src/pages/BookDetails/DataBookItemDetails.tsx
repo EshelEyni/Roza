@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { Hr } from "../../components/Gen/Hr";
 import { isChapterType } from "../../../../shared/services/utilService";
 import { Button } from "../../components/Buttons/Button";
-import { Modal } from "../../components/Modal";
+import { Modal } from "../../components/Modals/Modal";
 import { BookItemTitle } from "../../components/Book/BookItemTitle";
 import { TextElement } from "../../components/Gen/TextElement";
 

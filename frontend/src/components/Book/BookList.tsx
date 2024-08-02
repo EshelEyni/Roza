@@ -7,7 +7,7 @@ import { ErrorMsg } from "../Msg/ErrorMsg";
 import { EmptyMsg } from "../Msg/EmptyMsg";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../Buttons/Button";
-import { Modal } from "../App/Modal";
+import { Modal } from "../Modals/Modal";
 import { getDefaultBook } from "../../services/bookUtilService";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { useAddBook } from "../../hooks/reactQuery/add/useAddBook";

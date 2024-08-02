@@ -2,7 +2,7 @@ import { FC } from "react";
 import { GoBackBtn } from "../Buttons/GoBackBtn";
 import { debounce } from "../../services/utilService";
 import { Button } from "../Buttons/Button";
-import { Modal } from "./Modal";
+import { Modal } from "../Modals/Modal";
 import { useTranslation } from "react-i18next";
 
 type PageTitleProps = {

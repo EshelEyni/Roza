@@ -4,13 +4,19 @@ import { formatDateByLang } from "../../services/utilService";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { TextElement } from "../Gen/TextElement";
 import { useTranslation } from "react-i18next";
+import { useBookReview } from "../../contexts/ReviewContext";
+import { MinimizedText } from "./MinimizedText";
+import { BtnMinimize } from "../Buttons/BtnMinimize";
+import { H3 } from "../Gen/H3";
 
 type ReviewDisplayProps = {
   review: Review;
+  index: number;
 };
 
-export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review }) => {
+export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review, index }) => {
   const { loggedInUser } = useLoginWithToken();
+  const { updateBookReviewEntity } = useBookReview();
 
   const formattedDate = review.createdAt
     ? formatDateByLang(review.createdAt, loggedInUser?.language || "en")
@@ -18,11 +24,33 @@ export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review }) => {
 
   const { t } = useTranslation();
 
+  function onToggleMinimize() {
+    const updatedReview = { ...review, isMinimized: !review.isMinimized };
+    updateBookReviewEntity({ type: "updateReview", review: updatedReview });
+  }
+
   return (
     <div className="flex flex-col gap-2">
-      {review.text.map((el, i) => (
-        <TextElement key={i} element={el} />
-      ))}
+      <div className="flex items-center justify-between">
+        <H3>
+          {t("review")} {index + 1}
+        </H3>
+
+        <BtnMinimize
+          isMinimized={review.isMinimized}
+          onToggleMinimize={onToggleMinimize}
+        />
+      </div>
+
+      {review.isMinimized ? (
+        <MinimizedText textEl={review.text} />
+      ) : (
+        <>
+          {review.text.map((el, i) => (
+            <TextElement key={i} element={el} />
+          ))}
+        </>
+      )}
 
       <div className="mx-2 flex gap-1 italic text-app-600">
         <span>{t("createdAt")}:</span>

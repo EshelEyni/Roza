@@ -16,6 +16,7 @@ export interface Review {
   text: SlateCustomElement[];
   createdAt: Date | string;
   isArchived: boolean;
+  isMinimized: boolean;
 }
 
 export interface Reference {
@@ -24,6 +25,7 @@ export interface Reference {
   text: SlateCustomElement[];
   imgs: string[];
   isArchived: boolean;
+  isMinimized: boolean;
   sortOrder: number;
   createdAt: Date | string;
 }

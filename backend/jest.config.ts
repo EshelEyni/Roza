@@ -1,7 +1,7 @@
 import type { Config } from "@jest/types";
 
-// const isGlobalTesting = true;
-const isGlobalTesting = false;
+const isGlobalTesting = true;
+// const isGlobalTesting = false;
 
 const currPath = "services/factory";
 const baseDir = isGlobalTesting ? "<rootDir>" : `<rootDir>/src/${currPath}`;
@@ -28,7 +28,6 @@ const config: Config.InitialOptions = {
   roots: [baseDir],
   testMatch: [`${baseDir}/**/*test.ts`],
   // testMatch: [specifiedPath],
-  
 };
 
 export default config;

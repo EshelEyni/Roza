@@ -51,7 +51,7 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
       />
 
       <ImgInput reference={reference} />
-      <ImgList imgs={reference.imgs} />
+      <ImgList reference={reference} imgs={reference.imgs} />
     </div>
   );
 };

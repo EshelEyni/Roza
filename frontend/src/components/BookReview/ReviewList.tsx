@@ -7,6 +7,7 @@ import { useBookReview } from "../../contexts/ReviewContext";
 import { Button } from "../Buttons/Button";
 import { Hr } from "../Gen/Hr";
 import { H2 } from "../Gen/H2";
+import { BtnMinimizeAll } from "../Buttons/BtnMinimizeAll";
 
 type ReviewListProps = {
   reviews: Review[];
@@ -17,27 +18,42 @@ export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
   const { updateBookReviewEntity, onNavigateToEdit } = useBookReview();
   const { t } = useTranslation();
 
+  const isAllMinimized = reviews.every(review => review.isMinimized);
+
   function handleAddReview() {
     updateBookReviewEntity({ type: "addReview" });
     if (!isEdit) onNavigateToEdit();
+  }
+
+  function onToggleMinimize() {
+    updateBookReviewEntity({
+      type: "toggleMinimizeReviews",
+      isMinimized: !isAllMinimized,
+    });
   }
 
   return (
     <div className="w-full font-normal text-app-800">
       <div className="mb-1 flex items-center justify-between">
         <H2>{t("reviews")}</H2>
-        <Button onClickFn={handleAddReview}>{t("btnAdd")}</Button>
+        <div className="flex items-center gap-2">
+          <BtnMinimizeAll
+            isMinimized={isAllMinimized}
+            onToggleMinimize={onToggleMinimize}
+          />
+          <Button onClickFn={handleAddReview}>{t("btnAdd")}</Button>
+        </div>
       </div>
 
       <ul className="flex flex-col gap-2">
         {reviews.map((review, i) => (
           <li key={review.id}>
+            <Hr />
             {isEdit ? (
-              <ReviewEdit review={review} />
+              <ReviewEdit review={review} index={i} />
             ) : (
-              <ReviewDisplay review={review} />
+              <ReviewDisplay review={review} index={i} />
             )}
-            {i < reviews.length - 1 && <Hr />}
           </li>
         ))}
       </ul>

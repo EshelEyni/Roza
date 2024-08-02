@@ -91,6 +91,7 @@ export interface IBookReview extends Document {
 export interface IReview extends Document {
   text: ISlateCustomElement[];
   isArchived: boolean;
+  isMinimized: boolean;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
 }
@@ -100,6 +101,7 @@ export interface IReference extends Document {
   text: ISlateCustomElement[];
   imgs: string[];
   isArchived: boolean;
+  isMinimized: boolean;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
   sortOrder: number;

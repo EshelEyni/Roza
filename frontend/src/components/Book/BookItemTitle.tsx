@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
-import { GoBackBtn } from "../GoBackBtn";
+import { GoBackBtn } from "../Buttons/GoBackBtn";
 
 export const BookItemTitle: FC = () => {
   const { pageTitle, onGoToDetails } = useBook();

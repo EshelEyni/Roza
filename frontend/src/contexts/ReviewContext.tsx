@@ -79,6 +79,13 @@ function BookReviewProvider({ children }: { children: React.ReactNode }) {
         );
         break;
 
+      case "toggleMinimizeReviews":
+        newBookReview.reviews = newBookReview.reviews.map(review => ({
+          ...review,
+          isMinimized: action.isMinimized,
+        }));
+        break;
+
       case "addReference":
         newBookReview.references.push(
           getDefaultReference({ sortOrder: newBookReview.references.length }),
@@ -98,6 +105,14 @@ function BookReviewProvider({ children }: { children: React.ReactNode }) {
           r.id === action.reference.id ? action.reference : r,
         );
         break;
+
+      case "toggleMinimizeReferences":
+        newBookReview.references = newBookReview.references.map(reference => ({
+          ...reference,
+          isMinimized: action.isMinimized,
+        }));
+        break;
+
       case "updateStructure":
         newBookReview.structure = action.structure;
         break;

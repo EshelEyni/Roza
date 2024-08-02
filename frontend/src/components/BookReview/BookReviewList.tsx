@@ -5,7 +5,7 @@ import { UseGetBookReviewsResult } from "../../types/app";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { getDefaultBookReview } from "../../services/reviewUtilService";
 import { useAddBookReview } from "../../hooks/reactQuery/add/useAddReview";
-import { Modal } from "../App/Modal";
+import { Modal } from "../Modals/Modal";
 import { ErrorMsg } from "../Msg/ErrorMsg";
 import { EmptyMsg } from "../Msg/EmptyMsg";
 import { BookLoader } from "../Loaders/BookLoader/BookLoader";

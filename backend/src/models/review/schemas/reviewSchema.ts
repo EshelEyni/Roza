@@ -13,6 +13,10 @@ const reviewSchema = new Schema<IReview>(
       type: Boolean,
       default: false,
     },
+    isMinimized: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     toObject: {

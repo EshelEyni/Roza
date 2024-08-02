@@ -4,63 +4,61 @@ import { SlateEditor } from "../SlateTextEditor/TextEditor";
 import { debounce } from "../../services/utilService";
 import { useBookReview } from "../../contexts/ReviewContext";
 import { useTranslation } from "react-i18next";
-import { Modal } from "../App/Modal";
+import { H3 } from "../Gen/H3";
+import { BtnMinimize } from "../Buttons/BtnMinimize";
+import { DeleteEntityModal } from "../Modals/DeleteEntityModal";
+import { MinimizedText } from "./MinimizedText";
 
 type ReviewEditProps = {
   review: Review;
+  index: number;
 };
 
-export const ReviewEdit: FC<ReviewEditProps> = ({ review }) => {
+export const ReviewEdit: FC<ReviewEditProps> = ({ review, index }) => {
   const { updateBookReviewEntity } = useBookReview();
   const { t } = useTranslation();
 
   function handleChange(text: SlateCustomElement[]) {
     const updatedReview = { ...review, text };
-    onUpdateReview(updatedReview);
+    updateBookReviewEntity({ type: "updateReview", review: updatedReview });
   }
 
   function onRemoveReview(reviewId: string) {
     updateBookReviewEntity({ type: "removeReview", reviewId });
   }
 
-  function onUpdateReview(updatedReview: Review) {
+  function onToggleMinimize() {
+    const updatedReview = { ...review, isMinimized: !review.isMinimized };
     updateBookReviewEntity({ type: "updateReview", review: updatedReview });
   }
 
   return (
     <div className="flex flex-col gap-2">
-      <SlateEditor
-        defaultValue={review.text}
-        onChange={debounce(value => handleChange(value), 500).debouncedFunc}
-      />
-
-      <div className="flex items-center justify-end">
-        <Modal>
-          <Modal.OpenBtn modalName="archiveReview">
-            <div>{t("btnDelete")}</div>
-          </Modal.OpenBtn>
-
-          <Modal.Window name="archiveReview">
-            <div className="flex w-full flex-col gap-4">
-              <div className="flex w-full flex-col gap-2">
-                <h3 className="text-center text-2xl font-medium text-app-800">
-                  {t("removeReviewMsg.title")}
-                </h3>
-                <p>{t("removeReviewMsg.msg")}</p>
-                <div className="mt-4 flex items-center justify-center gap-2">
-                  <Modal.CloseBtn>
-                    <span>{t("btnCancel")}</span>
-                  </Modal.CloseBtn>
-
-                  <Modal.CloseBtn onClickFn={() => onRemoveReview(review.id)}>
-                    <span>{t("btnDelete")}</span>
-                  </Modal.CloseBtn>
-                </div>
-              </div>
-            </div>
-          </Modal.Window>
-        </Modal>
+      <div className="flex items-center justify-between">
+        <H3>
+          {t("review")} {index + 1}
+        </H3>
+        <div className="flex items-center gap-2">
+          <DeleteEntityModal
+            modalName="archiveReview"
+            onDeleteEntity={() => onRemoveReview(review.id)}
+            archiveTitle={t("removeReviewMsg.title")}
+            archiveMsg={t("removeReviewMsg.msg")}
+          />
+          <BtnMinimize
+            isMinimized={review.isMinimized}
+            onToggleMinimize={onToggleMinimize}
+          />
+        </div>
       </div>
+      {review.isMinimized ? (
+        <MinimizedText textEl={review.text} />
+      ) : (
+        <SlateEditor
+          defaultValue={review.text}
+          onChange={debounce(value => handleChange(value), 500).debouncedFunc}
+        />
+      )}
     </div>
   );
 };

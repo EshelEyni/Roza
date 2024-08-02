@@ -166,5 +166,14 @@
   "structure": "מבנה",
   "pages": "עמודים",
   "addImage": "הוספת תמונה",
-  "loading": "טוען..."
+  "loading": "טוען...",
+  "removeImgMsg": {
+    "title": "מחיקת תמונה",
+    "msg": "האם אתה בטוח שברצונך למחוק את התמונה?"
+  },
+  "review": "ביקורת",
+  "btnMinimize": "מזעור",
+  "btnMinimizeAll": "מזעור לכולם",
+  "btnMaximize": "הגדל",
+  "btnMaximizeAll": "הגדל לכולם"
 }

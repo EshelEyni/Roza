@@ -172,5 +172,14 @@
   "structure": "Structure",
   "pages": "Pages",
   "addImage": "Add Image",
-  "loading": "Loading..."
+  "loading": "Loading...",
+  "removeImgMsg": {
+    "title": "Delete Image",
+    "msg": "Are you sure you want to delete the image?"
+  },
+  "review": "Review",
+  "btnMinimize": "Minimize",
+  "btnMinimizeAll": "Minimize All",
+  "btnMaximize": "Maximize",
+  "btnMaximizeAll": "Maximize All"
 }

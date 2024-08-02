@@ -45,7 +45,7 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
         renderElement={renderElement}
         renderLeaf={renderLeaf}
         spellCheck
-        className="min-h-[250px] w-full rounded-md border border-app-900 bg-gray-50 px-4 py-2 text-xl text-app-700"
+        className="min-h-[150px] w-full rounded-md border border-app-900 bg-gray-50 px-4 py-2 text-xl text-app-700"
       />
     </Slate>
   );
