@@ -5,8 +5,9 @@ import { getDefaultSlateElement } from "../../../services/util/utilService";
 
 const referenceSchema = new Schema<IReference>(
   {
-    page: {
+    pages: {
       type: String,
+      default: "",
     },
     text: {
       type: [SlateCustomElementSchema],

@@ -4,6 +4,7 @@ import { SlateEditor } from "../../components/SlateTextEditor/TextEditor";
 import { debounce } from "../../services/utilService";
 import { useTranslation } from "react-i18next";
 import { useBookReview } from "../../contexts/ReviewContext";
+import { H2 } from "../../components/Gen/H2";
 
 type StructureEditProps = {
   structure: SlateCustomElement[];
@@ -24,7 +25,7 @@ export const StructureEdit: FC<StructureEditProps> = ({ structure }) => {
 
   return (
     <div>
-      <h2 className="mb-2 text-2xl font-bold text-app-800">{t("structure")}</h2>
+      <H2>{t("structure")}</H2>
 
       <SlateEditor
         defaultValue={structure}

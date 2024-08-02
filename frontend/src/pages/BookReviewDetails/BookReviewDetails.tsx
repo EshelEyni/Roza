@@ -6,7 +6,7 @@ import { Loader } from "../../components/Loaders/Loader";
 import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 import { ReviewTitle } from "../../components/BookReview/Reviewtitle";
 import { Hr } from "../../components/Gen/Hr";
-import { ReviewList } from "./ReviewList";
+import { ReviewList } from "../../components/BookReview/ReviewList";
 
 const BookReviewDetails: FC = () => {
   const {

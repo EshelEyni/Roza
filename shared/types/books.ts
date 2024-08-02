@@ -20,7 +20,7 @@ export interface Review {
 
 export interface Reference {
   readonly id: string;
-  page: string;
+  pages: string;
   text: SlateCustomElement[];
   imgs: string[];
   isArchived: boolean;

@@ -1,16 +1,16 @@
 import { FC, useState } from "react";
-import { UseGetBookReviewsResult } from "../types/app";
 import { useTranslation } from "react-i18next";
-import { BookLoader } from "./BookLoader/BookLoader";
-import { ErrorMsg } from "./Msg/ErrorMsg";
-import { EmptyMsg } from "./Msg/EmptyMsg";
-import { ReviewPreview } from "./BookReview/ReviewPreview";
 import { useNavigate } from "react-router-dom";
-import { Button } from "./Button";
-import { Modal } from "./Modal";
-import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
-import { getDefaultBookReview } from "../services/reviewUtilService";
-import { useAddBookReview } from "../hooks/reactQuery/add/useAddReview";
+import { UseGetBookReviewsResult } from "../../types/app";
+import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
+import { getDefaultBookReview } from "../../services/reviewUtilService";
+import { useAddBookReview } from "../../hooks/reactQuery/add/useAddReview";
+import { Modal } from "../App/Modal";
+import { ErrorMsg } from "../Msg/ErrorMsg";
+import { EmptyMsg } from "../Msg/EmptyMsg";
+import { BookLoader } from "../Loaders/BookLoader/BookLoader";
+import { ReviewPreview } from "./ReviewPreview";
+import { Button } from "../Buttons/Button";
 
 type ReviewListProps = UseGetBookReviewsResult & {
   isHomePage?: boolean;

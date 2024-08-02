@@ -30,7 +30,7 @@ function getDefaultReference({ sortOrder = 0 }): Reference {
     id: "",
     text: getDefaultSlateElement(),
     imgs: [],
-    page: "",
+    pages: "",
     isArchived: false,
     sortOrder,
     createdAt: new Date(),

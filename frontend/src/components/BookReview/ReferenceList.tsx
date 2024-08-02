@@ -6,6 +6,7 @@ import { useTranslation } from "react-i18next";
 import { ReferenceEdit } from "./ReferenceEdit";
 import { ReferenceDisplay } from "./ReferenceDisplay";
 import { useBookReview } from "../../contexts/ReviewContext";
+import { H2 } from "../Gen/H2";
 
 type ReferenceListProps = {
   references: Reference[];
@@ -27,9 +28,7 @@ export const ReferenceList: FC<ReferenceListProps> = ({
   return (
     <div className="w-full font-normal text-app-800">
       <div className="mb-1 flex items-center justify-between">
-        <h2 className="mb-2 text-2xl font-bold text-app-800">
-          {t("references")}
-        </h2>
+        <H2>{t("references")}</H2>
         <Button onClickFn={handleAddReference}>{t("btnAdd")}</Button>
       </div>
 

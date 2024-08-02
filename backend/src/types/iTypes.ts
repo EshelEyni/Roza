@@ -96,7 +96,7 @@ export interface IReview extends Document {
 }
 
 export interface IReference extends Document {
-  page: string;
+  pages: string;
   text: ISlateCustomElement[];
   imgs: string[];
   isArchived: boolean;

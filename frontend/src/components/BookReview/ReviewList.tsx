@@ -4,8 +4,9 @@ import { useTranslation } from "react-i18next";
 import { ReviewDisplay } from "./ReviewDisplay";
 import { ReviewEdit } from "./ReviewEdit";
 import { useBookReview } from "../../contexts/ReviewContext";
-import { Button } from "../../components/Buttons/Button";
-import { Hr } from "../../components/Gen/Hr";
+import { Button } from "../Buttons/Button";
+import { Hr } from "../Gen/Hr";
+import { H2 } from "../Gen/H2";
 
 type ReviewListProps = {
   reviews: Review[];
@@ -24,7 +25,7 @@ export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
   return (
     <div className="w-full font-normal text-app-800">
       <div className="mb-1 flex items-center justify-between">
-        <h2 className="mb-2 text-2xl font-bold text-app-800">{t("reviews")}</h2>
+        <H2>{t("reviews")}</H2>
         <Button onClickFn={handleAddReview}>{t("btnAdd")}</Button>
       </div>
 

@@ -1,10 +1,10 @@
 import { FC } from "react";
 import { Review, SlateCustomElement } from "../../../../shared/types/books";
-import { SlateEditor } from "../../components/SlateTextEditor/TextEditor";
+import { SlateEditor } from "../SlateTextEditor/TextEditor";
 import { debounce } from "../../services/utilService";
 import { useBookReview } from "../../contexts/ReviewContext";
 import { useTranslation } from "react-i18next";
-import { Modal } from "../../components/App/Modal";
+import { Modal } from "../App/Modal";
 
 type ReviewEditProps = {
   review: Review;

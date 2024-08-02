@@ -4,6 +4,7 @@ import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken"
 import { useTranslation } from "react-i18next";
 import { formatDateByLang } from "../../services/utilService";
 import { useNavigate } from "react-router-dom";
+import { H2 } from "../Gen/H2";
 
 type ReviewPreviewProps = {
   review: BookReview;
@@ -27,7 +28,7 @@ export const ReviewPreview: FC<ReviewPreviewProps> = ({ review }) => {
       className="h-full cursor-pointer rounded-lg border border-app-800 bg-app-100 p-2 shadow-lg transition duration-300 hover:scale-105 hover:shadow-xl"
       onClick={handlePreviewClick}
     >
-      <h2 className="mb-2 text-2xl font-bold text-app-800">{review.name}</h2>
+      <H2>{review.name}</H2>
       <ul className="flex flex-col gap-1 text-sm">
         <li className="flex gap-1 text-app-600">
           <span>{t("ReviewPreview.reviews")}:</span>

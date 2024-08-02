@@ -6,8 +6,8 @@ import { Loader } from "../../components/Loaders/Loader";
 import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 import { ReviewTitle } from "../../components/BookReview/Reviewtitle";
 import { Hr } from "../../components/Gen/Hr";
-import { ReviewList } from "../BookReviewDetails/ReviewList";
-import { ReferenceList } from "../BookReviewDetails/ReferenceList";
+import { ReviewList } from "../../components/BookReview/ReviewList";
+import { ReferenceList } from "../../components/BookReview/ReferenceList";
 import { StructureEdit } from "./StructureEdit";
 
 const BookReviewEdit: FC = () => {

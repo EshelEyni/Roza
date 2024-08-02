@@ -169,5 +169,8 @@
     "title": "Delete Review",
     "msg": "Are you sure you want to delete the review?"
   },
-  "structure": "Structure"
+  "structure": "Structure",
+  "pages": "Pages",
+  "addImage": "Add Image",
+  "loading": "Loading..."
 }
