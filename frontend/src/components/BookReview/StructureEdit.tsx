@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { SlateCustomElement } from "../../../../shared/types/books";
-import { SlateEditor } from "../../components/SlateTextEditor/TextEditor";
+import { SlateEditor } from "../SlateTextEditor/SlateEditor";
 import { debounce } from "../../services/utilService";
 import { useTranslation } from "react-i18next";
 import { useBookReview } from "../../contexts/ReviewContext";
@@ -28,7 +28,7 @@ export const StructureEdit: FC<StructureEditProps> = ({ structure }) => {
       <H2>{t("structure")}</H2>
 
       <SlateEditor
-        defaultValue={structure}
+        initialValue={structure}
         onChange={debounce(value => handleChange(value), 500).debouncedFunc}
       />
     </div>

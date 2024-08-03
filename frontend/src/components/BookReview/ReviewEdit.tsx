@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { Review, SlateCustomElement } from "../../../../shared/types/books";
-import { SlateEditor } from "../SlateTextEditor/TextEditor";
+import { SlateEditor } from "../SlateTextEditor/SlateEditor";
 import { debounce } from "../../services/utilService";
 import { useBookReview } from "../../contexts/ReviewContext";
 import { useTranslation } from "react-i18next";
@@ -60,7 +60,7 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review, index }) => {
         <MinimizedText textEl={review.text} />
       ) : (
         <SlateEditor
-          defaultValue={review.text}
+          initialValue={review.text}
           onChange={debounce(value => handleChange(value), 500).debouncedFunc}
         />
       )}

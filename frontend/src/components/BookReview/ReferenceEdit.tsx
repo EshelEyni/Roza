@@ -5,7 +5,7 @@ import { ImgInput } from "./ImgInput";
 import { useTranslation } from "react-i18next";
 import { Hr } from "../Gen/Hr";
 import { debounce } from "../../services/utilService";
-import { SlateEditor } from "../SlateTextEditor/TextEditor";
+import { SlateEditor } from "../SlateTextEditor/SlateEditor";
 import { ImgList } from "./ImgList";
 import { useMinimized } from "../../hooks/useIsMinimized";
 import { BtnMinimize } from "../Buttons/BtnMinimize";
@@ -95,7 +95,7 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
       {!isMinimized && (
         <>
           <SlateEditor
-            defaultValue={reference.text}
+            initialValue={reference.text}
             onChange={
               debounce(value => handleTextChange(value), 500).debouncedFunc
             }

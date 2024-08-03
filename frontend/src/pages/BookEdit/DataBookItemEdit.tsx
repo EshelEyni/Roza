@@ -8,7 +8,7 @@ import {
 import { BookItemTitle } from "../../components/Book/BookItemTitle";
 import { debounce } from "../../services/utilService";
 import { useUpdateBook } from "../../hooks/reactQuery/update/useUpdateBook";
-import { SlateEditor } from "../../components/SlateTextEditor/TextEditor";
+import { SlateEditor } from "../../components/SlateTextEditor/SlateEditor";
 import { Book, SlateCustomElement } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../components/Buttons/Button";
@@ -148,7 +148,7 @@ export const DataBookItemEdit: FC = () => {
         {firstEditorTitle}
       </h2>
       <SlateEditor
-        defaultValue={textEl}
+        initialValue={textEl}
         onChange={debounce(value => handleTextChange(value), 500).debouncedFunc}
       />
 
@@ -157,7 +157,7 @@ export const DataBookItemEdit: FC = () => {
           <Hr />
           <h2 className="self-start text-2xl font-bold text-app-800">{text}</h2>
           <SlateEditor
-            defaultValue={chatperTextEl}
+            initialValue={chatperTextEl}
             onChange={
               debounce(value => handleChapterTextChange(value), 500)
                 .debouncedFunc

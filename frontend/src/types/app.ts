@@ -116,14 +116,22 @@ export type SlateEditorFormat = MarkFormat | BlockFormat;
 
 export type TextEditorButton = MarkButton | BlockButton;
 
-export type MarkButton = {
-  format: MarkFormat;
+export interface BasicTextEditorButton {
   icon: JSX.Element;
-  type: "mark";
-};
+  keyboardSequence: {
+    key: string;
+    ctrlKey?: boolean;
+    shiftKey?: boolean;
+    altKey?: boolean;
+  };
+}
 
-export type BlockButton = {
+export interface MarkButton extends BasicTextEditorButton {
+  format: MarkFormat;
+  type: "mark";
+}
+
+export interface BlockButton extends BasicTextEditorButton {
   format: BlockFormat;
-  icon: JSX.Element;
   type: "block";
-};
+}
