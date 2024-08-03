@@ -19,7 +19,7 @@ export const btns: TextEditorButton[] = [
     icon: <FaBold />,
     type: "mark",
     keyboardSequence: {
-      key: "b",
+      key: "KeyB",
       ctrlKey: true,
     },
   },
@@ -28,7 +28,7 @@ export const btns: TextEditorButton[] = [
     icon: <FaItalic />,
     type: "mark",
     keyboardSequence: {
-      key: "i",
+      key: "KeyI",
       ctrlKey: true,
     },
   },
@@ -37,7 +37,7 @@ export const btns: TextEditorButton[] = [
     icon: <FaUnderline />,
     type: "mark",
     keyboardSequence: {
-      key: "u",
+      key: "KeyU",
       ctrlKey: true,
     },
   },
@@ -46,7 +46,7 @@ export const btns: TextEditorButton[] = [
     icon: <TbSquare1Filled />,
     type: "block",
     keyboardSequence: {
-      key: "1",
+      key: "Digit1",
       ctrlKey: true,
     },
   },
@@ -55,7 +55,7 @@ export const btns: TextEditorButton[] = [
     icon: <TbSquare2Filled />,
     type: "block",
     keyboardSequence: {
-      key: "2",
+      key: "Digit2",
       ctrlKey: true,
     },
   },
@@ -64,7 +64,7 @@ export const btns: TextEditorButton[] = [
     icon: <FaQuoteRight />,
     type: "block",
     keyboardSequence: {
-      key: "q",
+      key: "KeyQ",
       ctrlKey: true,
     },
   },
@@ -73,7 +73,7 @@ export const btns: TextEditorButton[] = [
     icon: <FaListOl />,
     type: "block",
     keyboardSequence: {
-      key: "l",
+      key: "KeyL",
       ctrlKey: true,
     },
   },
@@ -82,7 +82,7 @@ export const btns: TextEditorButton[] = [
     icon: <FaListUl />,
     type: "block",
     keyboardSequence: {
-      key: "l",
+      key: "KeyL",
       ctrlKey: true,
       shiftKey: true,
     },
@@ -92,7 +92,7 @@ export const btns: TextEditorButton[] = [
     icon: <FaAlignLeft />,
     type: "block",
     keyboardSequence: {
-      key: "l",
+      key: "KeyL",
       ctrlKey: true,
       altKey: true,
     },
@@ -102,7 +102,7 @@ export const btns: TextEditorButton[] = [
     icon: <FaAlignCenter />,
     type: "block",
     keyboardSequence: {
-      key: "e",
+      key: "KeyE",
       ctrlKey: true,
       altKey: true,
     },
@@ -112,7 +112,7 @@ export const btns: TextEditorButton[] = [
     icon: <FaAlignRight />,
     type: "block",
     keyboardSequence: {
-      key: "r",
+      key: "KeyR",
       ctrlKey: true,
       altKey: true,
     },
@@ -122,7 +122,7 @@ export const btns: TextEditorButton[] = [
     icon: <FaAlignJustify />,
     type: "block",
     keyboardSequence: {
-      key: "j",
+      key: "KeyJ",
       ctrlKey: true,
       altKey: true,
     },

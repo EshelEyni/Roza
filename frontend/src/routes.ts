@@ -12,7 +12,7 @@ const ProfileDetails = lazy(
 const BooksPage = lazy(() => import("./pages/Books/BooksPage"));
 const ReviewsPage = lazy(() => import("./pages/ReviewsPage/ReviewsPage"));
 const BookDetails = lazy(() => import("./pages/BookDetails/BookDetails"));
-const ReviewDetails = lazy(
+const BookReviewDetails = lazy(
   () => import("./pages/BookReviewDetails/BookReviewDetails"),
 );
 const BookEdit = lazy(() => import("./pages/BookEdit/BookEdit"));
@@ -58,7 +58,7 @@ const routes: Route[] = [
   },
   {
     path: "review/:id",
-    component: ReviewDetails,
+    component: BookReviewDetails,
     authRequired: true,
     provider: BookReviewProvider,
   },
