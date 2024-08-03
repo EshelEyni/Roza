@@ -8,7 +8,7 @@ import { ReviewTitle } from "../../components/BookReview/Reviewtitle";
 import { Hr } from "../../components/Gen/Hr";
 import { ReviewList } from "../../components/BookReview/ReviewList";
 import { ReferenceList } from "../../components/BookReview/ReferenceList";
-import { StructureEdit } from "./StructureEdit";
+import { StructureEdit } from "../../components/BookReview/StructureEdit";
 
 const BookReviewEdit: FC = () => {
   const {

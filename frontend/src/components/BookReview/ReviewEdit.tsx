@@ -53,7 +53,6 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review, index }) => {
           <BtnMinimize
             isMinimized={review.isMinimized}
             onToggleMinimize={onToggleMinimize}
-            text={review.text}
           />
         </div>
       </div>

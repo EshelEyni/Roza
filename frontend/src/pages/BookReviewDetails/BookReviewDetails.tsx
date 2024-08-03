@@ -7,6 +7,8 @@ import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 import { ReviewTitle } from "../../components/BookReview/Reviewtitle";
 import { Hr } from "../../components/Gen/Hr";
 import { ReviewList } from "../../components/BookReview/ReviewList";
+import { ReferenceList } from "../../components/BookReview/ReferenceList";
+import { StructureDisplay } from "../../components/BookReview/StructureDisplay";
 
 const BookReviewDetails: FC = () => {
   const {
@@ -33,6 +35,10 @@ const BookReviewDetails: FC = () => {
             <Hr />
 
             <ReviewList reviews={bookReview.reviews} />
+            <Hr />
+            <ReferenceList references={bookReview.references} />
+            <Hr />
+            <StructureDisplay structure={bookReview.structure} />
           </div>
         )}
       </PageContent>
