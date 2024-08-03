@@ -8,6 +8,7 @@ import { useBookReview } from "../../contexts/ReviewContext";
 import { MinimizedText } from "./MinimizedText";
 import { BtnMinimize } from "../Buttons/BtnMinimize";
 import { H3 } from "../Gen/H3";
+import { useMinimized } from "../../hooks/useIsMinimized";
 
 type ReviewDisplayProps = {
   review: Review;
@@ -17,6 +18,9 @@ type ReviewDisplayProps = {
 export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review, index }) => {
   const { loggedInUser } = useLoginWithToken();
   const { updateBookReviewEntity } = useBookReview();
+  const { isMinimized, setIsMinimized } = useMinimized({
+    isMinimizedProp: review.isMinimized,
+  });
 
   const formattedDate = review.createdAt
     ? formatDateByLang(review.createdAt, loggedInUser?.language || "en")
@@ -25,6 +29,7 @@ export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review, index }) => {
   const { t } = useTranslation();
 
   function onToggleMinimize() {
+    setIsMinimized(!isMinimized);
     const updatedReview = { ...review, isMinimized: !review.isMinimized };
     updateBookReviewEntity({ type: "updateReview", review: updatedReview });
   }
@@ -39,10 +44,11 @@ export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review, index }) => {
         <BtnMinimize
           isMinimized={review.isMinimized}
           onToggleMinimize={onToggleMinimize}
+          text={review.text}
         />
       </div>
 
-      {review.isMinimized ? (
+      {isMinimized ? (
         <MinimizedText textEl={review.text} />
       ) : (
         <>

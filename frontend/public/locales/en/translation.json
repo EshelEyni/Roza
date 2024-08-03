@@ -178,8 +178,13 @@
     "msg": "Are you sure you want to delete the image?"
   },
   "review": "Review",
+  "reference": "Reference",
   "btnMinimize": "Minimize",
   "btnMinimizeAll": "Minimize All",
   "btnMaximize": "Maximize",
-  "btnMaximizeAll": "Maximize All"
+  "btnMaximizeAll": "Maximize All",
+  "removeReferenceMsg": {
+    "title": "Delete Reference",
+    "msg": "Are you sure you want to delete the reference?"
+  }
 }

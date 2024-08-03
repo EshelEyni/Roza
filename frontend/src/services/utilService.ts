@@ -1,10 +1,15 @@
-import { SlateCustomElement } from "../../../shared/types/books";
+import {
+  SlateCustomElement,
+  SlateCustomText,
+} from "../../../shared/types/books";
 import {
   AnyFunction,
   JsendResponse,
   UserMsg,
 } from "../../../shared/types/system";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+const MINIMZED_TEXT_LENGTH = 200;
 
 const SECONDS_IN_MINUTE = 60;
 const MINUTES_IN_HOUR = 60;
@@ -190,7 +195,19 @@ function getDefaultSlateElement(text = ""): SlateCustomElement[] {
   return [{ type: "paragraph", children: [{ text }] }];
 }
 
+function getSlateElementText(elements: SlateCustomElement[]): string {
+  const extractText = (
+    element: SlateCustomElement | SlateCustomText,
+  ): string => {
+    if ("text" in element) return element.text;
+    else return element.children.map(child => extractText(child)).join(" ");
+  };
+
+  return elements.map(el => extractText(el)).join(" ");
+}
+
 export {
+  MINIMZED_TEXT_LENGTH,
   getCleanTime,
   formatDateToRelativeTime,
   debounce,
@@ -205,4 +222,5 @@ export {
   formatLang,
   getLanguages,
   getDefaultSlateElement,
+  getSlateElementText,
 };

@@ -32,13 +32,13 @@ export const ReferenceList: FC<ReferenceListProps> = ({
         <Button onClickFn={handleAddReference}>{t("btnAdd")}</Button>
       </div>
 
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col flex-wrap gap-2">
         {references.map((reference, i) => (
           <li key={reference.id}>
             {isEdit ? (
-              <ReferenceEdit reference={reference} />
+              <ReferenceEdit reference={reference} index={i} />
             ) : (
-              <ReferenceDisplay reference={reference} />
+              <ReferenceDisplay reference={reference} index={i} />
             )}
             {i < references.length - 1 && <Hr />}
           </li>

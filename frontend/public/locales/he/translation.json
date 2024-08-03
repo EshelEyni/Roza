@@ -172,8 +172,13 @@
     "msg": "האם אתה בטוח שברצונך למחוק את התמונה?"
   },
   "review": "ביקורת",
+  "reference": "הפניה",
   "btnMinimize": "מזעור",
   "btnMinimizeAll": "מזעור לכולם",
   "btnMaximize": "הגדל",
-  "btnMaximizeAll": "הגדל לכולם"
+  "btnMaximizeAll": "הגדל לכולם",
+  "removeReferenceMsg": {
+    "title": "מחיקת הפניה",
+    "msg": "האם אתה בטוח שברצונך למחוק את ההפניה?"
+  }
 }

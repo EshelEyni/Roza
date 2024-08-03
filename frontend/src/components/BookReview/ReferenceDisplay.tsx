@@ -3,6 +3,7 @@ import { Reference } from "../../../../shared/types/books";
 
 type ReferenceEditProps = {
   reference: Reference;
+  index: number;
 };
 
 export const ReferenceDisplay: FC<ReferenceEditProps> = ({ reference }) => {

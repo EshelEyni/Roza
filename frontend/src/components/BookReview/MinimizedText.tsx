@@ -1,29 +1,39 @@
 import { FC } from "react";
+import { SlateCustomElement } from "../../../../shared/types/books";
 import {
-  SlateCustomElement,
-  SlateCustomText,
-} from "../../../../shared/types/books";
+  getSlateElementText,
+  MINIMZED_TEXT_LENGTH,
+} from "../../services/utilService";
+import { useGetElMaxWidth } from "../../hooks/useGetElMaxWidth";
 
 type MinimizedTextProps =
-  | { textEl: SlateCustomElement[]; text?: never }
-  | { text: string; textEl?: never };
+  | { textEl: SlateCustomElement[]; maxLength?: number; text?: never }
+  | { text: string; maxLength?: number; textEl?: never };
 
-export const MinimizedText: FC<MinimizedTextProps> = ({ textEl, text }) => {
+export const MinimizedText: FC<MinimizedTextProps> = ({
+  textEl,
+  maxLength = MINIMZED_TEXT_LENGTH,
+  text,
+}) => {
+  const { elMaxWidth } = useGetElMaxWidth({ width: 1000 });
+
   function getText() {
     if (text) return text;
-
-    if (textEl) {
-      return textEl
-        .map(el => el.children.map(c => (c as SlateCustomText).text).join(""))
-        .join(" ");
-    }
-
+    if (textEl) return getSlateElementText(textEl);
     return "";
   }
 
   const displayText = getText();
   const truncatedText =
-    displayText.length > 200 ? displayText.slice(0, 200) + "..." : displayText;
+    displayText.length > maxLength
+      ? displayText.slice(0, maxLength) + "..."
+      : displayText;
 
-  return <p>{truncatedText}</p>;
+  return (
+    <p
+      className={`w-full ${elMaxWidth} whitespace-pre-wrap break-words text-base text-app-700`}
+    >
+      {truncatedText}
+    </p>
+  );
 };

@@ -8,6 +8,7 @@ import { H3 } from "../Gen/H3";
 import { BtnMinimize } from "../Buttons/BtnMinimize";
 import { DeleteEntityModal } from "../Modals/DeleteEntityModal";
 import { MinimizedText } from "./MinimizedText";
+import { useMinimized } from "../../hooks/useIsMinimized";
 
 type ReviewEditProps = {
   review: Review;
@@ -17,6 +18,9 @@ type ReviewEditProps = {
 export const ReviewEdit: FC<ReviewEditProps> = ({ review, index }) => {
   const { updateBookReviewEntity } = useBookReview();
   const { t } = useTranslation();
+  const { isMinimized, setIsMinimized } = useMinimized({
+    isMinimizedProp: review.isMinimized,
+  });
 
   function handleChange(text: SlateCustomElement[]) {
     const updatedReview = { ...review, text };
@@ -28,6 +32,7 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review, index }) => {
   }
 
   function onToggleMinimize() {
+    setIsMinimized(!isMinimized);
     const updatedReview = { ...review, isMinimized: !review.isMinimized };
     updateBookReviewEntity({ type: "updateReview", review: updatedReview });
   }
@@ -48,10 +53,11 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review, index }) => {
           <BtnMinimize
             isMinimized={review.isMinimized}
             onToggleMinimize={onToggleMinimize}
+            text={review.text}
           />
         </div>
       </div>
-      {review.isMinimized ? (
+      {isMinimized ? (
         <MinimizedText textEl={review.text} />
       ) : (
         <SlateEditor
