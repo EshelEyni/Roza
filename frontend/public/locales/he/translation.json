@@ -180,5 +180,27 @@
   "removeReferenceMsg": {
     "title": "מחיקת הפניה",
     "msg": "האם אתה בטוח שברצונך למחוק את ההפניה?"
-  }
+  },
+  "formValidation": {
+    "mandatory": {
+      "username": "שם משתמש הינו שדה חובה",
+      "fullName": "שם מלא הינו שדה חובה",
+      "email": "אימייל הינו שדה חובה",
+      "language": "שפה הינה שדה חובה",
+      "password": "סיסמה הינה שדה חובה",
+      "passwordConfirm": "אימות סיסמה הינו שדה חובה",
+      "currentPassword": "סיסמה נוכחית הינה שדה חובה",
+      "newPassword": "סיסמה חדשה הינה שדה חובה",
+      "newPasswordConfirm": "אימות סיסמה הינו שדה חובה"
+    }
+  },
+  "username": "שם משתמש",
+  "fullName": "שם מלא",
+  "email": "אימייל",
+  "language": "שפה",
+  "password": "סיסמה",
+  "login": "התחברות",
+  "signup": "הרשמה",
+  "loggingIn": "מתחבר...",
+  "signingUp": "מבצע הרשמה..."
 }

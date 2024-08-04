@@ -38,3 +38,6 @@ export type updateBookReviewEntityAction =
   | { type: "updateReference"; reference: Reference }
   | { type: "updateStructure"; structure: SlateCustomElement[] }
   | { type: "toggleMinimizeReferences"; isMinimized: boolean };
+
+
+  export type Tab = "display" | "edit" | "password";

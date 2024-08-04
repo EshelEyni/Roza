@@ -1,15 +1,22 @@
 import { FC } from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { LoginCredentials } from "../../../../shared/types/user";
-import { useLogin } from "../../hooks/ReactQuery/update/useLogin";
 import { Button } from "../../components/Buttons/Button";
+import { useLogin } from "../../hooks/reactQuery/update/useLogin";
+import { Form } from "../../components/App/Form";
+import { H2 } from "../../components/Gen/H2";
+import { InputContainer } from "../../components/App/InputContainer";
+import { useTranslation } from "react-i18next";
+import { Input } from "../../components/App/Input";
 
 export const LoginForm: FC = () => {
-  const { login, isPending } = useLogin();
+  const { login, isPendingLogin } = useLogin();
+  const { t } = useTranslation();
   const {
     register,
     handleSubmit,
     formState: { errors },
+    trigger,
   } = useForm<LoginCredentials>();
 
   const onSubmit: SubmitHandler<LoginCredentials> = data => {
@@ -17,52 +24,45 @@ export const LoginForm: FC = () => {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="w-full max-w-sm rounded bg-white p-4 shadow-md"
-    >
-      <h2 className="mb-4 text-center text-2xl font-bold text-app-900">
-        Log In
-      </h2>
-      <div className="mb-4">
-        <label className="mb-2 block font-bold text-app-700" htmlFor="username">
-          Username
-        </label>
-        <input
-          id="username"
-          {...register("username", { required: true })}
-          className="w-full rounded border py-2"
-          type="text"
-          placeholder="Username"
+    <Form onSubmit={handleSubmit(onSubmit)}>
+      <H2>{t("login")}</H2>
+
+      <InputContainer
+        label={t("username")}
+        fieldError={errors.username}
+        htmlFor="username"
+      >
+        <Input<LoginCredentials>
+          register={register}
+          name="username"
+          required={t("formValidation.mandatory.username")}
+          placeholder={t("username")}
+          trigger={trigger}
         />
-        {errors.username && (
-          <span className="text-red-500">Username is required</span>
-        )}
-      </div>
-      <div className="mb-4">
-        <label className="mb-2 block font-bold text-app-700" htmlFor="password">
-          Password
-        </label>
-        <input
-          id="password"
-          {...register("password", { required: true })}
-          className="w-full rounded border py-2"
+      </InputContainer>
+
+      <InputContainer
+        label={t("password")}
+        fieldError={errors.password}
+        htmlFor="password"
+      >
+        <Input<LoginCredentials>
+          register={register}
+          name="password"
           type="password"
-          placeholder="Password"
+          required={t("formValidation.mandatory.password")}
+          placeholder={t("password")}
+          trigger={trigger}
         />
-        {errors.password && (
-          <span className="text-red-500">Password is required</span>
-        )}
-      </div>
-      <div className="flex items-center justify-between">
-        <Button
-          type="submit"
-          className="rounded bg-app-600 px-4 py-2 text-white"
-          disabled={isPending}
-        >
-          {isPending ? "Logging in..." : "Log In"}
-        </Button>
-      </div>
-    </form>
+      </InputContainer>
+
+      <Button
+        type="submit"
+        disabled={isPendingLogin}
+        addedClasses="self-center"
+      >
+        {isPendingLogin ? t("loggingIn") : t("login")}
+      </Button>
+    </Form>
   );
 };

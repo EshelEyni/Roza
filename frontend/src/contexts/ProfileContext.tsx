@@ -1,5 +1,5 @@
 import { createContext, useContext, useState } from "react";
-type Tab = "display" | "edit" | "password";
+import { Tab } from "../../../shared/types/system";
 
 type ProfileContextType = {
   tab: Tab;

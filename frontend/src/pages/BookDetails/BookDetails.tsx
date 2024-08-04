@@ -9,7 +9,7 @@ import { Hr } from "../../components/Gen/Hr";
 import { BookDataList } from "../../components/Book/BookDataList";
 import { DataBookItemDetails } from "./DataBookItemDetails";
 import { BookTitle } from "../../components/Book/BookTitle";
-import { BtnAddBook } from "../../components/Book/btnAddBook";
+import { BtnAddBook } from "../../components/Book/BtnAddBook";
 
 const BookDetails: FC = () => {
   const {

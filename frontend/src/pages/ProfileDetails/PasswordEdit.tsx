@@ -1,7 +1,12 @@
-import React from "react";
 import { useForm, SubmitHandler } from "react-hook-form";
-import { useUpdatePassword } from "../../hooks/ReactQuery/update/useUpdatePassword";
 import { useTranslation } from "react-i18next";
+import { useUpdatePassword } from "../../hooks/reactQuery/update/useUpdatePassword";
+import { InputContainer } from "../../components/App/InputContainer";
+import { Input } from "../../components/App/Input";
+import { H2 } from "../../components/Gen/H2";
+import { Form } from "../../components/App/Form";
+import { Button } from "../../components/Buttons/Button";
+import { FC } from "react";
 
 interface PasswordFormValues {
   currentPassword: string;
@@ -9,89 +14,77 @@ interface PasswordFormValues {
   newPasswordConfirm: string;
 }
 
-export const PasswordEdit: React.FC = () => {
-  const { updateUser, isPending } = useUpdatePassword();
+export const PasswordEdit: FC = () => {
+  const { updatePassword, isPendingUpdatePassword } = useUpdatePassword();
   const { t } = useTranslation();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
+    trigger,
   } = useForm<PasswordFormValues>();
 
   const onSubmit: SubmitHandler<PasswordFormValues> = async data => {
-    updateUser(data);
+    updatePassword(data);
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="mt-5 rounded-lg bg-app-200 px-6 py-4 text-app-800"
-    >
-      <h2 className="mb-4 text-xl font-bold text-app-700">
-        {t("PasswordEdit.title")}
-      </h2>
+    <Form onSubmit={handleSubmit(onSubmit)}>
+      <H2>{t("PasswordEdit.title")}</H2>
 
-      <div className="mb-4">
-        <label className="mb-1 block font-bold text-app-800">
-          {t("PasswordEdit.currentPassword")}
-        </label>
-        <input
+      <InputContainer
+        label={t("PasswordEdit.currentPassword")}
+        fieldError={errors.currentPassword}
+        htmlFor="currentPassword"
+      >
+        <Input<PasswordFormValues>
+          register={register}
+          name="currentPassword"
           type="password"
-          className="w-full rounded border border-app-300 p-2"
-          {...register("currentPassword", {
-            required: "Current password is required",
-          })}
+          required={t("formValidation.mandatory.currentPassword")}
           placeholder={t("PasswordEdit.currentPassword")}
+          trigger={trigger}
         />
-        {errors.currentPassword && (
-          <p className="text-sm text-red-500">
-            {errors.currentPassword.message}
-          </p>
-        )}
-      </div>
+      </InputContainer>
 
-      <div className="mb-4">
-        <label className="mb-1 block font-bold text-app-800">
-          {t("PasswordEdit.newPassword")}
-        </label>
-        <input
+      <InputContainer
+        label={t("PasswordEdit.newPassword")}
+        fieldError={errors.newPassword}
+        htmlFor="newPassword"
+      >
+        <Input<PasswordFormValues>
+          register={register}
+          name="newPassword"
           type="password"
-          className="w-full rounded border border-app-300 p-2"
-          {...register("newPassword", { required: "New password is required" })}
+          required={t("formValidation.mandatory.newPassword")}
           placeholder={t("PasswordEdit.newPassword")}
+          trigger={trigger}
         />
-        {errors.newPassword && (
-          <p className="text-sm text-red-500">{errors.newPassword.message}</p>
-        )}
-      </div>
+      </InputContainer>
 
-      <div className="mb-4">
-        <label className="mb-1 block font-bold text-app-800">
-          {t("PasswordEdit.newPasswordConfirm")}
-        </label>
-        <input
+      <InputContainer
+        label={t("PasswordEdit.newPasswordConfirm")}
+        fieldError={errors.newPasswordConfirm}
+        htmlFor="newPasswordConfirm"
+      >
+        <Input<PasswordFormValues>
+          register={register}
+          name="newPasswordConfirm"
           type="password"
-          className="w-full rounded border border-app-300 p-2"
-          {...register("newPasswordConfirm", {
-            required: "Password confirmation is required",
-          })}
+          required={t("formValidation.mandatory.newPasswordConfirm")}
           placeholder={t("PasswordEdit.newPasswordConfirm")}
+          trigger={trigger}
         />
-        {errors.newPasswordConfirm && (
-          <p className="text-sm text-red-500">
-            {errors.newPasswordConfirm.message}
-          </p>
-        )}
-      </div>
+      </InputContainer>
 
-      <button
+      <Button
         type="submit"
-        className="rounded bg-app-600 p-2 text-white"
-        disabled={isPending}
+        disabled={isPendingUpdatePassword}
+        addedClasses="self-center"
       >
         {t("PasswordEdit.btnSubmit")}
-      </button>
-    </form>
+      </Button>
+    </Form>
   );
 };

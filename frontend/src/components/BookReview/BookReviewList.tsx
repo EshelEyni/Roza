@@ -121,10 +121,7 @@ export const BookReviewList: FC<ReviewListProps> = ({
 
       {isHomePage && (
         <div className="mt-3 flex items-center justify-end">
-          <Button
-            onClickFn={onGoToReviewsPage}
-            className="rounded-md bg-app-600 px-4 py-2 text-white hover:bg-app-700"
-          >
+          <Button onClickFn={onGoToReviewsPage}>
             {t("ReviewsList.seeAll")}
           </Button>
         </div>

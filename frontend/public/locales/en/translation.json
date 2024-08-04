@@ -186,5 +186,27 @@
   "removeReferenceMsg": {
     "title": "Delete Reference",
     "msg": "Are you sure you want to delete the reference?"
-  }
+  },
+  "formValidation": {
+    "mandatory": {
+      "username": "Username is required",
+      "fullName": "Full Name is required",
+      "email": "Email is required",
+      "language": "Language is required",
+      "password": "Password is required",
+      "passwordConfirm": "Confirm Password is required",
+      "currentPassword": "Current Password is required",
+      "newPassword": "New Password is required",
+      "newPasswordConfirm": "Confirm Password is required"
+    }
+  },
+  "username": "User name",
+  "fullname": "Full Name",
+  "email": "Email",
+  "language": "Language",
+  "password": "Password",
+  "login": "Log In",
+  "signup": "Sign Up",
+  "loggingIn": "Logging in...",
+  "signingUp": "Signing up..."
 }

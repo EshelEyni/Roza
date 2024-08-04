@@ -3,9 +3,14 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import { useUpdateUser } from "../../hooks/reactQuery/update/useUpdateUser";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { useTranslation } from "react-i18next";
-import { formatLang, getLanguages } from "../../services/utilService";
+import { getLanguages } from "../../services/utilService";
 import { Button } from "../../components/Buttons/Button";
 import classNames from "classnames";
+import { Hr } from "../../components/Gen/Hr";
+import { H2 } from "../../components/Gen/H2";
+import { InputContainer } from "../../components/App/InputContainer";
+import { Input } from "../../components/App/Input";
+import { Form } from "../../components/App/Form";
 
 interface UserFormValues {
   username: string;
@@ -19,7 +24,6 @@ export const ProfileEdit: React.FC = () => {
   const { loggedInUser } = useLoginWithToken();
   const { updateUser, isPendindUpdateUser } = useUpdateUser();
   const languages = getLanguages();
-  const userLang = formatLang(loggedInUser?.language || "");
   const { t } = useTranslation();
 
   const {
@@ -27,12 +31,14 @@ export const ProfileEdit: React.FC = () => {
     handleSubmit,
     formState: { errors },
     setValue,
+    watch,
+    trigger,
   } = useForm<UserFormValues>({
     defaultValues: {
       username: loggedInUser?.username || "",
       fullname: loggedInUser?.fullname || "",
       email: loggedInUser?.email || "",
-      language: userLang,
+      language: loggedInUser?.language || "",
     },
   });
 
@@ -46,71 +52,68 @@ export const ProfileEdit: React.FC = () => {
     setValue("language", language);
   }
 
+  const selectedLanguage = watch("language");
+
   if (!loggedInUser) return null;
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="mt-5 rounded-lg bg-app-200 px-6 py-4 text-app-800"
-    >
-      <h2 className="mb-4 text-xl font-bold text-app-700">
-        {t("ProfileEdit.title")}
-      </h2>
+    <Form onSubmit={handleSubmit(onSubmit)}>
+      <H2>{t("ProfileEdit.title")}</H2>
 
-      <div className="mb-4">
-        <label className="mb-1 block font-bold text-app-800">
-          {t("ProfileEdit.username")}
-        </label>
-        <input
-          className="w-full rounded border border-app-300 p-2"
-          {...register("username", { required: "Username is required" })}
+      <InputContainer
+        label={t("ProfileEdit.username")}
+        fieldError={errors.username}
+        htmlFor="username"
+      >
+        <Input<UserFormValues>
+          register={register}
+          name="username"
+          required={t("formValidation.mandatory.username")}
           placeholder={t("ProfileEdit.username")}
+          trigger={trigger}
         />
-        {errors.username && (
-          <p className="text-sm text-red-500">{errors.username.message}</p>
-        )}
-      </div>
+      </InputContainer>
 
-      <div className="mb-4">
-        <label className="mb-1 block font-bold text-app-800">
-          {t("ProfileEdit.fullName")}
-        </label>
-        <input
-          className="w-full rounded border border-app-300 p-2"
-          {...register("fullname", { required: "Full Name is required" })}
-          placeholder={t("ProfileEdit.fullName")}
+      <InputContainer
+        label={t("ProfileEdit.fullName")}
+        fieldError={errors.fullname}
+        htmlFor="fullname"
+      >
+        <Input<UserFormValues>
+          register={register}
+          name="fullname"
+          required={t("formValidation.mandatory.fullname")}
+          placeholder={t("ProfileEdit.fullname")}
+          trigger={trigger}
         />
-        {errors.fullname && (
-          <p className="text-sm text-red-500">{errors.fullname.message}</p>
-        )}
-      </div>
+      </InputContainer>
 
-      <div className="mb-4">
-        <label className="mb-1 block font-bold text-app-800">
-          {t("ProfileEdit.email")}
-        </label>
-        <input
+      <InputContainer
+        label={t("ProfileEdit.email")}
+        fieldError={errors.email}
+        htmlFor="email"
+      >
+        <Input<UserFormValues>
+          register={register}
+          name="email"
           type="email"
-          className="w-full rounded border border-app-300 p-2"
-          {...register("email", { required: "Email is required" })}
+          required={t("formValidation.mandatory.email")}
           placeholder={t("ProfileEdit.email")}
+          trigger={trigger}
         />
-        {errors.email && (
-          <p className="text-sm text-red-500">{errors.email.message}</p>
-        )}
-      </div>
-      <div className="mb-4">
-        <label className="mb-1 block font-bold text-app-800">
-          {t("ProfileEdit.language")}
-        </label>
+      </InputContainer>
+      <InputContainer
+        label={t("ProfileEdit.language")}
+        fieldError={errors.language}
+      >
         <div className="flex gap-2 space-x-2">
           {languages.map(l => (
             <Button
               key={l.value}
               type="button"
               className={classNames(
-                "rounded border border-app-300 bg-app-500 px-3 py-1 text-white",
+                "rounded-md bg-app-500 px-4 py-1 text-white hover:bg-app-600",
                 {
-                  "!bg-app-600": loggedInUser?.language === l.value,
+                  "!bg-app-600": selectedLanguage === l.value,
                 },
               )}
               onClickFn={() => handleLanguageChange(l.value)}
@@ -119,18 +122,17 @@ export const ProfileEdit: React.FC = () => {
             </Button>
           ))}
         </div>
-        {errors.language && (
-          <p className="text-sm text-red-500">{errors.language.message}</p>
-        )}
-      </div>
+      </InputContainer>
 
-      <button
+      <Hr />
+
+      <Button
         type="submit"
-        className="rounded bg-app-600 p-2 text-white"
         disabled={isPendindUpdateUser}
+        addedClasses="self-center"
       >
         {t("ProfileEdit.btnSubmit")}
-      </button>
-    </form>
+      </Button>
+    </Form>
   );
 };

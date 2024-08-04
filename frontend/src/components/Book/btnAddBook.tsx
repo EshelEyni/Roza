@@ -20,10 +20,7 @@ export const BtnAddBook: FC = () => {
 
   if (!book) return null;
   return (
-    <Button
-      className="rounded-md bg-app-500 px-4 py-2 text-white hover:bg-app-600"
-      onClickFn={handleAddBookDataItem}
-    >
+    <Button onClickFn={handleAddBookDataItem}>
       {t(`BookPage.btnAdd.${book.filterBy}`)}
     </Button>
   );

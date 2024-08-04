@@ -81,10 +81,7 @@ export const BookList: FC<BookListProps> = ({
                 </div>
 
                 <div className="mt-4 flex items-center justify-end">
-                  <Button
-                    onClickFn={handleAddBook}
-                    className="rounded-md bg-app-600 px-4 py-2 text-white hover:bg-app-700"
-                  >
+                  <Button onClickFn={handleAddBook}>
                     {t("BookList.btnAdd")}
                   </Button>
                 </div>
@@ -117,12 +114,7 @@ export const BookList: FC<BookListProps> = ({
 
       {isHomePage && (
         <div className="mt-3 flex items-center justify-end">
-          <Button
-            onClickFn={onGoToBooksPage}
-            className="rounded-md bg-app-600 px-4 py-2 text-white hover:bg-app-700"
-          >
-            {t("BookList.seeAll")}
-          </Button>
+          <Button onClickFn={onGoToBooksPage}>{t("BookList.seeAll")}</Button>
         </div>
       )}
     </section>

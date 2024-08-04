@@ -15,6 +15,7 @@ import { BookReviewList } from "../../components/BookReview/BookReviewList";
 import { Hr } from "../../components/Gen/Hr";
 import { PageContent } from "../../components/Gen/PageContent";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import { P } from "../../components/Gen/P";
 
 type FormType = "login" | "signup";
 
@@ -91,17 +92,17 @@ const HomePage: FC = () => {
           {openedForm === "login" && <LoginForm />}
           {openedForm === "signup" && <SignupForm />}
 
-          <p className="mt-4 font-medium italic text-app-700">
+          <P className="mt-4 text-lg italic text-app-700">
             {toggleFormTitle}{" "}
-            <Button
-              onClickFn={onToggleForm}
-              className="text-app-700 hover:text-app-900 hover:underline"
+            <span
+              onClick={onToggleForm}
+              className="cursor-pointer text-app-800 hover:underline"
             >
               {openedForm === "login"
                 ? t("HomePage.btnForm.signup")
                 : t("HomePage.btnForm.login")}
-            </Button>
-          </p>
+            </span>
+          </P>
         </section>
       )}
 
@@ -143,12 +144,7 @@ const HomePage: FC = () => {
           <Hr />
 
           <div className="flex w-full justify-end">
-            <Button
-              onClickFn={onLogout}
-              className="rounded bg-app-600 px-4 py-2 text-white hover:bg-app-700"
-            >
-              {t("HomePage.btnLogout")}
-            </Button>
+            <Button onClickFn={onLogout}>{t("HomePage.btnLogout")}</Button>
           </div>
         </PageContent>
       )}
