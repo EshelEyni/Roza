@@ -5,6 +5,7 @@ import {
 import {
   AnyFunction,
   JsendResponse,
+  ServerErrorData,
   UserMsg,
 } from "../../../shared/types/system";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,16 +117,8 @@ function debounce(
 
 function handleServerResponseData<T>(response: JsendResponse<T>): T {
   if (response.status === "success") return response.data as T;
-
-  if (response.status === "fail") {
-    const errorMessages = Object.entries(
-      response.data as Record<string, string>,
-    )
-      .map(([field, message]) => `${field}: ${message}`)
-      .join(", ");
-    throw new Error(errorMessages);
-  }
-
+  if (response.status === "fail")
+    throw new Error((response.data as ServerErrorData)?.message);
   throw new Error("Unexpected response status");
 }
 

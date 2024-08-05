@@ -11,6 +11,7 @@ import { H2 } from "../../components/Gen/H2";
 import { InputContainer } from "../../components/App/InputContainer";
 import { Input } from "../../components/App/Input";
 import { Form } from "../../components/App/Form";
+import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 
 interface UserFormValues {
   username: string;
@@ -22,7 +23,12 @@ interface UserFormValues {
 
 export const ProfileEdit: React.FC = () => {
   const { loggedInUser } = useLoginWithToken();
-  const { updateUser, isPendindUpdateUser } = useUpdateUser();
+  const {
+    updateUser,
+    isPendindUpdateUser,
+    isErrorUpdateUser,
+    errorUpdateUser,
+  } = useUpdateUser();
   const languages = getLanguages();
   const { t } = useTranslation();
 
@@ -123,9 +129,8 @@ export const ProfileEdit: React.FC = () => {
           ))}
         </div>
       </InputContainer>
-
+      {isErrorUpdateUser && <ErrorMsg msg={errorUpdateUser?.message} />}
       <Hr />
-
       <Button
         type="submit"
         disabled={isPendindUpdateUser}

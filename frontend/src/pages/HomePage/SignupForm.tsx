@@ -8,9 +8,10 @@ import { useTranslation } from "react-i18next";
 import { H2 } from "../../components/Gen/H2";
 import { InputContainer } from "../../components/App/InputContainer";
 import { Input } from "../../components/App/Input";
+import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 
 export const SignupForm: FC = () => {
-  const { signup, isPendingSignup } = useSignup();
+  const { signup, isPendingSignup, isErrorSignup, errorSignup } = useSignup();
   const { t } = useTranslation();
 
   const {
@@ -99,6 +100,7 @@ export const SignupForm: FC = () => {
           trigger={trigger}
         />
       </InputContainer>
+      {isErrorSignup && <ErrorMsg msg={errorSignup?.message} />}
 
       <Button
         type="submit"

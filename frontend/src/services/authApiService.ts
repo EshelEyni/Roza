@@ -32,12 +32,11 @@ async function signup(userCredentials: UserCredenitials): Promise<User> {
 }
 
 async function logout(): Promise<void> {
-  const res = await httpService.post(`${baseUrl}/logout`);
-  return res;
+  await httpService.post(`${baseUrl}/logout`);
 }
 
 async function update(user: User): Promise<User> {
-  const response = (await httpService.put(
+  const response = (await httpService.patch(
     `${baseUrl}/update`,
     user,
   )) as unknown as JsendResponse;
@@ -50,7 +49,7 @@ async function updatePassword({
   newPassword,
   newPasswordConfirm,
 }: UpdatePasswordParams): Promise<void> {
-  const response = (await httpService.put(`${baseUrl}/updatePassword`, {
+  const response = (await httpService.patch(`${baseUrl}/updatePassword`, {
     currentPassword,
     newPassword,
     newPasswordConfirm,

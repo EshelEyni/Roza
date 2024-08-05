@@ -1,4 +1,5 @@
-import axios, { Method } from "axios";
+import axios, { AxiosError, Method } from "axios";
+import { JsendResponse, ServerErrorData } from "../../../shared/types/system";
 const isProd = process.env.NODE_ENV === "production";
 const BASE_URL = isProd ? "/api/" : "http://localhost:3030/api/";
 
@@ -6,7 +7,7 @@ async function ajax(
   endpoint: string,
   method: Method = "GET",
   data: object | null = null,
-) {
+): Promise<JsendResponse> {
   try {
     const res = await axios({
       url: `${BASE_URL}${endpoint}`,
@@ -17,16 +18,14 @@ async function ajax(
     });
 
     return res.data;
-  } catch (err) {
-    if (isProd) return;
-    if (data && "password" in data) delete data["password"];
-    // eslint-disable-next-line no-console
-    console.log(
-      `Had issues ${method}ing to the backend, endpoint: ${endpoint}, with data: `,
-      data,
-    );
-    console.error(err);
-    throw err;
+  } catch (error) {
+    if (!isProd) console.error(error);
+    const errorData = (error as unknown as AxiosError).response
+      ?.data as ServerErrorData;
+    return {
+      status: "fail",
+      data: errorData,
+    } as JsendResponse<ServerErrorData>;
   }
 }
 

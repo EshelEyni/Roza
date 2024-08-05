@@ -3,6 +3,17 @@ import { User } from "./user";
 
 export type AnyFunction = (...args: any[]) => any;
 
+export type ServerErrorData = {
+  status: string;
+  message?: string;
+  error?: {
+    statusCode: number;
+    status: string;
+    isOperational: boolean;
+  };
+  stack?: string;
+};
+
 export interface JsendResponse<T = any> {
   status: string;
   requested_at?: string;
@@ -39,5 +50,4 @@ export type updateBookReviewEntityAction =
   | { type: "updateStructure"; structure: SlateCustomElement[] }
   | { type: "toggleMinimizeReferences"; isMinimized: boolean };
 
-
-  export type Tab = "display" | "edit" | "password";
+export type Tab = "display" | "edit" | "password";

@@ -8,9 +8,10 @@ import { H2 } from "../../components/Gen/H2";
 import { InputContainer } from "../../components/App/InputContainer";
 import { useTranslation } from "react-i18next";
 import { Input } from "../../components/App/Input";
+import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 
 export const LoginForm: FC = () => {
-  const { login, isPendingLogin } = useLogin();
+  const { login, isPendingLogin, isErrorLogin, errorLogin } = useLogin();
   const { t } = useTranslation();
   const {
     register,
@@ -55,6 +56,8 @@ export const LoginForm: FC = () => {
           trigger={trigger}
         />
       </InputContainer>
+
+      {isErrorLogin && <ErrorMsg msg={errorLogin?.message} />}
 
       <Button
         type="submit"
