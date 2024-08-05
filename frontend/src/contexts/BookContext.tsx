@@ -14,6 +14,9 @@ import { useGetTitleTextBookItem } from "../hooks/useGetTitleTextBookItem";
 import { useTranslation } from "react-i18next";
 import { useUpdateBook } from "../hooks/reactQuery/update/useUpdateBook";
 import { markItemAsDeleted, updateBookData } from "../services/bookUtilService";
+import { isChapterType } from "../../../shared/services/utilService";
+import { downloadFile } from "../services/utilService";
+import { PDFCreator } from "../services/pdfService/PDFCreator";
 
 type BookContextType = UseLoginWithTokenResult &
   UseGetBookResult & {
@@ -35,6 +38,7 @@ type BookContextType = UseLoginWithTokenResult &
     onUpdateItem: (newItem: BookDataItem) => void;
     onGoToDetails: () => void;
     onArchiveBook: () => void;
+    onDownloadChapter: () => void;
   };
 
 type BookDetailsParams = {
@@ -149,6 +153,18 @@ function BookProvider({ children }: BookProviderProps) {
     navigate("/books");
   }
 
+  function onDownloadChapter() {
+    if (!book || !dataItemType || !dataItemId || !item || !isChapterType(item))
+      return;
+    const pdfCreatoer = new PDFCreator(loggedInUser?.language || "en");
+    const chapterPdf = pdfCreatoer.createBookChapterPdf({
+      chapter: item,
+      lang: loggedInUser?.language || "en",
+    });
+    const fileName = item.name || `${t("chapter")}-${item.sortOrder + 1}`;
+    downloadFile({ blob: chapterPdf, fileName });
+  }
+
   useEffect(() => {
     if (!book || !dataItemType || !dataItemId) return;
     const item =
@@ -193,6 +209,7 @@ function BookProvider({ children }: BookProviderProps) {
     onUpdateItem,
     onGoToDetails,
     onArchiveBook,
+    onDownloadChapter,
   };
 
   return <BookContext.Provider value={value}>{children}</BookContext.Provider>;

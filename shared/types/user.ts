@@ -1,3 +1,5 @@
+import { Language } from "./system";
+
 export interface UserCredenitials {
   username: string;
   fullname: string;
@@ -15,7 +17,7 @@ export interface User {
   username: string;
   fullname: string;
   email: string;
-  language: string;
+  language: Language;
   roles: string[];
   createdAt: string;
   updatedAt: string;

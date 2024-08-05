@@ -199,6 +199,16 @@ function getSlateElementText(elements: SlateCustomElement[]): string {
   return elements.map(el => extractText(el)).join(" ");
 }
 
+function downloadFile({ blob, fileName }: { blob: Blob; fileName: string }) {
+  const link = document.createElement("a");
+  link.style.display = "none";
+  link.href = URL.createObjectURL(blob);
+  link.download = `${fileName}.pdf`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 export {
   MINIMZED_TEXT_LENGTH,
   getCleanTime,
@@ -216,4 +226,5 @@ export {
   getLanguages,
   getDefaultSlateElement,
   getSlateElementText,
+  downloadFile,
 };

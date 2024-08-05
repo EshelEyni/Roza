@@ -93,8 +93,17 @@ export type BooKDataItemType =
   | "plotlines"
   | "notes";
 
+export type SlateElementType =
+  | "paragraph"
+  | "heading-one"
+  | "heading-two"
+  | "block-quote"
+  | "bulleted-list"
+  | "numbered-list"
+  | "list-item";
+
 export interface SlateCustomElement {
-  type: string;
+  type: SlateElementType;
   children: SlateCustomText[] | SlateCustomElement[];
   align?: "left" | "center" | "right" | "justify";
 }

@@ -43,7 +43,7 @@ export const TextElement: FC<TextElementProps> = ({ element }) => {
     case "heading-two":
       return (
         <h2 style={style} className="text-2xl">
-          {element.children.map((c, i) => renderText(c, i)).join(" ")}
+          {element.children.map((c, i) => renderText(c, i))}
         </h2>
       );
     case "list-item":

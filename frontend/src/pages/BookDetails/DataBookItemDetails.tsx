@@ -19,6 +19,7 @@ export const DataBookItemDetails: FC = () => {
     chatperTextEl,
     onNavigateToEdit,
     onDeleteItem,
+    onDownloadChapter,
   } = useBook();
 
   const { t } = useTranslation();
@@ -32,7 +33,10 @@ export const DataBookItemDetails: FC = () => {
       <div className="flex w-full items-center justify-between gap-4">
         <h1 className="text-4xl font-bold text-app-800">{itemTitle}</h1>
 
-        <div className="flex items-center justify-between gap-4 bg-app-100">
+        <div className="flex items-center justify-between gap-3 bg-app-100">
+          {isChapterType(item) && (
+            <Button onClickFn={onDownloadChapter}>{t("download")}</Button>
+          )}
           <Button onClickFn={onNavigateToEdit}>
             {t("DataBookItemDetails.btnEdit")}
           </Button>

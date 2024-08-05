@@ -51,3 +51,5 @@ export type updateBookReviewEntityAction =
   | { type: "toggleMinimizeReferences"; isMinimized: boolean };
 
 export type Tab = "display" | "edit" | "password";
+
+export type Language = "en" | "he";

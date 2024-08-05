@@ -208,5 +208,8 @@
   "login": "Log In",
   "signup": "Sign Up",
   "loggingIn": "Logging in...",
-  "signingUp": "Signing up..."
+  "signingUp": "Signing up...",
+  "invalidEmail": "Invalid email address",
+  "download": "Download",
+  "chapter": "Chapter"
 }

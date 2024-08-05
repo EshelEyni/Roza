@@ -12,6 +12,7 @@ import { SlateEditor } from "../../components/SlateTextEditor/SlateEditor";
 import { Book, SlateCustomElement } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../components/Buttons/Button";
+import { H2 } from "../../components/Gen/H2";
 
 export const DataBookItemEdit: FC = () => {
   const {
@@ -126,7 +127,7 @@ export const DataBookItemEdit: FC = () => {
   if (!book || !dataItemType || !dataItemId || !item) return null;
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+    <div className="items-center1 flex h-full w-full flex-col justify-center gap-4">
       <BookItemTitle />
       <Hr />
       <div className="flex w-full items-center justify-between gap-4">
@@ -144,9 +145,8 @@ export const DataBookItemEdit: FC = () => {
         )}
       </div>
       <Hr />
-      <h2 className="self-start text-2xl font-bold text-app-800">
-        {firstEditorTitle}
-      </h2>
+
+      <H2>{firstEditorTitle}</H2>
       <SlateEditor
         initialValue={textEl}
         onChange={debounce(value => handleTextChange(value), 500).debouncedFunc}
@@ -155,7 +155,7 @@ export const DataBookItemEdit: FC = () => {
       {isChapterType(item) && (
         <>
           <Hr />
-          <h2 className="self-start text-2xl font-bold text-app-800">{text}</h2>
+          <H2>{text}</H2>
           <SlateEditor
             initialValue={chatperTextEl}
             onChange={

@@ -202,5 +202,8 @@
   "login": "התחברות",
   "signup": "הרשמה",
   "loggingIn": "מתחבר...",
-  "signingUp": "מבצע הרשמה..."
+  "signingUp": "מבצע הרשמה...",
+  "invalidEmail": "כתובת אימייל לא תקינה",
+  "download": "הורד",
+  "chapter": "פרק"
 }
