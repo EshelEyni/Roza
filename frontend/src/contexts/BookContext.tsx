@@ -156,11 +156,11 @@ function BookProvider({ children }: BookProviderProps) {
   function onDownloadChapter() {
     if (!book || !dataItemType || !dataItemId || !item || !isChapterType(item))
       return;
-    const pdfCreatoer = new PDFCreator(loggedInUser?.language || "en");
-    const chapterPdf = pdfCreatoer.createBookChapterPdf({
+    const pdfCreateor = new PDFCreator(loggedInUser?.language || "en");
+    const chapterPdf = pdfCreateor.createBookChapterPdf({
       chapter: item,
       lang: loggedInUser?.language || "en",
-    });
+    }) as Blob;
     const fileName = item.name || `${t("chapter")}-${item.sortOrder + 1}`;
     downloadFile({ blob: chapterPdf, fileName });
   }

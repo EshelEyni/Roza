@@ -20,6 +20,22 @@ export const TextElement: FC<TextElementProps> = ({ element }) => {
   };
 
   switch (element.type) {
+    case "paragraph":
+      return (
+        <p style={style}>{element.children.map((c, i) => renderText(c, i))}</p>
+      );
+    case "heading-one":
+      return (
+        <h1 style={style} className="text-3xl">
+          {element.children.map((c, i) => renderText(c, i))}
+        </h1>
+      );
+    case "heading-two":
+      return (
+        <h2 style={style} className="text-2xl">
+          {element.children.map((c, i) => renderText(c, i))}
+        </h2>
+      );
     case "block-quote":
       return (
         <blockquote style={style}>
@@ -34,17 +50,13 @@ export const TextElement: FC<TextElementProps> = ({ element }) => {
           ))}
         </ul>
       );
-    case "heading-one":
+    case "numbered-list":
       return (
-        <h1 style={style} className="text-3xl">
-          {element.children.map((c, i) => renderText(c, i))}
-        </h1>
-      );
-    case "heading-two":
-      return (
-        <h2 style={style} className="text-2xl">
-          {element.children.map((c, i) => renderText(c, i))}
-        </h2>
+        <ol style={style} className="list-decimal">
+          {element.children.map((c, i) => (
+            <TextElement key={i} element={c as SlateCustomElement} />
+          ))}
+        </ol>
       );
     case "list-item":
       return (
@@ -57,18 +69,6 @@ export const TextElement: FC<TextElementProps> = ({ element }) => {
         >
           {element.children.map((c, i) => renderText(c, i))}
         </li>
-      );
-    case "numbered-list":
-      return (
-        <ol style={style} className="list-decimal">
-          {element.children.map((c, i) => (
-            <TextElement key={i} element={c as SlateCustomElement} />
-          ))}
-        </ol>
-      );
-    default:
-      return (
-        <p style={style}>{element.children.map((c, i) => renderText(c, i))}</p>
       );
   }
 };

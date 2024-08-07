@@ -102,11 +102,50 @@ export type SlateElementType =
   | "numbered-list"
   | "list-item";
 
-export interface SlateCustomElement {
+export type SlateElementAlign = "left" | "center" | "right" | "justify";
+
+interface BaseElement {
   type: SlateElementType;
-  children: SlateCustomText[] | SlateCustomElement[];
-  align?: "left" | "center" | "right" | "justify";
+  align?: SlateElementAlign;
 }
+
+export interface ListItemElement extends BaseElement {
+  type: "list-item";
+  children: SlateCustomText[];
+}
+
+export interface ListElement extends BaseElement {
+  type: "bulleted-list" | "numbered-list";
+  children: ListItemElement[];
+}
+
+export interface ParagraphElement extends BaseElement {
+  type: "paragraph";
+  children: SlateCustomText[];
+}
+
+export interface HeadingOneElement extends BaseElement {
+  type: "heading-one";
+  children: SlateCustomText[];
+}
+
+export interface HeadingTwoElement extends BaseElement {
+  type: "heading-two";
+  children: SlateCustomText[];
+}
+
+export interface BlockQuoteElement extends BaseElement {
+  type: "block-quote";
+  children: SlateCustomText[];
+}
+
+export type SlateCustomElement =
+  | ListItemElement
+  | ListElement
+  | ParagraphElement
+  | HeadingOneElement
+  | HeadingTwoElement
+  | BlockQuoteElement;
 
 export interface SlateCustomText {
   text: string;
