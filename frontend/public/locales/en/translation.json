@@ -211,5 +211,6 @@
   "signingUp": "Signing up...",
   "invalidEmail": "Invalid email address",
   "download": "Download",
-  "chapter": "Chapter"
+  "chapter": "Chapter",
+  "bookReview": "Book Review"
 }

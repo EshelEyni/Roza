@@ -150,6 +150,7 @@ export const DataBookItemEdit: FC = () => {
       <SlateEditor
         initialValue={textEl}
         onChange={debounce(value => handleTextChange(value), 500).debouncedFunc}
+        fullScreenTitle={book.name || t("book")}
       />
 
       {isChapterType(item) && (
@@ -162,6 +163,7 @@ export const DataBookItemEdit: FC = () => {
               debounce(value => handleChapterTextChange(value), 500)
                 .debouncedFunc
             }
+            fullScreenTitle={book.name || t("book")}
           />
         </>
       )}

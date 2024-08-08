@@ -11,9 +11,8 @@ type StructureEditProps = {
 };
 
 export const StructureEdit: FC<StructureEditProps> = ({ structure }) => {
+  const { bookReview, updateBookReviewEntity } = useBookReview();
   const { t } = useTranslation();
-
-  const { updateBookReviewEntity } = useBookReview();
 
   function handleChange(text: SlateCustomElement[]) {
     const updatedStructure = text;
@@ -30,6 +29,7 @@ export const StructureEdit: FC<StructureEditProps> = ({ structure }) => {
       <SlateEditor
         initialValue={structure}
         onChange={debounce(value => handleChange(value), 500).debouncedFunc}
+        fullScreenTitle={bookReview?.name || t("bookReview")}
       />
     </div>
   );

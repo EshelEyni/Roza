@@ -15,15 +15,18 @@ import { btns } from "./textEditorBtns";
 import { onFormatText } from "./textEditorService";
 import { BtnToggleFullScreen } from "../Buttons/BtnToggleFullScreen";
 import classNames from "classnames";
+import { H2 } from "../Gen/H2";
 
 interface SlateEditorProps {
   initialValue: Descendant[];
   onChange: (value: Descendant[]) => void;
+  fullScreenTitle: string;
 }
 
 export const SlateEditor: React.FC<SlateEditorProps> = ({
   initialValue,
   onChange,
+  fullScreenTitle,
 }) => {
   const editor = useMemo(() => withReact(createEditor()), []);
   const [value, setValue] = useState<Descendant[]>(initialValue);
@@ -78,14 +81,16 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
           isFullScreen,
       })}
     >
+      {isFullScreen && <H2>{fullScreenTitle}</H2>}
       <Slate editor={editor} initialValue={value} onChange={handleChange}>
         <div
           className={classNames(
-            `flex w-full max-w-[1200px] justify-end gap-2 transition-all duration-300 ${elMaxWidth}`,
+            `flex w-full justify-end gap-2 transition-all duration-300`,
             {
               "mb-4 !justify-between": isFullScreen,
             },
           )}
+          style={{ maxWidth: elMaxWidth }}
         >
           <BtnToggleFullScreen
             isFullScreen={isFullScreen}
@@ -99,11 +104,12 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
           renderLeaf={renderLeaf}
           spellCheck
           className={classNames(
-            `min-h-[100px] w-full max-w-[1200px] transition-all duration-300 ${elMaxWidth} rounded-md border border-app-900 bg-gray-50 px-4 py-2 text-xl text-app-700`,
+            `min-h-[100px] w-full rounded-md border border-app-900 bg-gray-50 px-4 py-2 text-xl text-app-700 transition-all duration-300`,
             {
               "h-full": isFullScreen,
             },
           )}
+          style={{ maxWidth: elMaxWidth }}
           onKeyDown={handleKeyDown}
         />
       </Slate>

@@ -16,7 +16,7 @@ type ReviewEditProps = {
 };
 
 export const ReviewEdit: FC<ReviewEditProps> = ({ review, index }) => {
-  const { updateBookReviewEntity } = useBookReview();
+  const { bookReview, updateBookReviewEntity } = useBookReview();
   const { t } = useTranslation();
   const { isMinimized, setIsMinimized } = useMinimized({
     isMinimizedProp: review.isMinimized,
@@ -62,6 +62,7 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review, index }) => {
         <SlateEditor
           initialValue={review.text}
           onChange={debounce(value => handleChange(value), 500).debouncedFunc}
+          fullScreenTitle={bookReview?.name || t("bookReview")}
         />
       )}
     </div>

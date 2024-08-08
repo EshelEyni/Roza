@@ -9,10 +9,7 @@ function useGetElMaxWidth({ width = 1000 }: UseGetElMaxWidthProps): {
 } {
   const { width: windowWidth } = useWindowSize();
 
-  const elMaxWidth =
-    windowWidth < width
-      ? `max-w-[calc(${windowWidth}px-2.5rem)]`
-      : `max-w-[calc(${width}px-2.5rem)]`;
+  const elMaxWidth = `calc(${windowWidth < width ? windowWidth : width}px - 2.5rem)`;
 
   return { elMaxWidth };
 }

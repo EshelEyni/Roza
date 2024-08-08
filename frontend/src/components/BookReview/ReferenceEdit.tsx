@@ -19,7 +19,7 @@ type ReferenceEditProps = {
 };
 
 export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
-  const { updateBookReviewEntity } = useBookReview();
+  const { bookReview, updateBookReviewEntity } = useBookReview();
   const { t } = useTranslation();
   const { isMinimized, setIsMinimized } = useMinimized({
     isMinimizedProp: reference.isMinimized,
@@ -99,6 +99,7 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
             onChange={
               debounce(value => handleTextChange(value), 500).debouncedFunc
             }
+            fullScreenTitle={bookReview?.name || t("bookReview")}
           />
 
           <ImgList reference={reference} imgs={reference.imgs} />
