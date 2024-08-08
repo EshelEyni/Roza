@@ -4,6 +4,8 @@ import {
   Chapter,
   HeadingOneElement,
   HeadingTwoElement,
+  ListElement,
+  ListItemElement,
   ParagraphElement,
   SlateCustomElement,
   SlateCustomText,
@@ -67,12 +69,16 @@ class PDFCreator {
   private setXPosition({
     align,
     isBlockQuote,
+    isBullet,
   }: {
     align?: SlateElementAlign;
     isBlockQuote?: boolean;
+    isBullet?: boolean;
   }) {
     if (!align) align = this.dir as SlateElementAlign;
-    const XMargin = isBlockQuote ? 20 : 10;
+    let XMargin = 10;
+    if (isBlockQuote) XMargin = 20;
+    if (isBullet) XMargin = 15;
     switch (align) {
       case "left":
         this.XPosition = XMargin;
@@ -105,19 +111,31 @@ class PDFCreator {
     this.doc.setFont("Font", style);
   }
 
-  private setChapterTitle(chapter: Chapter) {
-    this.doc.setFontSize(12);
-    this.setXPosition({ align: "center" });
-    this.doc.text(chapter.name, this.XPosition, this.YPosition, {
-      align: "center",
-    });
-    this.YPosition += 14;
+  private drawBullet(x: number, y: number) {
+    this.doc.circle(x, y - 2, 1, "F");
+  }
+
+  private drawUnderline(x: number, y: number, width: number) {
+    this.doc.setLineWidth(0.5);
+    const widthToDraw = this.dir === "left" ? width : -width;
+    this.doc.line(x, y + 1, x + widthToDraw, y + 1);
   }
 
   public createBookChapterPdf({ chapter }: CreateBookChapterPdfParams) {
     this.setChapterTitle(chapter);
     this.addTextFromElements(chapter.description);
+    this.addTextFromElements(chapter.text);
     return this.doc.output("blob");
+  }
+
+  private setChapterTitle(chapter: Chapter) {
+    this.doc.setFontSize(16);
+    this.doc.setFont("Font", "bold");
+    this.setXPosition({ align: "center" });
+    this.doc.text(chapter.name, this.XPosition, this.YPosition, {
+      align: "center",
+    });
+    this.YPosition += 14;
   }
 
   private addTextFromElements(elements: SlateCustomElement[]) {
@@ -135,14 +153,14 @@ class PDFCreator {
         case "block-quote":
           this.addBlockQuote(el);
           break;
-        // case "bulleted-list":
-        //   this.addBulletedList(el.children);
-        //   break;
-        // case "numbered-list":
-        //   this.addNumberedList(el.children);
-        //   break;
-        // default:
-        //   break;
+        case "bulleted-list":
+          this.addBulletedList(el);
+          break;
+        case "numbered-list":
+          this.addNumberedList(el);
+          break;
+        default:
+          break;
       }
     }
   }
@@ -181,6 +199,56 @@ class PDFCreator {
     this.doc.setFont("Font", "normal");
   }
 
+  private addBulletedList(list: ListElement) {
+    const { children } = list;
+    for (const child of children) {
+      this.addListItem({ item: child, type: "bulleted-list" });
+    }
+  }
+
+  private addNumberedList(list: ListElement) {
+    const { children } = list;
+    children.forEach((child, index) => {
+      this.addListItem({
+        item: child,
+        type: "numbered-list",
+        number: index + 1,
+      });
+    });
+  }
+
+  private addListItem({
+    item,
+    type,
+    number,
+  }: {
+    item: ListItemElement;
+    type: "bulleted-list" | "numbered-list";
+    number?: number;
+  }) {
+    if (type === "bulleted-list")
+      this.drawBullet(this.XPosition, this.YPosition);
+
+    const { children, align } = item;
+    for (const child of children) {
+      const textToRender = number ? `${number}. ${child.text}` : child.text;
+      this.doc.setFontSize(9);
+      this.setFontStyle(child);
+      this.setXPosition({ align, isBullet: type === "bulleted-list" });
+      this.doc.text(textToRender, this.XPosition, this.YPosition, {
+        align: this.getTextAlign(align),
+      });
+      if (child.underline)
+        this.drawUnderline(
+          this.XPosition,
+          this.YPosition,
+          this.doc.getTextWidth(child.text),
+        );
+      this.setXPosition({ align });
+      this.YPosition += 9;
+    }
+  }
+
   private addTextElement({
     textItem,
     align,
@@ -196,6 +264,13 @@ class PDFCreator {
     this.doc.text(textItem.text, this.XPosition, this.YPosition, {
       align: this.getTextAlign(align),
     });
+
+    if (textItem.underline)
+      this.drawUnderline(
+        this.XPosition,
+        this.YPosition,
+        this.doc.getTextWidth(textItem.text),
+      );
     this.YPosition += fontSize;
   }
 }
