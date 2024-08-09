@@ -19,6 +19,7 @@ export interface User {
   email: string;
   language: Language;
   roles: string[];
+  lastVisitedPage: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -61,26 +61,21 @@ export const BookList: FC<BookListProps> = ({
 
             <Modal.Window name="addBook">
               <div className="flex w-full flex-col gap-4">
-                <h3 className="text-center text-2xl font-medium text-app-800">
+                <h3 className="text-center text-3xl font-medium text-app-800">
                   {t("BookList.btnAdd")}
                 </h3>
 
-                <div className="flex w-full flex-col gap-2">
-                  <label htmlFor="name" className="text-lg text-app-800">
-                    {t("BookList.name")}
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    id="name"
-                    defaultValue={newBook.name}
-                    onChange={handleInputChange}
-                    className="rounded-md border border-app-800 p-2"
-                    placeholder={t("BookList.name")}
-                  />
-                </div>
+                <input
+                  type="text"
+                  name="name"
+                  id="name"
+                  defaultValue={newBook.name}
+                  onChange={handleInputChange}
+                  className="rounded-md border border-app-800 p-2 text-center text-xl text-app-700"
+                  placeholder={t("BookList.name")}
+                />
 
-                <div className="mt-4 flex items-center justify-end">
+                <div className="flex items-center justify-end">
                   <Button onClickFn={handleAddBook}>
                     {t("BookList.btnAdd")}
                   </Button>

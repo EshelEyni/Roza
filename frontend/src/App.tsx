@@ -1,12 +1,19 @@
-import { Suspense, lazy, useEffect } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Loader } from "./components/Loaders/Loader";
-import { Navigate, Route, Routes } from "react-router-dom";
+import {
+  Navigate,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from "react-router-dom";
 import { routes } from "./routes";
 import { useTranslation } from "react-i18next";
 import { useLoginWithToken } from "./hooks/reactQuery/get/useLoginWithToken";
 import { AuthGuard } from "./guards/AuthGuard";
 import { Route as TypeOfRoute } from "./types/app";
 import { AppHeader } from "./components/App/AppHeader";
+import { useUpdateUser } from "./hooks/reactQuery/update/useUpdateUser";
 
 const PageNotFound = lazy(() => import("./pages/PageNotFound"));
 
@@ -40,6 +47,10 @@ function geRouteElement(route: TypeOfRoute) {
 function App() {
   const { i18n } = useTranslation();
   const { loggedInUser, isFetchedLoggedInUser } = useLoginWithToken();
+  const { updateUser } = useUpdateUser();
+  const [isNavigatedToLastPage, setIsNavigatedToLastPage] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     if (loggedInUser && loggedInUser.language && isFetchedLoggedInUser) {
@@ -52,6 +63,28 @@ function App() {
     document.documentElement.setAttribute("dir", direction);
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);
+
+  useEffect(() => {
+    if (
+      !loggedInUser ||
+      !loggedInUser?.lastVisitedPage ||
+      isNavigatedToLastPage
+    )
+      return;
+    navigate(loggedInUser.lastVisitedPage);
+    setIsNavigatedToLastPage(true);
+  }, [navigate, loggedInUser, updateUser, isNavigatedToLastPage]);
+
+  useEffect(() => {
+    if (!loggedInUser || loggedInUser?.lastVisitedPage === location.pathname)
+      return;
+    updateUser({ ...loggedInUser, lastVisitedPage: location.pathname });
+
+    return () => {
+      updateUser({ ...loggedInUser, lastVisitedPage: location.pathname });
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
 
   return (
     <div className="flex min-h-screen flex-col items-center overflow-y-scroll bg-app-100 text-gray-50">

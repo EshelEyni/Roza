@@ -140,7 +140,7 @@ export const DataBookItemEdit: FC = () => {
             onChange={
               debounce(e => handleNameInputChange(e), 500).debouncedFunc
             }
-            defaultValue={itemTitle}
+            defaultValue={item.name && itemTitle}
           />
         )}
       </div>

@@ -43,6 +43,7 @@ export interface Book {
   createdAt: Date | string;
   updatedAt: Date | string;
   isArchived: boolean;
+  isReadMode: boolean;
 }
 
 export interface BasicBookDataItem {

@@ -11,6 +11,7 @@ import {
 import {
   getDefaultSlateElement,
   getSlateElementText,
+  isSlateElementEmpty,
 } from "../services/utilService";
 import {
   isChapterType,
@@ -26,7 +27,7 @@ export function useGetTitleTextBookItem() {
   ): string {
     if (!type || !dataItem) return "";
 
-    const name = t(`useGetTitleTextBookItem.name.${type}`);
+    const name = t(`placeholders.name.${type}`);
 
     switch (type) {
       case "chapters":
@@ -50,8 +51,8 @@ export function useGetTitleTextBookItem() {
   ): SlateCustomElement[] {
     if (!type || !dataItem) return getDefaultSlateElement();
     const { description, text } = {
-      description: t("useGetTitleTextBookItem.description"),
-      text: t("useGetTitleTextBookItem.text"),
+      description: t("placeholders.description"),
+      text: t("placeholders.text"),
     };
 
     let itemText = null;
@@ -79,7 +80,7 @@ export function useGetTitleTextBookItem() {
       }
     }
 
-    if (!itemText)
+    if (!itemText || isSlateElementEmpty(itemText))
       return getDefaultSlateElement(isNoteType(dataItem) ? text : description);
 
     return itemText;
@@ -88,17 +89,21 @@ export function useGetTitleTextBookItem() {
   function getChapterTextEl(
     dataItem: BookDataItem | null | undefined,
   ): SlateCustomElement[] {
-    if (!dataItem || !isChapterType(dataItem) || !dataItem.text)
-      return getDefaultSlateElement();
+    if (
+      !dataItem ||
+      !isChapterType(dataItem) ||
+      !dataItem.text ||
+      isSlateElementEmpty(dataItem.text)
+    )
+      return getDefaultSlateElement(t("placeholders.text"));
     return dataItem.text;
   }
 
   function getChapterText(dataItem: BookDataItem | null | undefined): string {
     if (!dataItem || !isChapterType(dataItem) || !dataItem.text) return "";
     const { text } = {
-      text: t("useGetTitleTextBookItem.text"),
+      text: t("placeholders.text"),
     };
-
     return getSlateElementText(dataItem.text) || text;
   }
 
@@ -109,8 +114,8 @@ export function useGetTitleTextBookItem() {
     if (!dataItem) return "";
 
     const { description, text } = {
-      description: t("useGetTitleTextBookItem.description"),
-      text: t("useGetTitleTextBookItem.text"),
+      description: t("placeholders.description"),
+      text: t("placeholders.text"),
     };
 
     let itemText = null;

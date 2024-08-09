@@ -22,29 +22,31 @@ export const TextElement: FC<TextElementProps> = ({ element }) => {
   switch (element.type) {
     case "paragraph":
       return (
-        <p style={style}>{element.children.map((c, i) => renderText(c, i))}</p>
+        <p style={style} className="text-app-800">
+          {element.children.map((c, i) => renderText(c, i))}
+        </p>
       );
     case "heading-one":
       return (
-        <h1 style={style} className="text-3xl">
+        <h1 style={style} className="text-3xl text-app-800">
           {element.children.map((c, i) => renderText(c, i))}
         </h1>
       );
     case "heading-two":
       return (
-        <h2 style={style} className="text-2xl">
+        <h2 style={style} className="text-2xl text-app-800">
           {element.children.map((c, i) => renderText(c, i))}
         </h2>
       );
     case "block-quote":
       return (
-        <blockquote style={style}>
+        <blockquote style={style} className="text-app-800">
           {element.children.map((c, i) => renderText(c, i))}
         </blockquote>
       );
     case "bulleted-list":
       return (
-        <ul style={style} className="list-disc">
+        <ul style={style} className="list-disc text-app-800">
           {element.children.map((c, i) => (
             <TextElement key={i} element={c as SlateCustomElement} />
           ))}
@@ -52,7 +54,7 @@ export const TextElement: FC<TextElementProps> = ({ element }) => {
       );
     case "numbered-list":
       return (
-        <ol style={style} className="list-decimal">
+        <ol style={style} className="list-decimal text-app-800">
           {element.children.map((c, i) => (
             <TextElement key={i} element={c as SlateCustomElement} />
           ))}
@@ -61,6 +63,7 @@ export const TextElement: FC<TextElementProps> = ({ element }) => {
     case "list-item":
       return (
         <li
+          className="text-app-800"
           style={{
             ...style,
             listStyle: "inherit",

@@ -12,6 +12,7 @@ export interface IUser extends Document {
   passwordResetExpires?: Date;
   fullname: string;
   roles: string[];
+  lastVisitedPage: string;
   createdAt: Date;
   updatedAt: Date;
   active: boolean;
@@ -36,6 +37,7 @@ export interface IBook extends Document {
   createdAt: Date;
   updatedAt: Date;
   isArchived: boolean;
+  isReadMode: boolean;
 }
 
 export interface IBasicBookDataItem extends Document {
@@ -107,6 +109,6 @@ export interface IReference extends Document {
   sortOrder: number;
 }
 
-export interface ISlateCustomElement extends SlateCustomElement, Document {}
+export type ISlateCustomElement = SlateCustomElement & Document;
 
 export interface ISlateCustomText extends SlateCustomText, Document {}

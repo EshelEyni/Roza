@@ -33,12 +33,15 @@ type BookContextType = UseLoginWithTokenResult &
     chatperText: string;
     textEl: SlateCustomElement[];
     chatperTextEl: SlateCustomElement[];
+    chaptersTextElements: SlateCustomElement[][];
     onNavigateToEdit: () => void;
     onDeleteItem: () => void;
     onUpdateItem: (newItem: BookDataItem) => void;
     onGoToDetails: () => void;
     onArchiveBook: () => void;
     onDownloadChapter: () => void;
+    onSetReadMode: () => void;
+    isReadMode: boolean;
   };
 
 type BookDetailsParams = {
@@ -90,6 +93,7 @@ function BookProvider({ children }: BookProviderProps) {
     !!(book[dataItemType as keyof Book] as BookDataItem[]).find(
       i => i.id === dataItemId,
     );
+  const isReadMode = book?.isReadMode ?? false;
   const { getTitle, getText, getChapterText, getChapterTextEl, getTextEl } =
     useGetTitleTextBookItem();
   const { t } = useTranslation();
@@ -100,6 +104,11 @@ function BookProvider({ children }: BookProviderProps) {
   const chatperText = getChapterText(item);
   const textEl = getTextEl(item, dataItemType);
   const chatperTextEl = getChapterTextEl(item);
+  const chaptersTextElements = book
+    ? book.chapters.map(chapter => {
+        return getChapterTextEl(chapter);
+      })
+    : [];
 
   const { updateBook } = useUpdateBook();
   const navigate = useNavigate();
@@ -159,12 +168,15 @@ function BookProvider({ children }: BookProviderProps) {
     const pdfCreateor = new PDFCreator(loggedInUser?.language || "en");
     const chapterPdf = pdfCreateor.createBookChapterPdf({
       chapter: item,
-      lang: loggedInUser?.language || "en",
     }) as Blob;
     const fileName = item.name || `${t("chapter")}-${item.sortOrder + 1}`;
     downloadFile({ blob: chapterPdf, fileName });
   }
 
+  function onSetReadMode() {
+    if (!book) return;
+    updateBook({ ...book, isReadMode: !book.isReadMode });
+  }
   useEffect(() => {
     if (!book || !dataItemType || !dataItemId) return;
     const item =
@@ -196,6 +208,7 @@ function BookProvider({ children }: BookProviderProps) {
     filterBy,
     isDetailsBookShowing,
     isDataItemDetailsShowing,
+    isReadMode,
     bookDataItemTypes,
     item,
     pageTitle,
@@ -204,12 +217,14 @@ function BookProvider({ children }: BookProviderProps) {
     chatperText,
     textEl,
     chatperTextEl,
+    chaptersTextElements,
     onNavigateToEdit,
     onDeleteItem,
     onUpdateItem,
     onGoToDetails,
     onArchiveBook,
     onDownloadChapter,
+    onSetReadMode,
   };
 
   return <BookContext.Provider value={value}>{children}</BookContext.Provider>;

@@ -25,6 +25,7 @@ function getDefaultBook(userId = "", name = ""): Book {
     createdAt: new Date(),
     updatedAt: new Date(),
     isArchived: false,
+    isReadMode: false,
   };
 }
 

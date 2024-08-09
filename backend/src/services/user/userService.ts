@@ -41,7 +41,13 @@ async function add(user: User): Promise<IUser> {
 }
 
 async function update(id: string, user: User): Promise<User> {
-  const allowedFields: Array<keyof User> = ["username", "email", "fullname", "email"];
+  const allowedFields: Array<keyof User> = [
+    "username",
+    "email",
+    "fullname",
+    "email",
+    "lastVisitedPage",
+  ];
 
   const filteredUser = filterObj(user, ...allowedFields);
 

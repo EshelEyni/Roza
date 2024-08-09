@@ -199,6 +199,10 @@ function getSlateElementText(elements: SlateCustomElement[]): string {
   return elements.map(el => extractText(el)).join(" ");
 }
 
+function isSlateElementEmpty(elements: SlateCustomElement[]): boolean {
+  return getSlateElementText(elements).trim() === "";
+}
+
 function downloadFile({ blob, fileName }: { blob: Blob; fileName: string }) {
   const link = document.createElement("a");
   link.style.display = "none";
@@ -227,4 +231,5 @@ export {
   getDefaultSlateElement,
   getSlateElementText,
   downloadFile,
+  isSlateElementEmpty,
 };

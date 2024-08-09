@@ -134,7 +134,7 @@
     "noteTitle": "Note Number",
     "btnEdit": "Edit"
   },
-  "useGetTitleTextBookItem": {
+  "placeholders": {
     "name": {
       "chapters": "Chapter Name",
       "characters": "Character Name",
@@ -212,5 +212,7 @@
   "invalidEmail": "Invalid email address",
   "download": "Download",
   "chapter": "Chapter",
-  "bookReview": "Book Review"
+  "bookReview": "Book Review",
+  "readMode": "Read Mode",
+  "viewMode": "View Mode"
 }

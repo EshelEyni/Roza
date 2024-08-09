@@ -51,6 +51,7 @@ const userSchema: Schema<IUser> = new Schema(
       },
     },
     roles: { type: [String], default: ["user"] },
+    lastVisitedPage: { type: String, default: "" },
     language: { type: String, default: "" },
     active: { type: Boolean, default: true },
     loginAttempts: { type: Number, default: 0 },

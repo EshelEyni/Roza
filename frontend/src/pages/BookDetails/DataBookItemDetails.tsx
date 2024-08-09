@@ -67,7 +67,7 @@ export const DataBookItemDetails: FC = () => {
         </div>
       </div>
       <Hr />
-      <div className="w-full font-normal text-app-800">
+      <div className="w-full text-2xl font-normal text-app-800">
         {textEl.map((el, i) => (
           <TextElement element={el} key={i} />
         ))}
@@ -75,7 +75,7 @@ export const DataBookItemDetails: FC = () => {
       {isChapterType(item) && (
         <>
           <Hr />
-          <div className="w-full font-normal text-app-800">
+          <div className="w-full text-2xl font-normal text-app-800">
             {chatperTextEl.map((el, i) => (
               <TextElement element={el} key={i} />
             ))}

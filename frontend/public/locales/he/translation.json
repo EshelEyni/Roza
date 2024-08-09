@@ -128,7 +128,7 @@
     "noteTitle": "מספר ההערה",
     "btnEdit": "ערוך"
   },
-  "useGetTitleTextBookItem": {
+  "placeholders": {
     "name": {
       "chapters": "שם הפרק",
       "characters": "שם הדמות",
@@ -206,5 +206,7 @@
   "invalidEmail": "כתובת אימייל לא תקינה",
   "download": "הורד",
   "chapter": "פרק",
-  "bookReview": "ביקורת ספר"
+  "bookReview": "ביקורת ספר",
+  "readMode": "מצב קריאה",
+  "viewMode": "מצב צפייה"
 }

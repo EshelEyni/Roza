@@ -14,6 +14,7 @@ type PageTitleProps = {
   onDeleteEntity: () => void;
   archiveTitle: string;
   archiveMsg: string;
+  onSetReadMode?: () => void;
 };
 
 export const PageTitle: FC<PageTitleProps> = ({
@@ -25,12 +26,13 @@ export const PageTitle: FC<PageTitleProps> = ({
   onDeleteEntity,
   archiveTitle,
   archiveMsg,
+  onSetReadMode,
 }) => {
   const { t } = useTranslation();
   return (
     <div className="flex w-full flex-col items-center justify-between gap-4">
       <div className="flex w-full items-center justify-between gap-4">
-        <h2 className="text-3xl font-bold text-app-800">{t("book")}</h2>
+        <h2 className="text-4xl font-bold text-app-800">{t("book")}</h2>
         <GoBackBtn />
       </div>
       {isEdit ? (
@@ -45,6 +47,11 @@ export const PageTitle: FC<PageTitleProps> = ({
           <h1 className="mb-4 text-4xl font-bold text-app-800">{entityName}</h1>
 
           <div className="flex items-center justify-between gap-2">
+            {onSetReadMode && (
+              <Button onClickFn={onSetReadMode}>
+                <span>{t("readMode")}</span>
+              </Button>
+            )}
             <Button onClickFn={onNavigateToEdit}>
               <span>{t("btnEdit")}</span>
             </Button>

@@ -31,6 +31,10 @@ const bookSchema = new Schema<IBook>(
       type: Boolean,
       default: false,
     },
+    isReadMode: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
     toObject: {

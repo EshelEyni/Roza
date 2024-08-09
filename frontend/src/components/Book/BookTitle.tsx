@@ -9,7 +9,13 @@ type BookTitleProps = {
 };
 
 export const BookTitle: FC<BookTitleProps> = ({ isEdit = false }) => {
-  const { book, isSuccessBook, onNavigateToEdit, onArchiveBook } = useBook();
+  const {
+    book,
+    isSuccessBook,
+    onNavigateToEdit,
+    onArchiveBook,
+    onSetReadMode,
+  } = useBook();
   const { updateBook } = useUpdateBook();
   const { t } = useTranslation();
 
@@ -30,6 +36,7 @@ export const BookTitle: FC<BookTitleProps> = ({ isEdit = false }) => {
       onDeleteEntity={onArchiveBook}
       archiveTitle={t("archiveBookMsg.title")}
       archiveMsg={t("archiveBookMsg.msg")}
+      onSetReadMode={onSetReadMode}
     />
   );
 };
