@@ -7,7 +7,7 @@ import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 import { BookTitle } from "../../components/Book/BookTitle";
 import { Hr } from "../../components/Gen/Hr";
 import { BookFilter } from "../../components/Book/BookFilter";
-import { BtnAddBook } from "../../components/Book/BtnAddBook";
+import { BtnAddBookItem } from "../../components/Book/BtnAddBookItem";
 import { BookDataList } from "../../components/Book/BookDataList";
 import { DataBookItemEdit } from "./DataBookItemEdit";
 
@@ -37,7 +37,7 @@ const BookEdit: FC = () => {
 
             <div className="flex flex-wrap items-center justify-between gap-8">
               <BookFilter />
-              <BtnAddBook />
+              <BtnAddBookItem />
             </div>
             <Hr />
             {bookDataItemTypes.map(type => (

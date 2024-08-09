@@ -14,10 +14,6 @@ const chapterSchema = new Schema<IChapter>(
       default: "פרק חדש",
       trim: true,
     },
-    sortOrder: {
-      type: Number,
-      default: 0,
-    },
     description: {
       type: [SlateCustomElementSchema],
       default: getDefaultSlateElement(),

@@ -9,12 +9,15 @@ import {
   getDefaultReview,
 } from "../services/reviewUtilService";
 import { updateBookReviewEntityAction } from "../../../shared/types/system";
+import { BookReview } from "../../../shared/types/books";
 
 type BookReviewContextType = UseLoginWithTokenResult &
   UseGetBookReviewResult & {
+    updateBookReview: (bookReview: BookReview) => void;
     onNavigateToEdit: () => void;
     onArchiveBookReview: () => void;
     updateBookReviewEntity: (action: updateBookReviewEntityAction) => void;
+    getReviewNumber: (reviewId: string) => number | null;
   };
 
 const BookReviewContext = createContext<BookReviewContextType | undefined>(
@@ -87,9 +90,7 @@ function BookReviewProvider({ children }: { children: React.ReactNode }) {
         break;
 
       case "addReference":
-        newBookReview.references.push(
-          getDefaultReference({ sortOrder: newBookReview.references.length }),
-        );
+        newBookReview.references.push(getDefaultReference());
         break;
 
       case "removeReference":
@@ -124,6 +125,11 @@ function BookReviewProvider({ children }: { children: React.ReactNode }) {
     updateBookReview(newBookReview);
   }
 
+  function getReviewNumber(reviewId: string) {
+    if (!bookReview) return null;
+    return bookReview.reviews.findIndex(r => r.id === reviewId) + 1;
+  }
+
   const value = {
     bookReview,
     errorBookReview,
@@ -136,9 +142,11 @@ function BookReviewProvider({ children }: { children: React.ReactNode }) {
     isSuccessLoggedInUser,
     isErrorLoggedInUser,
     isFetchedLoggedInUser,
+    updateBookReview,
     onNavigateToEdit,
     onArchiveBookReview,
     updateBookReviewEntity,
+    getReviewNumber,
   };
 
   return (

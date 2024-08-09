@@ -34,6 +34,7 @@ type BookContextType = UseLoginWithTokenResult &
     textEl: SlateCustomElement[];
     chatperTextEl: SlateCustomElement[];
     chaptersTextElements: SlateCustomElement[][];
+    updateBook: (newBook: Book) => void;
     onNavigateToEdit: () => void;
     onDeleteItem: () => void;
     onUpdateItem: (newItem: BookDataItem) => void;
@@ -169,7 +170,11 @@ function BookProvider({ children }: BookProviderProps) {
     const chapterPdf = pdfCreateor.createBookChapterPdf({
       chapter: item,
     }) as Blob;
-    const fileName = item.name || `${t("chapter")}-${item.sortOrder + 1}`;
+
+    const getChapterNumber = () =>
+      book.chapters.findIndex(c => c.id === item.id) + 1 || 1;
+    const fileName = item.name || `${t("chapter")}-${getChapterNumber()}`;
+
     downloadFile({ blob: chapterPdf, fileName });
   }
 
@@ -218,6 +223,7 @@ function BookProvider({ children }: BookProviderProps) {
     textEl,
     chatperTextEl,
     chaptersTextElements,
+    updateBook,
     onNavigateToEdit,
     onDeleteItem,
     onUpdateItem,

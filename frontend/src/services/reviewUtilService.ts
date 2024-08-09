@@ -22,18 +22,19 @@ function getDefaultReview(): Review {
     text: getDefaultSlateElement(),
     createdAt: new Date(),
     isArchived: false,
+    isMinimized: false,
   };
 }
 
-function getDefaultReference({ sortOrder = 0 }): Reference {
+function getDefaultReference(): Reference {
   return {
     id: "",
     text: getDefaultSlateElement(),
     imgs: [],
     pages: "",
     isArchived: false,
-    sortOrder,
     createdAt: new Date(),
+    isMinimized: false,
   };
 }
 

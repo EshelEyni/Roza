@@ -31,14 +31,12 @@ const BookReviewEdit: FC = () => {
           />
         )}
         {isSuccessBookReview && !!bookReview && (
-          <div className="flex w-full flex-col gap-1">
+          <div className="flex w-full flex-col gap-2">
             <ReviewTitle isEdit={true} />
             <Hr />
 
             <ReviewList reviews={bookReview.reviews} isEdit={true} />
-            <Hr />
             <ReferenceList references={bookReview.references} isEdit={true} />
-            <Hr />
             <StructureEdit structure={bookReview.structure} />
           </div>
         )}

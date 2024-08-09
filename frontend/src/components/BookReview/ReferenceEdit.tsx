@@ -15,7 +15,6 @@ import { DeleteEntityModal } from "../Modals/DeleteEntityModal";
 
 type ReferenceEditProps = {
   reference: Reference;
-  index: number;
 };
 
 export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {

@@ -5,7 +5,7 @@ import { getDefaultBookDataItem } from "../../services/bookUtilService";
 import { Button } from "../Buttons/Button";
 import { useTranslation } from "react-i18next";
 
-export const BtnAddBook: FC = () => {
+export const BtnAddBookItem: FC = () => {
   const { book } = useBook();
 
   const { updateBook } = useUpdateBook(book?.filterBy);

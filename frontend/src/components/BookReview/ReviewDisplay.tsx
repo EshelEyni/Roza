@@ -12,12 +12,12 @@ import { useMinimized } from "../../hooks/useIsMinimized";
 
 type ReviewDisplayProps = {
   review: Review;
-  index: number;
 };
 
-export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review, index }) => {
+export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review }) => {
   const { loggedInUser } = useLoginWithToken();
-  const { updateBookReviewEntity } = useBookReview();
+  const { updateBookReviewEntity, getReviewNumber } = useBookReview();
+  const reviewNumber = getReviewNumber(review.id);
   const { isMinimized, setIsMinimized } = useMinimized({
     isMinimizedProp: review.isMinimized,
   });
@@ -38,7 +38,7 @@ export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review, index }) => {
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <H3>
-          {t("review")} {index + 1}
+          {t("review")} {reviewNumber}
         </H3>
 
         <BtnMinimize

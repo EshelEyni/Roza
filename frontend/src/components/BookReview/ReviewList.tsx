@@ -5,9 +5,9 @@ import { ReviewDisplay } from "./ReviewDisplay";
 import { ReviewEdit } from "./ReviewEdit";
 import { useBookReview } from "../../contexts/ReviewContext";
 import { Button } from "../Buttons/Button";
-import { Hr } from "../Gen/Hr";
 import { H2 } from "../Gen/H2";
 import { BtnMinimizeAll } from "../Buttons/BtnMinimizeAll";
+import { DndListWrapper } from "../Gen/DndListWrapper";
 
 type ReviewListProps = {
   reviews: Review[];
@@ -15,7 +15,12 @@ type ReviewListProps = {
 };
 
 export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
-  const { updateBookReviewEntity, onNavigateToEdit } = useBookReview();
+  const {
+    bookReview,
+    updateBookReview,
+    updateBookReviewEntity,
+    onNavigateToEdit,
+  } = useBookReview();
   const { t } = useTranslation();
 
   const isAllMinimized = reviews.every(review => review.isMinimized);
@@ -32,6 +37,11 @@ export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
     });
   }
 
+  function dragEndCallback(reviews: Review[]) {
+    if (!bookReview) return;
+    updateBookReview({ ...bookReview, reviews });
+  }
+
   return (
     <div className="w-full font-normal text-app-800">
       <div className="mb-1 flex items-center justify-between">
@@ -45,18 +55,18 @@ export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
         </div>
       </div>
 
-      <ul className="flex flex-col gap-2">
-        {reviews.map((review, i) => (
-          <li key={review.id}>
-            <Hr />
-            {isEdit ? (
-              <ReviewEdit review={review} index={i} />
-            ) : (
-              <ReviewDisplay review={review} index={i} />
-            )}
-          </li>
-        ))}
-      </ul>
+      <DndListWrapper
+        listClassName="flex flex-col gap-2"
+        items={reviews}
+        renderItem={review =>
+          isEdit ? (
+            <ReviewEdit review={review} />
+          ) : (
+            <ReviewDisplay review={review} />
+          )
+        }
+        dragEndCallback={dragEndCallback}
+      />
     </div>
   );
 };

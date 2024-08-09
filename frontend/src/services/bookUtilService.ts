@@ -56,7 +56,6 @@ function getDefaultBasicBookDataItem(bookId: string): BasicBookDataItem {
   return {
     id: "",
     bookId,
-    sortOrder: 0,
     isArchived: false,
     createdAt: new Date(),
     updatedAt: new Date(),

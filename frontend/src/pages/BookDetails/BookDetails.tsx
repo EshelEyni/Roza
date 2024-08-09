@@ -9,7 +9,7 @@ import { Hr } from "../../components/Gen/Hr";
 import { BookDataList } from "../../components/Book/BookDataList";
 import { DataBookItemDetails } from "./DataBookItemDetails";
 import { BookTitle } from "../../components/Book/BookTitle";
-import { BtnAddBook } from "../../components/Book/BtnAddBook";
+import { BtnAddBookItem } from "../../components/Book/BtnAddBookItem";
 import { ReadMode } from "./ReadMode";
 
 const BookDetails: FC = () => {
@@ -42,7 +42,7 @@ const BookDetails: FC = () => {
 
                 <div className="flex flex-wrap items-center justify-between gap-8">
                   <BookFilter />
-                  <BtnAddBook />
+                  <BtnAddBookItem />
                 </div>
                 <Hr />
 

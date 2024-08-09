@@ -5,6 +5,7 @@ import { debounce } from "../../services/utilService";
 import { useTranslation } from "react-i18next";
 import { useBookReview } from "../../contexts/ReviewContext";
 import { H2 } from "../../components/Gen/H2";
+import { Hr } from "../Gen/Hr";
 
 type StructureEditProps = {
   structure: SlateCustomElement[];
@@ -23,7 +24,8 @@ export const StructureEdit: FC<StructureEditProps> = ({ structure }) => {
   }
 
   return (
-    <div>
+    <>
+      <Hr />
       <H2>{t("structure")}</H2>
 
       <SlateEditor
@@ -31,6 +33,6 @@ export const StructureEdit: FC<StructureEditProps> = ({ structure }) => {
         onChange={debounce(value => handleChange(value), 500).debouncedFunc}
         fullScreenTitle={bookReview?.name || t("bookReview")}
       />
-    </div>
+    </>
   );
 };

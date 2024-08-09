@@ -9,7 +9,7 @@ import { Modal } from "../Modals/Modal";
 import { ErrorMsg } from "../Msg/ErrorMsg";
 import { EmptyMsg } from "../Msg/EmptyMsg";
 import { BookLoader } from "../Loaders/BookLoader/BookLoader";
-import { ReviewPreview } from "./ReviewPreview";
+import { BookReviewPreview } from "./BookReviewPreview";
 import { Button } from "../Buttons/Button";
 
 type ReviewListProps = UseGetBookReviewsResult & {
@@ -106,7 +106,7 @@ export const BookReviewList: FC<ReviewListProps> = ({
         <ul className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {reviews.map(r => (
             <li key={r.id} className="flex-1">
-              <ReviewPreview review={r} />
+              <BookReviewPreview review={r} />
             </li>
           ))}
         </ul>

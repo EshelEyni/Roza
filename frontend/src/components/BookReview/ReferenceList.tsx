@@ -1,6 +1,5 @@
 import { FC } from "react";
 import { Reference } from "../../../../shared/types/books";
-import { Hr } from "../../components/Gen/Hr";
 import { Button } from "../../components/Buttons/Button";
 import { useTranslation } from "react-i18next";
 import { ReferenceEdit } from "./ReferenceEdit";
@@ -8,6 +7,7 @@ import { ReferenceDisplay } from "./ReferenceDisplay";
 import { useBookReview } from "../../contexts/ReviewContext";
 import { H2 } from "../Gen/H2";
 import { BtnMinimizeAll } from "../Buttons/BtnMinimizeAll";
+import { DndListWrapper } from "../Gen/DndListWrapper";
 
 type ReferenceListProps = {
   references: Reference[];
@@ -18,7 +18,12 @@ export const ReferenceList: FC<ReferenceListProps> = ({
   references,
   isEdit = false,
 }) => {
-  const { updateBookReviewEntity, onNavigateToEdit } = useBookReview();
+  const {
+    bookReview,
+    updateBookReview,
+    updateBookReviewEntity,
+    onNavigateToEdit,
+  } = useBookReview();
   const { t } = useTranslation();
   const isAllMinimized = references.every(r => r.isMinimized);
 
@@ -32,6 +37,11 @@ export const ReferenceList: FC<ReferenceListProps> = ({
       type: "toggleMinimizeReferences",
       isMinimized: !isAllMinimized,
     });
+  }
+
+  function dragEndCallback(references: Reference[]) {
+    if (!bookReview) return;
+    updateBookReview({ ...bookReview, references });
   }
 
   return (
@@ -48,18 +58,18 @@ export const ReferenceList: FC<ReferenceListProps> = ({
         </div>
       </div>
 
-      <ul className="flex flex-col flex-wrap gap-2">
-        {references.map((reference, i) => (
-          <li key={reference.id}>
-            {isEdit ? (
-              <ReferenceEdit reference={reference} index={i} />
-            ) : (
-              <ReferenceDisplay reference={reference} index={i} />
-            )}
-            {i < references.length - 1 && <Hr />}
-          </li>
-        ))}
-      </ul>
+      <DndListWrapper
+        listClassName="flex flex-col gap-2"
+        items={references}
+        renderItem={(reference: Reference) =>
+          isEdit ? (
+            <ReferenceEdit reference={reference} />
+          ) : (
+            <ReferenceDisplay reference={reference} />
+          )
+        }
+        dragEndCallback={dragEndCallback}
+      />
     </div>
   );
 };

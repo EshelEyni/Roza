@@ -2,6 +2,7 @@ import { FC } from "react";
 import { BookDataItem, BooKDataItemType } from "../../../../shared/types/books";
 import { BookDataPreview } from "./BookDataPreview";
 import { useBook } from "../../contexts/BookContext";
+import { DndListWrapper } from "../Gen/DndListWrapper";
 
 type BookDataListProps = {
   isRendered: boolean;
@@ -14,16 +15,26 @@ export const BookDataList: FC<BookDataListProps> = ({
   type,
   isEdit = false,
 }) => {
-  const { book } = useBook();
+  const { book, updateBook } = useBook();
+
+  function dragEndCallback(items: BookDataItem[]) {
+    if (!book) return;
+    const newBook = { ...book, [type]: items };
+    updateBook(newBook);
+  }
+
+  function renderItem(item: BookDataItem) {
+    return <BookDataPreview dataItem={item} type={type} isEdit={isEdit} />;
+  }
+
   if (!isRendered || !book) return null;
   const data = book[type] as BookDataItem[];
+
   return (
-    <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {data.map(d => (
-        <li key={d.id}>
-          <BookDataPreview dataItem={d} type={type} isEdit={isEdit} />
-        </li>
-      ))}
-    </ul>
+    <DndListWrapper
+      items={data}
+      renderItem={renderItem}
+      dragEndCallback={dragEndCallback}
+    />
   );
 };

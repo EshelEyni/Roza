@@ -10,7 +10,7 @@ type ReviewPreviewProps = {
   review: BookReview;
 };
 
-export const ReviewPreview: FC<ReviewPreviewProps> = ({ review }) => {
+export const BookReviewPreview: FC<ReviewPreviewProps> = ({ review }) => {
   const { loggedInUser } = useLoginWithToken();
   const { t } = useTranslation();
   const formattedDate = review.createdAt

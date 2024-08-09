@@ -9,14 +9,16 @@ import { BtnMinimize } from "../Buttons/BtnMinimize";
 import { DeleteEntityModal } from "../Modals/DeleteEntityModal";
 import { MinimizedText } from "./MinimizedText";
 import { useMinimized } from "../../hooks/useIsMinimized";
+import { Hr } from "../Gen/Hr";
 
 type ReviewEditProps = {
   review: Review;
-  index: number;
 };
 
-export const ReviewEdit: FC<ReviewEditProps> = ({ review, index }) => {
-  const { bookReview, updateBookReviewEntity } = useBookReview();
+export const ReviewEdit: FC<ReviewEditProps> = ({ review }) => {
+  const { bookReview, updateBookReviewEntity, getReviewNumber } =
+    useBookReview();
+  const reviewNumber = getReviewNumber(review.id);
   const { t } = useTranslation();
   const { isMinimized, setIsMinimized } = useMinimized({
     isMinimizedProp: review.isMinimized,
@@ -41,7 +43,7 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review, index }) => {
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <H3>
-          {t("review")} {index + 1}
+          {t("review")} {reviewNumber}
         </H3>
         <div className="flex items-center gap-2">
           <DeleteEntityModal
@@ -65,6 +67,7 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review, index }) => {
           fullScreenTitle={bookReview?.name || t("bookReview")}
         />
       )}
+      <Hr />
     </div>
   );
 };

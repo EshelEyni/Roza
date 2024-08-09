@@ -24,10 +24,6 @@ const referenceSchema = new Schema<IReference>(
       type: Boolean,
       default: false,
     },
-    sortOrder: {
-      type: Number,
-      default: 0,
-    },
   },
   {
     toObject: {

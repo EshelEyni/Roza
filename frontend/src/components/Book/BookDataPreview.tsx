@@ -43,7 +43,7 @@ export const BookDataPreview: FC<BookDataPreviewProps> = ({
   return (
     <article
       onClick={handlePreviewClick}
-      className="flex h-full max-h-[350px] cursor-pointer flex-col gap-2 rounded-lg border border-app-900 p-3 shadow-lg transition duration-300 hover:scale-105 hover:shadow-xl"
+      className="flex h-full max-h-[350px] flex-col gap-2 rounded-lg border border-app-900 p-3 shadow-lg transition duration-300 hover:scale-105 hover:shadow-xl"
     >
       <h2 className="mb-2 text-xl font-bold text-app-800">{title}</h2>
       <p className="overflow-y-auto text-app-900">{text}</p>

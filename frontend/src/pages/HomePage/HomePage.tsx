@@ -114,9 +114,7 @@ const HomePage: FC = () => {
           >
             {loggedInUser.username}
           </h1>
-
           <Hr />
-
           <BookList
             books={slicedBooks}
             errorBooks={errorBooks}
@@ -127,9 +125,7 @@ const HomePage: FC = () => {
             isBooksAvailable={isBooksAvailable}
             isHomePage={true}
           />
-
           <Hr />
-
           <BookReviewList
             reviews={slicedReviews}
             errorReviews={errorReviews}
@@ -140,9 +136,7 @@ const HomePage: FC = () => {
             isReviewsAvailable={isReviewsAvailable}
             isHomePage={true}
           />
-
           <Hr />
-
           <div className="flex w-full justify-end">
             <Button onClickFn={onLogout}>{t("HomePage.btnLogout")}</Button>
           </div>

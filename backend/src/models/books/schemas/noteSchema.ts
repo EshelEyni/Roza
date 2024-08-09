@@ -13,10 +13,6 @@ const noteSchema = new Schema<INote>(
       type: [SlateCustomElementSchema],
       default: getDefaultSlateElement(),
     },
-    sortOrder: {
-      type: Number,
-      default: 0,
-    },
     isArchived: {
       type: Boolean,
       default: false,

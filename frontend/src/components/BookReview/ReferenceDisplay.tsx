@@ -10,7 +10,6 @@ import { H3 } from "../Gen/H3";
 
 type ReferenceEditProps = {
   reference: Reference;
-  index: number;
 };
 
 export const ReferenceDisplay: FC<ReferenceEditProps> = ({ reference }) => {
@@ -32,7 +31,7 @@ export const ReferenceDisplay: FC<ReferenceEditProps> = ({ reference }) => {
     });
   }
 
-  if (!reference || !reference.pages) return null;
+  if (!reference) return null;
 
   return (
     <div>

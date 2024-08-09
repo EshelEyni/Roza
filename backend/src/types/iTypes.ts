@@ -43,7 +43,6 @@ export interface IBook extends Document {
 export interface IBasicBookDataItem extends Document {
   bookId: mongoose.Types.ObjectId;
   isArchived: boolean;
-  sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -106,7 +105,6 @@ export interface IReference extends Document {
   isMinimized: boolean;
   createdAt: Date | string | number | null;
   updatedAt: Date | string | number | null;
-  sortOrder: number;
 }
 
 export type ISlateCustomElement = SlateCustomElement & Document;
