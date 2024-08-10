@@ -4,7 +4,8 @@ import { useTranslation } from "react-i18next";
 import { formatDateByLang } from "../../services/utilService";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { useNavigate } from "react-router-dom";
-import { H2 } from "../App/H2";
+import { Article } from "../App/Article";
+import { H3 } from "../App/H3";
 
 type BookPreviewProps = {
   book: Book;
@@ -28,11 +29,8 @@ export const BookPreview: FC<BookPreviewProps> = ({ book }) => {
   }
 
   return (
-    <article
-      className="h-full cursor-pointer rounded-lg border border-app-800 bg-app-100 p-2 shadow-lg transition duration-300 hover:scale-105 hover:shadow-xl"
-      onClick={handlePreviewClick}
-    >
-      <H2>{book.name}</H2>
+    <Article onClick={handlePreviewClick}>
+      <H3>{book.name}</H3>
       <ul className="flex flex-col gap-1 text-sm">
         <li className="flex gap-1 text-app-600">
           <span>{t("chapters")}:</span>
@@ -59,6 +57,6 @@ export const BookPreview: FC<BookPreviewProps> = ({ book }) => {
           <span>{formattedDate}</span>
         </li>
       </ul>
-    </article>
+    </Article>
   );
 };

@@ -170,7 +170,7 @@ export const DataBookItemEdit: FC = () => {
 
       <Hr />
       <div className="flex w-full items-center justify-end gap-4 bg-app-100">
-        <Button onClickFn={onGoToDetails}>{t("goToDetails")}</Button>
+        <Button onClick={onGoToDetails}>{t("goToDetails")}</Button>
       </div>
     </div>
   );

@@ -44,7 +44,7 @@ export const AddEntityModal: FC<AddEntityModalProps> = ({
             <Modal.CloseBtn>
               <span>{t("btnCancel")}</span>
             </Modal.CloseBtn>
-            <Modal.CloseBtn onClickFn={onAddEntity}>
+            <Modal.CloseBtn onClick={onAddEntity}>
               <span>{t("btnAdd")}</span>
             </Modal.CloseBtn>
           </div>

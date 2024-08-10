@@ -34,7 +34,7 @@ export const DeleteEntityModal: FC<DeleteEntityModalProps> = ({
                 <span>{t("btnCancel")}</span>
               </Modal.CloseBtn>
 
-              <Modal.CloseBtn onClickFn={onDeleteEntity}>
+              <Modal.CloseBtn onClick={onDeleteEntity}>
                 <span>{t("btnDelete")}</span>
               </Modal.CloseBtn>
             </div>

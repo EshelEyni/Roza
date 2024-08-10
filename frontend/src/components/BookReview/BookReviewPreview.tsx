@@ -4,7 +4,8 @@ import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken"
 import { useTranslation } from "react-i18next";
 import { formatDateByLang } from "../../services/utilService";
 import { useNavigate } from "react-router-dom";
-import { H2 } from "../App/H2";
+import { Article } from "../App/Article";
+import { H3 } from "../App/H3";
 
 type ReviewPreviewProps = {
   review: BookReview;
@@ -24,11 +25,8 @@ export const BookReviewPreview: FC<ReviewPreviewProps> = ({ review }) => {
   }
 
   return (
-    <article
-      className="h-full cursor-pointer rounded-lg border border-app-800 bg-app-100 p-2 shadow-lg transition duration-300 hover:scale-105 hover:shadow-xl"
-      onClick={handlePreviewClick}
-    >
-      <H2>{review.name}</H2>
+    <Article onClick={handlePreviewClick}>
+      <H3>{review.name}</H3>
       <ul className="flex flex-col gap-1 text-sm">
         <li className="flex gap-1 text-app-600">
           <span>{t("reviews")}:</span>
@@ -43,6 +41,6 @@ export const BookReviewPreview: FC<ReviewPreviewProps> = ({ review }) => {
           <span>{formattedDate}</span>
         </li>
       </ul>
-    </article>
+    </Article>
   );
 };

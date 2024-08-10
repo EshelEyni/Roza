@@ -43,7 +43,7 @@ type OpenBtnProps = {
 type CloseBtnProps = {
   children: React.ReactElement;
   className?: string;
-  onClickFn?: () => void;
+  onClick?: () => void;
 };
 
 type ModalHoverActivatorProps = {
@@ -217,14 +217,14 @@ const OpenBtn: FC<OpenBtnProps> = ({
 
 const CloseBtn: FC<CloseBtnProps> = ({
   children,
-  onClickFn,
+  onClick,
   className = "rounded-md bg-app-500 px-4 py-1 text-white hover:bg-app-600 cursor-pointer",
 }) => {
   const { close } = useContext(ModalContext)!;
 
   return cloneElement(children, {
     onClick: () => {
-      onClickFn?.();
+      onClick?.();
       close();
     },
     className,
@@ -316,7 +316,7 @@ const Window: FC<WindowProps> = ({
   if (name !== openedModalName) return null;
   return createPortal(
     <>
-      <MainScreen onClickFn={close} darkMode={true} />
+      <MainScreen onClick={close} darkMode={true} />
       <section
         className={className}
         style={{ ...style, ...position }}

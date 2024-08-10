@@ -51,7 +51,7 @@ export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
             isMinimized={isAllMinimized}
             onToggleMinimize={onToggleMinimize}
           />
-          <Button onClickFn={handleAddReview}>{t("btnAdd")}</Button>
+          <Button onClick={handleAddReview}>{t("btnAdd")}</Button>
         </div>
       </div>
 

@@ -120,7 +120,7 @@ export const ProfileEdit: React.FC = () => {
                   "!bg-app-600": selectedLanguage === l.value,
                 },
               )}
-              onClickFn={() => handleLanguageChange(l.value)}
+              onClick={() => handleLanguageChange(l.value)}
             >
               {l.name}
             </Button>

@@ -20,7 +20,7 @@ export const BtnAddBookItem: FC = () => {
 
   if (!book) return null;
   return (
-    <Button onClickFn={handleAddBookDataItem}>
+    <Button onClick={handleAddBookDataItem}>
       {t(`BtnAddBookItem.${book.filterBy}`)}
     </Button>
   );

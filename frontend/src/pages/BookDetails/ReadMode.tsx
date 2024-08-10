@@ -9,7 +9,7 @@ export const ReadMode: FC = () => {
   if (!book) return null;
   return (
     <div>
-      <Button onClickFn={onSetReadMode}>Read</Button>
+      <Button onClick={onSetReadMode}>Read</Button>
       <div>
         {chaptersTextElements.map((chapter, index) => (
           <div key={index}>

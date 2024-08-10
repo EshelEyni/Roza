@@ -136,7 +136,7 @@ const HomePage: FC = () => {
           />
           <Hr />
           <div className="flex w-full justify-end">
-            <Button onClickFn={onLogout}>{t("btnLogout")}</Button>
+            <Button onClick={onLogout}>{t("btnLogout")}</Button>
           </div>
         </PageContent>
       )}

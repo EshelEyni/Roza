@@ -1,11 +1,11 @@
 import classnames from "classnames";
 
 type MainScreenProps = {
-  onClickFn: () => void;
+  onClick: () => void;
   darkMode?: boolean;
 };
 export const MainScreen = ({
-  onClickFn,
+  onClick,
   darkMode = false,
 }: MainScreenProps) => {
   return (
@@ -15,7 +15,7 @@ export const MainScreen = ({
         { "bg-gray-700 bg-opacity-80": darkMode },
         { "bg-transparent": !darkMode },
       )}
-      onClick={onClickFn}
+      onClick={onClick}
     ></div>
   );
 };

@@ -54,7 +54,7 @@ export const ReferenceList: FC<ReferenceListProps> = ({
             isMinimized={isAllMinimized}
             onToggleMinimize={onToggleMinimize}
           />
-          <Button onClickFn={handleAddReference}>{t("btnAdd")}</Button>
+          <Button onClick={handleAddReference}>{t("btnAdd")}</Button>
         </div>
       </div>
 

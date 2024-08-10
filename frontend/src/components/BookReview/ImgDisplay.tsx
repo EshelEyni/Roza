@@ -49,7 +49,7 @@ export const ImgDisplay: FC<ImgDisplayProps> = ({ reference, img }) => {
                     <span>{t("btnCancel")}</span>
                   </Modal.CloseBtn>
 
-                  <Button onClickFn={onDeleteImg}>
+                  <Button onClick={onDeleteImg}>
                     <span>{t("btnDelete")}</span>
                   </Button>
                 </div>

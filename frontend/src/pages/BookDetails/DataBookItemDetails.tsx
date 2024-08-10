@@ -35,9 +35,9 @@ export const DataBookItemDetails: FC = () => {
 
         <div className="flex items-center justify-between gap-3 bg-app-100">
           {isChapterType(item) && (
-            <Button onClickFn={onDownloadChapter}>{t("download")}</Button>
+            <Button onClick={onDownloadChapter}>{t("download")}</Button>
           )}
-          <Button onClickFn={onNavigateToEdit}>{t("btnEdit")}</Button>
+          <Button onClick={onNavigateToEdit}>{t("btnEdit")}</Button>
 
           <DeleteEntityModal
             modalName={"deleteBookDataItem"}

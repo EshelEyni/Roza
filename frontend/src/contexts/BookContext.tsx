@@ -38,7 +38,7 @@ type BookContextType = UseLoginWithTokenResult &
     onNavigateToEdit: () => void;
     onDeleteItem: () => void;
     onUpdateItem: (newItem: BookDataItem) => void;
-    onGoToDetails: () => void;
+    onGoToDetails: (params?: OnGoToDetailsParams) => void;
     onArchiveBook: () => void;
     onDownloadChapter: () => void;
     onSetReadMode: () => void;
@@ -53,6 +53,10 @@ type BookDetailsParams = {
 
 type BookProviderProps = {
   children: React.ReactNode;
+};
+
+type OnGoToDetailsParams = {
+  isGoToRootPage?: boolean;
 };
 
 const BookContext = createContext<BookContextType | undefined>(undefined);
@@ -149,9 +153,10 @@ function BookProvider({ children }: BookProviderProps) {
     navigate(`/book/${book.id}`);
   }
 
-  function onGoToDetails() {
+  function onGoToDetails({ isGoToRootPage = false }: OnGoToDetailsParams = {}) {
     if (!book || !dataItemType || !dataItemId || !item) return;
     let url = `/book/${book.id}`;
+    if (isGoToRootPage) return navigate(url);
     if (dataItemType) url += `/${dataItemType}`;
     if (dataItemId) url += `/${dataItemId}`;
     navigate(url);

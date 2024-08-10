@@ -48,11 +48,11 @@ export const PageTitle: FC<PageTitleProps> = ({
 
           <div className="flex items-center justify-between gap-2">
             {onSetReadMode && (
-              <Button onClickFn={onSetReadMode}>
+              <Button onClick={onSetReadMode}>
                 <span>{t("readMode")}</span>
               </Button>
             )}
-            <Button onClickFn={onNavigateToEdit}>
+            <Button onClick={onNavigateToEdit}>
               <span>{t("btnEdit")}</span>
             </Button>
             <DeleteEntityModal

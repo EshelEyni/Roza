@@ -11,6 +11,9 @@ import { getDefaultBook } from "../../services/bookUtilService";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { useAddBook } from "../../hooks/reactQuery/add/useAddBook";
 import { AddEntityModal } from "../Modals/AddEntityModal";
+import { H2 } from "../App/H2";
+import { GridList } from "../App/GridList";
+import { GridListItem } from "../App/GridListItem";
 
 type BookListProps = UseGetBooksResult & {
   isHomePage?: boolean;
@@ -50,9 +53,7 @@ export const BookList: FC<BookListProps> = ({
   return (
     <section className="w-full">
       <div className="flex items-center justify-between border-b border-app-800 bg-app-100 pb-1">
-        <h3 className="w-fit text-3xl font-medium text-app-800">
-          {t("books")}
-        </h3>
+        <H2>{t("books")}</H2>
         {!isHomePage && (
           <AddEntityModal
             title={t("btnAddBook")}
@@ -69,13 +70,13 @@ export const BookList: FC<BookListProps> = ({
       {isNoBooks && <EmptyMsg msg={t("EmptyMsg.books")} />}
 
       {!!books && (
-        <ul className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <GridList>
           {books.map(b => (
-            <li key={b.id}>
+            <GridListItem key={b.id}>
               <BookPreview book={b} />
-            </li>
+            </GridListItem>
           ))}
-        </ul>
+        </GridList>
       )}
       {isLoadingBooks && <BookLoader />}
       {!!books &&
@@ -87,7 +88,7 @@ export const BookList: FC<BookListProps> = ({
 
       {isHomePage && (
         <div className="mt-3 flex items-center justify-end">
-          <Button onClickFn={onGoToBooksPage}>{t("seeAll.books")}</Button>
+          <Button onClick={onGoToBooksPage}>{t("seeAll.books")}</Button>
         </div>
       )}
     </section>

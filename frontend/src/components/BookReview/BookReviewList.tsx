@@ -11,6 +11,8 @@ import { BookLoader } from "../Loaders/BookLoader/BookLoader";
 import { BookReviewPreview } from "./BookReviewPreview";
 import { Button } from "../Buttons/Button";
 import { AddEntityModal } from "../Modals/AddEntityModal";
+import { GridList } from "../App/GridList";
+import { GridListItem } from "../App/GridListItem";
 
 type ReviewListProps = UseGetBookReviewsResult & {
   isHomePage?: boolean;
@@ -73,13 +75,13 @@ export const BookReviewList: FC<ReviewListProps> = ({
       {isNoReviews && <EmptyMsg msg={t("EmptyMsg.books")} />}
 
       {!!reviews && (
-        <ul className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <GridList>
           {reviews.map(r => (
-            <li key={r.id} className="flex-1">
+            <GridListItem key={r.id}>
               <BookReviewPreview review={r} />
-            </li>
+            </GridListItem>
           ))}
-        </ul>
+        </GridList>
       )}
       {isLoadingReviews && <BookLoader />}
       {!!reviews &&
@@ -91,7 +93,7 @@ export const BookReviewList: FC<ReviewListProps> = ({
 
       {isHomePage && (
         <div className="mt-3 flex items-center justify-end">
-          <Button onClickFn={onGoToReviewsPage}>{t("seeAll.reviews")}</Button>
+          <Button onClick={onGoToReviewsPage}>{t("seeAll.reviews")}</Button>
         </div>
       )}
     </section>

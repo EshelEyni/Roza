@@ -4,6 +4,7 @@ import { BooKDataItemType } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
 import classNames from "classnames";
 import { useBook } from "../../contexts/BookContext";
+import { Button } from "../Buttons/Button";
 
 export const BookFilter: FC = () => {
   const { book } = useBook();
@@ -26,7 +27,7 @@ export const BookFilter: FC = () => {
   return (
     <div className="flex flex-wrap gap-2">
       {tabs.map(tab => (
-        <button
+        <Button
           key={tab}
           className={classNames(
             "rounded-md px-4 py-2",
@@ -39,7 +40,7 @@ export const BookFilter: FC = () => {
           onClick={() => handleFilterBy(tab)}
         >
           {t(tab)}
-        </button>
+        </Button>
       ))}
     </div>
   );
