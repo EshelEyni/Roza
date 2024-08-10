@@ -1,6 +1,6 @@
 import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
-import { Hr } from "../../components/Gen/Hr";
+import { Hr } from "../../components/App/Hr";
 import {
   isChapterType,
   isNoteType,
@@ -12,7 +12,8 @@ import { SlateEditor } from "../../components/SlateTextEditor/SlateEditor";
 import { Book, SlateCustomElement } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
 import { Button } from "../../components/Buttons/Button";
-import { H2 } from "../../components/Gen/H2";
+import { H2 } from "../../components/App/H2";
+import { Input } from "../../components/App/Input";
 
 export const DataBookItemEdit: FC = () => {
   const {
@@ -134,9 +135,8 @@ export const DataBookItemEdit: FC = () => {
         {isNoteType(item) ? (
           <h1 className="text-4xl font-bold text-app-800">{itemTitle}</h1>
         ) : (
-          <input
+          <Input
             type="text"
-            className="w-full rounded-md border border-app-900 bg-gray-50 px-4 py-2 text-3xl font-bold text-app-700"
             onChange={
               debounce(e => handleNameInputChange(e), 500).debouncedFunc
             }

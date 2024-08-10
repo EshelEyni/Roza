@@ -1,7 +1,7 @@
 import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
 import { Button } from "../../components/Buttons/Button";
-import { TextElement } from "../../components/Gen/TextElement";
+import { TextElement } from "../../components/App/TextElement";
 
 export const ReadMode: FC = () => {
   const { book, onSetReadMode, chaptersTextElements } = useBook();

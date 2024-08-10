@@ -15,7 +15,7 @@ import { btns } from "./textEditorBtns";
 import { onFormatText } from "./textEditorService";
 import { BtnToggleFullScreen } from "../Buttons/BtnToggleFullScreen";
 import classNames from "classnames";
-import { H2 } from "../Gen/H2";
+import { H2 } from "../App/H2";
 
 interface SlateEditorProps {
   initialValue: Descendant[];

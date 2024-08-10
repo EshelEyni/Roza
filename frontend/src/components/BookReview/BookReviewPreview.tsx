@@ -4,7 +4,7 @@ import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken"
 import { useTranslation } from "react-i18next";
 import { formatDateByLang } from "../../services/utilService";
 import { useNavigate } from "react-router-dom";
-import { H2 } from "../Gen/H2";
+import { H2 } from "../App/H2";
 
 type ReviewPreviewProps = {
   review: BookReview;

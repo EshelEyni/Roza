@@ -5,12 +5,12 @@ import { UseGetBookReviewsResult } from "../../types/app";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { getDefaultBookReview } from "../../services/bookReviewUtilService";
 import { useAddBookReview } from "../../hooks/reactQuery/add/useAddBookReview";
-import { Modal } from "../Modals/Modal";
 import { ErrorMsg } from "../Msg/ErrorMsg";
 import { EmptyMsg } from "../Msg/EmptyMsg";
 import { BookLoader } from "../Loaders/BookLoader/BookLoader";
 import { BookReviewPreview } from "./BookReviewPreview";
 import { Button } from "../Buttons/Button";
+import { AddEntityModal } from "../Modals/AddEntityModal";
 
 type ReviewListProps = UseGetBookReviewsResult & {
   isHomePage?: boolean;
@@ -56,43 +56,13 @@ export const BookReviewList: FC<ReviewListProps> = ({
         </h3>
 
         {!isHomePage && (
-          <Modal>
-            <Modal.OpenBtn modalName="addReview">
-              <div>{t("btnAddReview")}</div>
-            </Modal.OpenBtn>
-
-            <Modal.Window name="addReview">
-              <div className="flex w-full flex-col gap-4">
-                <h3 className="text-center text-2xl font-medium text-app-800">
-                  {t("btnAddReview")}
-                </h3>
-
-                <div className="flex w-full flex-col gap-2">
-                  <label htmlFor="name" className="text-lg text-app-800">
-                    {t("bookName")}
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    id="name"
-                    defaultValue={newBookReview.name}
-                    onChange={handleInputChange}
-                    className="rounded-md border border-app-800 p-2"
-                    placeholder={t("bookName")}
-                  />
-                </div>
-
-                <div className="mt-4 flex items-center justify-end gap-2">
-                  <Modal.CloseBtn>
-                    <span>{t("btnCancel")}</span>
-                  </Modal.CloseBtn>
-                  <Modal.CloseBtn onClickFn={handleAddBook}>
-                    <span>{t("btnAdd")}</span>
-                  </Modal.CloseBtn>
-                </div>
-              </div>
-            </Modal.Window>
-          </Modal>
+          <AddEntityModal
+            title={t("btnAddReview")}
+            defaultValue={newBookReview.name}
+            handleInputChange={handleInputChange}
+            onAddEntity={handleAddBook}
+            placeholder={t("bookName")}
+          />
         )}
       </div>
       {isErrorReviews && (

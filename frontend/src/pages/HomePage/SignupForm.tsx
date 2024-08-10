@@ -5,9 +5,9 @@ import { Button } from "../../components/Buttons/Button";
 import { useSignup } from "../../hooks/reactQuery/update/useSignup";
 import { Form } from "../../components/App/Form";
 import { useTranslation } from "react-i18next";
-import { H2 } from "../../components/Gen/H2";
+import { H2 } from "../../components/App/H2";
 import { InputContainer } from "../../components/App/InputContainer";
-import { Input } from "../../components/App/Input";
+import { ReactHookFormInput } from "../../components/App/ReactHookFormInput";
 import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 
 export const SignupForm: FC = () => {
@@ -34,7 +34,7 @@ export const SignupForm: FC = () => {
         fieldError={errors.username}
         htmlFor="username"
       >
-        <Input<UserCredenitials>
+        <ReactHookFormInput<UserCredenitials>
           register={register}
           name="username"
           required={t("formValidation.mandatory.username")}
@@ -48,7 +48,7 @@ export const SignupForm: FC = () => {
         fieldError={errors.fullname}
         htmlFor="fullname"
       >
-        <Input<UserCredenitials>
+        <ReactHookFormInput<UserCredenitials>
           register={register}
           name="fullname"
           required={t("formValidation.mandatory.fullname")}
@@ -62,7 +62,7 @@ export const SignupForm: FC = () => {
         fieldError={errors.email}
         htmlFor="email"
       >
-        <Input<UserCredenitials>
+        <ReactHookFormInput<UserCredenitials>
           register={register}
           name="email"
           required={t("formValidation.mandatory.email")}
@@ -76,7 +76,7 @@ export const SignupForm: FC = () => {
         fieldError={errors.password}
         htmlFor="password"
       >
-        <Input<UserCredenitials>
+        <ReactHookFormInput<UserCredenitials>
           register={register}
           name="password"
           type="password"
@@ -91,7 +91,7 @@ export const SignupForm: FC = () => {
         fieldError={errors.passwordConfirm}
         htmlFor="passwordConfirm"
       >
-        <Input<UserCredenitials>
+        <ReactHookFormInput<UserCredenitials>
           register={register}
           name="passwordConfirm"
           type="password"

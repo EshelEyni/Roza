@@ -1,12 +1,12 @@
 import { FC } from "react";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
-import { Main } from "../../components/Gen/Main";
+import { Main } from "../../components/App/Main";
 import { useProfile } from "../../contexts/ProfileContext";
 import { ProfileDisplay } from "./ProfileDisplay";
 import { ProfileEdit } from "./ProfileEdit";
 import { PasswordEdit } from "./PasswordEdit";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
-import { PageContent } from "../../components/Gen/PageContent";
+import { PageContent } from "../../components/App/PageContent";
 import { TabBtns } from "./TabBtns";
 
 const ProfileDetails: FC = () => {

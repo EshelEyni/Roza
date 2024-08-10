@@ -1,8 +1,8 @@
 import { FC } from "react";
-import { H2 } from "../Gen/H2";
+import { H2 } from "../App/H2";
 import { useTranslation } from "react-i18next";
 import { SlateCustomElement } from "../../../../shared/types/books";
-import { TextElement } from "../Gen/TextElement";
+import { TextElement } from "../App/TextElement";
 import { getSlateElementText } from "../../services/utilService";
 
 type StructureDisplayProps = {

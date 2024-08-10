@@ -7,10 +7,10 @@ import { ErrorMsg } from "../Msg/ErrorMsg";
 import { EmptyMsg } from "../Msg/EmptyMsg";
 import { useNavigate } from "react-router-dom";
 import { Button } from "../Buttons/Button";
-import { Modal } from "../Modals/Modal";
 import { getDefaultBook } from "../../services/bookUtilService";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { useAddBook } from "../../hooks/reactQuery/add/useAddBook";
+import { AddEntityModal } from "../Modals/AddEntityModal";
 
 type BookListProps = UseGetBooksResult & {
   isHomePage?: boolean;
@@ -54,38 +54,13 @@ export const BookList: FC<BookListProps> = ({
           {t("books")}
         </h3>
         {!isHomePage && (
-          <Modal>
-            <Modal.OpenBtn modalName="addBook">
-              <div>{t("btnAddBook")}</div>
-            </Modal.OpenBtn>
-
-            <Modal.Window name="addBook">
-              <div className="flex w-full flex-col gap-4">
-                <h3 className="text-center text-3xl font-medium text-app-800">
-                  {t("btnAddBook")}
-                </h3>
-
-                <input
-                  type="text"
-                  name="name"
-                  id="name"
-                  defaultValue={newBook.name}
-                  onChange={handleInputChange}
-                  className="rounded-md border border-app-800 p-2 text-center text-xl text-app-700"
-                  placeholder={t("BookList.name")}
-                />
-
-                <div className="mt-4 flex items-center justify-end gap-2">
-                  <Modal.CloseBtn>
-                    <span>{t("btnCancel")}</span>
-                  </Modal.CloseBtn>
-                  <Modal.CloseBtn onClickFn={handleAddBook}>
-                    <span>{t("btnAdd")}</span>
-                  </Modal.CloseBtn>
-                </div>
-              </div>
-            </Modal.Window>
-          </Modal>
+          <AddEntityModal
+            title={t("btnAddBook")}
+            defaultValue={newBook.name}
+            handleInputChange={handleInputChange}
+            onAddEntity={handleAddBook}
+            placeholder={t("bookName")}
+          />
         )}
       </div>
       {isErrorBooks && (

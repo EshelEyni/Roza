@@ -2,8 +2,9 @@ import { FC } from "react";
 import { GoBackBtn } from "../Buttons/GoBackBtn";
 import { debounce } from "../../services/utilService";
 import { Button } from "../Buttons/Button";
-import { Modal } from "../Modals/Modal";
 import { useTranslation } from "react-i18next";
+import { DeleteEntityModal } from "../Modals/DeleteEntityModal";
+import { Input } from "./Input";
 
 type PageTitleProps = {
   isEdit: boolean;
@@ -36,10 +37,9 @@ export const PageTitle: FC<PageTitleProps> = ({
         <GoBackBtn />
       </div>
       {isEdit ? (
-        <input
+        <Input
           type="text"
           defaultValue={entityName}
-          className="w-full rounded-md border border-app-900 bg-gray-50 px-4 py-2 text-3xl font-bold text-app-700"
           onChange={debounce(e => handleInputChange(e), 500).debouncedFunc}
         />
       ) : (
@@ -55,32 +55,12 @@ export const PageTitle: FC<PageTitleProps> = ({
             <Button onClickFn={onNavigateToEdit}>
               <span>{t("btnEdit")}</span>
             </Button>
-
-            <Modal>
-              <Modal.OpenBtn modalName={modalName}>
-                <div>{t("btnDelete")}</div>
-              </Modal.OpenBtn>
-
-              <Modal.Window name={modalName}>
-                <div className="flex w-full flex-col gap-4">
-                  <div className="flex w-full flex-col gap-2">
-                    <h3 className="text-center text-2xl font-medium text-app-800">
-                      {archiveTitle}
-                    </h3>
-                    <p>{archiveMsg}</p>
-                    <div className="mt-4 flex items-center justify-center gap-2">
-                      <Modal.CloseBtn>
-                        <span>{t("btnCancel")}</span>
-                      </Modal.CloseBtn>
-
-                      <Button onClickFn={onDeleteEntity}>
-                        <span>{t("btnDelete")}</span>
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </Modal.Window>
-            </Modal>
+            <DeleteEntityModal
+              modalName={modalName}
+              onDeleteEntity={onDeleteEntity}
+              archiveTitle={archiveTitle}
+              archiveMsg={archiveMsg}
+            />
           </div>
         </div>
       )}

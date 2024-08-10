@@ -1,6 +1,7 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
+import { debounce } from "../../services/utilService";
 
 type DndListItemWrapperProps<T extends { id: string }> = {
   item: T;
@@ -11,7 +12,7 @@ export const DndListItemWrapper = <T extends { id: string }>({
   item,
   renderItem,
 }: DndListItemWrapperProps<T>) => {
-  const [isGrabCursor, setIsGrabCursor] = useState(false);
+  const [isCursorPointer, setIsCursorPointer] = useState(false);
   const { id } = item;
   const {
     attributes,
@@ -23,17 +24,15 @@ export const DndListItemWrapper = <T extends { id: string }>({
   } = useSortable({ id });
 
   function onMouseMove() {
-    if (isGrabCursor) return;
-    setIsGrabCursor(true);
-    setTimeout(() => {
-      setIsGrabCursor(false);
-    }, 1000);
+    if (isCursorPointer) return;
+    setIsCursorPointer(true);
+    debounce(() => setIsCursorPointer(false), 2500).debouncedFunc();
   }
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    cursor: isDragging ? "grabbing" : isGrabCursor ? "grab" : "pointer",
+    cursor: isDragging ? "grabbing" : isCursorPointer ? "pointer" : "grab",
   } as React.CSSProperties;
 
   return (

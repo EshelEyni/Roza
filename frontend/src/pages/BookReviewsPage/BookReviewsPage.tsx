@@ -1,10 +1,10 @@
 import { FC } from "react";
-import { Main } from "../../components/Gen/Main";
+import { Main } from "../../components/App/Main";
 import { BookReviewList } from "../../components/BookReview/BookReviewList";
-import { PageContent } from "../../components/Gen/PageContent";
+import { PageContent } from "../../components/App/PageContent";
 import { useBookReviews } from "../../contexts/BookReviewsContext";
-import { ReviewsFilter } from "./BookReviewsFilter";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import { EntityFilter } from "../../components/App/EntityFilter";
 
 const ReviewsPage: FC = () => {
   useDocumentTitle("Roza / Reviews");
@@ -19,12 +19,22 @@ const ReviewsPage: FC = () => {
     isReviewsAvailable,
     paginationIdx,
     intersectionRef,
+    onSearchReviews,
+    onSortReviews,
+    searchTerm,
+    sortOrder,
   } = useBookReviews();
 
   return (
     <Main>
       <PageContent>
-        <ReviewsFilter />
+        <EntityFilter
+          handleInputChange={onSearchReviews}
+          onSort={onSortReviews}
+          sortField="sortOrder"
+          searchTerm={searchTerm}
+          sortOrder={sortOrder}
+        />
         <BookReviewList
           reviews={reviews}
           errorReviews={errorReviews}

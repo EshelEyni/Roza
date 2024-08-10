@@ -2,8 +2,8 @@ import { useForm, SubmitHandler } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 import { useUpdatePassword } from "../../hooks/reactQuery/update/useUpdatePassword";
 import { InputContainer } from "../../components/App/InputContainer";
-import { Input } from "../../components/App/Input";
-import { H2 } from "../../components/Gen/H2";
+import { ReactHookFormInput } from "../../components/App/ReactHookFormInput";
+import { H2 } from "../../components/App/H2";
 import { Form } from "../../components/App/Form";
 import { Button } from "../../components/Buttons/Button";
 import { FC } from "react";
@@ -44,7 +44,7 @@ export const PasswordEdit: FC = () => {
         fieldError={errors.currentPassword}
         htmlFor="currentPassword"
       >
-        <Input<PasswordFormValues>
+        <ReactHookFormInput<PasswordFormValues>
           register={register}
           name="currentPassword"
           type="password"
@@ -59,7 +59,7 @@ export const PasswordEdit: FC = () => {
         fieldError={errors.newPassword}
         htmlFor="newPassword"
       >
-        <Input<PasswordFormValues>
+        <ReactHookFormInput<PasswordFormValues>
           register={register}
           name="newPassword"
           type="password"
@@ -74,7 +74,7 @@ export const PasswordEdit: FC = () => {
         fieldError={errors.newPasswordConfirm}
         htmlFor="newPasswordConfirm"
       >
-        <Input<PasswordFormValues>
+        <ReactHookFormInput<PasswordFormValues>
           register={register}
           name="newPasswordConfirm"
           type="password"

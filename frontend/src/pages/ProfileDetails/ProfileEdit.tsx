@@ -6,10 +6,10 @@ import { useTranslation } from "react-i18next";
 import { getLanguages } from "../../services/utilService";
 import { Button } from "../../components/Buttons/Button";
 import classNames from "classnames";
-import { Hr } from "../../components/Gen/Hr";
-import { H2 } from "../../components/Gen/H2";
+import { Hr } from "../../components/App/Hr";
+import { H2 } from "../../components/App/H2";
 import { InputContainer } from "../../components/App/InputContainer";
-import { Input } from "../../components/App/Input";
+import { ReactHookFormInput } from "../../components/App/ReactHookFormInput";
 import { Form } from "../../components/App/Form";
 import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 import { Language } from "../../../../shared/types/system";
@@ -71,7 +71,7 @@ export const ProfileEdit: React.FC = () => {
         fieldError={errors.username}
         htmlFor="username"
       >
-        <Input<UserFormValues>
+        <ReactHookFormInput<UserFormValues>
           register={register}
           name="username"
           required={t("formValidation.mandatory.username")}
@@ -85,7 +85,7 @@ export const ProfileEdit: React.FC = () => {
         fieldError={errors.fullname}
         htmlFor="fullname"
       >
-        <Input<UserFormValues>
+        <ReactHookFormInput<UserFormValues>
           register={register}
           name="fullname"
           required={t("formValidation.mandatory.fullname")}
@@ -99,7 +99,7 @@ export const ProfileEdit: React.FC = () => {
         fieldError={errors.email}
         htmlFor="email"
       >
-        <Input<UserFormValues>
+        <ReactHookFormInput<UserFormValues>
           register={register}
           name="email"
           type="email"

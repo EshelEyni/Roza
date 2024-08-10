@@ -2,7 +2,7 @@ import { FC } from "react";
 import { BookDataItem, BooKDataItemType } from "../../../../shared/types/books";
 import { BookDataPreview } from "./BookDataPreview";
 import { useBook } from "../../contexts/BookContext";
-import { DndListWrapper } from "../Gen/DndListWrapper";
+import { DndListWrapper } from "../App/DndListWrapper";
 
 type BookDataListProps = {
   isRendered: boolean;

@@ -9,7 +9,7 @@ type BooksContextType = UseLoginWithTokenResult &
     sortOrder: string;
     searchTerm: string;
     onSortBooks: (order: string) => void;
-    onSearchBooks: (keyword: string) => void;
+    onSearchBooks: (e: React.ChangeEvent<HTMLInputElement>) => void;
     intersectionRef: React.MutableRefObject<null>;
     paginationIdx: number;
   };
@@ -53,8 +53,9 @@ function BooksProvider({ children }: BooksProviderProps) {
     setSortOrder(order);
   }
 
-  function onSearchBooks(keyword: string) {
-    setSearchTerm(keyword);
+  function onSearchBooks(e: React.ChangeEvent<HTMLInputElement>) {
+    const inputValue = e.target.value;
+    setSearchTerm(!inputValue ? "" : inputValue);
   }
 
   const value: BooksContextType = {

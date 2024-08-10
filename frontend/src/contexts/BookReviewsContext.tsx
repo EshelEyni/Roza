@@ -8,8 +8,8 @@ type BookReviewsContextType = UseLoginWithTokenResult &
   UseGetBookReviewsResult & {
     sortOrder: string;
     searchTerm: string;
-    onSortReviews: (order: "asc" | "desc") => void;
-    onSearchReviews: (keyword: string) => void;
+    onSortReviews: (order: string) => void;
+    onSearchReviews: (e: React.ChangeEvent<HTMLInputElement>) => void;
     intersectionRef: React.MutableRefObject<null>;
     paginationIdx: number;
   };
@@ -55,8 +55,9 @@ function BookReviewsProvider({ children }: BookReviewsProviderProps) {
     setSortOrder(order);
   }
 
-  function onSearchReviews(keyword: string) {
-    setSearchTerm(keyword);
+  function onSearchReviews(e: React.ChangeEvent<HTMLInputElement>) {
+    const inputValue = e.target.value;
+    setSearchTerm(!inputValue ? "" : inputValue);
   }
 
   const value: BookReviewsContextType = {

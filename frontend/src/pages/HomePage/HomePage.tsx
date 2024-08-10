@@ -8,14 +8,14 @@ import { useGetBooks } from "../../hooks/reactQuery/get/useGetBooks";
 import { Loader } from "../../components/Loaders/Loader";
 import { useTranslation } from "react-i18next";
 import { useNavigate } from "react-router-dom";
-import { Main } from "../../components/Gen/Main";
+import { Main } from "../../components/App/Main";
 import { BookList } from "../../components/Book/BookList";
 import { useGetBookReviews } from "../../hooks/reactQuery/get/useGetBookReviews";
 import { BookReviewList } from "../../components/BookReview/BookReviewList";
-import { Hr } from "../../components/Gen/Hr";
-import { PageContent } from "../../components/Gen/PageContent";
+import { Hr } from "../../components/App/Hr";
+import { PageContent } from "../../components/App/PageContent";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
-import { P } from "../../components/Gen/P";
+import { P } from "../../components/App/P";
 
 type FormType = "login" | "signup";
 

@@ -5,9 +5,9 @@ import { ReviewDisplay } from "./ReviewDisplay";
 import { ReviewEdit } from "./ReviewEdit";
 import { useBookReview } from "../../contexts/BookReviewContext";
 import { Button } from "../Buttons/Button";
-import { H2 } from "../Gen/H2";
+import { H2 } from "../App/H2";
 import { BtnMinimizeAll } from "../Buttons/BtnMinimizeAll";
-import { DndListWrapper } from "../Gen/DndListWrapper";
+import { DndListWrapper } from "../App/DndListWrapper";
 
 type ReviewListProps = {
   reviews: Review[];

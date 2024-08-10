@@ -1,10 +1,10 @@
 import { FC } from "react";
-import { Main } from "../../components/Gen/Main";
-import { PageContent } from "../../components/Gen/PageContent";
+import { Main } from "../../components/App/Main";
+import { PageContent } from "../../components/App/PageContent";
 import { useBooks } from "../../contexts/BooksContext";
 import { BookList } from "../../components/Book/BookList";
-import { BooksFilter } from "./BooksFilter";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
+import { EntityFilter } from "../../components/App/EntityFilter";
 
 const BooksPage: FC = () => {
   useDocumentTitle("Roza / Books");
@@ -19,12 +19,22 @@ const BooksPage: FC = () => {
     isBooksAvailable,
     paginationIdx,
     intersectionRef,
+    searchTerm,
+    sortOrder,
+    onSortBooks,
+    onSearchBooks,
   } = useBooks();
 
   return (
     <Main>
       <PageContent>
-        <BooksFilter />
+        <EntityFilter
+          handleInputChange={onSearchBooks}
+          onSort={onSortBooks}
+          sortField="createdAt"
+          searchTerm={searchTerm}
+          sortOrder={sortOrder}
+        />
         <BookList
           books={books}
           errorBooks={errorBooks}

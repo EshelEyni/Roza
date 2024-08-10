@@ -2,12 +2,12 @@ import { FC } from "react";
 import { Review } from "../../../../shared/types/books";
 import { formatDateByLang } from "../../services/utilService";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
-import { TextElement } from "../Gen/TextElement";
+import { TextElement } from "../App/TextElement";
 import { useTranslation } from "react-i18next";
 import { useBookReview } from "../../contexts/BookReviewContext";
 import { MinimizedText } from "./MinimizedText";
 import { BtnMinimize } from "../Buttons/BtnMinimize";
-import { H3 } from "../Gen/H3";
+import { H3 } from "../App/H3";
 import { useMinimized } from "../../hooks/useIsMinimized";
 
 type ReviewDisplayProps = {

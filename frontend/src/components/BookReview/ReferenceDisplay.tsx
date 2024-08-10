@@ -1,12 +1,12 @@
 import { FC } from "react";
 import { Reference } from "../../../../shared/types/books";
-import { TextElement } from "../Gen/TextElement";
+import { TextElement } from "../App/TextElement";
 import { MinimizedText } from "./MinimizedText";
 import { useMinimized } from "../../hooks/useIsMinimized";
 import { useBookReview } from "../../contexts/BookReviewContext";
 import { ImgList } from "./ImgList";
 import { BtnMinimize } from "../Buttons/BtnMinimize";
-import { H3 } from "../Gen/H3";
+import { H3 } from "../App/H3";
 
 type ReferenceEditProps = {
   reference: Reference;

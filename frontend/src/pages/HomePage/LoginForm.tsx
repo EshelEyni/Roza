@@ -4,10 +4,10 @@ import { LoginCredentials } from "../../../../shared/types/user";
 import { Button } from "../../components/Buttons/Button";
 import { useLogin } from "../../hooks/reactQuery/update/useLogin";
 import { Form } from "../../components/App/Form";
-import { H2 } from "../../components/Gen/H2";
+import { H2 } from "../../components/App/H2";
 import { InputContainer } from "../../components/App/InputContainer";
 import { useTranslation } from "react-i18next";
-import { Input } from "../../components/App/Input";
+import { ReactHookFormInput } from "../../components/App/ReactHookFormInput";
 import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 
 export const LoginForm: FC = () => {
@@ -33,7 +33,7 @@ export const LoginForm: FC = () => {
         fieldError={errors.username}
         htmlFor="username"
       >
-        <Input<LoginCredentials>
+        <ReactHookFormInput<LoginCredentials>
           register={register}
           name="username"
           required={t("formValidation.mandatory.username")}
@@ -47,7 +47,7 @@ export const LoginForm: FC = () => {
         fieldError={errors.password}
         htmlFor="password"
       >
-        <Input<LoginCredentials>
+        <ReactHookFormInput<LoginCredentials>
           register={register}
           name="password"
           type="password"

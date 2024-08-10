@@ -12,7 +12,7 @@ import {
 import { createPortal } from "react-dom";
 import { useOutsideClick } from "../../hooks/useOutsideClick";
 import { debounce } from "../../services/utilService";
-import { MainScreen } from "../Gen/MainScreen";
+import { MainScreen } from "../App/MainScreen";
 
 type ModalPosition = {
   top?: number;

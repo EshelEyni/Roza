@@ -3,7 +3,7 @@ import { useBookReview } from "../../contexts/BookReviewContext";
 import { Reference, SlateCustomElement } from "../../../../shared/types/books";
 import { ImgInput } from "./ImgInput";
 import { useTranslation } from "react-i18next";
-import { Hr } from "../Gen/Hr";
+import { Hr } from "../App/Hr";
 import { debounce } from "../../services/utilService";
 import { SlateEditor } from "../SlateTextEditor/SlateEditor";
 import { ImgList } from "./ImgList";
@@ -12,6 +12,7 @@ import { BtnMinimize } from "../Buttons/BtnMinimize";
 import { MinimizedText } from "./MinimizedText";
 import classnames from "classnames";
 import { DeleteEntityModal } from "../Modals/DeleteEntityModal";
+import { Input } from "../App/Input";
 
 type ReferenceEditProps = {
   reference: Reference;
@@ -64,7 +65,7 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
       <Hr />
 
       <div className="flex items-center justify-between gap-3">
-        <input
+        <Input
           type="text"
           defaultValue={reference.pages}
           placeholder={t("pages")}

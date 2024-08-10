@@ -1,87 +1,33 @@
-import {
-  UseFormRegister,
-  FieldValues,
-  Path,
-  UseFormTrigger,
-} from "react-hook-form";
-import { useTranslation } from "react-i18next";
+import { FC } from "react";
 
-type InputProps<T extends FieldValues> = {
-  register: UseFormRegister<T>;
-  placeholder: string;
-  name: Path<T>;
-  type?: string;
-  required?: boolean | string;
-  trigger?: UseFormTrigger<T>;
+type InputProps = {
+  type: string;
+  defaultValue: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+  name?: string;
+  className?: string;
+  autoFocus?: boolean;
 };
 
-export const Input = <T extends FieldValues>({
-  register,
+export const Input: FC<InputProps> = ({
+  type,
+  defaultValue,
+  onChange,
   placeholder,
   name,
-  type = "text",
-  trigger,
-  required,
-}: InputProps<T>) => {
-  const { t } = useTranslation();
-
-  function getPattern() {
-    if (name === "email") {
-      return {
-        value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i,
-        message: t("invalidEmail"),
-      };
-    }
-    return undefined;
-  }
-
-  function getMaxLength() {
-    switch (name) {
-      case "username":
-      case "password":
-      case "passwordConfirm":
-      case "currentPassword":
-      case "newPassword":
-      case "newPasswordConfirm":
-        return { value: 20, message: t(`formValidation.maxLength.${name}`) };
-      case "fullname":
-      case "email":
-        return { value: 50, message: t(`formValidation.maxLength.${name}`) };
-      default:
-        return undefined;
-    }
-  }
-
-  function getMinLength() {
-    switch (name) {
-      case "username":
-      case "fullname":
-      case "email":
-        return { value: 3, message: t(`formValidation.minLength.${name}`) };
-      case "password":
-      case "passwordConfirm":
-      case "currentPassword":
-      case "newPassword":
-      case "newPasswordConfirm":
-        return { value: 8, message: t(`formValidation.minLength.${name}`) };
-      default:
-        return undefined;
-    }
-  }
-
+  className = "w-full rounded-md border border-app-900 bg-gray-50 px-4 py-2 text-3xl font-bold text-app-700",
+  autoFocus,
+}) => {
   return (
     <input
-      id={name}
       type={type}
-      className="w-full max-w-96 rounded border border-app-300 p-2"
-      {...register(name, {
-        required,
-        pattern: getPattern(),
-        maxLength: getMaxLength(),
-        minLength: getMinLength(),
-      })}
+      onChange={onChange}
+      defaultValue={defaultValue}
       placeholder={placeholder}
-      onBlur={() => required && trigger && trigger(name)}
+      name={name}
+      className={className}
+      autoFocus={autoFocus}
       autoComplete="off"
     />
   );

@@ -1,16 +1,23 @@
 import { FC } from "react";
 import { useTranslation } from "react-i18next";
-import { useBooks } from "../../contexts/BooksContext";
 import { debounce } from "../../services/utilService";
 
-export const BooksFilter: FC = () => {
-  const { sortOrder, searchTerm, onSortBooks, onSearchBooks } = useBooks();
-  const { t } = useTranslation();
+type EntityFilterProps = {
+  sortOrder: string;
+  searchTerm: string;
+  sortField: string;
+  onSort: (sortOrder: string) => void;
+  handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+};
 
-  async function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const inputValue = e.target.value;
-    onSearchBooks(!inputValue ? "" : inputValue);
-  }
+export const EntityFilter: FC<EntityFilterProps> = ({
+  sortOrder,
+  searchTerm,
+  sortField,
+  onSort,
+  handleInputChange,
+}) => {
+  const { t } = useTranslation();
 
   return (
     <div className="mb-4 flex w-full items-center justify-center gap-8">
@@ -18,11 +25,11 @@ export const BooksFilter: FC = () => {
         {t("sortBy")}:
         <select
           value={sortOrder}
-          onChange={e => onSortBooks(e.target.value)}
+          onChange={e => onSort(e.target.value)}
           className="ml-2 rounded-lg bg-app-500 p-1"
         >
-          <option value="createdAt">{t("asc")}</option>
-          <option value="-createdAt">{t("desc")}</option>
+          <option value={sortField}>{t("asc")}</option>
+          <option value={`-${sortField}`}>{t("desc")}</option>
         </select>
       </label>
       <label className="rounded-lg bg-app-500 p-2">

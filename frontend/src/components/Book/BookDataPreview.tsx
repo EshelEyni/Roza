@@ -9,7 +9,7 @@ import {
 } from "../../../../shared/types/books";
 import { useNavigate } from "react-router-dom";
 import { useGetTitleTextBookItem } from "../../hooks/useGetTitleTextBookItem";
-import { H2 } from "../Gen/H2";
+import { H2 } from "../App/H2";
 
 type BookDataPreviewProps = {
   dataItem: Chapter | Character | Theme | Plotline | Note;

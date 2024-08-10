@@ -4,12 +4,12 @@ import { SlateEditor } from "../SlateTextEditor/SlateEditor";
 import { debounce } from "../../services/utilService";
 import { useBookReview } from "../../contexts/BookReviewContext";
 import { useTranslation } from "react-i18next";
-import { H3 } from "../Gen/H3";
+import { H3 } from "../App/H3";
 import { BtnMinimize } from "../Buttons/BtnMinimize";
 import { DeleteEntityModal } from "../Modals/DeleteEntityModal";
 import { MinimizedText } from "./MinimizedText";
 import { useMinimized } from "../../hooks/useIsMinimized";
-import { Hr } from "../Gen/Hr";
+import { Hr } from "../App/Hr";
 
 type ReviewEditProps = {
   review: Review;

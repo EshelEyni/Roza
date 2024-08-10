@@ -1,11 +1,11 @@
 import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
-import { Main } from "../../components/Gen/Main";
-import { PageContent } from "../../components/Gen/PageContent";
+import { Main } from "../../components/App/Main";
+import { PageContent } from "../../components/App/PageContent";
 import { Loader } from "../../components/Loaders/Loader";
 import { ErrorMsg } from "../../components/Msg/ErrorMsg";
 import { BookTitle } from "../../components/Book/BookTitle";
-import { Hr } from "../../components/Gen/Hr";
+import { Hr } from "../../components/App/Hr";
 import { BookFilter } from "../../components/Book/BookFilter";
 import { BtnAddBookItem } from "../../components/Book/BtnAddBookItem";
 import { BookDataList } from "../../components/Book/BookDataList";

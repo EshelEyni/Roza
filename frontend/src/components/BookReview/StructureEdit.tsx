@@ -4,8 +4,8 @@ import { SlateEditor } from "../SlateTextEditor/SlateEditor";
 import { debounce } from "../../services/utilService";
 import { useTranslation } from "react-i18next";
 import { useBookReview } from "../../contexts/BookReviewContext";
-import { H2 } from "../../components/Gen/H2";
-import { Hr } from "../Gen/Hr";
+import { H2 } from "../App/H2";
+import { Hr } from "../App/Hr";
 
 type StructureEditProps = {
   structure: SlateCustomElement[];

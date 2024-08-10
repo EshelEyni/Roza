@@ -1,12 +1,12 @@
 import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
 import { useTranslation } from "react-i18next";
-import { Hr } from "../../components/Gen/Hr";
+import { Hr } from "../../components/App/Hr";
 import { isChapterType } from "../../../../shared/services/utilService";
 import { Button } from "../../components/Buttons/Button";
-import { Modal } from "../../components/Modals/Modal";
 import { BookItemTitle } from "../../components/Book/BookItemTitle";
-import { TextElement } from "../../components/Gen/TextElement";
+import { TextElement } from "../../components/App/TextElement";
+import { DeleteEntityModal } from "../../components/Modals/DeleteEntityModal";
 
 export const DataBookItemDetails: FC = () => {
   const {
@@ -38,26 +38,13 @@ export const DataBookItemDetails: FC = () => {
             <Button onClickFn={onDownloadChapter}>{t("download")}</Button>
           )}
           <Button onClickFn={onNavigateToEdit}>{t("btnEdit")}</Button>
-          <Modal>
-            <Modal.OpenBtn modalName="deleteBookDataItem">
-              <button>{t("btnDelete")}</button>
-            </Modal.OpenBtn>
 
-            <Modal.Window name="deleteBookDataItem">
-              <div className="flex w-full flex-col items-center gap-4">
-                <h3 className="text-xl font-bold text-app-800">
-                  {t("confirmItemDeleteMsg.title")}
-                </h3>
-                <p className="text-app-900">{t("confirmItemDeleteMsg.msg")}</p>
-              </div>
-              <div className="flex items-center justify-end gap-2">
-                <Modal.CloseBtn className="rounded-md bg-app-500 px-3 py-1 text-white hover:bg-app-600">
-                  <div>{t("btnCancel")}</div>
-                </Modal.CloseBtn>
-                <Button onClickFn={onDeleteItem}>{t("btnDelete")}</Button>
-              </div>
-            </Modal.Window>
-          </Modal>
+          <DeleteEntityModal
+            modalName={"deleteBookDataItem"}
+            onDeleteEntity={onDeleteItem}
+            archiveTitle={t("confirmItemDeleteMsg.title")}
+            archiveMsg={t("confirmItemDeleteMsg.msg")}
+          />
         </div>
       </div>
       <Hr />
