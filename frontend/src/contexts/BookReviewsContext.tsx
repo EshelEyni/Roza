@@ -1,13 +1,11 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { UseGetBookReviewsResult, UseLoginWithTokenResult } from "../types/app";
 import { useGetBookReviews } from "../hooks/reactQuery/get/useGetBookReviews";
 import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
-import { BookReview } from "../../../shared/types/books";
 import { useIntersectionPagination } from "../hooks/useIntersectionPagination";
 
-type ReviewsContextType = UseLoginWithTokenResult &
+type BookReviewsContextType = UseLoginWithTokenResult &
   UseGetBookReviewsResult & {
-    filteredReviews: BookReview[] | undefined;
     sortOrder: string;
     searchTerm: string;
     onSortReviews: (order: "asc" | "desc") => void;
@@ -16,16 +14,15 @@ type ReviewsContextType = UseLoginWithTokenResult &
     paginationIdx: number;
   };
 
-type ReviewsProviderProps = {
+type BookReviewsProviderProps = {
   children: React.ReactNode;
 };
 
-const ReviewsContext = createContext<ReviewsContextType | undefined>(undefined);
+const BookReviewsContext = createContext<BookReviewsContextType | undefined>(
+  undefined,
+);
 
-function ReviewsProvider({ children }: ReviewsProviderProps) {
-  const [filteredReviews, setFilteredReviews] = useState<
-    BookReview[] | undefined
-  >(undefined);
+function BookReviewsProvider({ children }: BookReviewsProviderProps) {
   const [sortOrder, setSortOrder] = useState<string>("sortOrder");
   const [searchTerm, setSearchTerm] = useState<string>("");
   const { intersectionRef, paginationIdx } = useIntersectionPagination();
@@ -62,7 +59,7 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
     setSearchTerm(keyword);
   }
 
-  const value: ReviewsContextType = {
+  const value: BookReviewsContextType = {
     loggedInUser,
     isLoadingLoggedInUser,
     errorLoggedInUser,
@@ -76,7 +73,6 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
     isErrorReviews,
     isNoReviews,
     isReviewsAvailable,
-    filteredReviews,
     sortOrder,
     searchTerm,
     onSortReviews,
@@ -85,22 +81,19 @@ function ReviewsProvider({ children }: ReviewsProviderProps) {
     paginationIdx,
   };
 
-  useEffect(() => {
-    if (!reviews) return;
-    setFilteredReviews(reviews);
-  }, [reviews]);
-
   return (
-    <ReviewsContext.Provider value={value}>{children}</ReviewsContext.Provider>
+    <BookReviewsContext.Provider value={value}>
+      {children}
+    </BookReviewsContext.Provider>
   );
 }
 
-const useReviews = () => {
-  const context = useContext(ReviewsContext);
+const useBookReviews = () => {
+  const context = useContext(BookReviewsContext);
   if (!context)
-    throw new Error("useReviews must be used within a ReviewsProvider");
+    throw new Error("useReviews must be used within a BookReviewsProvider");
 
   return context;
 };
 
-export { ReviewsProvider, useReviews };
+export { BookReviewsProvider, useBookReviews };

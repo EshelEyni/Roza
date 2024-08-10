@@ -4,7 +4,7 @@ import httpService from "./httpService";
 import { handleServerResponseData } from "./utilService";
 import { ReviewQueryParams } from "../types/app";
 
-const baseUrl = "review";
+const baseUrl = "book-review";
 
 async function query({
   limit = 10000,

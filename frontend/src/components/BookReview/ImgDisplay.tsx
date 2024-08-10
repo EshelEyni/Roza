@@ -2,7 +2,7 @@ import { FC, useState } from "react";
 import { Modal } from "../Modals/Modal";
 import { IoClose } from "react-icons/io5";
 import { Button } from "../Buttons/Button";
-import { useBookReview } from "../../contexts/ReviewContext";
+import { useBookReview } from "../../contexts/BookReviewContext";
 import { Reference } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
 

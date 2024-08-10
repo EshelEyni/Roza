@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { UseGetBookReviewResult } from "../../../types/app";
-import reviewsApiService from "../../../services/reviewsApiService";
+import bookReviewApiService from "../../../services/bookReviewApiService";
 
 export function useGetBookReview(
   id: string | undefined,
@@ -15,7 +15,7 @@ export function useGetBookReview(
     queryKey: ["bookReview", id],
     queryFn: async () => {
       if (!id) return undefined;
-      return reviewsApiService.getById(id);
+      return bookReviewApiService.getById(id);
     },
     enabled: !!id,
   });

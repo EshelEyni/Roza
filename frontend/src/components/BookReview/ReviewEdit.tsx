@@ -2,7 +2,7 @@ import { FC } from "react";
 import { Review, SlateCustomElement } from "../../../../shared/types/books";
 import { SlateEditor } from "../SlateTextEditor/SlateEditor";
 import { debounce } from "../../services/utilService";
-import { useBookReview } from "../../contexts/ReviewContext";
+import { useBookReview } from "../../contexts/BookReviewContext";
 import { useTranslation } from "react-i18next";
 import { H3 } from "../Gen/H3";
 import { BtnMinimize } from "../Buttons/BtnMinimize";

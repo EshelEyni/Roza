@@ -3,7 +3,7 @@ import { Review } from "../../../../shared/types/books";
 import { useTranslation } from "react-i18next";
 import { ReviewDisplay } from "./ReviewDisplay";
 import { ReviewEdit } from "./ReviewEdit";
-import { useBookReview } from "../../contexts/ReviewContext";
+import { useBookReview } from "../../contexts/BookReviewContext";
 import { Button } from "../Buttons/Button";
 import { H2 } from "../Gen/H2";
 import { BtnMinimizeAll } from "../Buttons/BtnMinimizeAll";

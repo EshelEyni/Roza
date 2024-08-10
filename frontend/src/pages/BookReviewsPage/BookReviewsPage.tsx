@@ -2,15 +2,15 @@ import { FC } from "react";
 import { Main } from "../../components/Gen/Main";
 import { BookReviewList } from "../../components/BookReview/BookReviewList";
 import { PageContent } from "../../components/Gen/PageContent";
-import { useReviews } from "../../contexts/ReviewsContext";
-import { ReviewsFilter } from "./ReviewsFilter";
+import { useBookReviews } from "../../contexts/BookReviewsContext";
+import { ReviewsFilter } from "./BookReviewsFilter";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 
 const ReviewsPage: FC = () => {
   useDocumentTitle("Roza / Reviews");
 
   const {
-    filteredReviews,
+    reviews,
     errorReviews,
     isLoadingReviews,
     isSuccessReviews,
@@ -19,14 +19,14 @@ const ReviewsPage: FC = () => {
     isReviewsAvailable,
     paginationIdx,
     intersectionRef,
-  } = useReviews();
+  } = useBookReviews();
 
   return (
     <Main>
       <PageContent>
         <ReviewsFilter />
         <BookReviewList
-          reviews={filteredReviews}
+          reviews={reviews}
           errorReviews={errorReviews}
           isLoadingReviews={isLoadingReviews}
           isSuccessReviews={isSuccessReviews}

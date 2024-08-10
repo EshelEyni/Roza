@@ -4,7 +4,7 @@ import {
   getBookReviewById,
   addBookReview,
   updateBookReview,
-} from "../../controllers/review/reviewController";
+} from "../../controllers/bookReview/bookReviewController";
 import { checkUserAuthentication } from "../../middlewares/authGuards/authGuardsMiddleware";
 
 const router = express.Router();

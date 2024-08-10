@@ -1,5 +1,5 @@
 import { FC } from "react";
-import { useBookReview } from "../../contexts/ReviewContext";
+import { useBookReview } from "../../contexts/BookReviewContext";
 import { Reference, SlateCustomElement } from "../../../../shared/types/books";
 import { ImgInput } from "./ImgInput";
 import { useTranslation } from "react-i18next";

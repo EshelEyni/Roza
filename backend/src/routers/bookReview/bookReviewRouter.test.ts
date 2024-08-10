@@ -1,7 +1,7 @@
 import request from "supertest";
 import express from "express";
 import cookieParser from "cookie-parser";
-import router from "./reviewRouter";
+import router from "./bookReviewRouter";
 import { errorHandler } from "../../services/error/errorService";
 import { connectToTestDB, disconnectFromTestDB } from "../../services/test/testDBService";
 import setupAsyncLocalStorage from "../../middlewares/setupALS/setupALSMiddleware";
@@ -11,7 +11,7 @@ import {
   getMongoId,
 } from "../../services/test/testUtilService";
 import { assertBookReview } from "../../services/test/testAssertionService";
-import { BookReviewModel } from "../../models/review/reviewModel";
+import { BookReviewModel } from "../../models/bookReview/bookReviewModel";
 
 const app = express();
 app.use(cookieParser());

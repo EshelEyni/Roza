@@ -1,12 +1,12 @@
-import { BookReviewModel } from "../../models/review/reviewModel";
+import { BookReviewModel } from "../../models/bookReview/bookReviewModel";
 import { NextFunction, Request, Response } from "express";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
 import { BookReview } from "../../../../shared/types/books";
 
-interface BookwReviewWithScore extends BookReview {
-  score: number;
-}
+// interface BookwReviewWithScore extends BookReview {
+//   score: number;
+// }
 
 const getBookReviews = asyncErrorCatcher(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -25,28 +25,28 @@ const getBookReviews = asyncErrorCatcher(
 
     const reviews = (await query.exec()) as unknown as BookReview[];
 
-    let sortedReviews = reviews;
-    if (searchTerm && typeof searchTerm === "string") {
-      sortedReviews = (reviews as BookwReviewWithScore[]).sort((a, b) => {
-        const aNameMatch = a.name.includes(searchTerm) ? 1 : 0;
-        const bNameMatch = b.name.includes(searchTerm) ? 1 : 0;
+    // let sortedReviews = reviews;
+    // if (searchTerm && typeof searchTerm === "string") {
+    //   sortedReviews = (reviews as BookwReviewWithScore[]).sort((a, b) => {
+    //     const aNameMatch = a.name.includes(searchTerm) ? 1 : 0;
+    //     const bNameMatch = b.name.includes(searchTerm) ? 1 : 0;
 
-        if (aNameMatch !== bNameMatch) return bNameMatch - aNameMatch;
+    //     if (aNameMatch !== bNameMatch) return bNameMatch - aNameMatch;
 
-        const aReviewsMatch = a.reviews.some(r => r.text.includes(searchTerm)) ? 1 : 0;
-        const bReviewsMatch = b.reviews.some(r => r.text.includes(searchTerm)) ? 1 : 0;
+    //     const aReviewsMatch = a.reviews.some(r => r.text.includes(searchTerm)) ? 1 : 0;
+    //     const bReviewsMatch = b.reviews.some(r => r.text.includes(searchTerm)) ? 1 : 0;
 
-        if (aReviewsMatch !== bReviewsMatch) return bReviewsMatch - aReviewsMatch;
+    //     if (aReviewsMatch !== bReviewsMatch) return bReviewsMatch - aReviewsMatch;
 
-        return b.score - a.score;
-      });
-    }
+    //     return b.score - a.score;
+    //   });
+    // }
 
     res.json({
       status: "success",
       requestedAt: new Date().toISOString(),
-      results: sortedReviews.length,
-      data: sortedReviews,
+      results: reviews.length,
+      data: reviews,
     });
   },
 );

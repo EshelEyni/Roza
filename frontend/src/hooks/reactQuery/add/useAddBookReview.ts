@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BookReview } from "../../../../../shared/types/books";
 import { useNavigate } from "react-router-dom";
-import reviewsApiService from "../../../services/reviewsApiService";
+import bookReviewApiService from "../../../services/bookReviewApiService";
 
 export function useAddBookReview() {
   const queryClient = useQueryClient();
@@ -9,7 +9,8 @@ export function useAddBookReview() {
 
   const { mutate: addBookReview, isPending: isPendingAddBookReview } =
     useMutation({
-      mutationFn: async (review: BookReview) => reviewsApiService.add(review),
+      mutationFn: async (review: BookReview) =>
+        bookReviewApiService.add(review),
       onSuccess: data => {
         queryClient.invalidateQueries({
           queryKey: ["reviews"],

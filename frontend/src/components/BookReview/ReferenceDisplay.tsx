@@ -3,7 +3,7 @@ import { Reference } from "../../../../shared/types/books";
 import { TextElement } from "../Gen/TextElement";
 import { MinimizedText } from "./MinimizedText";
 import { useMinimized } from "../../hooks/useIsMinimized";
-import { useBookReview } from "../../contexts/ReviewContext";
+import { useBookReview } from "../../contexts/BookReviewContext";
 import { ImgList } from "./ImgList";
 import { BtnMinimize } from "../Buttons/BtnMinimize";
 import { H3 } from "../Gen/H3";

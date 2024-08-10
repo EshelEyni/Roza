@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import reviewsApiService from "../../../services/reviewsApiService";
+import bookReviewApiService from "../../../services/bookReviewApiService";
 import { ReviewQueryParams, UseGetBookReviewsResult } from "../../../types/app";
 
 type useGetBookReviewsParams = ReviewQueryParams & {
@@ -21,7 +21,7 @@ export function useGetBookReviews({
   } = useQuery({
     queryKey: ["reviews", limit, sort, searchTerm],
     queryFn: async () => {
-      return reviewsApiService.query({ limit, sort, searchTerm });
+      return bookReviewApiService.query({ limit, sort, searchTerm });
     },
     enabled,
   });

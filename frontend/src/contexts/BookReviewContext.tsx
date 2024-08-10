@@ -3,11 +3,11 @@ import { UseGetBookReviewResult, UseLoginWithTokenResult } from "../types/app";
 import { useNavigate, useParams } from "react-router-dom";
 import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
 import { useGetBookReview } from "../hooks/reactQuery/get/useGetBookReview";
-import { useUpdateBookReview } from "../hooks/reactQuery/update/updateReview";
+import { useUpdateBookReview } from "../hooks/reactQuery/update/useUpdateBookReview";
 import {
   getDefaultReference,
   getDefaultReview,
-} from "../services/reviewUtilService";
+} from "../services/bookReviewUtilService";
 import { updateBookReviewEntityAction } from "../../../shared/types/system";
 import { BookReview } from "../../../shared/types/books";
 

@@ -1,11 +1,11 @@
 import { FC } from "react";
-import { useReviews } from "../../contexts/ReviewsContext";
+import { useBookReviews } from "../../contexts/BookReviewsContext";
 import { useTranslation } from "react-i18next";
 import { debounce } from "../../services/utilService";
 
 export const ReviewsFilter: FC = () => {
   const { sortOrder, searchTerm, onSortReviews, onSearchReviews } =
-    useReviews();
+    useBookReviews();
   const { t } = useTranslation();
 
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {

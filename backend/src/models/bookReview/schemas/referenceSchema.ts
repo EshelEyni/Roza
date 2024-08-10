@@ -1,5 +1,5 @@
 import { Schema } from "mongoose";
-import { IReference } from "./../../../types/iTypes";
+import { IReference } from "../../../types/iTypes";
 import { SlateCustomElementSchema } from "../../schemas/slateElementSchema";
 import { getDefaultSlateElement } from "../../../services/util/utilService";
 

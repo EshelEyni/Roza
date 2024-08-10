@@ -15,7 +15,7 @@ import setupAsyncLocalStorage from "./middlewares/setupALS/setupALSMiddleware";
 import userRouter from "./routers/user/userRouter";
 import authRouter from "./routers/auth/authRouter";
 import bookRouter from "./routers/book/bookRouter";
-import reviewRouter from "./routers/review/reviewRouter";
+import bookReviewRouter from "./routers/bookReview/bookReviewRouter";
 import { requestLimiter } from "./services/rateLimiterService";
 
 const isProdEnv = process.env.NODE_ENV === "production";
@@ -57,7 +57,7 @@ if (!isProdEnv)
 app.use("/api/user", userRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/book", bookRouter);
-app.use("/api/review", reviewRouter);
+app.use("/api/book-review", bookReviewRouter);
 
 app.get("/**", (req: Request, res: Response) => {
   res.sendFile(path.join(path.resolve(), "build", "public", "index.html"));

@@ -4,7 +4,7 @@ import { Button } from "../../components/Buttons/Button";
 import { useTranslation } from "react-i18next";
 import { ReferenceEdit } from "./ReferenceEdit";
 import { ReferenceDisplay } from "./ReferenceDisplay";
-import { useBookReview } from "../../contexts/ReviewContext";
+import { useBookReview } from "../../contexts/BookReviewContext";
 import { H2 } from "../Gen/H2";
 import { BtnMinimizeAll } from "../Buttons/BtnMinimizeAll";
 import { DndListWrapper } from "../Gen/DndListWrapper";

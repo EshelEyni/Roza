@@ -1,16 +1,18 @@
 import { lazy } from "react";
 import { Route } from "./types/app";
 import { ProfileProvider } from "./contexts/ProfileContext";
-import { ReviewsProvider } from "./contexts/ReviewsContext";
+import { BookReviewsProvider } from "./contexts/BookReviewsContext";
 import { BooksProvider } from "./contexts/BooksContext";
 import { BookProvider } from "./contexts/BookContext";
-import { BookReviewProvider } from "./contexts/ReviewContext";
+import { BookReviewProvider } from "./contexts/BookReviewContext";
 const HomePage = lazy(() => import("./pages/HomePage/HomePage"));
 const ProfileDetails = lazy(
   () => import("./pages/ProfileDetails/ProfileDetails"),
 );
 const BooksPage = lazy(() => import("./pages/Books/BooksPage"));
-const ReviewsPage = lazy(() => import("./pages/ReviewsPage/ReviewsPage"));
+const BookReviewsPage = lazy(
+  () => import("./pages/BookReviewsPage/BookReviewsPage"),
+);
 const BookDetails = lazy(() => import("./pages/BookDetails/BookDetails"));
 const BookReviewDetails = lazy(
   () => import("./pages/BookReviewDetails/BookReviewDetails"),
@@ -40,9 +42,9 @@ const routes: Route[] = [
   },
   {
     path: "/reviews",
-    component: ReviewsPage,
+    component: BookReviewsPage,
     authRequired: true,
-    provider: ReviewsProvider,
+    provider: BookReviewsProvider,
   },
   {
     path: "book/:id/:dataItemType?/:dataItemId?",

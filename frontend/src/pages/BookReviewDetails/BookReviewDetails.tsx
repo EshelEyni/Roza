@@ -1,10 +1,10 @@
 import { FC } from "react";
-import { useBookReview } from "../../contexts/ReviewContext";
+import { useBookReview } from "../../contexts/BookReviewContext";
 import { Main } from "../../components/Gen/Main";
 import { PageContent } from "../../components/Gen/PageContent";
 import { Loader } from "../../components/Loaders/Loader";
 import { ErrorMsg } from "../../components/Msg/ErrorMsg";
-import { ReviewTitle } from "../../components/BookReview/Reviewtitle";
+import { BookReviewTitle } from "../../components/BookReview/BookReviewtitle";
 import { Hr } from "../../components/Gen/Hr";
 import { ReviewList } from "../../components/BookReview/ReviewList";
 import { ReferenceList } from "../../components/BookReview/ReferenceList";
@@ -31,7 +31,7 @@ const BookReviewDetails: FC = () => {
         )}
         {isSuccessBookReview && !!bookReview && (
           <div className="flex w-full flex-col gap-1">
-            <ReviewTitle />
+            <BookReviewTitle />
             <Hr />
 
             <ReviewList reviews={bookReview.reviews} />

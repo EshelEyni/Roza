@@ -4,7 +4,7 @@ import { formatDateByLang } from "../../services/utilService";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { TextElement } from "../Gen/TextElement";
 import { useTranslation } from "react-i18next";
-import { useBookReview } from "../../contexts/ReviewContext";
+import { useBookReview } from "../../contexts/BookReviewContext";
 import { MinimizedText } from "./MinimizedText";
 import { BtnMinimize } from "../Buttons/BtnMinimize";
 import { H3 } from "../Gen/H3";
