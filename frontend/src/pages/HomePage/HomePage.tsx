@@ -68,8 +68,8 @@ const HomePage: FC = () => {
 
   const toggleFormTitle =
     openedForm === "login"
-      ? t("HomePage.formTitle.login")
-      : t("HomePage.formTitle.signup");
+      ? t("authFormTitle.login")
+      : t("authFormTitle.signup");
 
   function onToggleForm() {
     setOpenedForm(openedForm === "login" ? "signup" : "login");
@@ -98,9 +98,7 @@ const HomePage: FC = () => {
               onClick={onToggleForm}
               className="cursor-pointer text-app-800 hover:underline"
             >
-              {openedForm === "login"
-                ? t("HomePage.btnForm.signup")
-                : t("HomePage.btnForm.login")}
+              {openedForm === "login" ? t("signup") : t("login")}
             </span>
           </P>
         </section>
@@ -138,7 +136,7 @@ const HomePage: FC = () => {
           />
           <Hr />
           <div className="flex w-full justify-end">
-            <Button onClickFn={onLogout}>{t("HomePage.btnLogout")}</Button>
+            <Button onClickFn={onLogout}>{t("btnLogout")}</Button>
           </div>
         </PageContent>
       )}

@@ -14,9 +14,7 @@ export const TabBtns: FC<TabBtnsProps> = ({ tab, setTab }) => {
   return (
     <div className="mt-4 flex items-center justify-center gap-4">
       {tab !== "display" && (
-        <Button onClickFn={() => setTab("display")}>
-          {t("ProfileDetails.btnCancel")}
-        </Button>
+        <Button onClickFn={() => setTab("display")}>{t("btnCancel")}</Button>
       )}
       <Button
         className={classNames(
@@ -27,7 +25,7 @@ export const TabBtns: FC<TabBtnsProps> = ({ tab, setTab }) => {
         )}
         onClickFn={() => setTab("edit")}
       >
-        {t("ProfileDetails.btnEdit")}
+        {t("btnEdit")}
       </Button>
       <Button
         className={classNames(
@@ -38,7 +36,7 @@ export const TabBtns: FC<TabBtnsProps> = ({ tab, setTab }) => {
         )}
         onClickFn={() => setTab("password")}
       >
-        {t("ProfileDetails.btnPassword")}
+        {t("btnPassword")}
       </Button>
     </div>
   );

@@ -37,10 +37,10 @@ export const PasswordEdit: FC = () => {
 
   return (
     <Form onSubmit={handleSubmit(onSubmit)}>
-      <H2>{t("PasswordEdit.title")}</H2>
+      <H2>{t("passwordEditTitle")}</H2>
 
       <InputContainer
-        label={t("PasswordEdit.currentPassword")}
+        label={t("currentPassword")}
         fieldError={errors.currentPassword}
         htmlFor="currentPassword"
       >
@@ -49,13 +49,13 @@ export const PasswordEdit: FC = () => {
           name="currentPassword"
           type="password"
           required={t("formValidation.mandatory.currentPassword")}
-          placeholder={t("PasswordEdit.currentPassword")}
+          placeholder={t("currentPassword")}
           trigger={trigger}
         />
       </InputContainer>
 
       <InputContainer
-        label={t("PasswordEdit.newPassword")}
+        label={t("newPassword")}
         fieldError={errors.newPassword}
         htmlFor="newPassword"
       >
@@ -64,13 +64,13 @@ export const PasswordEdit: FC = () => {
           name="newPassword"
           type="password"
           required={t("formValidation.mandatory.newPassword")}
-          placeholder={t("PasswordEdit.newPassword")}
+          placeholder={t("newPassword")}
           trigger={trigger}
         />
       </InputContainer>
 
       <InputContainer
-        label={t("PasswordEdit.newPasswordConfirm")}
+        label={t("newPasswordConfirm")}
         fieldError={errors.newPasswordConfirm}
         htmlFor="newPasswordConfirm"
       >
@@ -79,7 +79,7 @@ export const PasswordEdit: FC = () => {
           name="newPasswordConfirm"
           type="password"
           required={t("formValidation.mandatory.newPasswordConfirm")}
-          placeholder={t("PasswordEdit.newPasswordConfirm")}
+          placeholder={t("newPasswordConfirm")}
           trigger={trigger}
         />
       </InputContainer>
@@ -89,7 +89,7 @@ export const PasswordEdit: FC = () => {
         disabled={isPendingUpdatePassword}
         addedClasses="self-center"
       >
-        {t("PasswordEdit.btnSubmit")}
+        {t("btnSubmit")}
       </Button>
     </Form>
   );

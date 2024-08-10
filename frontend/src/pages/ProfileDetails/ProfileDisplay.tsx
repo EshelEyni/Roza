@@ -17,20 +17,20 @@ export const ProfileDisplay: FC = () => {
   return (
     <section className="mt-5 rounded-lg bg-app-200 p-6 text-app-800">
       <p className="mb-2">
-        <strong>{t("ProfileDisplay.username")}:</strong> {loggedInUser.username}
+        <strong>{t("username")}:</strong> {loggedInUser.username}
       </p>
       <p className="mb-2">
-        <strong>{t("ProfileDisplay.fullName")}:</strong> {loggedInUser.fullname}
+        <strong>{t("fullName")}:</strong> {loggedInUser.fullname}
       </p>
       <p className="mb-2">
-        <strong>{t("ProfileDisplay.email")}:</strong> {loggedInUser.email}
+        <strong>{t("email")}:</strong> {loggedInUser.email}
       </p>
       <p className="mb-2">
-        <strong>{t("ProfileDisplay.language")}:</strong> {formmatedLanguage}
+        <strong>{t("language")}:</strong> {formmatedLanguage}
       </p>
 
       <p className="mb-2">
-        <strong>{t("ProfileDisplay.signup")}:</strong> {formmatedDate}
+        <strong>{t("signup")}:</strong> {formmatedDate}
       </p>
     </section>
   );

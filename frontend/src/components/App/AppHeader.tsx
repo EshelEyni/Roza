@@ -16,22 +16,22 @@ export const AppHeader: FC = () => {
 
   const navLinks: NavLinks[] = [
     {
-      name: t("AppHeader.home"),
+      name: t("home"),
       icon: <GiHouse />,
       link: "/home",
     },
     {
-      name: t("AppHeader.profile"),
+      name: t("profile"),
       icon: <RiUserFill />,
       link: "/profile",
     },
     {
-      name: t("AppHeader.books"),
+      name: t("books"),
       icon: <GiBookPile />,
       link: "/books",
     },
     {
-      name: t("AppHeader.reviews"),
+      name: t("reviews"),
       icon: <GiNotebook />,
       link: "/reviews",
     },

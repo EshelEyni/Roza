@@ -1,49 +1,22 @@
 {
-  "HomePage": {
-    "formTitle": {
-      "login": "אין לך חשבון?",
-      "signup": "כבר יש לך חשבון?"
-    },
-    "btnForm": {
-      "login": "התחברות",
-      "signup": "הרשמה"
-    },
-    "btnLogout": "התנתקות"
+  "authFormTitle": {
+    "login": "אין לך חשבון?",
+    "signup": "כבר יש לך חשבון?"
   },
-  "ProfileDetails": {
-    "btnEdit": "עריכה",
-    "btnPassword": "שינוי סיסמה",
-    "btnCancel": "ביטול",
-    "btnSave": "שמירה"
-  },
-  "ProfileDisplay": {
-    "username": "שם משתמש",
-    "fullName": "שם מלא",
-    "email": "אימייל",
-    "language": "שפה",
-    "signup": "תאריך הרשמה"
-  },
-  "ProfileEdit": {
-    "title": "עריכת פרופיל",
-    "username": "שם משתמש",
-    "fullName": "שם מלא",
-    "email": "אימייל",
-    "language": "שפה",
-    "btnSubmit": "עדכון"
-  },
-  "PasswordEdit": {
-    "title": "שינוי סיסמה",
-    "currentPassword": "סיסמה נוכחית",
-    "newPassword": "סיסמה חדשה",
-    "newPasswordConfirm": "אימות סיסמה",
-    "btnSubmit": "עדכון"
-  },
-  "AppHeader": {
-    "home": "בית",
-    "profile": "פרופיל",
-    "books": "ספרים",
-    "reviews": "ביקורות"
-  },
+  "btnLogout": "התנתקות",
+  "btnPassword": "שינוי סיסמה",
+  "fullName": "שם מלא",
+  "signupDate": "תאריך הרשמה",
+  "profileEditTitle": "עריכת פרופיל",
+  "btnSubmit": "עדכון",
+  "passwordEditTitle": "שינוי סיסמה",
+  "currentPassword": "סיסמה נוכחית",
+  "newPassword": "סיסמה חדשה",
+  "newPasswordConfirm": "אימות סיסמה",
+
+  "home": "בית",
+  "profile": "פרופיל",
+  "books": "ספרים",
   "ErrorMsg": {
     "msg": "התרחשה שגיאה במערכת. אנא נסה שוב מאוחר יותר."
   },
@@ -192,10 +165,29 @@
       "currentPassword": "סיסמה נוכחית הינה שדה חובה",
       "newPassword": "סיסמה חדשה הינה שדה חובה",
       "newPasswordConfirm": "אימות סיסמה הינו שדה חובה"
+    },
+    "maxLength": {
+      "username": "שם משתמש יכול להכיל עד 20 תווים",
+      "fullName": "שם מלא יכול להכיל עד 50 תווים",
+      "email": "אימייל יכול להכיל עד 50 תווים",
+      "password": "סיסמה יכולה להכיל עד 20 תווים",
+      "passwordConfirm": "אימות סיסמה יכול להכיל עד 20 תווים",
+      "currentPassword": "סיסמה נוכחית יכולה להכיל עד 20 תווים",
+      "newPassword": "סיסמה חדשה יכולה להכיל עד 20 תווים",
+      "newPasswordConfirm": "אימות סיסמה יכול להכיל עד 20 תווים"
+    },
+    "minLength": {
+      "username": "שם משתמש חייב להכיל לפחות 3 תווים",
+      "fullName": "שם מלא חייב להכיל לפחות 3 תווים",
+      "email": "אימייל חייב להכיל לפחות 3 תווים",
+      "password": "סיסמה חייבת להכיל לפחות 8 תווים",
+      "passwordConfirm": "אימות סיסמה חייב להכיל לפחות 8 תווים",
+      "currentPassword": "סיסמה נוכחית חייבת להכיל לפחות 8 תווים",
+      "newPassword": "סיסמה חדשה חייבת להכיל לפחות 8 תווים",
+      "newPasswordConfirm": "אימות סיסמה חייב להכיל לפחות 8 תווים"
     }
   },
   "username": "שם משתמש",
-  "fullName": "שם מלא",
   "email": "אימייל",
   "language": "שפה",
   "password": "סיסמה",

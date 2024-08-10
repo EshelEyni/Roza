@@ -4,7 +4,6 @@ import {
   loginWithToken,
   signup,
   logout,
-  sendPasswordResetEmail,
   resetPassword,
   updatePassword,
 } from "../../controllers/auth/authController";
@@ -22,7 +21,6 @@ router.post("/login", login);
 router.post("/signup", signup);
 router.post("/logout", logout);
 router.patch("/updatePassword", checkUserAuthentication, updatePassword);
-router.post("/forgotPassword", sendPasswordResetEmail);
 router.patch("/resetPassword/:token", resetPassword);
 
 export default router;

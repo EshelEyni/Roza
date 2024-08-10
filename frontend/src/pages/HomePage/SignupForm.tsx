@@ -44,7 +44,7 @@ export const SignupForm: FC = () => {
       </InputContainer>
 
       <InputContainer
-        label={t("fullname")}
+        label={t("fullName")}
         fieldError={errors.fullname}
         htmlFor="fullname"
       >
@@ -52,7 +52,7 @@ export const SignupForm: FC = () => {
           register={register}
           name="fullname"
           required={t("formValidation.mandatory.fullname")}
-          placeholder={t("fullname")}
+          placeholder={t("fullName")}
           trigger={trigger}
         />
       </InputContainer>

@@ -2,11 +2,12 @@ import crypto from "crypto";
 import { User, UserCredenitials } from "../../../../shared/types/user";
 import { UserModel } from "../../models/user/userModel";
 import { AppError } from "../error/errorService";
-import { isValidMongoId, sendEmail } from "../util/utilService";
+import { isValidMongoId } from "../util/utilService";
 import tokenService from "../token/tokenService";
 import { IUser } from "../../types/iTypes";
 
 type UserAuthResult = { user: User; token: string };
+
 async function login(username: string, password: string): Promise<UserAuthResult> {
   const user = await UserModel.findOne({ username }).select("+password");
   if (!user) throw new AppError("User not found", 404);
@@ -37,7 +38,7 @@ async function updatePassword(
   loggedInUserId: string,
   currentPassword: string,
   newPassword: string,
-  newPasswordConfirm: string
+  newPasswordConfirm: string,
 ): Promise<UserAuthResult> {
   const user = await UserModel.findById(loggedInUserId).select("+password");
   if (!user) throw new AppError("User not found", 404);
@@ -49,33 +50,10 @@ async function updatePassword(
   return { user: user as unknown as User, token };
 }
 
-async function sendPasswordResetEmail(email: string, resetURL: string) {
-  const user = await UserModel.findOne({ email });
-  if (!user) throw new AppError("There is no user with email address", 404);
-  const resetToken = user.createPasswordResetToken();
-  await user.save({ validateBeforeSave: false });
-  const message = `Forgot your password? Submit a PATCH request with your new password and passwordConfirm to: ${
-    resetURL + resetToken
-  }.\nIf you didn't forget your password, please ignore this email!`;
-
-  try {
-    await sendEmail({
-      email: user.email,
-      subject: "Your password reset token (valid for 10 min)",
-      message,
-    });
-  } catch (err) {
-    user.passwordResetToken = undefined;
-    user.passwordResetExpires = undefined;
-    await user.save({ validateBeforeSave: false });
-    throw new AppError("There was an error sending the email. Try again later!", 500);
-  }
-}
-
 async function resetPassword(
   token: string,
   password: string,
-  passwordConfirm: string
+  passwordConfirm: string,
 ): Promise<UserAuthResult> {
   const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
   const user = await UserModel.findOne({
@@ -120,7 +98,6 @@ export default {
   login,
   loginWithToken,
   signup,
-  sendPasswordResetEmail,
   resetPassword,
   updatePassword,
 };

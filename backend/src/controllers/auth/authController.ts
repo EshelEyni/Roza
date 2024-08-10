@@ -66,18 +66,6 @@ const updatePassword = asyncErrorCatcher(async (req: Request, res: Response) => 
   _sendUserTokenSuccessResponse(res, token, user);
 });
 
-const sendPasswordResetEmail = asyncErrorCatcher(async (req: Request, res: Response) => {
-  const { email } = req.body;
-  if (!email) throw new AppError("Email is required", 400);
-  if (!_isValidEmail(email)) throw new AppError("Email is invalid", 400);
-  const resetURL = `${req.protocol}://${req.get("host")}/api/auth/resetPassword/`;
-  await authService.sendPasswordResetEmail(email, resetURL);
-  res.send({
-    status: "success",
-    message: "Password reset email sent successfully",
-  });
-});
-
 const resetPassword = asyncErrorCatcher(async (req: Request, res: Response) => {
   const { token } = req.params;
   const { password, passwordConfirm } = req.body;
@@ -122,17 +110,4 @@ const _validateUserCreds = (userCreds: UserCredenitials) => {
   return { isValid: true, msg: "" };
 };
 
-const _isValidEmail = (email: string) => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-export {
-  login,
-  loginWithToken,
-  signup,
-  logout,
-  sendPasswordResetEmail,
-  resetPassword,
-  updatePassword,
-};
+export { login, loginWithToken, signup, logout, resetPassword, updatePassword };

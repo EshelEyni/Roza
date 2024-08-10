@@ -1,49 +1,22 @@
 {
-  "HomePage": {
-    "formTitle": {
-      "login": "Don't have an account?",
-      "signup": "Already have an account?"
-    },
-    "btnForm": {
-      "login": "Login",
-      "signup": "Signup"
-    },
-    "btnLogout": "Logout"
+  "authFormTitle": {
+    "login": "Don't have an account?",
+    "signup": "Already have an account?"
   },
-  "ProfileDetails": {
-    "btnEdit": "Edit",
-    "btnPassword": "Change Password",
-    "btnCancel": "Cancel",
-    "btnSave": "Save"
-  },
-  "ProfileDisplay": {
-    "username": "Username",
-    "fullName": "Full Name",
-    "email": "Email",
-    "language": "Language",
-    "signup": "Signup Date"
-  },
-  "ProfileEdit": {
-    "title": "Edit Profile",
-    "username": "Username",
-    "fullName": "Full Name",
-    "email": "Email",
-    "language": "Language",
-    "btnSubmit": "Update"
-  },
-  "PasswordEdit": {
-    "title": "Change Password",
-    "currentPassword": "Current Password",
-    "newPassword": "New Password",
-    "newPasswordConfirm": "Confirm Password",
-    "btnSubmit": "Update"
-  },
-  "AppHeader": {
-    "home": "Home",
-    "profile": "Profile",
-    "books": "Books",
-    "reviews": "Reviews"
-  },
+  "btnLogout": "Logout",
+  "btnPassword": "Change Password",
+  "fullName": "Full Name",
+  "signupDate": "Signup Date",
+  "profileEditTitle": "Edit Profile",
+  "btnSubmit": "Update",
+  "passwordEditTitle": "Change Password",
+  "currentPassword": "Current Password",
+  "newPassword": "New Password",
+  "newPasswordConfirm": "Confirm Password",
+
+  "home": "Home",
+  "profile": "Profile",
+  "books": "Books",
   "ErrorMsg": {
     "msg": "An error occurred in the system. Please try again later."
   },
@@ -198,10 +171,29 @@
       "currentPassword": "Current Password is required",
       "newPassword": "New Password is required",
       "newPasswordConfirm": "Confirm Password is required"
+    },
+    "maxLength": {
+      "username": "Username must be at most 20 characters",
+      "fullName": "Full Name must be at most 50 characters",
+      "email": "Email must be at most 50 characters",
+      "password": "Password must be at most 20 characters",
+      "passwordConfirm": "Confirm Password must be at most 20 characters",
+      "currentPassword": "Current Password must be at most 20 characters",
+      "newPassword": "New Password must be at most 20 characters",
+      "newPasswordConfirm": "Confirm Password must be at most 20 characters"
+    },
+    "minLength": {
+      "username": "Username must be at least 3 characters",
+      "fullName": "Full Name must be at least 3 characters",
+      "email": "Email must be at least 3 characters",
+      "password": "Password must be at least 8 characters",
+      "passwordConfirm": "Confirm Password must be at least 8 characters",
+      "currentPassword": "Current Password must be at least 8 characters",
+      "newPassword": "New Password must be at least 8 characters",
+      "newPasswordConfirm": "Confirm Password must be at least 8 characters"
     }
   },
   "username": "User name",
-  "fullname": "Full Name",
   "email": "Email",
   "language": "Language",
   "password": "Password",

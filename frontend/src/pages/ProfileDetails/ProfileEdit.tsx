@@ -12,12 +12,13 @@ import { InputContainer } from "../../components/App/InputContainer";
 import { Input } from "../../components/App/Input";
 import { Form } from "../../components/App/Form";
 import { ErrorMsg } from "../../components/Msg/ErrorMsg";
+import { Language } from "../../../../shared/types/system";
 
 interface UserFormValues {
   username: string;
   fullname: string;
   email: string;
-  language: string;
+  language: Language;
   roles: string[];
 }
 
@@ -44,7 +45,7 @@ export const ProfileEdit: React.FC = () => {
       username: loggedInUser?.username || "",
       fullname: loggedInUser?.fullname || "",
       email: loggedInUser?.email || "",
-      language: loggedInUser?.language || "",
+      language: loggedInUser?.language || "en",
     },
   });
 
@@ -54,7 +55,7 @@ export const ProfileEdit: React.FC = () => {
     updateUser(userToUpdate);
   };
 
-  function handleLanguageChange(language: string) {
+  function handleLanguageChange(language: Language) {
     setValue("language", language);
   }
 
@@ -63,10 +64,10 @@ export const ProfileEdit: React.FC = () => {
   if (!loggedInUser) return null;
   return (
     <Form onSubmit={handleSubmit(onSubmit)}>
-      <H2>{t("ProfileEdit.title")}</H2>
+      <H2>{t("profileEditTitle")}</H2>
 
       <InputContainer
-        label={t("ProfileEdit.username")}
+        label={t("username")}
         fieldError={errors.username}
         htmlFor="username"
       >
@@ -74,13 +75,13 @@ export const ProfileEdit: React.FC = () => {
           register={register}
           name="username"
           required={t("formValidation.mandatory.username")}
-          placeholder={t("ProfileEdit.username")}
+          placeholder={t("username")}
           trigger={trigger}
         />
       </InputContainer>
 
       <InputContainer
-        label={t("ProfileEdit.fullName")}
+        label={t("fullName")}
         fieldError={errors.fullname}
         htmlFor="fullname"
       >
@@ -88,13 +89,13 @@ export const ProfileEdit: React.FC = () => {
           register={register}
           name="fullname"
           required={t("formValidation.mandatory.fullname")}
-          placeholder={t("ProfileEdit.fullname")}
+          placeholder={t("fullname")}
           trigger={trigger}
         />
       </InputContainer>
 
       <InputContainer
-        label={t("ProfileEdit.email")}
+        label={t("email")}
         fieldError={errors.email}
         htmlFor="email"
       >
@@ -103,14 +104,11 @@ export const ProfileEdit: React.FC = () => {
           name="email"
           type="email"
           required={t("formValidation.mandatory.email")}
-          placeholder={t("ProfileEdit.email")}
+          placeholder={t("email")}
           trigger={trigger}
         />
       </InputContainer>
-      <InputContainer
-        label={t("ProfileEdit.language")}
-        fieldError={errors.language}
-      >
+      <InputContainer label={t("language")} fieldError={errors.language}>
         <div className="flex gap-2 space-x-2">
           {languages.map(l => (
             <Button
@@ -136,7 +134,7 @@ export const ProfileEdit: React.FC = () => {
         disabled={isPendindUpdateUser}
         addedClasses="self-center"
       >
-        {t("ProfileEdit.btnSubmit")}
+        {t("btnSubmit")}
       </Button>
     </Form>
   );

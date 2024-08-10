@@ -5,6 +5,7 @@ import {
 import {
   AnyFunction,
   JsendResponse,
+  Language,
   ServerErrorData,
   UserMsg,
 } from "../../../shared/types/system";
@@ -176,7 +177,10 @@ function formatLang(lang: string): string {
 }
 
 function getLanguages() {
-  const languages = [
+  const languages: {
+    name: string;
+    value: Language;
+  }[] = [
     { name: "English", value: "en" },
     { name: "עברית", value: "he" },
   ];
