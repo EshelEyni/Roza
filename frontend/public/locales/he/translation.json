@@ -13,7 +13,6 @@
   "currentPassword": "סיסמה נוכחית",
   "newPassword": "סיסמה חדשה",
   "newPasswordConfirm": "אימות סיסמה",
-
   "home": "בית",
   "profile": "פרופיל",
   "books": "ספרים",
@@ -24,82 +23,41 @@
     "books": "אין ספרים זמינים.",
     "reviews": "אין ביקורות זמינות."
   },
-  "BookList": {
-    "title": "ספרים",
-    "seeAll": "עבור לספרים",
-    "btnAdd": "הוספת ספר",
-    "name": "שם הספר"
+  "seeAll": {
+    "books": "עבור לספרים",
+    "reviews": "עבור לביקורות"
   },
-  "BookPreview": {
-    "name": "שם הספר",
-    "chapters": "פרקים",
-    "characters": "דמויות",
-    "themes": "נושאים",
-    "plotlines": "קווי עלילה",
-    "notes": "הערות",
-    "createdAt": "נוצר בתאריך"
+  "btnAddBook": "הוספת ספר",
+  "bookName": "שם הספר",
+  "chapters": "פרקים",
+  "characters": "דמויות",
+  "themes": "נושאים",
+  "plotlines": "קווי עלילה",
+  "notes": "הערות",
+  "btnAddReview": "הוספת ביקורת",
+  "reviewName": "שם ביקורת",
+  "sortBy": "מיין לפי",
+  "asc": "סדר עולה",
+  "desc": "סדר יורד",
+  "search": "חיפוש",
+  "BtnAddBookItem": {
+    "chapters": "הוספת פרק",
+    "characters": "הוספת דמות",
+    "themes": "הוספת נושא",
+    "plotlines": "הוספת קו עלילה",
+    "notes": "הוספת הערה"
   },
-  "ReviewsList": {
-    "title": "ביקורות",
-    "seeAll": "עבור לביקורות",
-    "btnAdd": "הוספת ביקורת",
-    "name": "שם ביקורת"
+  "btnOpen": "פתח",
+  "confirmItemDeleteMsg": {
+    "title": "מחיקת פריט",
+    "msg": "האם אתה בטוח שברצונך למחוק את הפריט?"
   },
-  "ReviewPreview": {
-    "name": "שם הספר",
-    "reviews": "ביקורות",
-    "references": "הפניות",
-    "createdAt": "נוצר בתאריך"
-  },
-  "ReviewsFilter": {
-    "sortBy": "מיין לפי",
-    "asc": "סדר עולה",
-    "desc": "סדר יורד",
-    "search": "חיפוש"
-  },
-  "BookFilter": {
-    "sortBy": "מיין לפי",
-    "asc": "סדר עולה",
-    "desc": "סדר יורד",
-    "search": "חיפוש"
-  },
-  "BookPage": {
-    "btnAdd": {
-      "chapters": "הוספת פרק",
-      "characters": "הוספת דמות",
-      "themes": "הוספת נושא",
-      "plotlines": "הוספת קו עלילה",
-      "notes": "הוספת הערה"
-    }
-  },
-  "BookDetailsFilter": {
-    "chapters": "פרקים",
-    "characters": "דמויות",
-    "themes": "תמות",
-    "plotlines": "קווי עלילה",
-    "notes": "הערות"
-  },
-  "BookDataPreview": {
-    "noteTitlePrefix": "מספר ההערה",
-    "btnOpen": "פתח",
-    "btnEdit": "ערוך",
-    "btnDelete": "מחק",
-    "btnCancel": "ביטול",
-    "confirmDeleteMsg": {
-      "title": "מחיקת פריט",
-      "msg": "האם אתה בטוח שברצונך למחוק את הפריט?"
-    }
-  },
-  "DataBookItemDetails": {
-    "pageTitle": {
-      "chapters": "פרק",
-      "characters": "דמות",
-      "themes": "נושא",
-      "plotlines": "קו עלילה",
-      "notes": "הערה"
-    },
-    "noteTitle": "מספר ההערה",
-    "btnEdit": "ערוך"
+  "DataBookItemTitle": {
+    "chapters": "פרק",
+    "characters": "דמות",
+    "themes": "נושא",
+    "plotlines": "קו עלילה",
+    "notes": "הערה"
   },
   "placeholders": {
     "name": {

@@ -35,27 +35,27 @@ export const BookPreview: FC<BookPreviewProps> = ({ book }) => {
       <H2>{book.name}</H2>
       <ul className="flex flex-col gap-1 text-sm">
         <li className="flex gap-1 text-app-600">
-          <span>{t("BookPreview.chapters")}:</span>
+          <span>{t("chapters")}:</span>
           <span>{getItemsLength("chapters")}</span>
         </li>
         <li className="flex gap-1 text-app-600">
-          <span>{t("BookPreview.characters")}:</span>
+          <span>{t("characters")}:</span>
           <span>{getItemsLength("characters")}</span>
         </li>
         <li className="flex gap-1 text-app-600">
-          <span>{t("BookPreview.themes")}:</span>
+          <span>{t("themes")}:</span>
           <span>{getItemsLength("themes")}</span>
         </li>
         <li className="flex gap-1 text-app-600">
-          <span>{t("BookPreview.plotlines")}:</span>
+          <span>{t("plotlines")}:</span>
           <span>{getItemsLength("plotlines")}</span>
         </li>
         <li className="flex gap-1 text-app-600">
-          <span>{t("BookPreview.notes")}:</span>
+          <span>{t("notes")}:</span>
           <span>{getItemsLength("notes")}</span>
         </li>
         <li className="flex flex-wrap gap-1 text-app-600">
-          <span>{t("BookPreview.createdAt")}:</span>
+          <span>{t("createdAt")}:</span>
           <span>{formattedDate}</span>
         </li>
       </ul>

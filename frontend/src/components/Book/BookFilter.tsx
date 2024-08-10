@@ -38,7 +38,7 @@ export const BookFilter: FC = () => {
           )}
           onClick={() => handleFilterBy(tab)}
         >
-          {t(`BookDetailsFilter.${tab}`)}
+          {t(tab)}
         </button>
       ))}
     </div>

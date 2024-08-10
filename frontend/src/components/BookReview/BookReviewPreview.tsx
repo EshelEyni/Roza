@@ -31,15 +31,15 @@ export const BookReviewPreview: FC<ReviewPreviewProps> = ({ review }) => {
       <H2>{review.name}</H2>
       <ul className="flex flex-col gap-1 text-sm">
         <li className="flex gap-1 text-app-600">
-          <span>{t("ReviewPreview.reviews")}:</span>
+          <span>{t("reviews")}:</span>
           <span>{review.reviews.length}</span>
         </li>
         <li className="flex gap-1 text-app-600">
-          <span>{t("ReviewPreview.references")}:</span>
+          <span>{t("references")}:</span>
           <span>{review.references.length}</span>
         </li>
         <li className="flex flex-wrap gap-1 text-app-600">
-          <span>{t("ReviewPreview.createdAt")}:</span>
+          <span>{t("createdAt")}:</span>
           <span>{formattedDate}</span>
         </li>
       </ul>

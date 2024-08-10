@@ -15,18 +15,18 @@ export const BooksFilter: FC = () => {
   return (
     <div className="mb-4 flex w-full items-center justify-center gap-8">
       <label className="mr-4 rounded-lg bg-app-500 p-2">
-        {t("BookFilter.sortBy")}:
+        {t("sortBy")}:
         <select
           value={sortOrder}
           onChange={e => onSortBooks(e.target.value)}
           className="ml-2 rounded-lg bg-app-500 p-1"
         >
-          <option value="createdAt">{t("BookFilter.asc")}</option>
-          <option value="-createdAt">{t("BookFilter.desc")}</option>
+          <option value="createdAt">{t("asc")}</option>
+          <option value="-createdAt">{t("desc")}</option>
         </select>
       </label>
       <label className="rounded-lg bg-app-500 p-2">
-        {t("BookFilter.search")}:
+        {t("search")}:
         <input
           type="text"
           defaultValue={searchTerm}

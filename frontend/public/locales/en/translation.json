@@ -24,88 +24,40 @@
     "books": "No books available.",
     "reviews": "No reviews available."
   },
-  "BookList": {
-    "title": "Books",
-    "seeAll": "Go to Books",
-    "btnAdd": "Add Book",
-    "name": "Book Name"
+  "seeAll": {
+    "books": "Go to Books",
+    "reviews": "Go to Reviews"
   },
-  "BookPreview": {
-    "name": "Book Name",
-    "chapters": "Chapters",
-    "characters": "Characters",
-    "themes": "Themes",
-    "plotlines": "Plotlines",
-    "notes": "Notes",
-    "createdAt": "Created At"
+  "bookName": "Book Name",
+  "chapters": "Chapters",
+  "characters": "Characters",
+  "themes": "Themes",
+  "plotlines": "Plotlines",
+  "notes": "Notes",
+  "btnAddReview": "Add Review",
+  "reviewName": "Review Name",
+  "sortBy": "Sort by",
+  "asc": "Ascending",
+  "desc": "Descending",
+  "search": "Search",
+  "BtnAddBookItem": {
+    "chapters": "Add Chapter",
+    "characters": "Add Character",
+    "themes": "Add Theme",
+    "plotlines": "Add Plotline",
+    "notes": "Add Note"
   },
-  "ReviewsList": {
-    "title": "Reviews",
-    "seeAll": "Go to Reviews",
-    "btnAdd": "Add Review",
-    "name": "Review Name"
+  "btnOpen": "Open",
+  "confirmItemDeleteMsg": {
+    "title": "Delete Item",
+    "msg": "Are you sure you want to delete the item?"
   },
-  "ReviewPreview": {
-    "name": "Book Name",
-    "reviews": "Reviews",
-    "references": "References",
-    "createdAt": "Created At"
-  },
-  "ReviewsPage": {
-    "title": "Reviews",
-    "btnAdd": "Add Review",
-    "btnEdit": "Edit",
-    "btnDelete": "Delete"
-  },
-  "ReviewsFilter": {
-    "sortBy": "Sort by",
-    "asc": "Ascending",
-    "desc": "Descending",
-    "search": "Search"
-  },
-  "BookFilter": {
-    "sortBy": "Sort by",
-    "asc": "Ascending",
-    "desc": "Descending",
-    "search": "Search"
-  },
-  "BookPage": {
-    "btnAdd": {
-      "chapters": "Add Chapter",
-      "characters": "Add Character",
-      "themes": "Add Theme",
-      "plotlines": "Add Plotline",
-      "notes": "Add Note"
-    }
-  },
-  "BookDetailsFilter": {
-    "chapters": "Chapters",
-    "characters": "Characters",
-    "themes": "Themes",
-    "plotlines": "Plotlines",
-    "notes": "Notes"
-  },
-  "BookDataPreview": {
-    "noteTitlePrefix": "Note Number",
-    "btnOpen": "Open",
-    "btnEdit": "Edit",
-    "btnDelete": "Delete",
-    "btnCancel": "Cancel",
-    "confirmDeleteMsg": {
-      "title": "Delete Item",
-      "msg": "Are you sure you want to delete the item?"
-    }
-  },
-  "DataBookItemDetails": {
-    "pageTitle": {
-      "chapters": "Chapter",
-      "characters": "Character",
-      "themes": "Theme",
-      "plotlines": "Plotline",
-      "notes": "Note"
-    },
-    "noteTitle": "Note Number",
-    "btnEdit": "Edit"
+  "DataBookItemTitle": {
+    "chapters": "Chapter",
+    "characters": "Character",
+    "themes": "Theme",
+    "plotlines": "Plotline",
+    "notes": "Note"
   },
   "placeholders": {
     "name": {

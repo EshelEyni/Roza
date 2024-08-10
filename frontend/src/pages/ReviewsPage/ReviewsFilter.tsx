@@ -16,18 +16,18 @@ export const ReviewsFilter: FC = () => {
   return (
     <div className="mb-4 flex w-full items-center justify-center gap-8">
       <label className="mr-4 rounded-lg bg-app-500 p-2">
-        {t("ReviewsFilter.sortBy")}:
+        {t("sortBy")}:
         <select
           value={sortOrder}
           onChange={e => onSortReviews(e.target.value as "asc" | "desc")}
           className="ml-2 rounded-lg bg-app-500 p-1"
         >
-          <option value="sortOrder">{t("ReviewsFilter.asc")}</option>
-          <option value="-sortOrder">{t("ReviewsFilter.desc")}</option>
+          <option value="sortOrder">{t("asc")}</option>
+          <option value="-sortOrder">{t("desc")}</option>
         </select>
       </label>
       <label className="rounded-lg bg-app-500 p-2">
-        {t("ReviewsFilter.search")}:
+        {t("search")}:
         <input
           type="text"
           defaultValue={searchTerm}

@@ -37,30 +37,24 @@ export const DataBookItemDetails: FC = () => {
           {isChapterType(item) && (
             <Button onClickFn={onDownloadChapter}>{t("download")}</Button>
           )}
-          <Button onClickFn={onNavigateToEdit}>
-            {t("DataBookItemDetails.btnEdit")}
-          </Button>
+          <Button onClickFn={onNavigateToEdit}>{t("btnEdit")}</Button>
           <Modal>
             <Modal.OpenBtn modalName="deleteBookDataItem">
-              <button>{t("BookDataPreview.btnDelete")}</button>
+              <button>{t("btnDelete")}</button>
             </Modal.OpenBtn>
 
             <Modal.Window name="deleteBookDataItem">
               <div className="flex w-full flex-col items-center gap-4">
                 <h3 className="text-xl font-bold text-app-800">
-                  {t("BookDataPreview.confirmDeleteMsg.title")}
+                  {t("confirmItemDeleteMsg.title")}
                 </h3>
-                <p className="text-app-900">
-                  {t("BookDataPreview.confirmDeleteMsg.msg")}
-                </p>
+                <p className="text-app-900">{t("confirmItemDeleteMsg.msg")}</p>
               </div>
               <div className="flex items-center justify-end gap-2">
                 <Modal.CloseBtn className="rounded-md bg-app-500 px-3 py-1 text-white hover:bg-app-600">
-                  <div>{t("BookDataPreview.btnCancel")}</div>
+                  <div>{t("btnCancel")}</div>
                 </Modal.CloseBtn>
-                <Button onClickFn={onDeleteItem}>
-                  {t("BookDataPreview.btnDelete")}
-                </Button>
+                <Button onClickFn={onDeleteItem}>{t("btnDelete")}</Button>
               </div>
             </Modal.Window>
           </Modal>

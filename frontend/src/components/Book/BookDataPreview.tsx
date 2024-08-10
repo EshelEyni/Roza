@@ -9,6 +9,7 @@ import {
 } from "../../../../shared/types/books";
 import { useNavigate } from "react-router-dom";
 import { useGetTitleTextBookItem } from "../../hooks/useGetTitleTextBookItem";
+import { H2 } from "../Gen/H2";
 
 type BookDataPreviewProps = {
   dataItem: Chapter | Character | Theme | Plotline | Note;
@@ -45,7 +46,7 @@ export const BookDataPreview: FC<BookDataPreviewProps> = ({
       onClick={handlePreviewClick}
       className="flex h-full max-h-[350px] flex-col gap-2 rounded-lg border border-app-900 p-3 shadow-lg transition duration-300 hover:scale-105 hover:shadow-xl"
     >
-      <h2 className="mb-2 text-xl font-bold text-app-800">{title}</h2>
+      {title && <H2>{title}</H2>}
       <p className="overflow-y-auto text-app-900">{text}</p>
     </article>
   );

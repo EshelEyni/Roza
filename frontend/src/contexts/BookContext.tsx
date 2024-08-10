@@ -99,7 +99,7 @@ function BookProvider({ children }: BookProviderProps) {
     useGetTitleTextBookItem();
   const { t } = useTranslation();
 
-  const pageTitle = t(`DataBookItemDetails.pageTitle.${dataItemType}`);
+  const pageTitle = t(`DataBookItemTitle.${dataItemType}`);
   const itemTitle = getTitle(item, dataItemType);
   const text = getText(item, dataItemType);
   const chatperText = getChapterText(item);

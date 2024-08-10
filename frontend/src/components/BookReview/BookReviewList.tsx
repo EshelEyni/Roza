@@ -52,24 +52,24 @@ export const BookReviewList: FC<ReviewListProps> = ({
     <section className="w-full">
       <div className="flex items-center justify-between border-b border-app-800 bg-app-100 pb-1">
         <h3 className="w-fit text-3xl font-medium text-app-800">
-          {t("ReviewsList.title")}
+          {t("reviews")}
         </h3>
 
         {!isHomePage && (
           <Modal>
             <Modal.OpenBtn modalName="addReview">
-              <div>{t("ReviewsList.btnAdd")}</div>
+              <div>{t("btnAddReview")}</div>
             </Modal.OpenBtn>
 
             <Modal.Window name="addReview">
               <div className="flex w-full flex-col gap-4">
                 <h3 className="text-center text-2xl font-medium text-app-800">
-                  {t("ReviewsList.btnAdd")}
+                  {t("btnAddReview")}
                 </h3>
 
                 <div className="flex w-full flex-col gap-2">
                   <label htmlFor="name" className="text-lg text-app-800">
-                    {t("ReviewsList.name")}
+                    {t("bookName")}
                   </label>
                   <input
                     type="text"
@@ -78,7 +78,7 @@ export const BookReviewList: FC<ReviewListProps> = ({
                     defaultValue={newBookReview.name}
                     onChange={handleInputChange}
                     className="rounded-md border border-app-800 p-2"
-                    placeholder={t("ReviewsList.name")}
+                    placeholder={t("bookName")}
                   />
                 </div>
 
@@ -87,7 +87,7 @@ export const BookReviewList: FC<ReviewListProps> = ({
                     <span>{t("btnCancel")}</span>
                   </Modal.CloseBtn>
                   <Modal.CloseBtn onClickFn={handleAddBook}>
-                    <span>{t("ReviewsList.btnAdd")}</span>
+                    <span>{t("btnAdd")}</span>
                   </Modal.CloseBtn>
                 </div>
               </div>
@@ -121,9 +121,7 @@ export const BookReviewList: FC<ReviewListProps> = ({
 
       {isHomePage && (
         <div className="mt-3 flex items-center justify-end">
-          <Button onClickFn={onGoToReviewsPage}>
-            {t("ReviewsList.seeAll")}
-          </Button>
+          <Button onClickFn={onGoToReviewsPage}>{t("seeAll.reviews")}</Button>
         </div>
       )}
     </section>

@@ -21,7 +21,7 @@ export const BtnAddBookItem: FC = () => {
   if (!book) return null;
   return (
     <Button onClickFn={handleAddBookDataItem}>
-      {t(`BookPage.btnAdd.${book.filterBy}`)}
+      {t(`BtnAddBookItem.${book.filterBy}`)}
     </Button>
   );
 };

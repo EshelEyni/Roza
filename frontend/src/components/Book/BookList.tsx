@@ -51,18 +51,18 @@ export const BookList: FC<BookListProps> = ({
     <section className="w-full">
       <div className="flex items-center justify-between border-b border-app-800 bg-app-100 pb-1">
         <h3 className="w-fit text-3xl font-medium text-app-800">
-          {t("BookList.title")}
+          {t("books")}
         </h3>
         {!isHomePage && (
           <Modal>
             <Modal.OpenBtn modalName="addBook">
-              <div>{t("BookList.btnAdd")}</div>
+              <div>{t("btnAddBook")}</div>
             </Modal.OpenBtn>
 
             <Modal.Window name="addBook">
               <div className="flex w-full flex-col gap-4">
                 <h3 className="text-center text-3xl font-medium text-app-800">
-                  {t("BookList.btnAdd")}
+                  {t("btnAddBook")}
                 </h3>
 
                 <input
@@ -75,10 +75,13 @@ export const BookList: FC<BookListProps> = ({
                   placeholder={t("BookList.name")}
                 />
 
-                <div className="flex items-center justify-end">
-                  <Button onClickFn={handleAddBook}>
-                    {t("BookList.btnAdd")}
-                  </Button>
+                <div className="mt-4 flex items-center justify-end gap-2">
+                  <Modal.CloseBtn>
+                    <span>{t("btnCancel")}</span>
+                  </Modal.CloseBtn>
+                  <Modal.CloseBtn onClickFn={handleAddBook}>
+                    <span>{t("btnAdd")}</span>
+                  </Modal.CloseBtn>
                 </div>
               </div>
             </Modal.Window>
@@ -109,7 +112,7 @@ export const BookList: FC<BookListProps> = ({
 
       {isHomePage && (
         <div className="mt-3 flex items-center justify-end">
-          <Button onClickFn={onGoToBooksPage}>{t("BookList.seeAll")}</Button>
+          <Button onClickFn={onGoToBooksPage}>{t("seeAll.books")}</Button>
         </div>
       )}
     </section>

@@ -38,8 +38,6 @@ export function useGetTitleTextBookItem() {
         return (dataItem as Theme).name || name;
       case "plotlines":
         return (dataItem as Plotline).name || name;
-      case "notes":
-        return `${t("BookDataPreview.noteTitlePrefix")} ${dataItem.sortOrder}`;
       default:
         return "";
     }
