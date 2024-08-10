@@ -35,6 +35,7 @@ export const BookDataList: FC<BookDataListProps> = ({
       items={data}
       renderItem={renderItem}
       dragEndCallback={dragEndCallback}
+      isCursorPointer={true}
     />
   );
 };

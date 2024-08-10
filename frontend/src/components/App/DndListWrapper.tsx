@@ -21,6 +21,7 @@ type DndListWrapperProps<T extends { id: string }> = {
   renderItem: (items: T) => React.ReactNode;
   listClassName?: string;
   dragEndCallback?: (items: T[]) => void;
+  isCursorPointer?: boolean;
 };
 
 export const DndListWrapper = <T,>({
@@ -28,6 +29,7 @@ export const DndListWrapper = <T,>({
   renderItem,
   dragEndCallback,
   listClassName = "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3",
+  isCursorPointer,
 }: DndListWrapperProps<T & { id: string }>) => {
   const [listItems, setListItems] = useState(items);
 
@@ -74,6 +76,7 @@ export const DndListWrapper = <T,>({
               key={id.id}
               item={id}
               renderItem={renderItem}
+              isCursorPointer={isCursorPointer ?? false}
             />
           ))}
         </ul>

@@ -2,17 +2,20 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useState } from "react";
 import { debounce } from "../../services/utilService";
+import classnames from "classnames";
 
 type DndListItemWrapperProps<T extends { id: string }> = {
   item: T;
   renderItem: (item: T) => React.ReactNode;
+  isCursorPointer?: boolean;
 };
 
 export const DndListItemWrapper = <T extends { id: string }>({
   item,
   renderItem,
+  isCursorPointer = false,
 }: DndListItemWrapperProps<T>) => {
-  const [isCursorPointer, setIsCursorPointer] = useState(false);
+  const [isMouseMove, setIsMouseMove] = useState(false);
   const { id } = item;
   const {
     attributes,
@@ -24,24 +27,26 @@ export const DndListItemWrapper = <T extends { id: string }>({
   } = useSortable({ id });
 
   function onMouseMove() {
-    if (isCursorPointer) return;
-    setIsCursorPointer(true);
-    debounce(() => setIsCursorPointer(false), 2500).debouncedFunc();
+    if (isMouseMove || !isCursorPointer) return;
+    setIsMouseMove(true);
+    debounce(() => setIsMouseMove(false), 1200).debouncedFunc();
   }
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    cursor: isDragging ? "grabbing" : isCursorPointer ? "pointer" : "grab",
-  } as React.CSSProperties;
 
   return (
     <li
       ref={setNodeRef}
-      style={style}
+      style={{ transform: CSS.Transform.toString(transform), transition }}
       {...attributes}
       {...listeners}
-      onMouseMove={onMouseMove}
+      onMouseMove={isCursorPointer ? onMouseMove : undefined}
+      className={classnames(
+        "dnd-list-item-wrapper relative flex items-center justify-center",
+        {
+          "cursor-pointer": isCursorPointer && isMouseMove,
+          "cursor-grab": !isMouseMove,
+          "z-50 cursor-grabbing": isDragging,
+        },
+      )}
     >
       {renderItem(item)}
     </li>

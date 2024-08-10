@@ -76,5 +76,11 @@ input {
 
 /* Custom blockquote styles */
 blockquote {
-  @apply  mx-10 italic; /* Using Tailwind's utility classes */
+  @apply mx-10 italic; /* Using Tailwind's utility classes */
+}
+
+.dnd-list-item-wrapper {
+  > * {
+    flex-grow: 1;
+  }
 }
