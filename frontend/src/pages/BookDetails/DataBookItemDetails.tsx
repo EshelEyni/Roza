@@ -7,6 +7,7 @@ import { Button } from "../../components/Buttons/Button";
 import { BookItemTitle } from "../../components/Book/BookItemTitle";
 import { TextElement } from "../../components/App/TextElement";
 import { DeleteEntityModal } from "../../components/Modals/DeleteEntityModal";
+import { Header } from "../../components/App/Header";
 
 export const DataBookItemDetails: FC = () => {
   const {
@@ -30,7 +31,7 @@ export const DataBookItemDetails: FC = () => {
     <div className="flex h-full w-full flex-col items-center justify-center gap-4">
       <BookItemTitle />
       <Hr />
-      <div className="flex w-full items-center justify-between gap-4">
+      <Header>
         <h1 className="text-4xl font-bold text-app-800">{itemTitle}</h1>
 
         <div className="flex items-center justify-between gap-3 bg-app-100">
@@ -46,7 +47,7 @@ export const DataBookItemDetails: FC = () => {
             archiveMsg={t("confirmItemDeleteMsg.msg")}
           />
         </div>
-      </div>
+      </Header>
       <Hr />
       <div className="w-full text-2xl font-normal text-app-800">
         {textEl.map((el, i) => (

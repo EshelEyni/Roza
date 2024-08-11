@@ -43,7 +43,7 @@ export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
   }
 
   return (
-    <div className="w-full font-normal text-app-800">
+    <section className="w-full font-normal text-app-800">
       <div className="mb-1 flex items-center justify-between">
         <H2>{t("reviews")}</H2>
         <div className="flex items-center gap-2">
@@ -67,6 +67,6 @@ export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
         }
         dragEndCallback={dragEndCallback}
       />
-    </div>
+    </section>
   );
 };

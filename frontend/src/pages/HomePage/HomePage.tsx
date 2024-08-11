@@ -16,6 +16,7 @@ import { Hr } from "../../components/App/Hr";
 import { PageContent } from "../../components/App/PageContent";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { P } from "../../components/App/P";
+import { H1 } from "../../components/App/H1";
 
 type FormType = "login" | "signup";
 
@@ -106,12 +107,12 @@ const HomePage: FC = () => {
 
       {loggedInUser && (
         <PageContent>
-          <h1
-            className="cursor-pointer font-alef text-3xl font-bold text-app-700 transition-colors hover:text-app-800 hover:underline"
+          <H1
+            addedClass="cursor-pointer hover:text-app-800 hover:underline"
             onClick={onGoToProfile}
           >
             {loggedInUser.username}
-          </h1>
+          </H1>
           <Hr />
           <BookList
             books={slicedBooks}

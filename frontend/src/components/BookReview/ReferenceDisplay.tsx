@@ -34,7 +34,7 @@ export const ReferenceDisplay: FC<ReferenceEditProps> = ({ reference }) => {
   if (!reference) return null;
 
   return (
-    <div>
+    <section>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
           <H3>{reference.pages}</H3>
@@ -55,6 +55,6 @@ export const ReferenceDisplay: FC<ReferenceEditProps> = ({ reference }) => {
       </div>
 
       {!isMinimized && <ImgList reference={reference} imgs={reference.imgs} />}
-    </div>
+    </section>
   );
 };

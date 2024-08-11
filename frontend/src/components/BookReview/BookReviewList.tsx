@@ -13,6 +13,7 @@ import { Button } from "../Buttons/Button";
 import { AddEntityModal } from "../Modals/AddEntityModal";
 import { GridList } from "../App/GridList";
 import { GridListItem } from "../App/GridListItem";
+import { H2 } from "../App/H2";
 
 type ReviewListProps = UseGetBookReviewsResult & {
   isHomePage?: boolean;
@@ -53,9 +54,7 @@ export const BookReviewList: FC<ReviewListProps> = ({
   return (
     <section className="w-full">
       <div className="flex items-center justify-between border-b border-app-800 bg-app-100 pb-1">
-        <h3 className="w-fit text-3xl font-medium text-app-800">
-          {t("reviews")}
-        </h3>
+        <H2>{t("reviews")}</H2>
 
         {!isHomePage && (
           <AddEntityModal

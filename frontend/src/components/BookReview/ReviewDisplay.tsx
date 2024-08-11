@@ -35,7 +35,7 @@ export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review }) => {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <H3>
           {t("review")} {reviewNumber}
@@ -62,6 +62,6 @@ export const ReviewDisplay: FC<ReviewDisplayProps> = ({ review }) => {
         <span>{t("createdAt")}:</span>
         <span>{formattedDate}</span>
       </div>
-    </div>
+    </section>
   );
 };

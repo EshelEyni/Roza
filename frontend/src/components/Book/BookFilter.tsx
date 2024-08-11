@@ -25,7 +25,7 @@ export const BookFilter: FC = () => {
   }
 
   return (
-    <div className="flex flex-wrap gap-2">
+    <section className="flex flex-wrap gap-2">
       {tabs.map(tab => (
         <Button
           key={tab}
@@ -42,6 +42,6 @@ export const BookFilter: FC = () => {
           {t(tab)}
         </Button>
       ))}
-    </div>
+    </section>
   );
 };

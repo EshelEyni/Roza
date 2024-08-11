@@ -61,7 +61,7 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
 
   if (!reference) return null;
   return (
-    <div className="flex flex-col gap-3">
+    <section className="flex flex-col gap-3">
       <Hr />
 
       <div className="flex items-center justify-between gap-3">
@@ -113,6 +113,6 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
           </div>
         </>
       )}
-    </div>
+    </section>
   );
 };

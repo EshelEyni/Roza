@@ -1,11 +1,11 @@
 import { FC } from "react";
 import { Book, BooKDataItemType } from "../../../../shared/types/books";
-import { useTranslation } from "react-i18next";
 import { formatDateByLang } from "../../services/utilService";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { useNavigate } from "react-router-dom";
 import { Article } from "../App/Article";
 import { H3 } from "../App/H3";
+import { ItemPreviewList } from "../App/ItemPreviewList";
 
 type BookPreviewProps = {
   book: Book;
@@ -13,7 +13,6 @@ type BookPreviewProps = {
 
 export const BookPreview: FC<BookPreviewProps> = ({ book }) => {
   const { loggedInUser } = useLoginWithToken();
-  const { t } = useTranslation();
   const formattedDate = book.createdAt
     ? formatDateByLang(book.createdAt, loggedInUser?.language || "en")
     : null;
@@ -28,35 +27,19 @@ export const BookPreview: FC<BookPreviewProps> = ({ book }) => {
     return book[type].length;
   }
 
+  const list = [
+    { label: "chapters", value: getItemsLength("chapters") },
+    { label: "characters", value: getItemsLength("characters") },
+    { label: "themes", value: getItemsLength("themes") },
+    { label: "plotlines", value: getItemsLength("plotlines") },
+    { label: "notes", value: getItemsLength("notes") },
+    { label: "createdAt", value: formattedDate },
+  ];
+
   return (
     <Article onClick={handlePreviewClick}>
       <H3>{book.name}</H3>
-      <ul className="flex flex-col gap-1 text-sm">
-        <li className="flex gap-1 text-app-600">
-          <span>{t("chapters")}:</span>
-          <span>{getItemsLength("chapters")}</span>
-        </li>
-        <li className="flex gap-1 text-app-600">
-          <span>{t("characters")}:</span>
-          <span>{getItemsLength("characters")}</span>
-        </li>
-        <li className="flex gap-1 text-app-600">
-          <span>{t("themes")}:</span>
-          <span>{getItemsLength("themes")}</span>
-        </li>
-        <li className="flex gap-1 text-app-600">
-          <span>{t("plotlines")}:</span>
-          <span>{getItemsLength("plotlines")}</span>
-        </li>
-        <li className="flex gap-1 text-app-600">
-          <span>{t("notes")}:</span>
-          <span>{getItemsLength("notes")}</span>
-        </li>
-        <li className="flex flex-wrap gap-1 text-app-600">
-          <span>{t("createdAt")}:</span>
-          <span>{formattedDate}</span>
-        </li>
-      </ul>
+      <ItemPreviewList list={list} />
     </Article>
   );
 };

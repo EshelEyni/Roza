@@ -2,6 +2,7 @@ import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
 import { GoBackBtn } from "../Buttons/GoBackBtn";
 import { H2 } from "../App/H2";
+import { Header } from "../App/Header";
 
 export const BookItemTitle: FC = () => {
   const { pageTitle, onGoToDetails } = useBook();
@@ -11,7 +12,7 @@ export const BookItemTitle: FC = () => {
   }
 
   return (
-    <div className="flex w-full items-center justify-between gap-4">
+    <Header>
       <H2
         className="w-full cursor-pointer text-2xl font-bold text-app-900 hover:underline"
         onClick={handleTitleClick}
@@ -19,6 +20,6 @@ export const BookItemTitle: FC = () => {
         {pageTitle}
       </H2>
       <GoBackBtn />
-    </div>
+    </Header>
   );
 };

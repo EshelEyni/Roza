@@ -15,7 +15,7 @@ export const StructureDisplay: FC<StructureDisplayProps> = ({ structure }) => {
 
   if (!text) return null;
   return (
-    <div className="flex flex-col gap-2 text-app-800">
+    <section className="flex flex-col gap-2 text-app-800">
       <H2>{t("structure")}</H2>
 
       <>
@@ -23,6 +23,6 @@ export const StructureDisplay: FC<StructureDisplayProps> = ({ structure }) => {
           <TextElement key={i} element={el} />
         ))}
       </>
-    </div>
+    </section>
   );
 };

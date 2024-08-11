@@ -8,6 +8,7 @@ import { PasswordEdit } from "./PasswordEdit";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { PageContent } from "../../components/App/PageContent";
 import { TabBtns } from "./TabBtns";
+import { H1 } from "../../components/App/H1";
 
 const ProfileDetails: FC = () => {
   const { tab, setTab } = useProfile();
@@ -19,9 +20,7 @@ const ProfileDetails: FC = () => {
   return (
     <Main>
       <PageContent>
-        <h1 className="mt-8 text-4xl font-semibold text-app-700">
-          {loggedInUser.fullname}
-        </h1>
+        <H1>{loggedInUser.fullname}</H1>
 
         {tab === "display" && <ProfileDisplay />}
         {tab === "edit" && <ProfileEdit />}

@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { Button } from "../../components/Buttons/Button";
 import { H2 } from "../../components/App/H2";
 import { Input } from "../../components/App/Input";
+import { Header } from "../../components/App/Header";
 
 export const DataBookItemEdit: FC = () => {
   const {
@@ -128,10 +129,10 @@ export const DataBookItemEdit: FC = () => {
   if (!book || !dataItemType || !dataItemId || !item) return null;
 
   return (
-    <div className="items-center1 flex h-full w-full flex-col justify-center gap-4">
+    <section className="flex h-full w-full flex-col justify-center gap-4">
       <BookItemTitle />
       <Hr />
-      <div className="flex w-full items-center justify-between gap-4">
+      <Header>
         {isNoteType(item) ? (
           <h1 className="text-4xl font-bold text-app-800">{itemTitle}</h1>
         ) : (
@@ -143,7 +144,7 @@ export const DataBookItemEdit: FC = () => {
             defaultValue={item.name && itemTitle}
           />
         )}
-      </div>
+      </Header>
       <Hr />
 
       <H2>{firstEditorTitle}</H2>
@@ -172,6 +173,6 @@ export const DataBookItemEdit: FC = () => {
       <div className="flex w-full items-center justify-end gap-4 bg-app-100">
         <Button onClick={onGoToDetails}>{t("goToDetails")}</Button>
       </div>
-    </div>
+    </section>
   );
 };

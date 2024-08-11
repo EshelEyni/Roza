@@ -40,7 +40,7 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review }) => {
   }
 
   return (
-    <div className="flex flex-col gap-2">
+    <section className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
         <H3>
           {t("review")} {reviewNumber}
@@ -68,6 +68,6 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review }) => {
         />
       )}
       <Hr />
-    </div>
+    </section>
   );
 };
