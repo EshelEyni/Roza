@@ -6,7 +6,10 @@ import { Button } from "./Button";
 export const GoBackBtn: FC = () => {
   const onGoBack = useOnGoBack();
   return (
-    <Button onClick={onGoBack} className="text-3xl text-app-500">
+    <Button
+      onClick={onGoBack}
+      className="text-[2.5rem] text-app-500 sm:text-5xl md:text-4xl"
+    >
       <FaArrowAltCircleLeft />
     </Button>
   );

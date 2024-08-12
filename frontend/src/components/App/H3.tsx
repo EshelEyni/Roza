@@ -3,13 +3,13 @@ import { FC } from "react";
 type H3Props = {
   children: React.ReactNode;
   className?: string;
-  addedClasses?: string;
+  addedClassName?: string;
 };
 
 export const H3: FC<H3Props> = ({
   children,
-  className = "text-2xl font-bold text-app-800",
-  addedClasses,
+  className = "text-3xl md:text-2xl font-bold text-app-800",
+  addedClassName,
 }) => {
-  return <h3 className={`${className} ${addedClasses}`}>{children}</h3>;
+  return <h3 className={`${className} ${addedClassName}`}>{children}</h3>;
 };

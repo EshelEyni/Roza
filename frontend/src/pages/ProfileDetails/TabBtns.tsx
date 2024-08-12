@@ -14,13 +14,18 @@ export const TabBtns: FC<TabBtnsProps> = ({ tab, setTab }) => {
   return (
     <div className="mt-4 flex items-center justify-center gap-4">
       {tab !== "display" && (
-        <Button onClick={() => setTab("display")}>{t("btnCancel")}</Button>
+        <Button
+          addedClassName="rounded-md bg-app-500 !px-4 !py-1 text-white hover:bg-app-600"
+          onClick={() => setTab("display")}
+        >
+          {t("btnCancel")}
+        </Button>
       )}
       <Button
-        className={classNames(
-          "rounded-md bg-app-500 px-4 py-1 text-white hover:bg-app-600",
+        addedClassName={classNames(
+          "rounded-md bg-app-500 !px-4 !py-1 text-white hover:bg-app-600",
           {
-            "scale-115 bg-app-600 text-xl": tab === "edit",
+            "bg-app-600": tab === "edit",
           },
         )}
         onClick={() => setTab("edit")}
@@ -28,10 +33,10 @@ export const TabBtns: FC<TabBtnsProps> = ({ tab, setTab }) => {
         {t("btnEdit")}
       </Button>
       <Button
-        className={classNames(
-          "rounded-md bg-app-500 px-4 py-1 text-white hover:bg-app-600",
+        addedClassName={classNames(
+          "rounded-md bg-app-500 !px-4 !py-1 text-white hover:bg-app-600",
           {
-            "scale-115 bg-app-600 text-xl": tab === "password",
+            "bg-app-600": tab === "password",
           },
         )}
         onClick={() => setTab("password")}

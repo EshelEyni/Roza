@@ -14,7 +14,10 @@ export const ItemPreviewList: FC<ItemPreviewListProps> = ({
   return (
     <ul className={className}>
       {list.map(item => (
-        <li key={item.label} className="flex flex-wrap gap-1 text-app-600">
+        <li
+          key={item.label}
+          className="flex flex-wrap gap-1 text-xl text-app-700 md:text-lg"
+        >
           <span>{t(item.label)}:</span>
           <span>{item.value}</span>
         </li>

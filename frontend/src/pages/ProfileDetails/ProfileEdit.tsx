@@ -132,7 +132,7 @@ export const ProfileEdit: React.FC = () => {
       <Button
         type="submit"
         disabled={isPendindUpdateUser}
-        addedClasses="self-center"
+        addedClassName="self-center !px-4 !py-1"
       >
         {t("btnSubmit")}
       </Button>

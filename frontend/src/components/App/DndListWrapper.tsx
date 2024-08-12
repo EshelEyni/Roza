@@ -28,7 +28,7 @@ export const DndListWrapper = <T,>({
   items,
   renderItem,
   dragEndCallback,
-  listClassName = "grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3",
+  listClassName = "mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3",
   isCursorPointer,
 }: DndListWrapperProps<T & { id: string }>) => {
   const [listItems, setListItems] = useState(items);

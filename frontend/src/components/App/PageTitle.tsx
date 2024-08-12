@@ -6,6 +6,8 @@ import { useTranslation } from "react-i18next";
 import { DeleteEntityModal } from "../Modals/DeleteEntityModal";
 import { Input } from "./Input";
 import { Header } from "./Header";
+import { H1 } from "./H1";
+import { Hr } from "./Hr";
 
 type PageTitleProps = {
   isEdit: boolean;
@@ -32,11 +34,12 @@ export const PageTitle: FC<PageTitleProps> = ({
 }) => {
   const { t } = useTranslation();
   return (
-    <div className="flex w-full flex-col items-center justify-between gap-4">
+    <div className="flex w-full flex-col items-center justify-between gap-2">
       <Header>
         <h2 className="text-4xl font-bold text-app-800">{t("book")}</h2>
         <GoBackBtn />
       </Header>
+      <Hr />
       {isEdit ? (
         <Input
           type="text"
@@ -44,8 +47,8 @@ export const PageTitle: FC<PageTitleProps> = ({
           onChange={debounce(e => handleInputChange(e), 500).debouncedFunc}
         />
       ) : (
-        <Header>
-          <h1 className="mb-4 text-4xl font-bold text-app-800">{entityName}</h1>
+        <Header addedClassName="flex-col md:flex-row ">
+          <H1>{entityName}</H1>
 
           <div className="flex items-center justify-between gap-2">
             {onSetReadMode && (

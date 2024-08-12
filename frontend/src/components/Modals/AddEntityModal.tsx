@@ -28,7 +28,7 @@ export const AddEntityModal: FC<AddEntityModalProps> = ({
 
       <Modal.Window name="addBook">
         <div className="flex w-full flex-col gap-2">
-          <H3 addedClasses="text-center">{title}</H3>
+          <H3 addedClassName="text-center">{title}</H3>
 
           <Input
             type="text"

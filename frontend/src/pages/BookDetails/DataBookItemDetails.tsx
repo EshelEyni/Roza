@@ -8,6 +8,7 @@ import { BookItemTitle } from "../../components/Book/BookItemTitle";
 import { TextElement } from "../../components/App/TextElement";
 import { DeleteEntityModal } from "../../components/Modals/DeleteEntityModal";
 import { Header } from "../../components/App/Header";
+import { H1 } from "../../components/App/H1";
 
 export const DataBookItemDetails: FC = () => {
   const {
@@ -28,11 +29,11 @@ export const DataBookItemDetails: FC = () => {
   if (!book || !dataItemType || !dataItemId || !item) return null;
 
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-4">
+    <div className="flex h-full w-full flex-col items-center justify-center gap-1">
       <BookItemTitle />
       <Hr />
-      <Header>
-        <h1 className="text-4xl font-bold text-app-800">{itemTitle}</h1>
+      <Header addedClassName="flex-col sm:flex-row">
+        <H1>{itemTitle}</H1>
 
         <div className="flex items-center justify-between gap-3 bg-app-100">
           {isChapterType(item) && (

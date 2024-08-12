@@ -14,6 +14,7 @@ import { AddEntityModal } from "../Modals/AddEntityModal";
 import { H2 } from "../App/H2";
 import { GridList } from "../App/GridList";
 import { GridListItem } from "../App/GridListItem";
+import { EntityListTitleContainer } from "../App/EntityListTitleContainer";
 
 type BookListProps = UseGetBooksResult & {
   isHomePage?: boolean;
@@ -52,7 +53,7 @@ export const BookList: FC<BookListProps> = ({
   }
   return (
     <section className="w-full">
-      <div className="flex items-center justify-between border-b border-app-800 bg-app-100 pb-1">
+      <EntityListTitleContainer>
         <H2>{t("books")}</H2>
         {!isHomePage && (
           <AddEntityModal
@@ -63,7 +64,7 @@ export const BookList: FC<BookListProps> = ({
             placeholder={t("bookName")}
           />
         )}
-      </div>
+      </EntityListTitleContainer>
       {isErrorBooks && (
         <ErrorMsg msg={errorBooks instanceof Error ? errorBooks.message : ""} />
       )}

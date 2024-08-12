@@ -79,6 +79,7 @@
   "description": "Description",
   "text": "Text",
   "goToDetails": "Go to Details",
+  "gotToBook": "Go to Book",
   "archiveBookMsg": {
     "title": "Delete Book",
     "msg": "Are you sure you want to archive the book?"
@@ -158,5 +159,7 @@
   "chapter": "Chapter",
   "bookReview": "Book Review",
   "readMode": "Read Mode",
-  "viewMode": "View Mode"
+  "viewMode": "View Mode",
+  "showMore": "Show More",
+  "showLess": "Show Less"
 }

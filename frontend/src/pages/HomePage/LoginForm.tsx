@@ -4,11 +4,11 @@ import { LoginCredentials } from "../../../../shared/types/user";
 import { Button } from "../../components/Buttons/Button";
 import { useLogin } from "../../hooks/reactQuery/update/useLogin";
 import { Form } from "../../components/App/Form";
-import { H2 } from "../../components/App/H2";
 import { InputContainer } from "../../components/App/InputContainer";
 import { useTranslation } from "react-i18next";
 import { ReactHookFormInput } from "../../components/App/ReactHookFormInput";
 import { ErrorMsg } from "../../components/Msg/ErrorMsg";
+import { H1 } from "../../components/App/H1";
 
 export const LoginForm: FC = () => {
   const { login, isPendingLogin, isErrorLogin, errorLogin } = useLogin();
@@ -26,7 +26,7 @@ export const LoginForm: FC = () => {
 
   return (
     <Form onSubmit={handleSubmit(onSubmit)}>
-      <H2>{t("login")}</H2>
+      <H1 addedClass="text-center">{t("login")}</H1>
 
       <InputContainer
         label={t("username")}
@@ -62,7 +62,7 @@ export const LoginForm: FC = () => {
       <Button
         type="submit"
         disabled={isPendingLogin}
-        addedClasses="self-center"
+        addedClassName="self-center"
       >
         {isPendingLogin ? t("loggingIn") : t("login")}
       </Button>

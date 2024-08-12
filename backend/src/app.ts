@@ -23,7 +23,7 @@ const isProdEnv = process.env.NODE_ENV === "production";
 const app = express();
 app.use(compression());
 
-app.use(helmet());
+// app.use(helmet());
 app.use(cookieParser());
 app.use(express.json({ limit: "5000kb" }));
 
@@ -41,7 +41,13 @@ if (isProdEnv) {
   app.use(express.static(path.join(path.resolve(), "build", "public")));
 } else {
   const corsOptions = {
-    origin: ["http://127.0.0.1:5173", "http://localhost:5173", "http://10.0.0.5:5173"],
+    origin: [
+      "http://127.0.0.1:5173",
+      "http://localhost:5173",
+      "http://10.0.0.5:5173",
+      "https://61cd-2a06-c701-4840-4e00-490a-e3d7-951d-5605.ngrok-free.app",
+      "https://61cd-2a06-c701-4840-4e00-490a-e3d7-951d-5605.ngrok-free.app:5173",
+    ],
     credentials: true,
   };
   app.use(cors(corsOptions));

@@ -14,6 +14,7 @@ import { AddEntityModal } from "../Modals/AddEntityModal";
 import { GridList } from "../App/GridList";
 import { GridListItem } from "../App/GridListItem";
 import { H2 } from "../App/H2";
+import { EntityListTitleContainer } from "../App/EntityListTitleContainer";
 
 type ReviewListProps = UseGetBookReviewsResult & {
   isHomePage?: boolean;
@@ -53,7 +54,7 @@ export const BookReviewList: FC<ReviewListProps> = ({
 
   return (
     <section className="w-full">
-      <div className="flex items-center justify-between border-b border-app-800 bg-app-100 pb-1">
+      <EntityListTitleContainer>
         <H2>{t("reviews")}</H2>
 
         {!isHomePage && (
@@ -65,7 +66,7 @@ export const BookReviewList: FC<ReviewListProps> = ({
             placeholder={t("bookName")}
           />
         )}
-      </div>
+      </EntityListTitleContainer>
       {isErrorReviews && (
         <ErrorMsg
           msg={errorReviews instanceof Error ? errorReviews.message : ""}

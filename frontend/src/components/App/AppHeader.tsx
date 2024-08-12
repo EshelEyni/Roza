@@ -44,9 +44,9 @@ export const AppHeader: FC = () => {
           <Link key={name} to={link}>
             {cloneElement(icon, {
               className:
-                "text-app-100 cursor-pointer transition duration-300 ease-in-out md:hidden text-3xl hover:text-app-300",
+                "text-app-100 cursor-pointer transition duration-300 ease-in-out md:hidden text-4xl hover:text-app-300",
             })}
-            <span className="hidden text-xl font-medium uppercase text-app-100 transition duration-300  ease-in-out hover:text-app-300 md:block">
+            <span className="hidden text-2xl font-medium uppercase text-app-100 transition duration-300  ease-in-out hover:text-app-300 md:block">
               {name}
             </span>
           </Link>

@@ -89,11 +89,11 @@ const HomePage: FC = () => {
     <Main>
       {isLoadingLoggedInUser && <Loader />}
       {!loggedInUser && !isLoadingLoggedInUser && (
-        <section className="mt-12 flex h-full flex-col items-center md:min-w-96">
+        <section className="mt-12 flex h-full w-11/12 flex-col items-center sm:!w-7/12 md:!w-auto md:min-w-96">
           {openedForm === "login" && <LoginForm />}
           {openedForm === "signup" && <SignupForm />}
 
-          <P className="mt-4 text-lg italic text-app-700">
+          <P className="mb-12 mt-4 text-2xl italic text-app-700">
             {toggleFormTitle}{" "}
             <span
               onClick={onToggleForm}

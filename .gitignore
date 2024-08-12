@@ -27,3 +27,5 @@ dist-ssr
 backend/data.json
 backend/data
 .data
+backend/coverage
+coverage

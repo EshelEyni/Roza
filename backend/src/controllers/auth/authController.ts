@@ -85,7 +85,9 @@ const _sendUserTokenSuccessResponse = (res: Response, token: string, user: User,
   res.cookie("loginToken", token, {
     expires: new Date(Date.now() + NINETY_DAYS),
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
+    // secure: process.env.NODE_ENV === "production",
+    secure: true,
+    sameSite: "none",
   });
 
   res.status(status).send({

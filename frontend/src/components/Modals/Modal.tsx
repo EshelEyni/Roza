@@ -176,7 +176,7 @@ export const Modal: FC<ModalProps> & {
 const OpenBtn: FC<OpenBtnProps> = ({
   children,
   modalName,
-  className = "rounded-md bg-app-500 px-4 py-1 text-white hover:bg-app-600 cursor-pointer",
+  className = "rounded-md bg-app-500 text-xl md:text-lg px-5 py-2 md:px-4 md:py-1 text-white hover:bg-app-600",
   setPositionByRef = false,
   modalHeight = 0,
   externalControlFunc,
@@ -218,7 +218,7 @@ const OpenBtn: FC<OpenBtnProps> = ({
 const CloseBtn: FC<CloseBtnProps> = ({
   children,
   onClick,
-  className = "rounded-md bg-app-500 px-4 py-1 text-white hover:bg-app-600 cursor-pointer",
+  className = "rounded-md bg-app-500 text-xl md:text-lg px-5 py-2 md:px-4 md:py-1 text-white hover:bg-app-600",
 }) => {
   const { close } = useContext(ModalContext)!;
 

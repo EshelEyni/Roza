@@ -5,10 +5,10 @@ import { Button } from "../../components/Buttons/Button";
 import { useSignup } from "../../hooks/reactQuery/update/useSignup";
 import { Form } from "../../components/App/Form";
 import { useTranslation } from "react-i18next";
-import { H2 } from "../../components/App/H2";
 import { InputContainer } from "../../components/App/InputContainer";
 import { ReactHookFormInput } from "../../components/App/ReactHookFormInput";
 import { ErrorMsg } from "../../components/Msg/ErrorMsg";
+import { H1 } from "../../components/App/H1";
 
 export const SignupForm: FC = () => {
   const { signup, isPendingSignup, isErrorSignup, errorSignup } = useSignup();
@@ -27,7 +27,7 @@ export const SignupForm: FC = () => {
 
   return (
     <Form onSubmit={handleSubmit(onSubmit)}>
-      <H2>{t("signup")}</H2>
+      <H1 addedClass="text-center">{t("signup")}</H1>
 
       <InputContainer
         label={t("username")}
@@ -105,7 +105,7 @@ export const SignupForm: FC = () => {
       <Button
         type="submit"
         disabled={isPendingSignup}
-        addedClasses="self-center"
+        addedClassName="self-center"
       >
         {isPendingSignup ? t("signingUp") : t("signup")}
       </Button>

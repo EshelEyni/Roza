@@ -65,7 +65,7 @@
       "characters": "שם הדמות",
       "themes": "שם התמה",
       "plotlines": "שם קו העלילה",
-      "notes": "מספר ההערה"
+      "notes": "הערה"
     },
     "description": "תיאור",
     "text": "טקסט"
@@ -79,6 +79,7 @@
   "description": "תיאור",
   "text": "טקסט",
   "goToDetails": "עבור לפרטים",
+  "goToBook": "עבור לספר",
   "archiveBookMsg": {
     "title": "מחיקת ספר",
     "msg": "האם אתה בטוח שברצונך למחוק את הספר?"
@@ -158,5 +159,7 @@
   "chapter": "פרק",
   "bookReview": "ביקורת ספר",
   "readMode": "מצב קריאה",
-  "viewMode": "מצב צפייה"
+  "viewMode": "מצב צפייה",
+  "showMore": "הצג עוד",
+  "showLess": "הצג פחות"
 }

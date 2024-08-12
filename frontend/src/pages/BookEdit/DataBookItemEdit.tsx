@@ -134,7 +134,7 @@ export const DataBookItemEdit: FC = () => {
       <Hr />
       <Header>
         {isNoteType(item) ? (
-          <h1 className="text-4xl font-bold text-app-800">{itemTitle}</h1>
+          <H2>{itemTitle}</H2>
         ) : (
           <Input
             type="text"
@@ -151,7 +151,7 @@ export const DataBookItemEdit: FC = () => {
       <SlateEditor
         initialValue={textEl}
         onChange={debounce(value => handleTextChange(value), 500).debouncedFunc}
-        fullScreenTitle={book.name || t("book")}
+        fullScreenTitle={!isNoteType(item) ? itemTitle : book.name || t("book")}
       />
 
       {isChapterType(item) && (
@@ -164,13 +164,16 @@ export const DataBookItemEdit: FC = () => {
               debounce(value => handleChapterTextChange(value), 500)
                 .debouncedFunc
             }
-            fullScreenTitle={book.name || t("book")}
+            fullScreenTitle={itemTitle}
           />
         </>
       )}
 
       <Hr />
-      <div className="flex w-full items-center justify-end gap-4 bg-app-100">
+      <div className="flex w-full items-center justify-end gap-2 bg-app-100">
+        <Button onClick={() => onGoToDetails({ isGoToRootPage: true })}>
+          {t("goToBook")}
+        </Button>
         <Button onClick={onGoToDetails}>{t("goToDetails")}</Button>
       </div>
     </section>

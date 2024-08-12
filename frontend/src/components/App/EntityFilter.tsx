@@ -10,6 +10,10 @@ type EntityFilterProps = {
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
+const Label = ({ children }: { children: React.ReactNode }) => (
+  <label className="w-3/4 max-w-96 rounded-lg bg-app-500 p-3">{children}</label>
+);
+
 export const EntityFilter: FC<EntityFilterProps> = ({
   sortOrder,
   searchTerm,
@@ -20,8 +24,8 @@ export const EntityFilter: FC<EntityFilterProps> = ({
   const { t } = useTranslation();
 
   return (
-    <div className="mb-4 flex w-full items-center justify-center gap-8">
-      <label className="mr-4 rounded-lg bg-app-500 p-2">
+    <div className="mb-4 flex w-full flex-col items-center justify-center gap-4 sm:flex-row">
+      <Label>
         {t("sortBy")}:
         <select
           value={sortOrder}
@@ -31,8 +35,8 @@ export const EntityFilter: FC<EntityFilterProps> = ({
           <option value={sortField}>{t("asc")}</option>
           <option value={`-${sortField}`}>{t("desc")}</option>
         </select>
-      </label>
-      <label className="rounded-lg bg-app-500 p-2">
+      </Label>
+      <Label>
         {t("search")}:
         <input
           type="text"
@@ -40,7 +44,7 @@ export const EntityFilter: FC<EntityFilterProps> = ({
           onChange={debounce(e => handleInputChange(e), 500).debouncedFunc}
           className="ml-2 rounded-lg bg-app-500 p-1"
         />
-      </label>
+      </Label>
     </div>
   );
 };

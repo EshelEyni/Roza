@@ -35,6 +35,7 @@ type BookContextType = UseLoginWithTokenResult &
     chatperTextEl: SlateCustomElement[];
     chaptersTextElements: SlateCustomElement[][];
     updateBook: (newBook: Book) => void;
+    onSetFilterBy: (filterBy: BooKDataItemType) => void;
     onNavigateToEdit: () => void;
     onDeleteItem: () => void;
     onUpdateItem: (newItem: BookDataItem) => void;
@@ -63,6 +64,7 @@ const BookContext = createContext<BookContextType | undefined>(undefined);
 
 function BookProvider({ children }: BookProviderProps) {
   const [item, setItem] = useState<BookDataItem | null>(null);
+  const [filterBy, setFilterBy] = useState<BooKDataItemType>("chapters");
   const params = useParams<BookDetailsParams>();
 
   const { id, dataItemType, dataItemId } = params;
@@ -87,7 +89,6 @@ function BookProvider({ children }: BookProviderProps) {
     "notes",
   ] as BooKDataItemType[];
 
-  const filterBy = book?.filterBy || "chapters";
   const isDetailsBookShowing =
     isSuccessBook && !!book && !dataItemType && !dataItemId;
   const isDataItemDetailsShowing =
@@ -118,6 +119,12 @@ function BookProvider({ children }: BookProviderProps) {
   const { updateBook } = useUpdateBook();
   const navigate = useNavigate();
   useDocumentTitle(`Roza / Book - ${book?.name || ""}`);
+
+  function onSetFilterBy(filterBy: BooKDataItemType) {
+    if (!book) return;
+    setFilterBy(filterBy);
+    updateBook({ ...book, filterBy });
+  }
 
   function onNavigateToEdit() {
     if (!book) return;
@@ -201,6 +208,12 @@ function BookProvider({ children }: BookProviderProps) {
     };
   }, [book, dataItemType, dataItemId]);
 
+  useEffect(() => {
+    if (!book || filterBy === book.filterBy) return;
+    setFilterBy(book.filterBy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [book]);
+
   const value: BookContextType = {
     loggedInUser,
     isLoadingLoggedInUser,
@@ -229,6 +242,7 @@ function BookProvider({ children }: BookProviderProps) {
     chatperTextEl,
     chaptersTextElements,
     updateBook,
+    onSetFilterBy,
     onNavigateToEdit,
     onDeleteItem,
     onUpdateItem,

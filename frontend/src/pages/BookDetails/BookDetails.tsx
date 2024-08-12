@@ -40,7 +40,7 @@ const BookDetails: FC = () => {
                 <BookTitle />
                 <Hr />
 
-                <div className="flex flex-wrap items-center justify-between gap-8">
+                <div className="flex flex-col items-start justify-between gap-8 sm:flex-row">
                   <BookFilter />
                   <BtnAddBookItem />
                 </div>
