@@ -70,9 +70,9 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
           defaultValue={reference.pages}
           placeholder={t("pages")}
           className={classnames(
-            "w-full rounded-md border border-app-800 px-2 py-1 text-center text-app-700",
+            "w-full rounded-md border border-app-800 px-1 py-2 text-center text-app-700",
             {
-              "max-w-[200px]": !isMinimized,
+              "max-w-[150px]": !isMinimized,
               "max-w-[100px]": isMinimized,
             },
           )}
@@ -105,6 +105,7 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
           <ImgList reference={reference} imgs={reference.imgs} />
           <div className="flex items-center justify-end gap-3">
             <DeleteEntityModal
+              isSmallOpenBtn={true}
               archiveTitle={t("removeReferenceMsg.title")}
               archiveMsg={t("removeReferenceMsg.msg")}
               modalName="deleteReference"

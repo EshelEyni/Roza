@@ -9,6 +9,7 @@ type DeleteEntityModalProps = {
   onDeleteEntity: () => void;
   archiveTitle: string;
   archiveMsg: string;
+  isSmallOpenBtn?: boolean;
 };
 
 export const DeleteEntityModal: FC<DeleteEntityModalProps> = ({
@@ -16,11 +17,12 @@ export const DeleteEntityModal: FC<DeleteEntityModalProps> = ({
   onDeleteEntity,
   archiveTitle,
   archiveMsg,
+  isSmallOpenBtn,
 }) => {
   const { t } = useTranslation();
   return (
     <Modal>
-      <Modal.OpenBtn modalName={modalName}>
+      <Modal.OpenBtn modalName={modalName} isSmall={isSmallOpenBtn}>
         <span>{t("btnDelete")}</span>
       </Modal.OpenBtn>
 

@@ -13,7 +13,7 @@ export const BtnMinimizeAll: FC<BtnMinimizeAllProps> = ({
 }) => {
   const { t } = useTranslation();
   return (
-    <Button onClick={onToggleMinimize}>
+    <Button onClick={onToggleMinimize} isSmall={true}>
       {isMinimized ? t("btnMaximizeAll") : t("btnMinimizeAll")}
     </Button>
   );

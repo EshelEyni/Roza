@@ -8,6 +8,7 @@ import { Button } from "../Buttons/Button";
 import { H2 } from "../App/H2";
 import { BtnMinimizeAll } from "../Buttons/BtnMinimizeAll";
 import { DndListWrapper } from "../App/DndListWrapper";
+import { Hr } from "../App/Hr";
 
 type ReviewListProps = {
   reviews: Review[];
@@ -51,9 +52,12 @@ export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
             isMinimized={isAllMinimized}
             onToggleMinimize={onToggleMinimize}
           />
-          <Button onClick={handleAddReview}>{t("btnAdd")}</Button>
+          <Button onClick={handleAddReview} isSmall={true}>
+            {t("btnAdd")}
+          </Button>
         </div>
       </div>
+      <Hr />
 
       <DndListWrapper
         listClassName="flex flex-col gap-2"

@@ -32,7 +32,7 @@ export const ImgInput: FC<ImgInputProps> = ({ reference }) => {
 
   return (
     <div className="flex items-center justify-end">
-      <Button disabled={isLoading}>
+      <Button disabled={isLoading} isSmall={true}>
         <label htmlFor={`img-input-${reference.id}`} className="cursor-pointer">
           {isLoading ? (
             <span>{t("loading")}</span>

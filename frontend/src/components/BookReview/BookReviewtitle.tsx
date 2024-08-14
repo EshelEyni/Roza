@@ -27,6 +27,7 @@ export const BookReviewTitle: FC<ReviewTitleProps> = ({ isEdit = false }) => {
   return (
     <PageTitle
       isEdit={isEdit}
+      entityType="review"
       entityName={bookReview.name}
       handleInputChange={handleInputChange}
       onNavigateToEdit={onNavigateToEdit}

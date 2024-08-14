@@ -11,6 +11,7 @@ import { Hr } from "./Hr";
 
 type PageTitleProps = {
   isEdit: boolean;
+  entityType: string;
   entityName: string;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onNavigateToEdit: () => void;
@@ -23,6 +24,7 @@ type PageTitleProps = {
 
 export const PageTitle: FC<PageTitleProps> = ({
   isEdit,
+  entityType,
   entityName,
   handleInputChange,
   onNavigateToEdit,
@@ -36,7 +38,7 @@ export const PageTitle: FC<PageTitleProps> = ({
   return (
     <div className="flex w-full flex-col items-center justify-between gap-2">
       <Header>
-        <h2 className="text-4xl font-bold text-app-800">{t("book")}</h2>
+        <h2 className="text-4xl font-bold text-app-800">{t(entityType)}</h2>
         <GoBackBtn />
       </Header>
       <Hr />

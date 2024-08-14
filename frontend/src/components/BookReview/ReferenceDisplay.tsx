@@ -7,6 +7,7 @@ import { useBookReview } from "../../contexts/BookReviewContext";
 import { ImgList } from "./ImgList";
 import { BtnMinimize } from "../Buttons/BtnMinimize";
 import { H3 } from "../App/H3";
+import { Hr } from "../App/Hr";
 
 type ReferenceEditProps = {
   reference: Reference;
@@ -35,8 +36,8 @@ export const ReferenceDisplay: FC<ReferenceEditProps> = ({ reference }) => {
 
   return (
     <section>
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
           <H3>{reference.pages}</H3>
           {isMinimized ? (
             <MinimizedText textEl={reference.text} maxLength={50} />
@@ -55,6 +56,7 @@ export const ReferenceDisplay: FC<ReferenceEditProps> = ({ reference }) => {
       </div>
 
       {!isMinimized && <ImgList reference={reference} imgs={reference.imgs} />}
+      <Hr />
     </section>
   );
 };

@@ -9,7 +9,7 @@ type H1Props = {
 
 export const H1: FC<H1Props> = ({
   children,
-  className = "mb-2 text-5xl font-bold text-app-800 transition duration-300 ease-in-out",
+  className = "mb-2 text-4xl md:text-3xl font-bold text-app-800 transition duration-300 ease-in-out",
   addedClass,
   onClick,
 }) => {

@@ -25,7 +25,7 @@ export const BtnMinimize: FC<BtnMinimizeProps> = ({
 
   if (text && isShortText) return null;
   return (
-    <Button onClick={onToggleMinimize}>
+    <Button onClick={onToggleMinimize} isSmall={true}>
       {isMinimized ? t("btnMaximize") : t("btnMinimize")}
     </Button>
   );

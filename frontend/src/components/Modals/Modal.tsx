@@ -38,6 +38,7 @@ type OpenBtnProps = {
   setPositionByRef?: boolean;
   modalHeight?: number;
   externalControlFunc?: () => void;
+  isSmall?: boolean;
 };
 
 type CloseBtnProps = {
@@ -180,9 +181,13 @@ const OpenBtn: FC<OpenBtnProps> = ({
   setPositionByRef = false,
   modalHeight = 0,
   externalControlFunc,
+  isSmall,
 }) => {
   const { open, setPosition, setIsModalAbove } = useContext(ModalContext)!;
   const ref = useRef<HTMLButtonElement>(null);
+
+  if (isSmall)
+    className = `${className} !text-lg !px-3 !py-1 md:!px-3 md:!py-0`;
 
   const calculatePosition = useCallback(() => {
     const res = calculatePositionByRef(ref, modalHeight);

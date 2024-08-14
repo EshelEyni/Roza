@@ -41,12 +41,13 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review }) => {
 
   return (
     <section className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
+      <div className="mb-3 flex items-center justify-between">
         <H3>
           {t("review")} {reviewNumber}
         </H3>
         <div className="flex items-center gap-2">
           <DeleteEntityModal
+            isSmallOpenBtn={true}
             modalName="archiveReview"
             onDeleteEntity={() => onRemoveReview(review.id)}
             archiveTitle={t("removeReviewMsg.title")}

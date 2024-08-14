@@ -93,7 +93,7 @@ const HomePage: FC = () => {
           {openedForm === "login" && <LoginForm />}
           {openedForm === "signup" && <SignupForm />}
 
-          <P className="mb-12 mt-4 text-2xl italic text-app-700">
+          <P className="mb-12 mt-4 text-2xl italic text-app-700 md:text-xl">
             {toggleFormTitle}{" "}
             <span
               onClick={onToggleForm}

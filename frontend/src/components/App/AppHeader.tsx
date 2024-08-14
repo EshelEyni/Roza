@@ -39,7 +39,7 @@ export const AppHeader: FC = () => {
 
   return (
     <header className="flex h-16 w-full items-center justify-between bg-app-700 px-3 py-2 md:px-3 md:py-1">
-      <nav className="flex items-center gap-2 md:gap-3">
+      <nav className="flex items-center gap-3">
         {navLinks.map(({ name, icon, link }) => (
           <Link key={name} to={link}>
             {cloneElement(icon, {
