@@ -8,10 +8,12 @@ import setupAsyncLocalStorage from "../../middlewares/setupALS/setupALSMiddlewar
 import {
   createTestBookReview,
   createTestBookReviews,
-  getMongoId,
+  createTestUser,
+  getLoginTokenStrForTest,
 } from "../../services/test/testUtilService";
 import { assertBookReview } from "../../services/test/testAssertionService";
 import { BookReviewModel } from "../../models/bookReview/bookReviewModel";
+import { User } from "../../../../shared/types/user";
 
 const app = express();
 app.use(cookieParser());
@@ -25,13 +27,16 @@ jest.mock("../../services/rateLimiterService", () => ({
 }));
 
 describe("Review Router", () => {
-  const userId = getMongoId();
+  let user: User, token: string;
   beforeAll(async () => {
     await connectToTestDB();
+    user = await createTestUser();
+    token = getLoginTokenStrForTest(user.id);
+
     await BookReviewModel.insertMany(
       createTestBookReviews({
         num: 5,
-        userId,
+        userId: user.id,
       }),
     );
   });
@@ -42,7 +47,7 @@ describe("Review Router", () => {
   });
 
   it("should get all reviews", async () => {
-    const response = await request(app).get("/");
+    const response = await request(app).get("/").set("Cookie", [token]);
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("success");
     expect(response.body.results).toBeGreaterThan(0);
@@ -51,10 +56,9 @@ describe("Review Router", () => {
   });
 
   it("should get a review by id", async () => {
-    const book = await BookReviewModel.create(createTestBookReview());
+    const book = await BookReviewModel.create(createTestBookReview({ userId: user.id }));
     const { id } = book;
-    const response = await request(app).get(`/${id}`);
-
+    const response = await request(app).get(`/${id}`).set("Cookie", [token]);
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("success");
 
@@ -64,16 +68,19 @@ describe("Review Router", () => {
 
   it("should add a review", async () => {
     const newBook = createTestBookReview();
-    const response = await request(app).post("/").send(newBook);
+    const response = await request(app).post("/").send(newBook).set("Cookie", [token]);
 
     expect(response.status).toBe(201);
     expect(response.body.status).toBe("success");
   });
 
   it("should update a review", async () => {
-    const book = await BookReviewModel.create(createTestBookReview());
+    const book = await BookReviewModel.create(createTestBookReview({ userId: user.id }));
     const { id } = book;
-    const response = await request(app).patch(`/${id}`).send({ title: "new title" });
+    const response = await request(app)
+      .patch(`/${id}`)
+      .send({ title: "new title" })
+      .set("Cookie", [token]);
 
     expect(response.status).toBe(200);
     expect(response.body.status).toBe("success");

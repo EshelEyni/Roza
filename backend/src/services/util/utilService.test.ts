@@ -16,12 +16,6 @@ import { getMongoId } from "../test/testUtilService";
 import { ParsedReqQuery } from "../../types/app";
 require("dotenv").config();
 
-jest.mock("nodemailer", () => ({
-  createTransport: jest.fn().mockReturnValue({
-    sendMail: jest.fn().mockResolvedValue(true),
-  }),
-}));
-
 describe("Util Service", () => {
   describe("filterObj", () => {
     let testObj: AnyObject;
@@ -92,7 +86,7 @@ describe("Util Service", () => {
       it("should filter query based on queryString and return updated APIFeatures instance", () => {
         const apiFeaturesFiltered = apiFeatures.filter();
 
-        expect(mockQuery.find).toBeCalled();
+        expect(mockQuery.find).toHaveBeenCalled();
         expect(apiFeaturesFiltered).toBeInstanceOf(APIFeatures);
       });
 
@@ -116,7 +110,7 @@ describe("Util Service", () => {
       it("should sort query based on queryString and return updated APIFeatures instance", () => {
         const apiFeaturesSorted = apiFeatures.sort();
 
-        expect(mockQuery.sort).toBeCalled();
+        expect(mockQuery.sort).toHaveBeenCalled();
         expect(apiFeaturesSorted).toBeInstanceOf(APIFeatures);
       });
 
@@ -139,7 +133,7 @@ describe("Util Service", () => {
       it("should limit fields based on queryString and return updated APIFeatures instance", () => {
         const apiFeaturesLimited = apiFeatures.limitFields();
 
-        expect(mockQuery.select).toBeCalled();
+        expect(mockQuery.select).toHaveBeenCalled();
         expect(apiFeaturesLimited).toBeInstanceOf(APIFeatures);
       });
 
@@ -162,8 +156,8 @@ describe("Util Service", () => {
       it("should paginate based on queryString and return updated APIFeatures instance", () => {
         const apiFeaturesPaginated = apiFeatures.paginate();
 
-        expect(mockQuery.skip).toBeCalled();
-        expect(mockQuery.limit).toBeCalled();
+        expect(mockQuery.skip).toHaveBeenCalled();
+        expect(mockQuery.limit).toHaveBeenCalled();
         expect(apiFeaturesPaginated).toBeInstanceOf(APIFeatures);
       });
 

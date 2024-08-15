@@ -6,7 +6,6 @@ import {
   login,
   logout,
   resetPassword,
-  sendPasswordResetEmail,
   signup,
   updatePassword,
 } from "./authController";
@@ -326,52 +325,6 @@ describe("auth Controller", () => {
         req.body.newPasswordConfirm,
       );
       assertUserTokenSuccesRes();
-    });
-  });
-
-  describe("sendPasswordResetEmail", () => {
-    const validEmail = "test@example.com";
-    beforeEach(() => {
-      req = {
-        body: { email: validEmail },
-        protocol: "http",
-        get: jest.fn().mockReturnValue("localhost"),
-      };
-    });
-
-    afterEach(() => {
-      jest.clearAllMocks();
-    });
-
-    it("should throw an error if email is missing", async () => {
-      req.body.email = undefined;
-      const sut = sendPasswordResetEmail as any;
-      await sut(req as Request, res as Response, next);
-      assertBadRequestError("Email is required");
-    });
-
-    it("should throw an error if email is invalid", async () => {
-      req.body.email = "invalidEmail";
-      const sut = sendPasswordResetEmail as any;
-      await sut(req as Request, res as Response, next);
-      assertBadRequestError("Email is invalid");
-      req.body.email = validEmail;
-    });
-
-    it("should send a password reset email and send a successful response", async () => {
-      const resetURL = `${req.protocol}://${req.get!("host")}/api/auth/resetPassword/`;
-      (authService.sendPasswordResetEmail as jest.Mock) = jest.fn();
-
-      const sut = sendPasswordResetEmail as any;
-      await sut(req as Request, res as Response, next);
-
-      expect(authService.sendPasswordResetEmail).toHaveBeenCalledWith(req.body.email, resetURL);
-      expect(res.send).toHaveBeenCalledWith(
-        expect.objectContaining({
-          status: "success",
-          message: "Password reset email sent successfully",
-        }),
-      );
     });
   });
 

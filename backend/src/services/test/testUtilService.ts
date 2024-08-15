@@ -8,7 +8,7 @@ import { UserModel } from "../../models/user/userModel";
 import { getLoggedInUserIdFromReq } from "../ALSService";
 import {
   Book,
-  BookFilterBy,
+  BooKDataItemType,
   BookReview,
   Chapter,
   Character,
@@ -32,7 +32,7 @@ type CreateTestBookOptions = {
   themes?: Theme[];
   plotlines?: Plotline[];
   notes?: Note[];
-  filterBy?: BookFilterBy;
+  filterBy?: BooKDataItemType;
   createdAt?: Date | string;
   updatedAt?: Date | string;
 };
@@ -155,6 +155,8 @@ function createTestBook({
     filterBy: filterBy || "chapters",
     createdAt: createdAt || new Date(),
     updatedAt: updatedAt || new Date(),
+    isArchived: false,
+    isReadMode: false,
   };
 }
 
@@ -186,6 +188,8 @@ function createTestBookReview({
     sortOrder: sortOrder || 0,
     createdAt: createdAt || new Date(),
     updatedAt: updatedAt || new Date(),
+    isArchived: false,
+    structure: [],
   };
 }
 

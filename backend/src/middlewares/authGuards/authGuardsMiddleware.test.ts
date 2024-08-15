@@ -175,7 +175,7 @@ describe("auth Guards Middleware", () => {
     });
 
     it("should call next with an error if the user is not an admin", done => {
-      const user = { isAdmin: false };
+      const user = { roles: ["user"] };
 
       setMockUserModel(user);
 
@@ -186,16 +186,17 @@ describe("auth Guards Middleware", () => {
         );
         done();
       });
+
       checkAdminAuthorization(req as Request, res as Response, next);
     });
 
     it("should call next with no arguments if the user is an admin", done => {
-      const user = { isAdmin: true };
+      const user = { roles: ["user", "admin"] };
 
       setMockUserModel(user);
 
       next = jest.fn().mockImplementation(() => {
-        expect(next).toHaveBeenCalled();
+        expect(next).toHaveBeenCalledWith();
         done();
       });
       checkAdminAuthorization(req as Request, res as Response, next);

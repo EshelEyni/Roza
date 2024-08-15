@@ -28,11 +28,11 @@ const checkUserAuthentication = asyncErrorCatcher(
 const checkAdminAuthorization = asyncErrorCatcher(
   async (req: Request, res: Response, next: NextFunction) => {
     const loggedInUserId = getLoggedInUserIdFromReq();
-    if (!loggedInUserId) throw new AppError("User not logged in", 401);
+    if (!loggedInUserId) return next(new AppError("User not logged in", 401));
     const user = await UserModel.findById(loggedInUserId).setOptions({ skipHooks: true }).exec();
-    if (!user) throw new AppError("User not found", 404);
+    if (!user) return next(new AppError("User not found", 404));
     if (!user.roles.includes("admin"))
-      throw new AppError("You do not have permission to perform this action", 403);
+      return next(new AppError("You do not have permission to perform this action", 403));
     next();
   },
 );

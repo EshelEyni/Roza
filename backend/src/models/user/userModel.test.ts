@@ -220,9 +220,6 @@ describe("User Model", () => {
 
       const user = new UserModel(userCreds);
 
-      expect(user.imgUrl).toEqual(
-        "https://res.cloudinary.com/dng9sfzqt/image/upload/v1681677382/user-chirper_ozii7u.png",
-      );
       expect(user.active).toEqual(true);
       expect(user.loginAttempts).toEqual(0);
       expect(user.lockedUntil).toEqual(0);

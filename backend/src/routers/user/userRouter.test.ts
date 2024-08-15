@@ -6,7 +6,11 @@ import { User } from "../../../../shared/types/user";
 import router from "./userRouter";
 import { errorHandler } from "../../services/error/errorService";
 import { connectToTestDB, disconnectFromTestDB } from "../../services/test/testDBService";
-import { createTestUser, deleteTestUser } from "../../services/test/testUtilService";
+import {
+  createTestUser,
+  deleteTestUser,
+  getLoginTokenStrForTest,
+} from "../../services/test/testUtilService";
 import { assertUser } from "../../services/test/testAssertionService";
 import setupAsyncLocalStorage from "../../middlewares/setupALS/setupALSMiddleware";
 
@@ -18,15 +22,16 @@ app.use(router);
 app.use(errorHandler);
 
 describe("User Router: GET Actions", () => {
-  let validUser: User;
+  let testLoggedInUser: User, token: string;
 
   beforeAll(async () => {
     await connectToTestDB();
-    validUser = await createTestUser({});
+    testLoggedInUser = await createTestUser({});
+    token = getLoginTokenStrForTest(testLoggedInUser.id);
   });
 
   afterAll(async () => {
-    await deleteTestUser(validUser.id);
+    await deleteTestUser(testLoggedInUser.id);
     await disconnectFromTestDB();
   });
 
@@ -36,7 +41,7 @@ describe("User Router: GET Actions", () => {
     });
 
     it("should return 200 and an array of users if users match the query", async () => {
-      const res = await request(app).get("/");
+      const res = await request(app).get("/").set("Cookie", [token]);
       expect(res.statusCode).toEqual(200);
       expect(res.body).toEqual({
         status: "success",
@@ -56,23 +61,25 @@ describe("User Router: GET Actions", () => {
     });
 
     it("should return 200 and a user if a user with the given ID exists", async () => {
-      const res = await request(app).get(`/${validUser.id}`);
+      const res = await request(app).get(`/${testLoggedInUser.id}`).set("Cookie", [token]);
       expect(res.statusCode).toEqual(200);
       const user = res.body.data;
       assertUser(user);
-      expect(user.username).toEqual(validUser.username);
-      expect(user.email).toEqual(validUser.email);
+      expect(user.username).toEqual(testLoggedInUser.username);
+      expect(user.email).toEqual(testLoggedInUser.email);
     });
   });
 
   describe("GET /username/:username", () => {
     it("should return 200 and the user data if the user is found", async () => {
-      const res = await request(app).get(`/username/${validUser.username}`);
+      const res = await request(app)
+        .get(`/username/${testLoggedInUser.username}`)
+        .set("Cookie", [token]);
       expect(res.statusCode).toEqual(200);
       const user = res.body.data;
       assertUser(user);
-      expect(user.username).toEqual(validUser.username);
-      expect(user.email).toEqual(validUser.email);
+      expect(user.username).toEqual(testLoggedInUser.username);
+      expect(user.email).toEqual(testLoggedInUser.email);
     });
   });
 });
