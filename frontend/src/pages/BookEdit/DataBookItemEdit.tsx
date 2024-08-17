@@ -127,7 +127,6 @@ export const DataBookItemEdit: FC = () => {
   }
 
   if (!book || !dataItemType || !dataItemId || !item) return null;
-
   return (
     <section className="flex h-full w-full flex-col justify-center gap-4">
       <BookItemTitle />
@@ -141,7 +140,8 @@ export const DataBookItemEdit: FC = () => {
             onChange={
               debounce(e => handleNameInputChange(e), 500).debouncedFunc
             }
-            defaultValue={item.name && itemTitle}
+            defaultValue={item.name}
+            placeholder={itemTitle}
           />
         )}
       </Header>
