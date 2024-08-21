@@ -47,6 +47,7 @@ async function update(id: string, user: User): Promise<User> {
     "fullname",
     "email",
     "lastVisitedPage",
+    "language",
   ];
 
   const filteredUser = filterObj(user, ...allowedFields);
