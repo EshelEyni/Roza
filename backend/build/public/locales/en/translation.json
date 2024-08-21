@@ -1,0 +1,165 @@
+{
+  "authFormTitle": {
+    "login": "Don't have an account?",
+    "signup": "Already have an account?"
+  },
+  "btnLogout": "Logout",
+  "btnPassword": "Change Password",
+  "fullName": "Full Name",
+  "signupDate": "Signup Date",
+  "profileEditTitle": "Edit Profile",
+  "btnSubmit": "Update",
+  "passwordEditTitle": "Change Password",
+  "currentPassword": "Current Password",
+  "newPassword": "New Password",
+  "newPasswordConfirm": "Confirm Password",
+
+  "home": "Home",
+  "profile": "Profile",
+  "books": "Books",
+  "ErrorMsg": {
+    "msg": "An error occurred in the system. Please try again later."
+  },
+  "EmptyMsg": {
+    "books": "No books available.",
+    "reviews": "No reviews available."
+  },
+  "seeAll": {
+    "books": "Go to Books",
+    "reviews": "Go to Reviews"
+  },
+  "bookName": "Book Name",
+  "chapters": "Chapters",
+  "characters": "Characters",
+  "themes": "Themes",
+  "plotlines": "Plotlines",
+  "notes": "Notes",
+  "btnAddReview": "Add Review",
+  "reviewName": "Review Name",
+  "sortBy": "Sort by",
+  "asc": "Ascending",
+  "desc": "Descending",
+  "search": "Search",
+  "BtnAddBookItem": {
+    "chapters": "Add Chapter",
+    "characters": "Add Character",
+    "themes": "Add Theme",
+    "plotlines": "Add Plotline",
+    "notes": "Add Note"
+  },
+  "btnOpen": "Open",
+  "confirmItemDeleteMsg": {
+    "title": "Delete Item",
+    "msg": "Are you sure you want to delete the item?"
+  },
+  "DataBookItemTitle": {
+    "chapters": "Chapter",
+    "characters": "Character",
+    "themes": "Theme",
+    "plotlines": "Plotline",
+    "notes": "Note"
+  },
+  "placeholders": {
+    "name": {
+      "chapters": "Chapter Name",
+      "characters": "Character Name",
+      "themes": "Theme Name",
+      "plotlines": "Plotline Name",
+      "notes": "Note Number"
+    },
+    "description": "Description",
+    "text": "Text"
+  },
+  "btnEdit": "Edit",
+  "btnDelete": "Delete",
+  "btnSave": "Save",
+  "btnAdd": "Add",
+  "btnCancel": "Cancel",
+  "book": "Book",
+  "description": "Description",
+  "text": "Text",
+  "goToDetails": "Go to Details",
+  "gotToBook": "Go to Book",
+  "archiveBookMsg": {
+    "title": "Delete Book",
+    "msg": "Are you sure you want to archive the book?"
+  },
+  "archiveReviewMsg": {
+    "title": "Delete Review",
+    "msg": "Are you sure you want to archive the review?"
+  },
+  "reviews": "Reviews",
+  "references": "References",
+  "createdAt": "Created At",
+  "removeReviewMsg": {
+    "title": "Delete Review",
+    "msg": "Are you sure you want to delete the review?"
+  },
+  "structure": "Structure",
+  "pages": "Pages",
+  "addImage": "Add Image",
+  "loading": "Loading...",
+  "removeImgMsg": {
+    "title": "Delete Image",
+    "msg": "Are you sure you want to delete the image?"
+  },
+  "review": "Review",
+  "reference": "Reference",
+  "btnMinimize": "Minimize",
+  "btnMinimizeAll": "Minimize All",
+  "btnMaximize": "Maximize",
+  "btnMaximizeAll": "Maximize All",
+  "removeReferenceMsg": {
+    "title": "Delete Reference",
+    "msg": "Are you sure you want to delete the reference?"
+  },
+  "formValidation": {
+    "mandatory": {
+      "username": "Username is required",
+      "fullName": "Full Name is required",
+      "email": "Email is required",
+      "language": "Language is required",
+      "password": "Password is required",
+      "passwordConfirm": "Confirm Password is required",
+      "currentPassword": "Current Password is required",
+      "newPassword": "New Password is required",
+      "newPasswordConfirm": "Confirm Password is required"
+    },
+    "maxLength": {
+      "username": "Username must be at most 20 characters",
+      "fullName": "Full Name must be at most 50 characters",
+      "email": "Email must be at most 50 characters",
+      "password": "Password must be at most 20 characters",
+      "passwordConfirm": "Confirm Password must be at most 20 characters",
+      "currentPassword": "Current Password must be at most 20 characters",
+      "newPassword": "New Password must be at most 20 characters",
+      "newPasswordConfirm": "Confirm Password must be at most 20 characters"
+    },
+    "minLength": {
+      "username": "Username must be at least 3 characters",
+      "fullName": "Full Name must be at least 3 characters",
+      "email": "Email must be at least 3 characters",
+      "password": "Password must be at least 8 characters",
+      "passwordConfirm": "Confirm Password must be at least 8 characters",
+      "currentPassword": "Current Password must be at least 8 characters",
+      "newPassword": "New Password must be at least 8 characters",
+      "newPasswordConfirm": "Confirm Password must be at least 8 characters"
+    }
+  },
+  "username": "User name",
+  "email": "Email",
+  "language": "Language",
+  "password": "Password",
+  "login": "Log In",
+  "signup": "Sign Up",
+  "loggingIn": "Logging in...",
+  "signingUp": "Signing up...",
+  "invalidEmail": "Invalid email address",
+  "download": "Download",
+  "chapter": "Chapter",
+  "bookReview": "Book Review",
+  "readMode": "Read Mode",
+  "viewMode": "View Mode",
+  "showMore": "Show More",
+  "showLess": "Show Less"
+}

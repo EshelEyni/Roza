@@ -1,0 +1,165 @@
+{
+  "authFormTitle": {
+    "login": "אין לך חשבון?",
+    "signup": "כבר יש לך חשבון?"
+  },
+  "btnLogout": "התנתקות",
+  "btnPassword": "שינוי סיסמה",
+  "fullName": "שם מלא",
+  "signupDate": "תאריך הרשמה",
+  "profileEditTitle": "עריכת פרופיל",
+  "btnSubmit": "עדכון",
+  "passwordEditTitle": "שינוי סיסמה",
+  "currentPassword": "סיסמה נוכחית",
+  "newPassword": "סיסמה חדשה",
+  "newPasswordConfirm": "אימות סיסמה",
+  "home": "בית",
+  "profile": "פרופיל",
+  "books": "ספרים",
+  "ErrorMsg": {
+    "msg": "התרחשה שגיאה במערכת. אנא נסה שוב מאוחר יותר."
+  },
+  "EmptyMsg": {
+    "books": "אין ספרים זמינים.",
+    "reviews": "אין ביקורות זמינות."
+  },
+  "seeAll": {
+    "books": "עבור לספרים",
+    "reviews": "עבור לביקורות"
+  },
+  "btnAddBook": "הוספת ספר",
+  "bookName": "שם הספר",
+  "chapters": "פרקים",
+  "characters": "דמויות",
+  "themes": "נושאים",
+  "plotlines": "קווי עלילה",
+  "notes": "הערות",
+  "btnAddReview": "הוספת ביקורת",
+  "reviewName": "שם ביקורת",
+  "sortBy": "מיין לפי",
+  "asc": "סדר עולה",
+  "desc": "סדר יורד",
+  "search": "חיפוש",
+  "BtnAddBookItem": {
+    "chapters": "הוספת פרק",
+    "characters": "הוספת דמות",
+    "themes": "הוספת נושא",
+    "plotlines": "הוספת קו עלילה",
+    "notes": "הוספת הערה"
+  },
+  "btnOpen": "פתח",
+  "confirmItemDeleteMsg": {
+    "title": "מחיקת פריט",
+    "msg": "האם אתה בטוח שברצונך למחוק את הפריט?"
+  },
+  "DataBookItemTitle": {
+    "chapters": "פרק",
+    "characters": "דמות",
+    "themes": "נושא",
+    "plotlines": "קו עלילה",
+    "notes": "הערה"
+  },
+  "placeholders": {
+    "name": {
+      "chapters": "שם הפרק",
+      "characters": "שם הדמות",
+      "themes": "שם התמה",
+      "plotlines": "שם קו העלילה",
+      "notes": "הערה"
+    },
+    "description": "תיאור",
+    "text": "טקסט"
+  },
+  "btnEdit": "עריכה",
+  "btnDelete": "מחיקה",
+  "btnSave": "שמירה",
+  "btnAdd": "הוספה",
+  "btnCancel": "ביטול",
+  "book": "ספר",
+  "description": "תיאור",
+  "text": "טקסט",
+  "goToDetails": "עבור לפרטים",
+  "goToBook": "עבור לספר",
+  "archiveBookMsg": {
+    "title": "מחיקת ספר",
+    "msg": "האם אתה בטוח שברצונך למחוק את הספר?"
+  },
+  "archiveReviewMsg": {
+    "title": "מחיקת ביקורת",
+    "msg": "האם אתה בטוח שברצונך למחוק את הביקורת?"
+  },
+  "reviews": "ביקורות",
+  "references": "הפניות",
+  "createdAt": "נוצר בתאריך",
+  "removeReviewMsg": {
+    "title": "מחיקת ביקורת",
+    "msg": "האם אתה בטוח שברצונך למחוק את הביקורת?"
+  },
+  "structure": "מבנה",
+  "pages": "עמודים",
+  "addImage": "הוספת תמונה",
+  "loading": "טוען...",
+  "removeImgMsg": {
+    "title": "מחיקת תמונה",
+    "msg": "האם אתה בטוח שברצונך למחוק את התמונה?"
+  },
+  "review": "ביקורת",
+  "reference": "הפניה",
+  "btnMinimize": "מזעור",
+  "btnMinimizeAll": "מזעור לכולם",
+  "btnMaximize": "הגדל",
+  "btnMaximizeAll": "הגדל לכולם",
+  "removeReferenceMsg": {
+    "title": "מחיקת הפניה",
+    "msg": "האם אתה בטוח שברצונך למחוק את ההפניה?"
+  },
+  "formValidation": {
+    "mandatory": {
+      "username": "שם משתמש הינו שדה חובה",
+      "fullName": "שם מלא הינו שדה חובה",
+      "email": "אימייל הינו שדה חובה",
+      "language": "שפה הינה שדה חובה",
+      "password": "סיסמה הינה שדה חובה",
+      "passwordConfirm": "אימות סיסמה הינו שדה חובה",
+      "currentPassword": "סיסמה נוכחית הינה שדה חובה",
+      "newPassword": "סיסמה חדשה הינה שדה חובה",
+      "newPasswordConfirm": "אימות סיסמה הינו שדה חובה"
+    },
+    "maxLength": {
+      "username": "שם משתמש יכול להכיל עד 20 תווים",
+      "fullName": "שם מלא יכול להכיל עד 50 תווים",
+      "email": "אימייל יכול להכיל עד 50 תווים",
+      "password": "סיסמה יכולה להכיל עד 20 תווים",
+      "passwordConfirm": "אימות סיסמה יכול להכיל עד 20 תווים",
+      "currentPassword": "סיסמה נוכחית יכולה להכיל עד 20 תווים",
+      "newPassword": "סיסמה חדשה יכולה להכיל עד 20 תווים",
+      "newPasswordConfirm": "אימות סיסמה יכול להכיל עד 20 תווים"
+    },
+    "minLength": {
+      "username": "שם משתמש חייב להכיל לפחות 3 תווים",
+      "fullName": "שם מלא חייב להכיל לפחות 3 תווים",
+      "email": "אימייל חייב להכיל לפחות 3 תווים",
+      "password": "סיסמה חייבת להכיל לפחות 8 תווים",
+      "passwordConfirm": "אימות סיסמה חייב להכיל לפחות 8 תווים",
+      "currentPassword": "סיסמה נוכחית חייבת להכיל לפחות 8 תווים",
+      "newPassword": "סיסמה חדשה חייבת להכיל לפחות 8 תווים",
+      "newPasswordConfirm": "אימות סיסמה חייב להכיל לפחות 8 תווים"
+    }
+  },
+  "username": "שם משתמש",
+  "email": "אימייל",
+  "language": "שפה",
+  "password": "סיסמה",
+  "login": "התחברות",
+  "signup": "הרשמה",
+  "loggingIn": "מתחבר...",
+  "signingUp": "מבצע הרשמה...",
+  "invalidEmail": "כתובת אימייל לא תקינה",
+  "download": "הורד",
+  "chapter": "פרק",
+  "bookReview": "ביקורת ספר",
+  "readMode": "מצב קריאה",
+  "viewMode": "מצב צפייה",
+  "showMore": "הצג עוד",
+  "showLess": "הצג פחות"
+}

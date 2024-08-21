@@ -1,3 +1,4 @@
+import { SlateElementType } from "../../../../shared/types/books";
 import {
   BlockButton,
   MarkButton,
@@ -59,14 +60,18 @@ function toggleBlock(editor: SlateEditor, format: string) {
     newProperties = { align: isActive ? undefined : (format as TextAlignType) };
   } else {
     newProperties = {
-      type: isActive ? "paragraph" : isList ? "list-item" : format,
+      type: isActive
+        ? "paragraph"
+        : isList
+          ? "list-item"
+          : (format as SlateElementType),
     };
   }
 
   Transforms.setNodes<SlateElement>(editor, newProperties);
 
   if (isActive || !isList) return;
-  const block = { type: format, children: [] };
+  const block = { type: format, children: [] } as SlateElement;
   Transforms.wrapNodes(editor, block);
 }
 

@@ -28,6 +28,7 @@ const SlateCustomElementSchema = new Schema<ISlateCustomElement>({
   children: [
     {
       type: Schema.Types.Mixed,
+      default: [],
     },
   ],
   align: {

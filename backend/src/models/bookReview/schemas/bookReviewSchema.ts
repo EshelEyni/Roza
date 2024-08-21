@@ -24,6 +24,7 @@ const bookReviewSchema = new Schema<IBookReview>(
     },
     sortOrder: {
       type: Number,
+      default: 0,
     },
     isArchived: {
       type: Boolean,
@@ -60,7 +61,7 @@ bookReviewSchema.pre("save", async function (next) {
       { sort: { sortOrder: -1 }, lean: true },
     )
     .exec()) as IBookReview;
-  if (this.isNew) this.sortOrder = lastSortOrder ? lastSortOrder.sortOrder + 1 : 0;
+  if (this.isNew && lastSortOrder) this.sortOrder = lastSortOrder.sortOrder + 1;
 
   next();
 });
