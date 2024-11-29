@@ -12,7 +12,19 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.createTestBookReviews = exports.createTestBookReview = exports.createTestBooks = exports.createTestBook = exports.deleteTestUser = exports.getMockedUser = exports.getMongoId = exports.createValidUserCreds = exports.createTestUser = exports.deleteManyTestUsers = exports.createManyTestUsers = exports.mockGetLoggedInUserIdFromReq = exports.getLoginTokenStrForTest = void 0;
+exports.getLoginTokenStrForTest = getLoginTokenStrForTest;
+exports.mockGetLoggedInUserIdFromReq = mockGetLoggedInUserIdFromReq;
+exports.createManyTestUsers = createManyTestUsers;
+exports.deleteManyTestUsers = deleteManyTestUsers;
+exports.createTestUser = createTestUser;
+exports.createValidUserCreds = createValidUserCreds;
+exports.getMongoId = getMongoId;
+exports.getMockedUser = getMockedUser;
+exports.deleteTestUser = deleteTestUser;
+exports.createTestBook = createTestBook;
+exports.createTestBooks = createTestBooks;
+exports.createTestBookReview = createTestBookReview;
+exports.createTestBookReviews = createTestBookReviews;
 /* eslint-disable @typescript-eslint/no-explicit-any */
 require("dotenv").config();
 const mongoose_1 = __importDefault(require("mongoose"));
@@ -28,15 +40,13 @@ function createManyTestUsers(numOfUsers) {
         return users;
     });
 }
-exports.createManyTestUsers = createManyTestUsers;
 function deleteManyTestUsers(ids) {
     return __awaiter(this, void 0, void 0, function* () {
         yield userModel_1.UserModel.deleteMany({ _id: { $in: ids } });
     });
 }
-exports.deleteManyTestUsers = deleteManyTestUsers;
-function createTestUser({ id, isAdmin = false } = {}) {
-    return __awaiter(this, void 0, void 0, function* () {
+function createTestUser() {
+    return __awaiter(this, arguments, void 0, function* ({ id, isAdmin = false } = {}) {
         const validId = id || getMongoId();
         yield userModel_1.UserModel.findByIdAndDelete(validId).setOptions({ active: false });
         const user = createValidUserCreds(validId);
@@ -45,17 +55,14 @@ function createTestUser({ id, isAdmin = false } = {}) {
         return (yield userModel_1.UserModel.create(user)).toObject();
     });
 }
-exports.createTestUser = createTestUser;
 function deleteTestUser(id) {
     return __awaiter(this, void 0, void 0, function* () {
         yield userModel_1.UserModel.findByIdAndDelete(id).setOptions({ active: false });
     });
 }
-exports.deleteTestUser = deleteTestUser;
 function getMongoId() {
     return new mongoose_1.default.Types.ObjectId().toHexString();
 }
-exports.getMongoId = getMongoId;
 function createValidUserCreds(id) {
     function makeId(length = 10) {
         let txt = "";
@@ -80,12 +87,10 @@ function createValidUserCreds(id) {
         birthdate: new Date("1990-01-01"),
     };
 }
-exports.createValidUserCreds = createValidUserCreds;
 function getLoginTokenStrForTest(validUserId) {
     const token = tokenService_1.default.signToken(validUserId);
     return `loginToken=${token}`;
 }
-exports.getLoginTokenStrForTest = getLoginTokenStrForTest;
 function getMockedUser({ id, } = {}) {
     return {
         _id: (id === null || id === void 0 ? void 0 : id.toString()) || getMongoId(),
@@ -98,13 +103,11 @@ function getMockedUser({ id, } = {}) {
         toObject: jest.fn().mockReturnThis(),
     };
 }
-exports.getMockedUser = getMockedUser;
 function mockGetLoggedInUserIdFromReq(value) {
     const userId = value !== undefined ? value : getMongoId();
     ALSService_1.getLoggedInUserIdFromReq.mockReturnValue(userId);
     return userId;
 }
-exports.mockGetLoggedInUserIdFromReq = mockGetLoggedInUserIdFromReq;
 function createTestBook({ userId, name, chapters, characters, themes, plotlines, notes, filterBy, createdAt, updatedAt, } = {}) {
     return {
         id: getMongoId(),
@@ -122,14 +125,12 @@ function createTestBook({ userId, name, chapters, characters, themes, plotlines,
         isReadMode: false,
     };
 }
-exports.createTestBook = createTestBook;
 function createTestBooks({ num, userId }) {
     return Array.from({ length: num }).map((_, i) => createTestBook({
         name: `Test Book ${i + 1}`,
         userId,
     }));
 }
-exports.createTestBooks = createTestBooks;
 function createTestBookReview({ id, userId, name, reviews, references, sortOrder, createdAt, updatedAt, } = {}) {
     return {
         id: id || getMongoId(),
@@ -144,12 +145,10 @@ function createTestBookReview({ id, userId, name, reviews, references, sortOrder
         structure: [],
     };
 }
-exports.createTestBookReview = createTestBookReview;
 function createTestBookReviews({ num, userId }) {
     return Array.from({ length: num }).map((_, i) => createTestBookReview({
         userId,
         name: `Test Book Review ${i + 1}`,
     }));
 }
-exports.createTestBookReviews = createTestBookReviews;
 //# sourceMappingURL=testUtilService.js.map

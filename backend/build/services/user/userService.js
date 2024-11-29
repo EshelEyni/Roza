@@ -62,6 +62,7 @@ function update(id, user) {
             "fullname",
             "email",
             "lastVisitedPage",
+            "language",
         ];
         const filteredUser = (0, utilService_1.filterObj)(user, ...allowedFields);
         const updatedUser = yield userModel_1.UserModel.findByIdAndUpdate(id, filteredUser, {

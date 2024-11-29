@@ -12,7 +12,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getDefaultSlateElement = exports.getIsraeliDate = exports.shuffleArray = exports.getUniqueStringIds = exports.validateIds = exports.isValidMongoId = exports.queryEntityExistsById = exports.filterObj = exports.APIFeatures = void 0;
+exports.filterObj = exports.APIFeatures = void 0;
+exports.queryEntityExistsById = queryEntityExistsById;
+exports.isValidMongoId = isValidMongoId;
+exports.validateIds = validateIds;
+exports.getUniqueStringIds = getUniqueStringIds;
+exports.shuffleArray = shuffleArray;
+exports.getIsraeliDate = getIsraeliDate;
+exports.getDefaultSlateElement = getDefaultSlateElement;
 const mongoose_1 = __importDefault(require("mongoose"));
 require("dotenv").config();
 const errorService_1 = require("../error/errorService");
@@ -78,11 +85,9 @@ function queryEntityExistsById(model, query) {
         return !!(yield model.exists(query).setOptions({ skipHooks: true }).exec());
     });
 }
-exports.queryEntityExistsById = queryEntityExistsById;
 function isValidMongoId(id) {
     return mongoose_1.default.Types.ObjectId.isValid(id);
 }
-exports.isValidMongoId = isValidMongoId;
 function validateIds(...idEntities) {
     idEntities.forEach(({ id, entityName }) => {
         const statusCode = entityName === "loggedInUser" ? 401 : 400;
@@ -92,11 +97,9 @@ function validateIds(...idEntities) {
             throw new errorService_1.AppError(`Invalid ${entityName} id: ${id}`, statusCode);
     });
 }
-exports.validateIds = validateIds;
 function getUniqueStringIds(ids) {
     return [...new Set(ids.map(id => id.toString()))];
 }
-exports.getUniqueStringIds = getUniqueStringIds;
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -104,7 +107,6 @@ function shuffleArray(array) {
     }
     return array;
 }
-exports.shuffleArray = shuffleArray;
 function getIsraeliDate() {
     const now = new Date();
     const localTime = now.getTime();
@@ -114,9 +116,7 @@ function getIsraeliDate() {
     const israelTime = new Date(utc + israelOffset);
     return israelTime;
 }
-exports.getIsraeliDate = getIsraeliDate;
 function getDefaultSlateElement(text = "") {
     return [{ type: "paragraph", children: [{ text }] }];
 }
-exports.getDefaultSlateElement = getDefaultSlateElement;
 //# sourceMappingURL=utilService.js.map

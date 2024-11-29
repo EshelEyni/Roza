@@ -1,0 +1,1 @@
+import{j as a}from"./index-BnA0ap6K.js";const l=({children:r,className:o="h-full cursor-pointer rounded-lg border border-app-800 bg-app-100 p-2 shadow-lg transition duration-300 hover:scale-105 hover:shadow-xl",addedClassName:e,onClick:s})=>a.jsx("article",{onClick:s,className:`${o} ${e}`,children:r});export{l as A};

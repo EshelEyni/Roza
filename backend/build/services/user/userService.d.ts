@@ -1,0 +1,22 @@
+import { ParsedReqQuery } from "../../types/app";
+import { IUser } from "../../types/iTypes";
+import { User } from "../../../../shared/types/user";
+declare function query(queryString: ParsedReqQuery): Promise<IUser[]>;
+declare function getUsers(...userIds: string[]): Promise<IUser[]>;
+declare function getById(userId: string): Promise<IUser>;
+declare function getByUsername(username: string): Promise<IUser>;
+declare function add(user: User): Promise<IUser>;
+declare function update(id: string, user: User): Promise<User>;
+declare function remove(userId: string): Promise<User>;
+declare function removeAccount(userId: string): Promise<User>;
+declare const _default: {
+    query: typeof query;
+    getById: typeof getById;
+    getByUsername: typeof getByUsername;
+    add: typeof add;
+    update: typeof update;
+    remove: typeof remove;
+    removeAccount: typeof removeAccount;
+    getUsers: typeof getUsers;
+};
+export default _default;

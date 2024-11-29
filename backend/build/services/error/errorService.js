@@ -1,6 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.validatePatchRequestBody = exports.asyncErrorCatcher = exports.errorHandler = exports.AppError = void 0;
+exports.AppError = void 0;
+exports.errorHandler = errorHandler;
+exports.asyncErrorCatcher = asyncErrorCatcher;
+exports.validatePatchRequestBody = validatePatchRequestBody;
 const loggerService_1 = require("../logger/loggerService");
 var ErrorType;
 (function (ErrorType) {
@@ -32,7 +35,6 @@ function errorHandler(err, req, res, next) {
     if (!isTestEnv)
         loggerService_1.logger.error(err.message);
 }
-exports.errorHandler = errorHandler;
 function _refineErrorForProd(err) {
     let error = Object.assign(Object.assign({}, err), { message: err.message, name: err.name });
     const { name } = error;
@@ -104,12 +106,10 @@ function asyncErrorCatcher(fn) {
         fn(req, res, next).catch((err) => next(err));
     };
 }
-exports.asyncErrorCatcher = asyncErrorCatcher;
 function validatePatchRequestBody(body) {
     if (Object.keys(body).length === 0) {
         throw new AppError("No data received in the request. Please provide some properties to update.", 400);
     }
 }
-exports.validatePatchRequestBody = validatePatchRequestBody;
 // Path: src\services\logger\logger.service.ts
 //# sourceMappingURL=errorService.js.map

@@ -24,6 +24,18 @@ const app = express();
 app.use(compression());
 
 app.use(helmet());
+app.use(
+  helmet.contentSecurityPolicy({
+    useDefaults: true,
+    directives: {
+      "default-src": ["'self'"],
+      "img-src": ["'self'", "https:", "data:"],
+      "connect-src": ["'self'", "https://api.cloudinary.com"],
+      "script-src": ["'self'", "'unsafe-inline'"], // Only if needed
+      "style-src": ["'self'", "'unsafe-inline'"], // Only if needed
+    },
+  }),
+);
 app.use(cookieParser());
 app.use(express.json({ limit: "5000kb" }));
 

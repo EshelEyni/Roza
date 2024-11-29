@@ -1,4 +1,3 @@
-/// <reference types="cookie-parser" />
 import { Request } from "express";
 declare function getTokenFromRequest(req: Request): any;
 declare function signToken(id: string): string;

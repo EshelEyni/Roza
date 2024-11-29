@@ -1,6 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.assertBookReview = exports.assertBook = exports.assertUser = void 0;
+exports.assertUser = assertUser;
+exports.assertBook = assertBook;
+exports.assertBookReview = assertBookReview;
 function assertUser(user) {
     expect(user).toEqual(expect.objectContaining({
         id: expect.any(String),
@@ -11,7 +13,6 @@ function assertUser(user) {
     }));
     expect(typeof user.createdAt === "string" || typeof user.createdAt === "object").toBeTruthy();
 }
-exports.assertUser = assertUser;
 function assertBook(book) {
     expect(book).toEqual(expect.objectContaining({
         id: expect.any(String),
@@ -27,7 +28,6 @@ function assertBook(book) {
     expect(typeof book.createdAt === "string" || typeof book.createdAt === "object").toBeTruthy();
     expect(typeof book.updatedAt === "string" || typeof book.updatedAt === "object").toBeTruthy();
 }
-exports.assertBook = assertBook;
 function assertBookReview(bookReview) {
     expect(bookReview).toEqual(expect.objectContaining({
         id: expect.any(String),
@@ -40,5 +40,4 @@ function assertBookReview(bookReview) {
     expect(typeof bookReview.createdAt === "string" || typeof bookReview.createdAt === "object").toBeTruthy();
     expect(typeof bookReview.updatedAt === "string" || typeof bookReview.updatedAt === "object").toBeTruthy();
 }
-exports.assertBookReview = assertBookReview;
 //# sourceMappingURL=testAssertionService.js.map

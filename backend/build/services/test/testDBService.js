@@ -12,14 +12,15 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.disconnectFromTestDB = exports.connectToTestDB = void 0;
+exports.connectToTestDB = connectToTestDB;
+exports.disconnectFromTestDB = disconnectFromTestDB;
 /* eslint-disable no-console */
 const mongoose_1 = __importDefault(require("mongoose"));
 const errorService_1 = require("../error/errorService");
 const ansi_colors_1 = __importDefault(require("ansi-colors"));
 require("dotenv").config();
-function connectToTestDB({ isRemoteDB = false } = {}) {
-    return __awaiter(this, void 0, void 0, function* () {
+function connectToTestDB() {
+    return __awaiter(this, arguments, void 0, function* ({ isRemoteDB = false } = {}) {
         try {
             const { DB_URL, TEST_DB_NAME, LOCAL_DB_URL } = process.env;
             if (!LOCAL_DB_URL)
@@ -40,7 +41,6 @@ function connectToTestDB({ isRemoteDB = false } = {}) {
         }
     });
 }
-exports.connectToTestDB = connectToTestDB;
 function disconnectFromTestDB() {
     return __awaiter(this, void 0, void 0, function* () {
         yield mongoose_1.default.connection.close();
@@ -48,5 +48,4 @@ function disconnectFromTestDB() {
         console.log(ansi_colors_1.default.red.italic("Disconnected from DB"));
     });
 }
-exports.disconnectFromTestDB = disconnectFromTestDB;
 //# sourceMappingURL=testDBService.js.map

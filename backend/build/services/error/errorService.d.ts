@@ -1,4 +1,3 @@
-/// <reference types="cookie-parser" />
 import { Response, Request, NextFunction } from "express";
 type AsyncExpressMiddleware = (req: Request, res: Response, next: NextFunction) => Promise<void>;
 interface CustomError extends Error {
