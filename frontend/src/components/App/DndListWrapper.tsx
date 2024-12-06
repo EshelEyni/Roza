@@ -3,13 +3,11 @@ import {
   arrayMove,
   rectSortingStrategy,
   SortableContext,
-  sortableKeyboardCoordinates,
 } from "@dnd-kit/sortable";
 import {
   closestCenter,
   DndContext,
   DragEndEvent,
-  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
@@ -36,9 +34,6 @@ export const DndListWrapper = <T,>({
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { delay: 200, tolerance: 5 },
-    }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
 
