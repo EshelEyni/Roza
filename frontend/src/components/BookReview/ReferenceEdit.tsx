@@ -77,7 +77,7 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
             },
           )}
           onChange={e =>
-            debounce(e => handlePagesInputChange(e), 500).debouncedFunc(e)
+            debounce(e => handlePagesInputChange(e), 1500).debouncedFunc(e)
           }
         />
         {isMinimized && (
@@ -97,7 +97,7 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
           <SlateEditor
             initialValue={reference.text}
             onChange={
-              debounce(value => handleTextChange(value), 500).debouncedFunc
+              debounce(value => handleTextChange(value), 1500).debouncedFunc
             }
             fullScreenTitle={bookReview?.name || t("bookReview")}
           />

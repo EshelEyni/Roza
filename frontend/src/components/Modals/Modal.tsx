@@ -339,8 +339,12 @@ const Window: FC<WindowProps> = ({
               top: isModalAbove
                 ? "100%"
                 : `-${modalHoverGuardZone.height / 2}px`,
-              height: `${modalHoverGuardZone.height / 2}px` || "10%",
-              width: `${modalHoverGuardZone.width}px` || "10%",
+              height: modalHoverGuardZone.height
+                ? `${modalHoverGuardZone.height / 2}px`
+                : "10%",
+              width: modalHoverGuardZone.width
+                ? `${modalHoverGuardZone.width}px`
+                : "10%",
             }}
           />
         )}

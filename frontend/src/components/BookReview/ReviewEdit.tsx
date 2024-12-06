@@ -64,7 +64,7 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review }) => {
       ) : (
         <SlateEditor
           initialValue={review.text}
-          onChange={debounce(value => handleChange(value), 500).debouncedFunc}
+          onChange={debounce(value => handleChange(value), 1500).debouncedFunc}
           fullScreenTitle={bookReview?.name || t("bookReview")}
         />
       )}

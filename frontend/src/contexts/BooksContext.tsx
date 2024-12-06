@@ -1,8 +1,9 @@
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { UseGetBooksResult, UseLoginWithTokenResult } from "../types/app";
 import { useLoginWithToken } from "../hooks/reactQuery/get/useLoginWithToken";
 import { useGetBooks } from "../hooks/reactQuery/get/useGetBooks";
 import { useIntersectionPagination } from "../hooks/useIntersectionPagination";
+import { useUpdateUser } from "../hooks/reactQuery/update/useUpdateUser";
 
 type BooksContextType = UseLoginWithTokenResult &
   UseGetBooksResult & {
@@ -21,10 +22,6 @@ type BooksProviderProps = {
 const BooksContext = createContext<BooksContextType | undefined>(undefined);
 
 function BooksProvider({ children }: BooksProviderProps) {
-  const [sortOrder, setSortOrder] = useState<string>("createdAt");
-  const [searchTerm, setSearchTerm] = useState<string>("");
-  const { intersectionRef, paginationIdx } = useIntersectionPagination();
-
   const {
     loggedInUser,
     isLoadingLoggedInUser,
@@ -33,6 +30,14 @@ function BooksProvider({ children }: BooksProviderProps) {
     isErrorLoggedInUser,
     isFetchedLoggedInUser,
   } = useLoginWithToken();
+
+  const [sortOrder, setSortOrder] = useState<string>(
+    loggedInUser?.entityFilterOrder?.books || "createdAt",
+  );
+  const [searchTerm, setSearchTerm] = useState<string>("");
+  const { intersectionRef, paginationIdx } = useIntersectionPagination();
+
+  const { updateUser } = useUpdateUser();
 
   const {
     books,
@@ -50,13 +55,26 @@ function BooksProvider({ children }: BooksProviderProps) {
   });
 
   function onSortBooks(order: string) {
-    setSortOrder(order);
+    if (!loggedInUser) return;
+    const updatedUser = {
+      ...loggedInUser,
+      entityFilterOrder: {
+        ...loggedInUser.entityFilterOrder,
+        books: order,
+      },
+    };
+    updateUser(updatedUser);
   }
 
   function onSearchBooks(e: React.ChangeEvent<HTMLInputElement>) {
     const inputValue = e.target.value;
     setSearchTerm(!inputValue ? "" : inputValue);
   }
+
+  useEffect(() => {
+    if (!loggedInUser) return;
+    setSortOrder(loggedInUser.entityFilterOrder.books);
+  }, [loggedInUser, sortOrder]);
 
   const value: BooksContextType = {
     loggedInUser,

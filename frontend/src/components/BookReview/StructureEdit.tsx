@@ -30,7 +30,7 @@ export const StructureEdit: FC<StructureEditProps> = ({ structure }) => {
 
       <SlateEditor
         initialValue={structure}
-        onChange={debounce(value => handleChange(value), 500).debouncedFunc}
+        onChange={debounce(value => handleChange(value), 1500).debouncedFunc}
         fullScreenTitle={bookReview?.name || t("bookReview")}
       />
     </>

@@ -11,7 +11,9 @@ type EntityFilterProps = {
 };
 
 const Label = ({ children }: { children: React.ReactNode }) => (
-  <label className="w-3/4 max-w-96 rounded-lg bg-app-500 p-3">{children}</label>
+  <label className="flex w-3/4 max-w-96 items-center rounded-lg bg-app-500 p-3">
+    {children}
+  </label>
 );
 
 export const EntityFilter: FC<EntityFilterProps> = ({
@@ -30,7 +32,7 @@ export const EntityFilter: FC<EntityFilterProps> = ({
         <select
           value={sortOrder}
           onChange={e => onSort(e.target.value)}
-          className="ml-2 rounded-lg bg-app-500 p-1"
+          className="ml-2 rounded-lg bg-app-500 p-1 flex-1"
         >
           <option value={sortField}>{t("asc")}</option>
           <option value={`-${sortField}`}>{t("desc")}</option>
@@ -41,7 +43,7 @@ export const EntityFilter: FC<EntityFilterProps> = ({
         <input
           type="text"
           defaultValue={searchTerm}
-          onChange={debounce(e => handleInputChange(e), 500).debouncedFunc}
+          onChange={debounce(e => handleInputChange(e), 1500).debouncedFunc}
           className="ml-2 rounded-lg bg-app-500 p-1"
         />
       </Label>

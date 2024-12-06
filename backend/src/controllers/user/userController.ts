@@ -19,7 +19,14 @@ const getUsers = getAll(UserModel);
 
 const getUserById = getOne(UserModel);
 const addUser = createOne(UserModel);
-const updateUser = updateOne(UserModel, ["username", "email", "fullname", "imgUrl", "email"]);
+const updateUser = updateOne(UserModel, [
+  "username",
+  "email",
+  "fullname",
+  "imgUrl",
+  "email",
+  "entityFilterOrder",
+]);
 
 const removeUser = deleteOne(UserModel);
 

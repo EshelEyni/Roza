@@ -15,7 +15,7 @@ const postRequestLimiter = rateLimit({
 
 const patchRequestLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 500,
+  max: 2000,
   message: "Too many PATCH requests, please try again later",
 });
 

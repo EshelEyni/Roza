@@ -53,6 +53,10 @@ const userSchema: Schema<IUser> = new Schema(
     roles: { type: [String], default: ["user"] },
     lastVisitedPage: { type: String, default: "" },
     language: { type: String, default: "" },
+    entityFilterOrder: {
+      books: { type: String, default: "createdAt" },
+      bookReviews: { type: String, default: "sortOrder" },
+    },
     active: { type: Boolean, default: true },
     loginAttempts: { type: Number, default: 0 },
     lockedUntil: { type: Number, default: 0 },

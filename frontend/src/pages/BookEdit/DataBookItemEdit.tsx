@@ -138,7 +138,7 @@ export const DataBookItemEdit: FC = () => {
           <Input
             type="text"
             onChange={
-              debounce(e => handleNameInputChange(e), 500).debouncedFunc
+              debounce(e => handleNameInputChange(e), 1500).debouncedFunc
             }
             defaultValue={item.name}
             placeholder={itemTitle}
@@ -150,7 +150,7 @@ export const DataBookItemEdit: FC = () => {
       <H2>{firstEditorTitle}</H2>
       <SlateEditor
         initialValue={textEl}
-        onChange={debounce(value => handleTextChange(value), 500).debouncedFunc}
+        onChange={debounce(value => handleTextChange(value), 1500).debouncedFunc}
         fullScreenTitle={!isNoteType(item) ? itemTitle : book.name || t("book")}
       />
 
@@ -161,7 +161,7 @@ export const DataBookItemEdit: FC = () => {
           <SlateEditor
             initialValue={chatperTextEl}
             onChange={
-              debounce(value => handleChapterTextChange(value), 500)
+              debounce(value => handleChapterTextChange(value), 1500)
                 .debouncedFunc
             }
             fullScreenTitle={itemTitle}

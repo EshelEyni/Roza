@@ -20,6 +20,10 @@ export interface User {
   language: Language;
   roles: string[];
   lastVisitedPage: string;
+  entityFilterOrder: {
+    books: string;
+    bookReviews: string;
+  };
   createdAt: string;
   updatedAt: string;
 }

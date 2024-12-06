@@ -60,7 +60,7 @@ bookReviewSchema.pre("save", async function (next) {
       },
       { sort: { sortOrder: -1 }, lean: true },
     )
-    .exec()) as IBookReview;
+    .exec()) as unknown as IBookReview;
   if (this.isNew && lastSortOrder) this.sortOrder = lastSortOrder.sortOrder + 1;
 
   next();

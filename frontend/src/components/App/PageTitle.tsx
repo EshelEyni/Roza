@@ -46,7 +46,7 @@ export const PageTitle: FC<PageTitleProps> = ({
         <Input
           type="text"
           defaultValue={entityName}
-          onChange={debounce(e => handleInputChange(e), 500).debouncedFunc}
+          onChange={debounce(e => handleInputChange(e), 1500).debouncedFunc}
         />
       ) : (
         <Header addedClassName="flex-col md:flex-row ">

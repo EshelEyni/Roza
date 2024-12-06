@@ -13,6 +13,10 @@ export interface IUser extends Document {
   fullname: string;
   roles: string[];
   lastVisitedPage: string;
+  entityFilterOrder: {
+    books: string;
+    bookReviews: string;
+  };
   createdAt: Date;
   updatedAt: Date;
   active: boolean;

@@ -17,9 +17,9 @@ async function query(queryString: ParsedReqQuery): Promise<IUser[]> {
 }
 
 async function getUsers(...userIds: string[]): Promise<IUser[]> {
-  const users = await UserModel.find({ _id: { $in: userIds } })
+  const users = (await UserModel.find({ _id: { $in: userIds } })
     .lean()
-    .exec();
+    .exec()) as unknown as IUser[];
   return users;
 }
 
@@ -48,6 +48,7 @@ async function update(id: string, user: User): Promise<User> {
     "email",
     "lastVisitedPage",
     "language",
+    "entityFilterOrder",
   ];
 
   const filteredUser = filterObj(user, ...allowedFields);
