@@ -9,7 +9,7 @@ type TextElementProps = {
 };
 
 export const TextElement: FC<TextElementProps> = ({ element }) => {
-  const style = { textAlign: element.align };
+  const style = { textAlign: element.align, minHeight: "1em" };
 
   const renderText = (c: SlateCustomText | SlateCustomElement, i?: number) => {
     if ("children" in c) return;
