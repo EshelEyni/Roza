@@ -17,22 +17,27 @@ import { BtnToggleFullScreen } from "../Buttons/BtnToggleFullScreen";
 import classNames from "classnames";
 import { H1 } from "../App/H1";
 import { Hr } from "../App/Hr";
+import { H4 } from "../App/H4";
+import { useTranslation } from "react-i18next";
 
 interface SlateEditorProps {
   initialValue: Descendant[];
   onChange: (value: Descendant[]) => void;
   fullScreenTitle: string;
+  wordsCount?: number;
 }
 
 export const SlateEditor: React.FC<SlateEditorProps> = ({
   initialValue,
   onChange,
   fullScreenTitle,
+  wordsCount,
 }) => {
   const editor = useMemo(() => withReact(createEditor()), []);
   const [value, setValue] = useState<Descendant[]>(initialValue);
   const [isFullScreen, setIsFullScreen] = useState(false);
   const { elMaxWidth } = useGetElMaxWidth({ width: 1000 });
+  const { t } = useTranslation();
 
   const renderElement = useCallback(
     (props: RenderElementProps) => <TextEditorElement {...props} />,
@@ -121,6 +126,16 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
           style={{ maxWidth: elMaxWidth }}
           onKeyDown={handleKeyDown}
         />
+        {wordsCount !== undefined && (
+          <div
+            className="flex w-full transition-all duration-300"
+            style={{ maxWidth: elMaxWidth }}
+          >
+            <H4>
+              {wordsCount} {t("words")}
+            </H4>
+          </div>
+        )}
       </Slate>
     </div>
   );

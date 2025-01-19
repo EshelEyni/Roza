@@ -1,6 +1,6 @@
 import classNames from "classnames";
 import { FC } from "react";
-import { FaExpandArrowsAlt } from "react-icons/fa";
+import { FaExpandArrowsAlt, FaCompressArrowsAlt } from "react-icons/fa";
 
 type BtnToggleFullScreenProps = {
   isFullScreen: boolean;
@@ -18,7 +18,7 @@ export const BtnToggleFullScreen: FC<BtnToggleFullScreenProps> = ({
         "!pt-1 !text-3xl": isFullScreen,
       })}
     >
-      {isFullScreen ? <FaExpandArrowsAlt /> : <FaExpandArrowsAlt />}
+      {isFullScreen ? <FaCompressArrowsAlt /> : <FaExpandArrowsAlt />}
     </button>
   );
 };
