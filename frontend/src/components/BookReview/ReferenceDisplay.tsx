@@ -7,7 +7,6 @@ import { useBookReview } from "../../contexts/BookReviewContext";
 import { ImgList } from "./ImgList";
 import { BtnMinimize } from "../Buttons/BtnMinimize";
 import { H3 } from "../App/H3";
-import { Hr } from "../App/Hr";
 
 type ReferenceEditProps = {
   reference: Reference;
@@ -56,7 +55,6 @@ export const ReferenceDisplay: FC<ReferenceEditProps> = ({ reference }) => {
       </div>
 
       {!isMinimized && <ImgList reference={reference} imgs={reference.imgs} />}
-      <Hr />
     </section>
   );
 };

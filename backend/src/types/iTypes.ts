@@ -81,6 +81,15 @@ export interface INote extends IBasicBookDataItem {
   type: "notes";
 }
 
+export interface IChapterNote {
+  chapterId: mongoose.Types.ObjectId;
+  noteId: mongoose.Types.ObjectId;
+  text: string;
+  isArchived: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface IBookReview extends Document {
   userId: mongoose.Types.ObjectId;
   name: string;
