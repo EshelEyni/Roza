@@ -50,10 +50,6 @@ export function useGetTitleTextBookItem() {
     type: string | null | undefined,
   ): SlateCustomElement[] {
     if (!type || !dataItem) return getDefaultSlateElement();
-    const { description, text } = {
-      description: t("placeholders.description"),
-      text: t("placeholders.text"),
-    };
 
     let itemText = null;
 
@@ -81,7 +77,7 @@ export function useGetTitleTextBookItem() {
     }
 
     if (!itemText || isSlateElementEmpty(itemText))
-      return getDefaultSlateElement(isNoteType(dataItem) ? text : description);
+      return getDefaultSlateElement();
 
     return itemText;
   }
@@ -95,16 +91,8 @@ export function useGetTitleTextBookItem() {
       !dataItem.text ||
       isSlateElementEmpty(dataItem.text)
     )
-      return getDefaultSlateElement(t("placeholders.text"));
+      return getDefaultSlateElement();
     return dataItem.text;
-  }
-
-  function getChapterText(dataItem: BookDataItem | null | undefined): string {
-    if (!dataItem || !isChapterType(dataItem) || !dataItem.text) return "";
-    const { text } = {
-      text: t("placeholders.text"),
-    };
-    return getSlateElementText(dataItem.text) || text;
   }
 
   function getText(
@@ -151,5 +139,5 @@ export function useGetTitleTextBookItem() {
     return itemTextStr;
   }
 
-  return { getTitle, getText, getChapterText, getTextEl, getChapterTextEl };
+  return { getTitle, getText, getTextEl, getChapterTextEl };
 }

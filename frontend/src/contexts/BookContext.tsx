@@ -30,7 +30,6 @@ type BookContextType = UseLoginWithTokenResult &
     pageTitle: string;
     itemTitle: string;
     text: string;
-    chatperText: string;
     textEl: SlateCustomElement[];
     chatperTextEl: SlateCustomElement[];
     chaptersTextElements: SlateCustomElement[][];
@@ -100,14 +99,13 @@ function BookProvider({ children }: BookProviderProps) {
       i => i.id === dataItemId,
     );
   const isReadMode = book?.isReadMode ?? false;
-  const { getTitle, getText, getChapterText, getChapterTextEl, getTextEl } =
+  const { getTitle, getText, getChapterTextEl, getTextEl } =
     useGetTitleTextBookItem();
   const { t } = useTranslation();
 
   const pageTitle = t(`DataBookItemTitle.${dataItemType}`);
   const itemTitle = getTitle(item, dataItemType);
   const text = getText(item, dataItemType);
-  const chatperText = getChapterText(item);
   const textEl = getTextEl(item, dataItemType);
   const chatperTextEl = getChapterTextEl(item);
   const chaptersTextElements = book
@@ -237,7 +235,6 @@ function BookProvider({ children }: BookProviderProps) {
     pageTitle,
     itemTitle,
     text,
-    chatperText,
     textEl,
     chatperTextEl,
     chaptersTextElements,

@@ -2,13 +2,20 @@ import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
 import { useTranslation } from "react-i18next";
 import { Hr } from "../../components/App/Hr";
-import { isChapterType } from "../../../../shared/services/utilService";
+import {
+  isChapterType,
+  isNoteType,
+} from "../../../../shared/services/utilService";
 import { Button } from "../../components/Buttons/Button";
 import { BookItemTitle } from "../../components/Book/BookItemTitle";
 import { TextElement } from "../../components/App/TextElement";
 import { DeleteEntityModal } from "../../components/Modals/DeleteEntityModal";
 import { Header } from "../../components/App/Header";
 import { H1 } from "../../components/App/H1";
+import {
+  getDefaultSlateElement,
+  isSlateElementEmpty,
+} from "../../services/utilService";
 
 export const DataBookItemDetails: FC = () => {
   const {
@@ -25,8 +32,20 @@ export const DataBookItemDetails: FC = () => {
   } = useBook();
 
   const { t } = useTranslation();
-
   if (!book || !dataItemType || !dataItemId || !item) return null;
+
+  const { description, text } = {
+    description: t("placeholders.description"),
+    text: t("placeholders.text"),
+  };
+
+  const textElToRender = isSlateElementEmpty(textEl)
+    ? getDefaultSlateElement(isNoteType(item) ? text : description)
+    : textEl;
+
+  const chatperTextElToRender = isSlateElementEmpty(chatperTextEl)
+    ? getDefaultSlateElement(text)
+    : chatperTextEl;
 
   return (
     <div className="flex h-full w-full flex-col items-center justify-center gap-1">
@@ -51,7 +70,7 @@ export const DataBookItemDetails: FC = () => {
       </Header>
       <Hr />
       <div className="w-full text-2xl font-normal text-app-800">
-        {textEl.map((el, i) => (
+        {textElToRender.map((el, i) => (
           <TextElement element={el} key={i} />
         ))}
       </div>
@@ -59,7 +78,7 @@ export const DataBookItemDetails: FC = () => {
         <>
           <Hr />
           <div className="w-full text-2xl font-normal text-app-800">
-            {chatperTextEl.map((el, i) => (
+            {chatperTextElToRender.map((el, i) => (
               <TextElement element={el} key={i} />
             ))}
           </div>

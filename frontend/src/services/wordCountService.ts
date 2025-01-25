@@ -5,25 +5,20 @@ export function countWordsInSlateElements(
 ): number {
   let wordCount = 0;
 
-  // Helper function to count words in a text string
   const countWordsInText = (text: string): number => {
+    console.log("text", text);
+    
     return text.trim().split(/\s+/).filter(Boolean).length;
   };
 
-  // Recursive function to traverse the elements
   const traverseElements = (elements: SlateCustomElement[]) => {
     elements.forEach(element => {
-      if ("children" in element) {
-        // If the element has children, check if they're text nodes
-        element.children.forEach(child => {
-          if ("text" in child) {
-            wordCount += countWordsInText(child.text);
-          }
-        });
-
-        // Recursively process child elements
-        traverseElements(element.children as SlateCustomElement[]);
-      }
+      if (!("children" in element)) return;
+      element.children.forEach(child => {
+        if (!("text" in child)) return;
+        wordCount += countWordsInText(child.text);
+      });
+      traverseElements(element.children as SlateCustomElement[]);
     });
   };
 
