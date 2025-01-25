@@ -60,9 +60,9 @@ export const BookDataPreview: FC<BookDataPreviewProps> = ({
         {text.length > 200 && (
           <span
             onClick={onShowMoreLessClick}
-            className="z-10 cursor-pointer text-app-500"
+            className="z-10 cursor-pointer text-app-500 ms-1"
           >
-            ...{isMinimized ? t("showMore") : t("showLess")}
+            {isMinimized ? `...${t("showMore")}` : t("showLess")}
           </span>
         )}
       </P>
