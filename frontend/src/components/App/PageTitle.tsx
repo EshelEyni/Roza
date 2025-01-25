@@ -55,7 +55,7 @@ export const PageTitle: FC<PageTitleProps> = ({
           <H1>
             {entityName}
 
-            {totalWordCount && (
+            {totalWordCount !== undefined && (
               <span className="ms-1 text-xl">
                 ({totalWordCount} {t("words")})
               </span>
