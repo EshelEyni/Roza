@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { UseGetBookResult, UseLoginWithTokenResult } from "../types/app";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useGetBook } from "../hooks/reactQuery/get/useGetBook";
@@ -17,6 +17,7 @@ import { markItemAsDeleted, updateBookData } from "../services/bookUtilService";
 import { isChapterType } from "../../../shared/services/utilService";
 import { downloadFile } from "../services/utilService";
 import { PDFCreator } from "../services/pdfService/PDFCreator";
+import { countWordsInSlateElements } from "../services/wordCountService";
 
 type BookContextType = UseLoginWithTokenResult &
   UseGetBookResult & {
@@ -33,6 +34,8 @@ type BookContextType = UseLoginWithTokenResult &
     textEl: SlateCustomElement[];
     chatperTextEl: SlateCustomElement[];
     chaptersTextElements: SlateCustomElement[][];
+    totalWordCount: number;
+    currChapterWordCount: number;
     updateBook: (newBook: Book) => void;
     onSetFilterBy: (filterBy: BooKDataItemType) => void;
     onNavigateToEdit: () => void;
@@ -108,11 +111,19 @@ function BookProvider({ children }: BookProviderProps) {
   const text = getText(item, dataItemType);
   const textEl = getTextEl(item, dataItemType);
   const chatperTextEl = getChapterTextEl(item);
-  const chaptersTextElements = book
-    ? book.chapters.map(chapter => {
-        return getChapterTextEl(chapter);
-      })
-    : [];
+  const chaptersTextElements = useMemo(() => {
+    if (!book) return [];
+    return book.chapters.map(chapter => getChapterTextEl(chapter));
+  }, [book, getChapterTextEl]);
+
+  const { totalWordCount, currChapterWordCount } = useMemo(() => {
+    const totalWordCount = chaptersTextElements.reduce(
+      (acc, curr) => acc + countWordsInSlateElements(curr),
+      0,
+    );
+    const currChapterWordCount = countWordsInSlateElements(chatperTextEl);
+    return { totalWordCount, currChapterWordCount };
+  }, [chatperTextEl, chaptersTextElements]);
 
   const { updateBook } = useUpdateBook();
   const navigate = useNavigate();
@@ -238,6 +249,8 @@ function BookProvider({ children }: BookProviderProps) {
     textEl,
     chatperTextEl,
     chaptersTextElements,
+    totalWordCount,
+    currChapterWordCount,
     updateBook,
     onSetFilterBy,
     onNavigateToEdit,

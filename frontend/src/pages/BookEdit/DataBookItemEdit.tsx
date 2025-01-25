@@ -1,4 +1,4 @@
-import { FC, useMemo } from "react";
+import { FC } from "react";
 import { useBook } from "../../contexts/BookContext";
 import { Hr } from "../../components/App/Hr";
 import {
@@ -15,7 +15,6 @@ import { Button } from "../../components/Buttons/Button";
 import { H2 } from "../../components/App/H2";
 import { Input } from "../../components/App/Input";
 import { Header } from "../../components/App/Header";
-import { countWordsInSlateElements } from "../../services/wordCountService";
 
 export const DataBookItemEdit: FC = () => {
   const {
@@ -26,6 +25,7 @@ export const DataBookItemEdit: FC = () => {
     itemTitle,
     textEl,
     chatperTextEl,
+    currChapterWordCount,
     onGoToDetails,
   } = useBook();
   const { updateBook } = useUpdateBook();
@@ -127,11 +127,6 @@ export const DataBookItemEdit: FC = () => {
     });
   }
 
-  const wordCount = useMemo(
-    () => countWordsInSlateElements(chatperTextEl),
-    [chatperTextEl],
-  );
-
   if (!book || !dataItemType || !dataItemId || !item) return null;
   return (
     <section className="flex h-full w-full flex-col justify-center gap-4">
@@ -173,7 +168,7 @@ export const DataBookItemEdit: FC = () => {
                 .debouncedFunc
             }
             fullScreenTitle={itemTitle}
-            wordsCount={wordCount}
+            wordsCount={currChapterWordCount}
           />
         </>
       )}

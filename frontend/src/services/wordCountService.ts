@@ -6,8 +6,6 @@ export function countWordsInSlateElements(
   let wordCount = 0;
 
   const countWordsInText = (text: string): number => {
-    console.log("text", text);
-    
     return text.trim().split(/\s+/).filter(Boolean).length;
   };
 
