@@ -11,6 +11,7 @@ type BookTitleProps = {
 export const BookTitle: FC<BookTitleProps> = ({ isEdit = false }) => {
   const {
     book,
+    totalWordCount,
     isSuccessBook,
     onNavigateToEdit,
     onArchiveBook,
@@ -31,6 +32,7 @@ export const BookTitle: FC<BookTitleProps> = ({ isEdit = false }) => {
       isEdit={isEdit}
       entityType="book"
       entityName={book.name}
+      totalWordCount={totalWordCount}
       handleInputChange={handleInputChange}
       onNavigateToEdit={onNavigateToEdit}
       modalName="archiveBook"

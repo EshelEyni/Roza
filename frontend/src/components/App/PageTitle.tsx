@@ -13,6 +13,7 @@ type PageTitleProps = {
   isEdit: boolean;
   entityType: string;
   entityName: string;
+  totalWordCount?: number;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onNavigateToEdit: () => void;
   modalName: string;
@@ -26,6 +27,7 @@ export const PageTitle: FC<PageTitleProps> = ({
   isEdit,
   entityType,
   entityName,
+  totalWordCount,
   handleInputChange,
   onNavigateToEdit,
   modalName,
@@ -50,7 +52,15 @@ export const PageTitle: FC<PageTitleProps> = ({
         />
       ) : (
         <Header addedClassName="flex-col md:flex-row ">
-          <H1>{entityName}</H1>
+          <H1>
+            {entityName}
+
+            {totalWordCount && (
+              <span className="ms-1 text-xl">
+                ({totalWordCount} {t("words")})
+              </span>
+            )}
+          </H1>
 
           <div className="flex items-center justify-between gap-2">
             {onSetReadMode && (
