@@ -29,6 +29,7 @@ import { ReaderContents } from "./ReaderContents";
 import { ReaderSettings } from "./ReaderSettings";
 import { ReaderSearch } from "./ReaderSearch";
 import { ReaderProgress } from "./ReaderProgress";
+import { ReaderDictionary, ReaderWordSelection } from "./ReaderDictionary";
 
 const palettes = {
   light: { background: "#fffefa", color: "#28231e" },
@@ -97,6 +98,9 @@ export function EpubReader({
   const layoutTask = useRef<Promise<void>>(Promise.resolve());
   const explicitNavigation = useRef(false);
   const navigationVersion = useRef(0);
+  const [wordSelection, setWordSelection] =
+    useState<ReaderWordSelection | null>(null);
+  const closeDictionary = useCallback(() => setWordSelection(null), []);
   const [toc, setToc] = useState<NavItem[]>([]);
   const [href, setHref] = useState("");
   const [panel, setPanel] = useState<"contents" | "settings" | "search" | null>(
@@ -117,6 +121,7 @@ export function EpubReader({
   const move = useCallback(
     (direction: "next" | "prev") => {
       const rendition = renditionRef.current;
+      setWordSelection(null);
       if (rendition)
         void rendition[direction]().catch(() =>
           setError(t("reader.navigationError")),
@@ -135,6 +140,7 @@ export function EpubReader({
     let hasLocations = false;
     const element = host.current!;
     const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setWordSelection(null);
       const target = event.target as HTMLElement | null;
       if (
         event.defaultPrevented ||
@@ -217,6 +223,9 @@ export function EpubReader({
         applyPreferences(rendition, preferences);
         rendition.hooks.content.register((contents: Contents) => {
           contents.document.addEventListener("keydown", onKey);
+          contents.document.addEventListener("pointerdown", () =>
+            setWordSelection(null),
+          );
           // Never navigate the app or open remote links from an uploaded document.
           contents.document.addEventListener(
             "click",
@@ -235,8 +244,34 @@ export function EpubReader({
           const iframe = element.querySelector("iframe");
           iframe?.setAttribute("title", book.title);
         });
+        rendition.on("selected", (cfi: string, contents: Contents) => {
+          if (cancelled || changingLayout.current) return;
+          const range = contents.range(cfi);
+          const word = range
+            .toString()
+            .trim()
+            .replace(/^[“"‘(]+|[”"’.,;:!?)]+$/g, "");
+          if (
+            !/^[a-zA-Z]+(?:['’‘-][a-zA-Z]+)*$/.test(word) ||
+            word.length > 80
+          ) {
+            setWordSelection(null);
+            return;
+          }
+          const rect = range.getBoundingClientRect();
+          const frame = contents.document.defaultView?.frameElement;
+          if (!frame) return;
+          const offset = frame.getBoundingClientRect();
+          setWordSelection({
+            word,
+            cfi,
+            x: offset.left + rect.left,
+            y: offset.top + rect.bottom + 8,
+          });
+        });
         rendition.on("relocated", (location: Location) => {
           if (cancelled || !ready || changingLayout.current) return;
+          setWordSelection(null);
           const start = location.start;
           setHref(start.href);
           setAtStart(location.atStart);
@@ -365,6 +400,7 @@ export function EpubReader({
   }, []);
 
   async function navigateTo(target: string) {
+    setWordSelection(null);
     if (target.startsWith("epubcfi(")) {
       const anchor = new EpubCFI(target);
       anchor.collapse(true);
@@ -489,6 +525,14 @@ export function EpubReader({
       className={"reader-shell reader-theme-" + state.preferences.theme}
       ref={shell}
     >
+      {wordSelection && (
+        <ReaderDictionary
+          key={wordSelection.cfi}
+          selection={wordSelection}
+          bookId={book.id}
+          onClose={closeDictionary}
+        />
+      )}
       <header className="reader-toolbar">
         <Link
           className="reader-icon-button"

@@ -150,6 +150,7 @@ JWT_EXPIRATION_TIME=7d
 | `TEST_DB_NAME` | Database selected for test mode and remote test connections. |
 | `JWT_SECRET_CODE` | Private secret used to sign and verify authentication tokens. |
 | `JWT_EXPIRATION_TIME` | JWT lifetime, such as `7d`. |
+| `GOOGLE_TRANSLATE_API_KEY` | Optional backend-only Google Cloud Translation Basic v2 key, used when local dictionaries miss. |
 
 The application uses `dotenv.config()` without an explicit path, so it reads `.env` from the process working directory. The documented npm scripts launch the backend from `backend/` and load `backend/.env`; the root copy applies to launches from the repository root. Two files are the documented local convention, but a single backend process reads only the file in its working directory. Keep their settings in sync.
 
@@ -359,10 +360,49 @@ READER_ALLOWED_USER_IDS=your-roza-user-object-id
 
 The feature is disabled by default. Use the relevant account IDs for each environment; multiple IDs can be comma-separated. These are Roza MongoDB user IDs, not usernames or GitHub IDs. Restart the backend after changing environment settings. The backend checks both the flag and user allowlist for every Reader operation and checks file/state ownership. Unauthorized users do not see Reader navigation.
 
-Open **Reader** to upload an EPUB, then open a library card to read. The reader supports contents navigation, page buttons/arrow keys, continuous scrolling, text size, fonts, spacing, width, page colors, and fullscreen. Reading location and settings save to the database; an unsynced indicator offers retry, with browser-local recovery for pending changes. Original uploads and sanitized reading copies are kept private. Dictionary, vocabulary, and AI chat are separate future steps.
+Open **Reader** to upload an EPUB, then open a library card to read. The reader supports contents navigation, page buttons/arrow keys, continuous scrolling, text size, fonts, spacing, width, page colors, and fullscreen. Reading location and settings save to the database; an unsynced indicator offers retry, with browser-local recovery for pending changes. Original uploads and sanitized reading copies are kept private. Hebrew dictionary lookup and automatic vocabulary saves are available; AI chat is a future step.
 
 Use the reader search button to find words or phrases across the book. The search panel shows the total number of matches and loads excerpts in batches of 25 as you scroll. Selecting a result opens and highlights its exact text location. Where the EPUB supplies published page numbers, those are shown; otherwise results use stable book locations and chapter names.
 
 Drag the footer progress thumb to jump through the book, or focus it and use the arrow keys, Home, or End. Seeking becomes available after the book location map is ready, works in both reading modes, and saves the resulting reading position.
 
 See [the Reader PRD](docs/epub-reader-prd.md) for the complete product scope.
+
+### Hebrew dictionary and vocabulary
+
+Select one English word in the reading text, then choose **Look up in Hebrew** from the compact selection menu. The dictionary card shows the English word, Hebrew meanings and a pronunciation button. Expand **More meanings, explanations & examples** for the information available in the dataset. Press Escape, use the close button, or click back in the book to dismiss it.
+
+Lookups use bundled Wiktionary data as the primary source and Princeton WordNet 3.0 / Hebrew WordNet as a fallback: 17,558 supported English headwords in total, plus attested inflected forms. Source attribution, licenses and the snapshot checksum are retained. Coverage is still incomplete: some words and literary senses have no Hebrew translation. With GOOGLE_TRANSLATE_API_KEY configured in backend/.env, missing local entries fall back to Google Translate. Without a key, missing words are reported and not saved. Meanings are dictionary senses, not automatic context-specific translations. Pronunciation uses the browser's speech synthesis and an installed English voice; an unavailable-voice message appears when speech cannot be provided. Local lookup needs no API key; the optional Google fallback needs GOOGLE_TRANSLATE_API_KEY.
+
+Each successful deliberate lookup saves a private vocabulary entry in MongoDB. Entries are grouped by normalized English headword and retain the observed forms, book IDs, dictionary senses, first/last lookup dates and lookup count. Lookup events retain the book and selected EPUB CFI. Attested irregular forms and verified regular stems can share a headword. Request IDs make retries idempotent; expanding details and playing pronunciation do not increase the count. Vocabulary browsing, export and AI chat remain future steps.
+
+Dictionary assets and full third-party notices live in `backend/dictionary/`; see its [source and rebuilding notes](backend/dictionary/README.md). Keep that directory alongside `backend/build/` in deployments. The production Docker image copies it automatically. The dictionary is loaded once by the backend, and the browser receives only the requested entry. Restart the backend after replacing the dataset.
+
+### Google Translate fallback setup
+
+When the local dictionaries have no Hebrew entry, Roza can use **Google Translate** through the [Cloud Translation API](https://cloud.google.com/translate). The backend uses Cloud Translation Basic v2 with the standard NMT model. It sends only the normalized selected English word, never the EPUB, paragraph or reading position.
+
+1. Open [Google Cloud Console](https://console.cloud.google.com/) and create or select a project.
+2. Link a billing account to that project. Billing must be enabled even when usage stays within Google's monthly free credit.
+3. Open **APIs & Services → Library**, search for **Cloud Translation API**, and enable it.
+4. Open **APIs & Services → Credentials → Create credentials → API key**.
+5. Edit the key. Under **API restrictions**, choose **Restrict key** and select **Cloud Translation API**. This is a backend key: use server public-IP restrictions where practical, rather than browser HTTP-referrer restrictions. For local development, a changing public IP may make an IP restriction impractical; keep the API restriction enabled.
+6. Put the key in `backend/.env`, and keep the root `.env` copy in sync if you use it:
+
+```dotenv
+GOOGLE_TRANSLATE_API_KEY=your-google-cloud-api-key
+```
+
+7. Restart the backend. There is no frontend env setting, and the key must not be put in a `VITE_` variable or browser code.
+
+With the documented launch commands, `backend/.env` is the file actually loaded. Both real env files are ignored by Git. An empty/missing key disables the Google fallback without affecting local dictionaries.
+
+The backend authenticates using the `x-goog-api-key` header, not a URL parameter. Source/target are explicitly `en`/`he`; the API returns one automatic translation rather than dictionary definitions, alternative senses or examples. The reader labels it as automatic, displays Google's official linked attribution badge, and keeps English pronunciation available.
+
+Successful translations are saved to the user's vocabulary with the Google source marker. Existing counters and idempotent request IDs still apply. In-memory caching reuses successful translations for 24 hours, missing translations for 10 minutes, and shares concurrent requests for the same word. The cache holds at most 500 entries and is reset when the backend restarts. Results from different API keys do not share a cache entry. Google errors and timeouts are not cached or recorded as successful lookups.
+
+Google's standard NMT pricing currently includes a monthly $10 credit equivalent to the first 500,000 characters, then $20 per million characters. Check [current pricing](https://cloud.google.com/products/translate/pricing), and configure usage quotas in the Cloud Console for your desired spending limit.
+
+Troubleshooting: a provider 403 generally means the key, key restrictions, enabled API or billing needs checking; 429 indicates a quota/rate issue. Network and timeout failures return a retryable error. A result with no Hebrew text is treated as missing rather than saved as a translation.
+
+See Google's [setup guide](https://docs.cloud.google.com/translate/docs/setup), [API-key authentication](https://docs.cloud.google.com/translate/docs/authentication), [v2 reference](https://docs.cloud.google.com/translate/docs/reference/rest/v2/translate), and [attribution requirements](https://docs.cloud.google.com/translate/attribution).

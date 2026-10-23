@@ -12,6 +12,8 @@ import {
   updateReaderState,
 } from "../../controllers/reader/readerController";
 
+import { lookupReaderDictionary } from "../../controllers/reader/readerDictionaryController";
+
 const router = express.Router();
 
 router.use(checkUserAuthentication);
@@ -37,6 +39,7 @@ router.post(
   },
   addReaderBook,
 );
+router.post("/:id/dictionary", lookupReaderDictionary);
 router.get("/:id/file", getReaderFile);
 router.get("/:id", getReaderBook);
 router.patch("/:id/state", updateReaderState);

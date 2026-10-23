@@ -241,6 +241,32 @@
     "locationNumber": "מיקום {{number}}",
     "matchNumber": "התאמה {{number}}",
     "seek": "מעבר למיקום בספר",
-    "preparingNavigation": "מכינים ניווט בספר…"
+    "preparingNavigation": "מכינים ניווט בספר…",
+    "dictionaryTitle": "מילון אנגלי–עברי",
+    "lookupHebrew": "חיפוש במילון עברי",
+    "pronounce": "השמעת המילה באנגלית",
+    "pronunciationUnavailable": "ההגייה באנגלית אינה זמינה. יש לוודא שמותקן במחשב קול באנגלית.",
+    "lookupLoading": "מחפש ושומר…",
+    "lookupError": "החיפוש והשמירה לא הושלמו. אפשר לנסות שוב בלי להגדיל את המונה פעמיים.",
+    "wordNotFound": "המילה לא נמצאה במילון המקומי ולא נוספה לאוצר המילים.",
+    "dictionaryDetails": "משמעויות נוספות, הסברים ודוגמאות",
+    "vocabularySaved": "נשמר באוצר המילים · {{count}} חיפושים",
+    "pos": {
+      "n": "שם עצם",
+      "v": "פועל",
+      "a": "שם תואר",
+      "r": "תואר הפועל",
+      "pron": "כינוי גוף",
+      "prep": "מילת יחס",
+      "conj": "מילת חיבור",
+      "det": "מגדיר",
+      "intj": "מילת קריאה",
+      "num": "שם מספר",
+      "name": "שם פרטי",
+      "article": "תווית",
+      "particle": "מילית",
+      "other": "אחר"
+    },
+    "automaticTranslation": "תרגום אוטומטי באמצעות Google Translate."
   }
 }
