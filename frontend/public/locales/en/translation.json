@@ -237,6 +237,21 @@
     "locationNumber": "Location {{number}}",
     "matchNumber": "Match {{number}}",
     "seek": "Go to position in book",
-    "preparingNavigation": "Preparing book navigation…"
+    "preparingNavigation": "Preparing book navigation…",
+    "dictionaryTitle": "English–Hebrew dictionary",
+    "lookupHebrew": "Look up in Hebrew",
+    "pronounce": "Pronounce English word",
+    "pronunciationUnavailable": "English pronunciation is unavailable. Check that an English voice is installed on this computer.",
+    "lookupLoading": "Looking up and saving…",
+    "lookupError": "Could not complete and save this lookup. Retry safely without counting it twice.",
+    "wordNotFound": "This word is not in the local dictionary. It has not been added to vocabulary.",
+    "dictionaryDetails": "More meanings, explanations & examples",
+    "vocabularySaved": "Saved to vocabulary · {{count}} lookups",
+    "pos": {
+      "n": "Noun",
+      "v": "Verb",
+      "a": "Adjective",
+      "r": "Adverb"
+    }
   }
 }

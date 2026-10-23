@@ -12,6 +12,7 @@ jest.mock("../../middlewares/authGuards/authGuardsMiddleware", () => ({
 }));
 jest.mock("../../models/reader/readerBookModel", () => ({
   ReaderBookModel: {
+    exists: jest.fn(),
     find: jest.fn(),
     findOne: jest.fn(),
     findOneAndUpdate: jest.fn(),
@@ -134,5 +135,35 @@ describe("Reader access and isolation", () => {
       .send({ filename: "book.epub" });
     expect(response.status).toBe(400);
     expect(ReaderBookModel.create).not.toHaveBeenCalled();
+  });
+
+  it("checks ownership before looking up dictionary words", async () => {
+    (ReaderBookModel.exists as jest.Mock).mockResolvedValue(null);
+    const response = await request(app)
+      .post("/api/reader/" + id + "/dictionary")
+      .set("Authorization", "test")
+      .send({ word: "child", requestId: "dictionary-request-001" });
+    expect(response.status).toBe(404);
+    expect(ReaderBookModel.exists).toHaveBeenCalledWith({ _id: id, userId: mockUserId });
+  });
+
+  it("reports missing dictionary words without creating vocabulary", async () => {
+    (ReaderBookModel.exists as jest.Mock).mockResolvedValue({ _id: id });
+    const response = await request(app)
+      .post("/api/reader/" + id + "/dictionary")
+      .set("Authorization", "test")
+      .send({ word: "zzzxxyy", requestId: "dictionary-request-002" });
+    expect(response.status).toBe(200);
+    expect(response.body.data).toEqual({ entry: null });
+    expect(response.headers["cache-control"]).toContain("no-store");
+  });
+
+  it("rejects phrases and malformed lookup identifiers before database access", async () => {
+    const response = await request(app)
+      .post("/api/reader/" + id + "/dictionary")
+      .set("Authorization", "test")
+      .send({ word: "two words", requestId: "short" });
+    expect(response.status).toBe(400);
+    expect(ReaderBookModel.exists).not.toHaveBeenCalled();
   });
 });

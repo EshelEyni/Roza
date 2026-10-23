@@ -359,10 +359,20 @@ READER_ALLOWED_USER_IDS=your-roza-user-object-id
 
 The feature is disabled by default. Use the relevant account IDs for each environment; multiple IDs can be comma-separated. These are Roza MongoDB user IDs, not usernames or GitHub IDs. Restart the backend after changing environment settings. The backend checks both the flag and user allowlist for every Reader operation and checks file/state ownership. Unauthorized users do not see Reader navigation.
 
-Open **Reader** to upload an EPUB, then open a library card to read. The reader supports contents navigation, page buttons/arrow keys, continuous scrolling, text size, fonts, spacing, width, page colors, and fullscreen. Reading location and settings save to the database; an unsynced indicator offers retry, with browser-local recovery for pending changes. Original uploads and sanitized reading copies are kept private. Dictionary, vocabulary, and AI chat are separate future steps.
+Open **Reader** to upload an EPUB, then open a library card to read. The reader supports contents navigation, page buttons/arrow keys, continuous scrolling, text size, fonts, spacing, width, page colors, and fullscreen. Reading location and settings save to the database; an unsynced indicator offers retry, with browser-local recovery for pending changes. Original uploads and sanitized reading copies are kept private. Hebrew dictionary lookup and automatic vocabulary saves are available; AI chat is a future step.
 
 Use the reader search button to find words or phrases across the book. The search panel shows the total number of matches and loads excerpts in batches of 25 as you scroll. Selecting a result opens and highlights its exact text location. Where the EPUB supplies published page numbers, those are shown; otherwise results use stable book locations and chapter names.
 
 Drag the footer progress thumb to jump through the book, or focus it and use the arrow keys, Home, or End. Seeking becomes available after the book location map is ready, works in both reading modes, and saves the resulting reading position.
 
 See [the Reader PRD](docs/epub-reader-prd.md) for the complete product scope.
+
+### Hebrew dictionary and vocabulary
+
+Select one English word in the reading text, then choose **Look up in Hebrew** from the compact selection menu. The dictionary card shows the English word, Hebrew meanings and a pronunciation button. Expand **More meanings, explanations & examples** for the information available in the dataset. Press Escape, use the close button, or click back in the book to dismiss it.
+
+Lookups use the bundled local Princeton WordNet 3.0 / Hebrew WordNet dataset, with roughly 10,000 English headwords (including compound entries). Coverage is limited: some common words and literary terms are absent. Missing words are explicitly reported and are not saved; there is no paid translation or AI fallback. Meanings are dictionary senses, not automatic context-specific translations. Pronunciation uses the browser's speech synthesis and an installed English voice; an unavailable-voice message appears when speech cannot be provided. No new environment variables or API keys are required.
+
+Each successful deliberate lookup saves a private vocabulary entry in MongoDB. Entries are grouped by normalized English headword and retain the observed forms, book IDs, dictionary senses, first/last lookup dates and lookup count. Lookup events retain the book and selected EPUB CFI. Attested irregular forms and verified regular stems can share a headword. Request IDs make retries idempotent; expanding details and playing pronunciation do not increase the count. Vocabulary browsing, export and AI chat remain future steps.
+
+Dictionary assets and full third-party notices live in `backend/dictionary/`; see its [source and rebuilding notes](backend/dictionary/README.md). Keep that directory alongside `backend/build/` in deployments. The production Docker image copies it automatically. The dictionary is loaded once by the backend, and the browser receives only the requested entry. Restart the backend after replacing the dataset.
