@@ -14,6 +14,7 @@ export interface ReaderDictionaryEntry {
   word: string;
   headword: string;
   source: string;
+  kind?: "translation";
   senses: ReaderDictionarySense[];
   attribution?: {
     name: string;

@@ -262,6 +262,7 @@
       "article": "Article",
       "particle": "Particle",
       "other": "Other"
-    }
+    },
+    "automaticTranslation": "Automatic translation by Google Translate."
   }
 }

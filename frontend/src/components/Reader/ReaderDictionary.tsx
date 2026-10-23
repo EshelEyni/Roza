@@ -197,59 +197,88 @@ export function ReaderDictionary({
           {result && !entry && <p role="status">{t("reader.wordNotFound")}</p>}
           {entry && (
             <>
-              <p className="reader-dictionary-meanings" lang="he" dir="rtl">
+              <p
+                className="reader-dictionary-meanings"
+                lang={entry.kind === "translation" ? "he-x-mtfrom-en" : "he"}
+                dir="rtl"
+              >
                 {entry.senses[0].meanings.join(" · ")}
               </p>
-              <details>
-                <summary>{t("reader.dictionaryDetails")}</summary>
-                {entry.senses.map(sense => (
-                  <section key={sense.id} className="reader-dictionary-sense">
-                    <small>{t("reader.pos." + sense.partOfSpeech)}</small>
-                    {!!sense.labels?.length && (
-                      <p
-                        className="reader-dictionary-labels"
-                        lang="en"
-                        dir="ltr"
-                      >
-                        {sense.labels.join(" · ")}
+              {entry.kind === "translation" && (
+                <p className="reader-dictionary-source">
+                  {t("reader.automaticTranslation")}
+                </p>
+              )}
+              {entry.kind !== "translation" && (
+                <details>
+                  <summary>{t("reader.dictionaryDetails")}</summary>
+                  {entry.senses.map(sense => (
+                    <section key={sense.id} className="reader-dictionary-sense">
+                      <small>{t("reader.pos." + sense.partOfSpeech)}</small>
+                      {!!sense.labels?.length && (
+                        <p
+                          className="reader-dictionary-labels"
+                          lang="en"
+                          dir="ltr"
+                        >
+                          {sense.labels.join(" · ")}
+                        </p>
+                      )}
+                      <p lang="he" dir="rtl">
+                        {sense.meanings.join(" · ")}
                       </p>
-                    )}
-                    <p lang="he" dir="rtl">
-                      {sense.meanings.join(" · ")}
-                    </p>
-                    {sense.explanations.map((text, index) => (
-                      <p key={index} lang="he" dir="rtl">
-                        {text}
-                      </p>
-                    ))}
-                    {sense.definition && (
-                      <p lang="en" dir="ltr">
-                        {sense.definition}
-                      </p>
-                    )}
-                    {sense.sourceUrl && (
-                      <a
-                        className="reader-dictionary-source"
-                        href={sense.sourceUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        {sense.source}
-                      </a>
-                    )}
-                    {sense.examples.map((text, index) => (
-                      <blockquote key={index} lang="en" dir="ltr">
-                        {text}
-                      </blockquote>
-                    ))}
-                  </section>
-                ))}
-              </details>
+                      {sense.explanations.map((text, index) => (
+                        <p key={index} lang="he" dir="rtl">
+                          {text}
+                        </p>
+                      ))}
+                      {sense.definition && (
+                        <p lang="en" dir="ltr">
+                          {sense.definition}
+                        </p>
+                      )}
+                      {sense.sourceUrl && (
+                        <a
+                          className="reader-dictionary-source"
+                          href={sense.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          {sense.source}
+                        </a>
+                      )}
+                      {sense.examples.map((text, index) => (
+                        <blockquote key={index} lang="en" dir="ltr">
+                          {text}
+                        </blockquote>
+                      ))}
+                    </section>
+                  ))}
+                </details>
+              )}
               <p className="reader-dictionary-saved" role="status">
                 {t("reader.vocabularySaved", { count: result.lookupCount })}
               </p>
               <small className="reader-dictionary-source">
-                {entry.attribution ? (
+                {entry.kind === "translation" ? (
+                  <a
+                    className="reader-google-attribution"
+                    href="https://translate.google.com/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <img
+                      className="reader-google-badge-color"
+                      src="/images/google-translate/color-regular.png"
+                      alt="Powered by Google Translate"
+                    />
+                    <img
+                      className="reader-google-badge-white"
+                      src="/images/google-translate/white-regular.png"
+                      alt="Powered by Google Translate"
+                    />
+                  </a>
+                ) : entry.attribution ? (
                   <>
                     <a
                       href={entry.attribution.url}

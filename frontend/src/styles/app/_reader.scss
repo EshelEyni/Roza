@@ -779,3 +779,20 @@
 .reader-theme-dark .reader-dictionary-saved {
   color: #a9c69a;
 }
+.reader-google-attribution {
+  display: inline-flex;
+  margin-top: 8px;
+}
+.reader-google-attribution img {
+  max-width: 100%;
+  height: auto;
+}
+.reader-google-badge-white {
+  display: none;
+}
+.reader-theme-dark .reader-google-badge-color {
+  display: none;
+}
+.reader-theme-dark .reader-google-badge-white {
+  display: block;
+}

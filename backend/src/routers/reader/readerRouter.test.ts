@@ -4,6 +4,10 @@ import { ReaderBookModel } from "../../models/reader/readerBookModel";
 import readerRouter from "./readerRouter";
 import { defaultReaderPreferences } from "../../services/reader/readerUtilService";
 
+jest.mock("../../services/reader/googleTranslateService", () => ({
+  translateReaderWord: jest.fn().mockResolvedValue(null),
+}));
+
 let mockUserId = "507f1f77bcf86cd799439011";
 jest.mock("../../services/ALSService", () => ({ getLoggedInUserIdFromReq: () => mockUserId }));
 jest.mock("../../middlewares/authGuards/authGuardsMiddleware", () => ({

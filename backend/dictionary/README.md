@@ -1,6 +1,6 @@
 # Local Reader dictionaries
 
-The backend performs local English-to-Hebrew lookups. No translation API, AI service or new environment variable is required.
+The backend performs local English-to-Hebrew lookups first. An optional Google Translate fallback handles missing local entries when GOOGLE_TRANSLATE_API_KEY is set; see the root README for setup.
 
 ## Bundled data
 

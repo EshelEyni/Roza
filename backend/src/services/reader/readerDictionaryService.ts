@@ -1,4 +1,5 @@
 import fs from "fs";
+import { translateReaderWord } from "./googleTranslateService";
 import path from "path";
 import {
   ReaderDictionaryEntry,
@@ -63,4 +64,9 @@ export function lookupReaderWord(input: string): ReaderDictionaryEntry | null {
     return { word, headword, source, senses, attribution };
   }
   return null;
+}
+export async function lookupReaderWordWithTranslation(
+  input: string,
+): Promise<ReaderDictionaryEntry | null> {
+  return lookupReaderWord(input) || translateReaderWord(normalizeReaderWord(input));
 }

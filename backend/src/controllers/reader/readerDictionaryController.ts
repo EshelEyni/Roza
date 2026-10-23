@@ -7,7 +7,7 @@ import {
 } from "../../models/reader/readerVocabularyModel";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
-import { lookupReaderWord } from "../../services/reader/readerDictionaryService";
+import { lookupReaderWordWithTranslation } from "../../services/reader/readerDictionaryService";
 
 export const lookupReaderDictionary = asyncErrorCatcher(async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "private, no-store");
@@ -31,7 +31,7 @@ export const lookupReaderDictionary = asyncErrorCatcher(async (req: Request, res
   ) {
     throw new AppError("Book not found.", 404);
   }
-  const entry = lookupReaderWord(word);
+  const entry = await lookupReaderWordWithTranslation(word);
   if (!entry) {
     res.json({ status: "success", data: { entry: null } });
     return;
