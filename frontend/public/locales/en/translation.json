@@ -264,7 +264,24 @@
       "passageHint": "What would you like to understand about this passage?",
       "generalHint": "Ask about a character, an idea, or what is happening in the book. No spoilers beyond your current position unless you allow them.",
       "selectionLimit": "Select a passage of up to 3,000 characters to ask AI.",
-      "selectionActions": "Selected passage actions"
+      "selectionActions": "Selected passage actions",
+      "settings": {
+        "title": "AI settings",
+        "description": "Customize your reading companion across all books and conversations. Changes apply to future answers after saving.",
+        "loading": "Loading AI settings…",
+        "length": "Answer length",
+        "short": "Short — 2–4 sentences",
+        "standard": "Standard — 1–2 paragraphs",
+        "detailed": "Detailed explanation",
+        "simple": "Use simple language",
+        "instructions": "Custom instructions / skill",
+        "example": "Explain metaphors in plain language. Give an example only when I ask. Focus on what the narrator means.",
+        "hint": "Describe how you want the AI to explain things. Your answer length, question language, book context, and spoiler preferences still apply.",
+        "reset": "Reset to defaults",
+        "save": "Save settings",
+        "saving": "Saving…",
+        "saved": "Settings saved. They will apply to your next question."
+      }
     }
   }
 }

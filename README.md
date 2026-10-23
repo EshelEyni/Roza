@@ -401,3 +401,9 @@ Targeted backend checks (from `backend/`):
 ```powershell
 npx jest --runInBand --watchAll=false --runTestsByPath src/routers/reader/readerChatRouter.test.ts src/routers/reader/readerRouter.test.ts src/services/reader/readerContextService.test.ts src/services/reader/readerAiService.test.ts src/services/reader/epubService.test.ts
 ```
+
+#### Customize the reading companion
+
+Open **Book chat → AI settings** (the gear next to Saved chats). Configure answer length (**Short**, **Standard**, or **Detailed**), simple language, and up to 1,500 characters of custom instructions/skill preferences. Click **Save settings** to apply them to future answers across your account's books and conversations. Settings persist in MongoDB's `reader_ai_settings` collection. Reset to defaults restores the form; click Save to persist that reset.
+
+The default asks for a direct answer in 2–4 short sentences, ideally under 80 words, using simple everyday language. A question that explicitly asks for more detail can receive a longer answer. Custom instructions affect explanation style while book-grounding, question-language, and spoiler rules continue to apply. Existing answers are unchanged. The private settings endpoints are `GET /api/reader/ai-settings` and `PATCH /api/reader/ai-settings`; ownership comes from the signed-in user, never a client-supplied user ID.

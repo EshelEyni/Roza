@@ -34,15 +34,19 @@ jest.mock("../../services/reader/readerStorageService", () => ({
   }),
 }));
 jest.mock("../../services/reader/readerContextService", () => ({
-  ReaderContext: jest
-    .fn()
-    .mockImplementation(() => ({
-      retrieve: mockRetrieve,
-      passage: (cfi: string) => ({ cfi, text: "garden" }),
-      isAtOrBefore: () => true,
-    })),
+  ReaderContext: jest.fn().mockImplementation(() => ({
+    retrieve: mockRetrieve,
+    passage: (cfi: string) => ({ cfi, text: "garden" }),
+    isAtOrBefore: () => true,
+  })),
 }));
 jest.mock("../../services/reader/readerAiService", () => ({ askReaderAi: jest.fn() }));
+jest.mock("../../services/reader/readerAiSettingsService", () => ({
+  ...jest.requireActual("../../services/reader/readerAiSettingsService"),
+  getReaderAiSettings: jest
+    .fn()
+    .mockResolvedValue({ answerLength: "short", simpleLanguage: true, customInstructions: "" }),
+}));
 const app = express();
 app.use(express.json());
 app.use("/api/reader", readerRouter);
@@ -189,6 +193,8 @@ describe("Reader conversations", () => {
     const [instructions, input] = (askReaderAi as jest.Mock).mock.calls[0];
     expect(instructions).toContain("language of the current question");
     expect(instructions).toContain("Avoid ALL spoilers");
+    expect(instructions).toContain("2–4 short sentences");
+    expect(instructions).toContain("simple everyday words");
     expect(input[input.length - 1]).toEqual({ role: "user", content: body.question });
     expect(
       (ReaderConversationModel.findOneAndUpdate as jest.Mock).mock.calls[1][1].$set[

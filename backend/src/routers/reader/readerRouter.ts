@@ -21,11 +21,18 @@ import {
   sendMessage,
 } from "../../controllers/reader/readerChatController";
 
+import {
+  getAiSettings,
+  updateAiSettings,
+} from "../../controllers/reader/readerAiSettingsController";
+
 const router = express.Router();
 
 router.use(checkUserAuthentication);
 router.get("/access", getReaderAccess);
 router.use(checkReaderAccess);
+router.get("/ai-settings", getAiSettings);
+router.patch("/ai-settings", updateAiSettings);
 router.get("/", getReaderBooks);
 const readUpload = express.raw({ type: "application/epub+zip", limit: MAX_EPUB_SIZE });
 router.post(

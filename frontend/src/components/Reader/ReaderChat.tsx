@@ -5,20 +5,24 @@ import {
   FiMessageSquare,
   FiPlus,
   FiSend,
+  FiSettings,
   FiTrash2,
 } from "react-icons/fi";
 import { useReaderChat } from "../../hooks/useReaderChat";
+import { ReaderAiSettings } from "./ReaderAiSettings";
 
 type ChatState = ReturnType<typeof useReaderChat>;
 export function ReaderChat({ chat }: { chat: ChatState }) {
   const { t } = useTranslation();
   const [question, setQuestion] = useState("");
   const [deleteId, setDeleteId] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const messages = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const disabled = chat.sending || chat.loading;
   useEffect(() => {
     setQuestion("");
+    setSettingsOpen(false);
     input.current?.focus();
   }, [chat.conversation?.id, chat.passage?.cfi]);
   useEffect(() => {
@@ -44,6 +48,7 @@ export function ReaderChat({ chat }: { chat: ChatState }) {
             className="reader-button"
             disabled={disabled}
             onClick={() => {
+              setSettingsOpen(false);
               chat.start();
               setQuestion("");
             }}
@@ -54,14 +59,29 @@ export function ReaderChat({ chat }: { chat: ChatState }) {
           <button
             className="reader-button"
             disabled={disabled}
-            onClick={() => void chat.loadHistory()}
+            onClick={() => {
+              setSettingsOpen(false);
+              void chat.loadHistory();
+            }}
           >
             <FiMessageSquare />
             {t("reader.chat.saved")}
           </button>
+          <button
+            className={
+              "reader-icon-button " + (settingsOpen ? "is-active" : "")
+            }
+            disabled={disabled}
+            onClick={() => setSettingsOpen(value => !value)}
+            aria-label={t("reader.chat.settings.title")}
+            title={t("reader.chat.settings.title")}
+            aria-expanded={settingsOpen}
+          >
+            <FiSettings />
+          </button>
         </div>
       </div>
-      {chat.error && (
+      {!settingsOpen && chat.error && (
         <p className="reader-chat-error" role="alert">
           {chat.error}
         </p>
@@ -71,7 +91,9 @@ export function ReaderChat({ chat }: { chat: ChatState }) {
           {t("reader.chat.loading")}
         </p>
       )}
-      {chat.history ? (
+      {settingsOpen ? (
+        <ReaderAiSettings onClose={() => setSettingsOpen(false)} />
+      ) : chat.history ? (
         <div className="reader-chat-history">
           <button
             className="reader-button"
