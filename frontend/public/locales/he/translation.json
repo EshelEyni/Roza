@@ -223,6 +223,24 @@
     "fullscreenError": "מסך מלא אינו זמין בדפדפן זה.",
     "saving": "שומרים…",
     "saved": "המיקום נשמר",
-    "saveError": "לא סונכרן. לחץ לניסיון נוסף"
+    "saveError": "לא סונכרן. לחץ לניסיון נוסף",
+    "search": "חיפוש בספר",
+    "searchPlaceholder": "חיפוש טקסט בספר",
+    "submitSearch": "חיפוש טקסט",
+    "searchHint": "חיפוש מילה או ביטוי בכל הספר.",
+    "searching_one": "מחפשים… נמצאה התאמה אחת בינתיים",
+    "searching_two": "מחפשים… נמצאו שתי התאמות בינתיים",
+    "searching_other": "מחפשים… נמצאו {{count}} התאמות בינתיים",
+    "searchResultCount_one": "נמצאה תוצאה אחת",
+    "searchResultCount_two": "נמצאו שתי תוצאות",
+    "searchResultCount_other": "נמצאו {{count}} תוצאות",
+    "noSearchResults": "לא נמצאו התאמות עבור ״{{query}}״. נסה מילה או ביטוי אחרים.",
+    "searchError": "לא ניתן להשלים את החיפוש. נסה שוב.",
+    "loadingMore": "טוענים תוצאות נוספות…",
+    "pageNumber": "עמוד {{number}}",
+    "locationNumber": "מיקום {{number}}",
+    "matchNumber": "התאמה {{number}}",
+    "seek": "מעבר למיקום בספר",
+    "preparingNavigation": "מכינים ניווט בספר…"
   }
 }

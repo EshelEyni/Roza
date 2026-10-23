@@ -221,6 +221,22 @@
     "fullscreenError": "Full screen is unavailable in this browser.",
     "saving": "Saving…",
     "saved": "Position saved",
-    "saveError": "Not synced. Click to retry"
+    "saveError": "Not synced. Click to retry",
+    "search": "Search this book",
+    "searchPlaceholder": "Search in this book",
+    "submitSearch": "Find text",
+    "searchHint": "Find a word or phrase anywhere in this book.",
+    "searching_one": "Searching… {{count}} match so far",
+    "searching_other": "Searching… {{count}} matches so far",
+    "searchResultCount_one": "{{count}} result found",
+    "searchResultCount_other": "{{count}} results found",
+    "noSearchResults": "No matches for “{{query}}”. Try another word or phrase.",
+    "searchError": "Search could not finish. Please try again.",
+    "loadingMore": "Loading more results…",
+    "pageNumber": "Page {{number}}",
+    "locationNumber": "Location {{number}}",
+    "matchNumber": "Match {{number}}",
+    "seek": "Go to position in book",
+    "preparingNavigation": "Preparing book navigation…"
   }
 }

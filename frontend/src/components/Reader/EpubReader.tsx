@@ -1,14 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import ePub, { Book, Contents, Location, NavItem, Rendition } from "epubjs";
+import ePub, {
+  Book,
+  Contents,
+  EpubCFI,
+  Location,
+  NavItem,
+  Rendition,
+} from "epubjs";
+import type { RenditionOptions } from "epubjs/types/rendition";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   FiArrowLeft,
   FiArrowRight,
+  FiChevronLeft,
+  FiChevronRight,
   FiBookOpen,
   FiMaximize,
   FiMinimize,
   FiSettings,
+  FiSearch,
   FiX,
 } from "react-icons/fi";
 import { ReaderBook, ReaderPreferences } from "../../../../shared/types/reader";
@@ -16,6 +27,8 @@ import readerApiService from "../../services/readerApiService";
 import { useReaderState } from "../../hooks/useReaderState";
 import { ReaderContents } from "./ReaderContents";
 import { ReaderSettings } from "./ReaderSettings";
+import { ReaderSearch } from "./ReaderSearch";
+import { ReaderProgress } from "./ReaderProgress";
 
 const palettes = {
   light: { background: "#fffefa", color: "#28231e" },
@@ -29,7 +42,10 @@ function applyPreferences(
 ) {
   const palette = palettes[preferences.theme];
   rendition.themes.default({
-    body: { color: palette.color, background: palette.background },
+    body: {
+      color: palette.color,
+      background: palette.background,
+    },
     "p, li, blockquote": {
       "line-height": preferences.lineHeight + " !important",
     },
@@ -77,9 +93,18 @@ export function EpubReader({
   const epubRef = useRef<Book>();
   const renditionRef = useRef<Rendition>();
   const changingLayout = useRef(false);
+  const pendingResize = useRef<ReturnType<typeof setTimeout>>();
+  const layoutTask = useRef<Promise<void>>(Promise.resolve());
+  const explicitNavigation = useRef(false);
+  const navigationVersion = useRef(0);
   const [toc, setToc] = useState<NavItem[]>([]);
   const [href, setHref] = useState("");
-  const [panel, setPanel] = useState<"contents" | "settings" | null>(null);
+  const [panel, setPanel] = useState<"contents" | "settings" | "search" | null>(
+    null,
+  );
+  const [searchBook, setSearchBook] = useState<Book | null>(null);
+  const [locationsReady, setLocationsReady] = useState(false);
+  const highlightedCfi = useRef("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -107,8 +132,7 @@ export function EpubReader({
     let rendition: Rendition | undefined;
     let resizeObserver: ResizeObserver | undefined;
     let ready = false;
-    let locationsReady = false;
-    let resizeTimer: ReturnType<typeof setTimeout>;
+    let hasLocations = false;
     const element = host.current!;
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -136,7 +160,12 @@ export function EpubReader({
     };
     async function start() {
       changingLayout.current = false;
+      explicitNavigation.current = false;
+      layoutTask.current = Promise.resolve();
       setLoading(true);
+      setSearchBook(null);
+      setLocationsReady(false);
+      highlightedCfi.current = "";
       setError("");
       setNotice("");
       try {
@@ -152,6 +181,7 @@ export function EpubReader({
           return;
         }
         epubRef.current = epub;
+        setSearchBook(epub);
         let count = 0;
         const fallback: NavItem[] = [];
         epub.spine.each(
@@ -173,14 +203,16 @@ export function EpubReader({
         }
         setToc(navigation.toc.length ? navigation.toc : fallback);
         const preferences = stateRef.current.preferences;
-        rendition = epub.renderTo(element, {
+        const renderOptions: RenditionOptions & { gap: number } = {
           width: "100%",
           height: "100%",
           spread: "none",
           flow: preferences.flow === "paginated" ? "paginated" : "scrolled-doc",
           manager: preferences.flow === "scrolled" ? "continuous" : "default",
           allowScriptedContent: false,
-        });
+          gap: 40,
+        };
+        rendition = epub.renderTo(element, renderOptions);
         renditionRef.current = rendition;
         applyPreferences(rendition, preferences);
         rendition.hooks.content.register((contents: Contents) => {
@@ -214,7 +246,7 @@ export function EpubReader({
             entry?.label || t("reader.section", { number: start.index + 1 }),
           );
           const progress =
-            locationsReady && epub?.locations.length()
+            hasLocations && epub?.locations.length()
               ? epub.locations.percentageFromCfi(start.cfi)
               : stateRef.current.progress;
           updateRef.current({
@@ -245,20 +277,22 @@ export function EpubReader({
         void epub.locations
           .generate(1600)
           .then(() => {
-            locationsReady = true;
-            if (!cancelled) void rendition?.reportLocation();
+            if (cancelled) return;
+            hasLocations = true;
+            setLocationsReady(epub!.locations.length() > 0);
+            void rendition?.reportLocation();
           })
           .catch(() => undefined);
         document.addEventListener("keydown", onKey);
         resizeObserver = new ResizeObserver(() => {
-          if (!ready || cancelled) return;
-          clearTimeout(resizeTimer);
-          resizeTimer = setTimeout(() => {
-            if (!cancelled && rendition) {
+          if (!ready || cancelled || explicitNavigation.current) return;
+          clearTimeout(pendingResize.current);
+          pendingResize.current = setTimeout(() => {
+            if (!cancelled && rendition && !explicitNavigation.current) {
               const cfi = stateRef.current.location;
               changingLayout.current = true;
               rendition.resize(element.clientWidth, element.clientHeight);
-              void rendition
+              layoutTask.current = rendition
                 .display(cfi || undefined)
                 .then(() => {
                   if (cancelled) return;
@@ -285,7 +319,7 @@ export function EpubReader({
     return () => {
       cancelled = true;
       controller.abort();
-      clearTimeout(resizeTimer);
+      clearTimeout(pendingResize.current);
       resizeObserver?.disconnect();
       document.removeEventListener("keydown", onKey);
       renditionRef.current = undefined;
@@ -303,7 +337,8 @@ export function EpubReader({
     applyPreferences(rendition, state.preferences);
     let cancelled = false;
     const timeout = setTimeout(() => {
-      void rendition
+      if (explicitNavigation.current) return;
+      layoutTask.current = rendition
         .display(cfi || undefined)
         .then(() => {
           if (cancelled || renditionRef.current !== rendition) return;
@@ -329,11 +364,115 @@ export function EpubReader({
     return () => document.removeEventListener("fullscreenchange", onFullscreen);
   }, []);
 
+  async function navigateTo(target: string) {
+    if (target.startsWith("epubcfi(")) {
+      const anchor = new EpubCFI(target);
+      anchor.collapse(true);
+      target = anchor.toString();
+    }
+    const rendition = renditionRef.current;
+    if (!rendition) return;
+    const version = ++navigationVersion.current;
+    explicitNavigation.current = true;
+    clearTimeout(pendingResize.current);
+    try {
+      await layoutTask.current;
+      if (
+        version !== navigationVersion.current ||
+        renditionRef.current !== rendition
+      )
+        return;
+      changingLayout.current = true;
+      const element = host.current;
+      if (element) {
+        // epub.js accepts an optional CFI here but omits it from its TypeScript definition.
+        const resize = rendition.resize as (
+          width: number,
+          height: number,
+          cfi?: string,
+        ) => void;
+        resize.call(
+          rendition,
+          element.clientWidth,
+          element.clientHeight,
+          target,
+        );
+      }
+      await rendition.display(target);
+      // Continuous views can expand while neighboring sections are inserted.
+      // Re-anchor once after layout has painted, using the now-final offsets.
+      await new Promise<void>(resolve =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+      if (
+        renditionRef.current !== rendition ||
+        version !== navigationVersion.current
+      )
+        return;
+      await rendition.display(target);
+      if (
+        version !== navigationVersion.current ||
+        renditionRef.current !== rendition
+      )
+        return;
+      changingLayout.current = false;
+      await rendition.reportLocation();
+    } finally {
+      if (
+        version === navigationVersion.current &&
+        renditionRef.current === rendition
+      ) {
+        explicitNavigation.current = false;
+        changingLayout.current = false;
+      }
+    }
+  }
+
   function onNavigate(target: string) {
     setPanel(null);
-    void renditionRef.current
-      ?.display(target)
-      .catch(() => setError(t("reader.navigationError")));
+    void navigateTo(target).catch(() => setError(t("reader.navigationError")));
+  }
+
+  async function onSearchNavigate(cfi: string) {
+    const rendition = renditionRef.current;
+    if (!rendition) return;
+    try {
+      await navigateTo(cfi);
+      if (renditionRef.current !== rendition) return;
+      if (highlightedCfi.current)
+        rendition.annotations.remove(highlightedCfi.current, "highlight");
+      rendition.annotations.highlight(
+        cfi,
+        {},
+        undefined,
+        "reader-search-highlight",
+        {
+          fill: "#d6a750",
+          "fill-opacity": "0.4",
+          "mix-blend-mode": "multiply",
+        },
+      );
+      highlightedCfi.current = cfi;
+    } catch {
+      if (renditionRef.current === rendition)
+        setNotice(t("reader.navigationError"));
+    }
+  }
+
+  async function onProgressNavigate(progress: number) {
+    const epub = epubRef.current;
+    const rendition = renditionRef.current;
+    if (!epub || !rendition || !locationsReady) return;
+    try {
+      const target =
+        progress <= 0
+          ? epub.spine.first().href
+          : epub.locations.cfiFromPercentage(progress);
+      await navigateTo(target);
+    } catch {
+      if (renditionRef.current === rendition)
+        setNotice(t("reader.navigationError"));
+    }
   }
 
   async function toggleFullscreen() {
@@ -363,6 +502,17 @@ export function EpubReader({
           <h1>{book.title}</h1>
           <p>{book.author || t("reader.unknownAuthor")}</p>
         </div>
+        <button
+          className={
+            "reader-icon-button " + (panel === "search" ? "is-active" : "")
+          }
+          onClick={() => setPanel(panel === "search" ? null : "search")}
+          aria-label={t("reader.search")}
+          aria-expanded={panel === "search"}
+          title={t("reader.search")}
+        >
+          <FiSearch />
+        </button>
         <button
           className={
             "reader-icon-button " + (panel === "contents" ? "is-active" : "")
@@ -396,7 +546,12 @@ export function EpubReader({
       </header>
       <div className="reader-workspace">
         {panel && (
-          <aside className="reader-panel">
+          <aside
+            className={
+              "reader-panel " +
+              (panel === "search" ? "reader-search-panel" : "")
+            }
+          >
             <button
               className="reader-panel-close reader-icon-button"
               onClick={() => setPanel(null)}
@@ -409,6 +564,12 @@ export function EpubReader({
                 items={toc}
                 currentHref={href}
                 onNavigate={onNavigate}
+              />
+            ) : panel === "search" ? (
+              <ReaderSearch
+                book={loading ? null : searchBook}
+                locationsReady={locationsReady}
+                onNavigate={cfi => void onSearchNavigate(cfi)}
               />
             ) : (
               <ReaderSettings
@@ -435,7 +596,43 @@ export function EpubReader({
               </button>
             </div>
           )}
+          <div
+            className={
+              "reader-page-turn-area" +
+              (loading || !!error || atStart ? " is-disabled" : "")
+            }
+            onClick={() => {
+              if (!loading && !error && !atStart) move("prev");
+            }}
+          >
+            <button
+              className="reader-page-turn reader-page-turn-previous"
+              disabled={loading || !!error || atStart}
+              aria-label={t("reader.previous")}
+              title={t("reader.previous")}
+            >
+              <FiChevronLeft aria-hidden="true" />
+            </button>
+          </div>
           <div className="reader-viewport" ref={host} dir="ltr" />
+          <div
+            className={
+              "reader-page-turn-area" +
+              (loading || !!error || atEnd ? " is-disabled" : "")
+            }
+            onClick={() => {
+              if (!loading && !error && !atEnd) move("next");
+            }}
+          >
+            <button
+              className="reader-page-turn reader-page-turn-next"
+              disabled={loading || !!error || atEnd}
+              aria-label={t("reader.next")}
+              title={t("reader.next")}
+            >
+              <FiChevronRight aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </div>
       {notice && (
@@ -455,10 +652,10 @@ export function EpubReader({
         </button>
         <div className="reader-footer-center">
           <p>{chapter || t("reader.reading")}</p>
-          <progress
-            value={state.progress}
-            max={1}
-            aria-label={t("reader.progress")}
+          <ReaderProgress
+            progress={state.progress}
+            ready={locationsReady && !loading}
+            onNavigate={onProgressNavigate}
           />
           <span>
             {Math.round(state.progress * 100)}% ·{" "}

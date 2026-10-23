@@ -361,4 +361,8 @@ The feature is disabled by default. Use the relevant account IDs for each enviro
 
 Open **Reader** to upload an EPUB, then open a library card to read. The reader supports contents navigation, page buttons/arrow keys, continuous scrolling, text size, fonts, spacing, width, page colors, and fullscreen. Reading location and settings save to the database; an unsynced indicator offers retry, with browser-local recovery for pending changes. Original uploads and sanitized reading copies are kept private. Dictionary, vocabulary, and AI chat are separate future steps.
 
+Use the reader search button to find words or phrases across the book. The search panel shows the total number of matches and loads excerpts in batches of 25 as you scroll. Selecting a result opens and highlights its exact text location. Where the EPUB supplies published page numbers, those are shown; otherwise results use stable book locations and chapter names.
+
+Drag the footer progress thumb to jump through the book, or focus it and use the arrow keys, Home, or End. Seeking becomes available after the book location map is ready, works in both reading modes, and saves the resulting reading position.
+
 See [the Reader PRD](docs/epub-reader-prd.md) for the complete product scope.
