@@ -22,7 +22,12 @@ const BookReviewEdit = lazy(
   () => import("./pages/BookReviewEdit/BookReviewEdit"),
 );
 
+const ReaderPage = lazy(() => import("./pages/Reader/ReaderPage"));
+const ReaderDetails = lazy(() => import("./pages/ReaderDetails/ReaderDetails"));
+
 const routes: Route[] = [
+  { path: "/reader", component: ReaderPage, authRequired: true },
+  { path: "/reader/:id", component: ReaderDetails, authRequired: true },
   {
     path: "/home",
     component: HomePage,

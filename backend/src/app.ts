@@ -16,6 +16,7 @@ import userRouter from "./routers/user/userRouter";
 import authRouter from "./routers/auth/authRouter";
 import bookRouter from "./routers/book/bookRouter";
 import bookReviewRouter from "./routers/bookReview/bookReviewRouter";
+import readerRouter from "./routers/reader/readerRouter";
 import { requestLimiter } from "./services/rateLimiterService";
 
 const isProdEnv = process.env.NODE_ENV === "production";
@@ -29,10 +30,12 @@ app.use(
     useDefaults: true,
     directives: {
       "default-src": ["'self'"],
-      "img-src": ["'self'", "https:", "data:"],
+      "img-src": ["'self'", "https:", "data:", "blob:"],
+      "frame-src": ["'self'", "blob:"],
+      "font-src": ["'self'", "data:", "blob:"],
       "connect-src": ["'self'", "https://api.cloudinary.com"],
       "script-src": ["'self'", "'unsafe-inline'"], // Only if needed
-      "style-src": ["'self'", "'unsafe-inline'"], // Only if needed
+      "style-src": ["'self'", "'unsafe-inline'", "blob:"], // Only if needed
     },
   }),
 );
@@ -66,6 +69,7 @@ if (!isProdEnv)
     requestLogger(req, res, next);
   });
 
+app.use("/api/reader", readerRouter);
 app.use("/api/user", userRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/book", bookRouter);

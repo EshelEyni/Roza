@@ -345,3 +345,20 @@ Book and review updates use `PATCH /:id`. Archiving is represented by entity fie
 ## License
 
 The backend package declares `ISC`, but the repository does not include a standalone license file defining terms for the entire application. Confirm the intended repository-wide license with the owner before redistribution.
+
+## EPUB Reader preview
+
+The private Reader library supports DRM-free reflowable EPUBs up to 25 MiB. Files are stored in MongoDB GridFS; no S3 credentials or AI API key are required for upload and reading.
+
+Enable it in `backend/.env` (and keep the root copy in sync if used):
+
+```dotenv
+READER_ENABLED=true
+READER_ALLOWED_USER_IDS=your-roza-user-object-id
+```
+
+The feature is disabled by default. Use the relevant account IDs for each environment; multiple IDs can be comma-separated. These are Roza MongoDB user IDs, not usernames or GitHub IDs. Restart the backend after changing environment settings. The backend checks both the flag and user allowlist for every Reader operation and checks file/state ownership. Unauthorized users do not see Reader navigation.
+
+Open **Reader** to upload an EPUB, then open a library card to read. The reader supports contents navigation, page buttons/arrow keys, continuous scrolling, text size, fonts, spacing, width, page colors, and fullscreen. Reading location and settings save to the database; an unsynced indicator offers retry, with browser-local recovery for pending changes. Original uploads and sanitized reading copies are kept private. Dictionary, vocabulary, and AI chat are separate future steps.
+
+See [the Reader PRD](docs/epub-reader-prd.md) for the complete product scope.

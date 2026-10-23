@@ -4,6 +4,7 @@ import { GiNotebook, GiBookPile, GiHouse } from "react-icons/gi";
 import { RiUserFill } from "react-icons/ri";
 import { Link } from "react-router-dom";
 import { Logo } from "./Logo";
+import { useGetReaderAccess } from "../../hooks/reactQuery/get/useGetReaderAccess";
 
 type NavLinks = {
   name: string;
@@ -13,6 +14,7 @@ type NavLinks = {
 
 export const AppHeader: FC = () => {
   const { t } = useTranslation();
+  const { data: readerAccess } = useGetReaderAccess();
 
   const navLinks: NavLinks[] = [
     {
@@ -36,6 +38,13 @@ export const AppHeader: FC = () => {
       link: "/reviews",
     },
   ];
+
+  if (readerAccess?.enabled)
+    navLinks.push({
+      name: t("reader.nav"),
+      icon: <GiBookPile />,
+      link: "/reader",
+    });
 
   return (
     <header className="flex h-16 w-full items-center justify-between bg-app-700 px-3 py-2 md:px-3 md:py-1">

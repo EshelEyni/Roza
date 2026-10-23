@@ -1,3 +1,4 @@
+import { ReaderState } from "../../../shared/types/reader";
 import mongoose, { Document } from "mongoose";
 import { BooKDataItemType, SlateCustomElement, SlateCustomText } from "../../../shared/types/books";
 
@@ -123,3 +124,15 @@ export interface IReference extends Document {
 export type ISlateCustomElement = SlateCustomElement & Document;
 
 export interface ISlateCustomText extends SlateCustomText, Document {}
+
+export interface IReaderBook extends Document {
+  userId: mongoose.Types.ObjectId;
+  title: string;
+  author: string;
+  cover: string;
+  filename: string;
+  size: number;
+  fileId: mongoose.Types.ObjectId;
+  originalFileId: mongoose.Types.ObjectId;
+  state: ReaderState;
+}

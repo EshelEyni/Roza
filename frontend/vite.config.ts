@@ -62,6 +62,7 @@ export default defineConfig({
       },
       workbox: {
         runtimeCaching: [
+          { urlPattern: /\/api\/reader(?:\/|\?|$)/, handler: "NetworkOnly" },
           {
             urlPattern: /\/api\/.*/,
             handler: "NetworkFirst",

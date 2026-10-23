@@ -1,0 +1,455 @@
+.reader-library,
+.reader-details {
+  width: 100%;
+  color: #392e24;
+  font-family: Arial, sans-serif;
+}
+.reader-library {
+  max-width: 1240px;
+  padding: 52px 36px 80px;
+}
+.reader-library-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+  margin-bottom: 44px;
+}
+.reader-library-heading h1 {
+  font-family: Georgia, serif;
+  font-size: 44px;
+  line-height: 1.2;
+  margin: 8px 0 14px;
+}
+.reader-library-heading p {
+  color: #726454;
+  max-width: 520px;
+  line-height: 1.6;
+}
+.reader-library-heading .reader-eyebrow {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #7e573b;
+  font-weight: 700;
+}
+.reader-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 11px 18px;
+  border: 1px solid #bca58d;
+  border-radius: 7px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #493a2d;
+  background: #fbf6ed;
+  transition: background 0.15s;
+}
+.reader-button:hover {
+  background: #e9d8c4;
+}
+.reader-button-primary {
+  color: #fff9ef;
+  background: #5b4634;
+  border-color: #5b4634;
+}
+.reader-button-primary:hover {
+  background: #73583f;
+}
+.reader-button:disabled,
+.reader-icon-button:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+.reader-upload {
+  min-width: 240px;
+  max-width: 340px;
+  padding-top: 10px;
+}
+.reader-hint,
+.reader-library-heading .reader-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  margin-top: 10px;
+}
+.reader-upload-progress {
+  width: 100%;
+  margin-top: 10px;
+}
+.reader-error {
+  color: #9c3426;
+  font-size: 14px;
+  margin-top: 10px;
+}
+.reader-book-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(235px, 1fr));
+  gap: 28px;
+}
+.reader-library-meta {
+  padding-bottom: 16px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid #cbb79f;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #7e6b56;
+}
+.reader-book-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #cfbba5;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #f7efe3;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
+  color: inherit;
+}
+.reader-book-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px #49331a16;
+}
+.reader-book-card:focus-visible,
+.reader-button:focus-visible,
+.reader-icon-button:focus-visible {
+  outline: 3px solid #a36b38;
+  outline-offset: 3px;
+}
+.reader-book-cover {
+  height: 245px;
+  background: #dcc8ae;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  padding: 20px;
+}
+.reader-book-cover img {
+  height: 100%;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
+  box-shadow: 3px 5px 12px #30201230;
+}
+.reader-book-cover > svg {
+  font-size: 85px;
+  color: #8d7254;
+}
+.reader-book-badge {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  border: 1px solid #baa181;
+  border-radius: 3px;
+  padding: 3px 6px;
+  background: #faf3e9;
+  color: #73583f;
+}
+.reader-book-info {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+.reader-book-info h2 {
+  font:
+    22px/1.3 Georgia,
+    serif;
+  margin-bottom: 9px;
+  overflow-wrap: anywhere;
+}
+.reader-book-info > p {
+  font-size: 13px;
+  color: #766653;
+  margin-bottom: 22px;
+}
+.reader-book-progress {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: #8b7762;
+  font-size: 11px;
+}
+.reader-book-progress progress,
+.reader-footer progress {
+  width: 100%;
+  height: 4px;
+  accent-color: #92714e;
+}
+.reader-book-open {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+  font-size: 13px;
+  color: #68482c;
+  font-weight: 600;
+}
+.reader-empty {
+  min-height: 350px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed #bda58a;
+  border-radius: 12px;
+  text-align: center;
+  gap: 14px;
+  padding: 30px;
+}
+.reader-empty > svg {
+  font-size: 54px;
+  color: #967656;
+}
+.reader-empty h2 {
+  font:
+    26px Georgia,
+    serif;
+}
+.reader-empty p {
+  color: #86725b;
+  max-width: 410px;
+  line-height: 1.7;
+  font-size: 14px;
+}
+.reader-message {
+  padding: 60px 24px;
+  text-align: center;
+  color: #6f5843;
+}
+.reader-message .reader-button {
+  margin: 16px 8px 0;
+}
+.reader-shell {
+  height: calc(100dvh - 64px);
+  min-height: 450px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  background: #f3e8d5;
+  color: #392e24;
+}
+.reader-shell:fullscreen {
+  height: 100dvh;
+}
+.reader-theme-light {
+  background: #fffefa;
+  color: #28231e;
+}
+.reader-theme-dark {
+  background: #242622;
+  color: #e5e4da;
+}
+.reader-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px;
+  border-bottom: 1px solid #8e7e6533;
+  flex-shrink: 0;
+}
+.reader-toolbar-title {
+  flex: 1;
+  min-width: 0;
+}
+.reader-toolbar-title h1 {
+  font:
+    17px/1.3 Georgia,
+    serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reader-toolbar-title p {
+  font-size: 11px;
+  margin-top: 4px;
+  opacity: 0.65;
+}
+.reader-icon-button {
+  width: 38px;
+  height: 38px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  color: inherit;
+  flex-shrink: 0;
+}
+.reader-icon-button:hover,
+.reader-icon-button.is-active {
+  background: #a3896130;
+}
+.reader-workspace {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+.reader-paper {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+  height: 100%;
+  min-width: 0;
+}
+.reader-width-comfortable {
+  max-width: 850px;
+}
+.reader-width-wide {
+  max-width: 1200px;
+}
+.reader-viewport {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+.reader-viewport iframe {
+  border: 0;
+}
+.reader-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  background: inherit;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  padding: 24px;
+  text-align: center;
+}
+.reader-paper {
+  background: inherit;
+}
+.reader-panel {
+  width: 285px;
+  flex-shrink: 0;
+  border-inline-end: 1px solid #8e7e6533;
+  overflow-y: auto;
+  position: relative;
+  padding: 25px 20px;
+  background: inherit;
+  z-index: 4;
+}
+.reader-panel h2 {
+  font:
+    24px Georgia,
+    serif;
+  margin-bottom: 25px;
+  padding-inline-end: 25px;
+}
+.reader-panel-close {
+  position: absolute;
+  inset-inline-end: 10px;
+  top: 15px;
+}
+.reader-settings label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  margin-bottom: 25px;
+}
+.reader-settings label span {
+  opacity: 0.65;
+  font-size: 11px;
+}
+.reader-settings input[type="range"] {
+  width: 100%;
+  accent-color: #96734e;
+}
+.reader-settings select {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #9b876766;
+  border-radius: 5px;
+  color: inherit;
+  background: transparent;
+}
+.reader-theme-dark select {
+  background: #242622;
+}
+.reader-contents ol {
+  margin: 0;
+  padding: 0;
+}
+.reader-contents ol ol {
+  padding-inline-start: 15px;
+}
+.reader-contents li {
+  color: inherit;
+}
+.reader-contents button {
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 10px 8px;
+  text-align: start;
+  width: 100%;
+  color: inherit;
+  border-radius: 5px;
+}
+.reader-contents button:hover,
+.reader-contents button.is-active {
+  background: #a3896130;
+}
+.reader-footer {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 25px;
+  padding: 10px 25px 14px;
+  border-top: 1px solid #8e7e6533;
+  direction: ltr;
+}
+.reader-footer-center {
+  text-align: center;
+  max-width: 420px;
+  width: 70%;
+}
+.reader-footer-center p {
+  font-size: 11px;
+  opacity: 0.75;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.reader-footer-center span {
+  font-size: 10px;
+  opacity: 0.65;
+}
+.reader-save-retry {
+  color: #c35f46;
+  text-decoration: underline;
+}
+.reader-notice {
+  text-align: center;
+  padding: 6px 20px;
+  font-size: 12px;
+}
+@media (max-width: 800px) {
+  .reader-library {
+    padding: 30px 20px;
+  }
+  .reader-library-heading {
+    flex-direction: column;
+    gap: 16px;
+  }
+  .reader-panel {
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 270px;
+    box-shadow: 4px 0 20px #0002;
+  }
+}
