@@ -1,29 +1,21 @@
-FROM node:current-alpine3.19 as fe-build
+FROM node:current-alpine3.19 AS fe-build
 WORKDIR /app
-COPY frontend/package.json .
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
 COPY shared/ /shared/
-RUN npm install -g typescript
-WORKDIR /shared
-RUN tsc
-WORKDIR /app
-RUN npm install
+RUN ./node_modules/.bin/tsc --build /shared/tsconfig.json --force
 COPY frontend/ .
-RUN npm run build 
+RUN npm run build
 
-CMD ["sh"]
-
-
-FROM node:current-alpine3.19 as be-build
+FROM node:current-alpine3.19 AS be-build
 WORKDIR /app
-COPY backend/package.json .
-RUN npm install
+COPY backend/package.json backend/package-lock.json ./
+RUN npm ci
 COPY shared/ /shared/
-RUN npm install -g typescript
 COPY backend/ .
-RUN tsc
+RUN ./node_modules/.bin/tsc --build /app/tsconfig.json --force
 
-
-FROM node:current-alpine3.19 as prod
+FROM node:current-alpine3.19 AS prod
 WORKDIR /app
 COPY --from=be-build /app/build /app/build
 COPY --from=be-build /app/node_modules /app/node_modules
