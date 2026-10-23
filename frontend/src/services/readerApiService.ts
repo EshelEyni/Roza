@@ -98,6 +98,7 @@ function saveOnLeave(id: string, state: ReaderState) {
 }
 
 export default {
+  request,
   getAccess: () => request<{ enabled: boolean }>("GET", "/access"),
   query: () => request<ReaderBook[]>("GET"),
   getById: (id: string) => request<ReaderBook>("GET", "/" + id),

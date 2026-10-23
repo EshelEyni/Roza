@@ -136,3 +136,22 @@ export interface IReaderBook extends Document {
   originalFileId: mongoose.Types.ObjectId;
   state: ReaderState;
 }
+
+export interface IReaderConversation extends Document {
+  userId: mongoose.Types.ObjectId;
+  bookId: mongoose.Types.ObjectId;
+  title: string;
+  passage?: { cfi: string; text: string };
+  spoilersAllowed: boolean;
+  lockedUntil: Date;
+  lockToken?: string;
+  turns: {
+    id: string;
+    question: string;
+    answer: string;
+    status: "pending" | "completed" | "failed";
+    currentCfi: string;
+    spoilersAllowed: boolean;
+    createdAt: Date;
+  }[];
+}

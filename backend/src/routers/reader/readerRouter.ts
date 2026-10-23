@@ -12,6 +12,15 @@ import {
   updateReaderState,
 } from "../../controllers/reader/readerController";
 
+import {
+  chatLimiter,
+  listConversations,
+  createConversation,
+  getConversation,
+  deleteConversation,
+  sendMessage,
+} from "../../controllers/reader/readerChatController";
+
 const router = express.Router();
 
 router.use(checkUserAuthentication);
@@ -37,6 +46,11 @@ router.post(
   },
   addReaderBook,
 );
+router.get("/:id/conversations", listConversations);
+router.post("/:id/conversations", createConversation);
+router.get("/:id/conversations/:conversationId", getConversation);
+router.delete("/:id/conversations/:conversationId", deleteConversation);
+router.post("/:id/conversations/:conversationId/messages", chatLimiter, sendMessage);
 router.get("/:id/file", getReaderFile);
 router.get("/:id", getReaderBook);
 router.patch("/:id/state", updateReaderState);

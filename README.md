@@ -359,10 +359,45 @@ READER_ALLOWED_USER_IDS=your-roza-user-object-id
 
 The feature is disabled by default. Use the relevant account IDs for each environment; multiple IDs can be comma-separated. These are Roza MongoDB user IDs, not usernames or GitHub IDs. Restart the backend after changing environment settings. The backend checks both the flag and user allowlist for every Reader operation and checks file/state ownership. Unauthorized users do not see Reader navigation.
 
-Open **Reader** to upload an EPUB, then open a library card to read. The reader supports contents navigation, page buttons/arrow keys, continuous scrolling, text size, fonts, spacing, width, page colors, and fullscreen. Reading location and settings save to the database; an unsynced indicator offers retry, with browser-local recovery for pending changes. Original uploads and sanitized reading copies are kept private. Dictionary, vocabulary, and AI chat are separate future steps.
+Open **Reader** to upload an EPUB, then open a library card to read. The reader supports contents navigation, page buttons/arrow keys, continuous scrolling, text size, fonts, spacing, width, page colors, and fullscreen. Reading location and settings save to the database; an unsynced indicator offers retry, with browser-local recovery for pending changes. Original uploads and sanitized reading copies are kept private. Dictionary and vocabulary are separate future steps. Book chat is described below.
 
 Use the reader search button to find words or phrases across the book. The search panel shows the total number of matches and loads excerpts in batches of 25 as you scroll. Selecting a result opens and highlights its exact text location. Where the EPUB supplies published page numbers, those are shown; otherwise results use stable book locations and chapter names.
 
 Drag the footer progress thumb to jump through the book, or focus it and use the arrow keys, Home, or End. Seeking becomes available after the book location map is ready, works in both reading modes, and saves the resulting reading position.
 
 See [the Reader PRD](docs/epub-reader-prd.md) for the complete product scope.
+
+### Reader AI chat
+
+Open the **Book chat** button in the reader toolbar for a general question. To discuss a passage, select up to 3,000 characters and choose **Ask AI**. The right-side panel keeps the passage visible, supports English and Hebrew questions, and lets you create, reopen, and delete saved conversations for that book. Press Enter to send or Shift+Enter for a new line. No AI request is made until you send a question.
+
+Add the following server-only keys to both environment files used by this project (`.env` and `backend/.env`), then restart the backend:
+
+```dotenv
+OPENAI_API_KEY=your-openai-api-key
+READER_AI_MODEL=gpt-4.1-mini
+```
+
+`OPENAI_API_KEY` requires an API project with billing and access to the chosen model. `READER_AI_MODEL` is optional and defaults to `gpt-4.1-mini`; choose a model compatible with the OpenAI Responses API and the configured output limit. These variables are never sent to the frontend. Use Node.js 20 or later for the backend's built-in `fetch` implementation. Existing `READER_ENABLED` and `READER_ALLOWED_USER_IDS` restrictions apply to every chat endpoint.
+
+The backend reads the user's sanitized EPUB from GridFS and resolves its actual passage locations. Each answer uses at most five excerpts / 8,000 excerpt characters, a selected passage of up to 3,000 characters, at most six recent question/answer pairs within 10,000 history characters, a question of up to 2,000 characters, and at most 1,200 output tokens. General retrieval uses keyword matches plus nearby reading context, without paid embeddings; when a question cannot be grounded in that context, the assistant is instructed to acknowledge the gap. The full EPUB is never sent to OpenAI. Provider-side response storage is disabled (`store: false`); conversations are saved in Roza's MongoDB collection `reader_conversations`.
+
+By default, retrieved context stops at the current visible reading position, even after going back to an earlier chapter. Prior answers from later positions or spoiler-enabled turns are omitted from the AI history when spoilers are off. **Allow spoilers in this conversation**, or an explicit phrase such as “I don't care about spoilers,” enables later context for that conversation. The checkbox can turn permission off again. Saved messages remain visible, and spoiler avoidance from a model's prior knowledge is best effort.
+
+Questions are limited to 20 per user per 10 minutes and 100 turns per conversation. Retries reuse a request ID, completed answers are returned without a second provider call, and only one generation per conversation can run at a time. Provider failures are shown with a retry action. If a process stops during generation, retry after the two-minute generation lock expires. The UI does not stream partial responses; answers are displayed after they have been saved.
+
+Chat endpoints under `/api/reader/:id/conversations`:
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/` | List 20 conversation summaries; use `?before=<id>` for the next page |
+| POST | `/` | Create a conversation; optional `passageCfi` resolves a selected passage |
+| GET | `/:conversationId` | Reopen saved turns |
+| DELETE | `/:conversationId` | Delete a conversation after its active generation finishes |
+| POST | `/:conversationId/messages` | Send/retry with `requestId`, `question`, `currentCfi`, and `spoilersAllowed` |
+
+Targeted backend checks (from `backend/`):
+
+```powershell
+npx jest --runInBand --watchAll=false --runTestsByPath src/routers/reader/readerChatRouter.test.ts src/routers/reader/readerRouter.test.ts src/services/reader/readerContextService.test.ts src/services/reader/readerAiService.test.ts src/services/reader/epubService.test.ts
+```

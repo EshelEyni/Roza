@@ -20,6 +20,7 @@ import {
   FiMinimize,
   FiSettings,
   FiSearch,
+  FiMessageSquare,
   FiX,
 } from "react-icons/fi";
 import { ReaderBook, ReaderPreferences } from "../../../../shared/types/reader";
@@ -29,6 +30,9 @@ import { ReaderContents } from "./ReaderContents";
 import { ReaderSettings } from "./ReaderSettings";
 import { ReaderSearch } from "./ReaderSearch";
 import { ReaderProgress } from "./ReaderProgress";
+import { ReaderChat } from "./ReaderChat";
+import { useReaderChat } from "../../hooks/useReaderChat";
+import { ReaderPassage } from "../../../../shared/types/readerChat";
 
 const palettes = {
   light: { background: "#fffefa", color: "#28231e" },
@@ -99,9 +103,9 @@ export function EpubReader({
   const navigationVersion = useRef(0);
   const [toc, setToc] = useState<NavItem[]>([]);
   const [href, setHref] = useState("");
-  const [panel, setPanel] = useState<"contents" | "settings" | "search" | null>(
-    null,
-  );
+  const [panel, setPanel] = useState<
+    "contents" | "settings" | "search" | "chat" | null
+  >(null);
   const [searchBook, setSearchBook] = useState<Book | null>(null);
   const [locationsReady, setLocationsReady] = useState(false);
   const highlightedCfi = useRef("");
@@ -113,6 +117,12 @@ export function EpubReader({
   const [atEnd, setAtEnd] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
   const [chapter, setChapter] = useState("");
+  const readingBoundary = useRef("");
+  const [selection, setSelection] = useState<ReaderPassage | null>(null);
+  const chat = useReaderChat(
+    book.id,
+    () => readingBoundary.current || stateRef.current.location,
+  );
 
   const move = useCallback(
     (direction: "next" | "prev") => {
@@ -166,6 +176,8 @@ export function EpubReader({
       setSearchBook(null);
       setLocationsReady(false);
       highlightedCfi.current = "";
+      readingBoundary.current = "";
+      setSelection(null);
       setError("");
       setNotice("");
       try {
@@ -235,9 +247,22 @@ export function EpubReader({
           const iframe = element.querySelector("iframe");
           iframe?.setAttribute("title", book.title);
         });
+        rendition.on("selected", (cfi: string, contents: Contents) => {
+          if (cancelled) return;
+          const text = contents.range(cfi).toString().trim();
+          if (!text) return;
+          if (text.length > 3000) {
+            setSelection(null);
+            setNotice(t("reader.chat.selectionLimit"));
+            return;
+          }
+          setSelection({ cfi, text });
+        });
         rendition.on("relocated", (location: Location) => {
           if (cancelled || !ready || changingLayout.current) return;
           const start = location.start;
+          readingBoundary.current = location.end.cfi || start.cfi;
+          setSelection(null);
           setHref(start.href);
           setAtStart(location.atStart);
           setAtEnd(location.atEnd);
@@ -504,6 +529,18 @@ export function EpubReader({
         </div>
         <button
           className={
+            "reader-icon-button " + (panel === "chat" ? "is-active" : "")
+          }
+          onClick={() => setPanel(panel === "chat" ? null : "chat")}
+          aria-label={t("reader.chat.title")}
+          aria-expanded={panel === "chat"}
+          title={t("reader.chat.title")}
+          disabled={loading || !!error}
+        >
+          <FiMessageSquare />
+        </button>
+        <button
+          className={
             "reader-icon-button " + (panel === "search" ? "is-active" : "")
           }
           onClick={() => setPanel(panel === "search" ? null : "search")}
@@ -549,7 +586,11 @@ export function EpubReader({
           <aside
             className={
               "reader-panel " +
-              (panel === "search" ? "reader-search-panel" : "")
+              (panel === "search"
+                ? "reader-search-panel"
+                : panel === "chat"
+                  ? "reader-chat-panel"
+                  : "")
             }
           >
             <button
@@ -571,6 +612,8 @@ export function EpubReader({
                 locationsReady={locationsReady}
                 onNavigate={cfi => void onSearchNavigate(cfi)}
               />
+            ) : panel === "chat" ? (
+              <ReaderChat chat={chat} />
             ) : (
               <ReaderSettings
                 preferences={state.preferences}
@@ -580,6 +623,34 @@ export function EpubReader({
           </aside>
         )}
         <div className={"reader-paper reader-width-" + state.preferences.width}>
+          {selection && (
+            <div
+              className="reader-selection-actions"
+              role="toolbar"
+              aria-label={t("reader.chat.selectionActions")}
+            >
+              <button
+                className="reader-button"
+                disabled={chat.sending || chat.loading}
+                onMouseDown={event => event.preventDefault()}
+                onClick={() => {
+                  chat.start(selection);
+                  setPanel("chat");
+                  setSelection(null);
+                }}
+              >
+                <FiMessageSquare />
+                {t("reader.chat.ask")}
+              </button>
+              <button
+                className="reader-icon-button"
+                aria-label={t("reader.close")}
+                onClick={() => setSelection(null)}
+              >
+                <FiX />
+              </button>
+            </div>
+          )}
           {loading && (
             <div className="reader-overlay" role="status">
               {t("reader.opening")}

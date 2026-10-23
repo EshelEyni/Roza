@@ -237,6 +237,34 @@
     "locationNumber": "Location {{number}}",
     "matchNumber": "Match {{number}}",
     "seek": "Go to position in book",
-    "preparingNavigation": "Preparing book navigation…"
+    "preparingNavigation": "Preparing book navigation…",
+    "chat": {
+      "title": "Book chat",
+      "ask": "Ask AI",
+      "new": "New chat",
+      "saved": "Saved chats",
+      "back": "Back to chat",
+      "loading": "Loading conversations…",
+      "noSaved": "Your conversations about this book will appear here.",
+      "delete": "Delete conversation",
+      "deleteConfirm": "Delete this conversation?",
+      "cancel": "Cancel",
+      "more": "Load more conversations",
+      "passage": "Selected passage",
+      "messages": "Conversation messages",
+      "you": "You",
+      "assistant": "Reading companion",
+      "generating": "Thinking about your question…",
+      "failed": "The answer was not completed. You can retry this question.",
+      "interrupted": "This question may still be processing. Retry to recover its answer.",
+      "spoilers": "Allow spoilers in this conversation",
+      "question": "Ask about this passage or book…",
+      "send": "Send",
+      "contextNote": "Uses a few relevant excerpts. Enter to send, Shift+Enter for a new line.",
+      "passageHint": "What would you like to understand about this passage?",
+      "generalHint": "Ask about a character, an idea, or what is happening in the book. No spoilers beyond your current position unless you allow them.",
+      "selectionLimit": "Select a passage of up to 3,000 characters to ask AI.",
+      "selectionActions": "Selected passage actions"
+    }
   }
 }
