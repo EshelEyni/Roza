@@ -288,10 +288,14 @@
 }
 .reader-workspace {
   display: flex;
+  flex-direction: row-reverse;
   flex: 1;
   min-height: 0;
   position: relative;
   overflow: hidden;
+}
+.reader-workspace:dir(rtl) {
+  flex-direction: row;
 }
 .reader-paper {
   position: relative;
@@ -374,7 +378,7 @@
 .reader-panel {
   width: 285px;
   flex-shrink: 0;
-  border-inline-end: 1px solid #8e7e6533;
+  border-left: 1px solid #8e7e6533;
   overflow-y: auto;
   position: relative;
   padding: 25px 20px;
@@ -489,9 +493,9 @@
   }
   .reader-panel {
     position: absolute;
-    inset: 0 auto 0 0;
+    inset: 0 0 0 auto;
     width: 270px;
-    box-shadow: 4px 0 20px #0002;
+    box-shadow: -4px 0 20px #0002;
   }
 }
 
