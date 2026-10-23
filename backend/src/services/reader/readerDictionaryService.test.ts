@@ -7,7 +7,8 @@ describe("Local English–Hebrew dictionary", () => {
     expect(
       entry?.senses.some(sense => sense.meanings.some(text => /[\u0590-\u05ff]/.test(text))),
     ).toBe(true);
-    expect(entry?.source).toContain("WordNet");
+    expect(entry?.source).toBe("Wiktionary");
+    expect(entry?.attribution?.license).toBe("CC BY-SA 4.0");
     expect(entry?.senses.some(sense => sense.definition)).toBe(true);
   });
   it("resolves attested irregular inflections and normalizes casing", () => {
@@ -22,6 +23,30 @@ describe("Local English–Hebrew dictionary", () => {
   it("preserves separate senses and available explanations", () => {
     const entry = lookupReaderWord("child")!;
     expect(new Set(entry.senses.map(sense => sense.id)).size).toBe(entry.senses.length);
-    expect(entry.senses.some(sense => sense.explanations.length)).toBe(true);
+    expect(entry.senses.some(sense => sense.definition.length)).toBe(true);
+  });
+
+  it("adds Wiktionary translations and attested regular forms", () => {
+    const book = lookupReaderWord("book")!;
+    expect(book.source).toBe("Wiktionary");
+    expect(book.senses.some(sense => sense.meanings.includes("סֵפֶר"))).toBe(true);
+    expect(lookupReaderWord("books")?.headword).toBe("book");
+    expect(book.attribution?.url).toBe("https://en.wiktionary.org/wiki/book#English");
+    expect(
+      book.senses.every(sense => sense.sourceUrl?.startsWith("https://en.wiktionary.org/wiki/")),
+    ).toBe(true);
+  });
+
+  it("does not manufacture translations by stripping suffixes from unrelated words", () => {
+    expect(lookupReaderWord("news")?.headword).toBe("news");
+    expect(lookupReaderWord("dictionarying")).toBeNull();
+    expect(lookupReaderWord("bookishzzz")).toBeNull();
+  });
+
+  it("retains WordNet-only words and safely handles legitimate prototype-named words", () => {
+    const fallback = lookupReaderWord("running")!;
+    expect(fallback.source).toContain("WordNet");
+    const constructor = lookupReaderWord("constructor");
+    expect(Array.isArray(constructor?.senses)).toBe(true);
   });
 });

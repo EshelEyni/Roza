@@ -205,6 +205,15 @@ export function ReaderDictionary({
                 {entry.senses.map(sense => (
                   <section key={sense.id} className="reader-dictionary-sense">
                     <small>{t("reader.pos." + sense.partOfSpeech)}</small>
+                    {!!sense.labels?.length && (
+                      <p
+                        className="reader-dictionary-labels"
+                        lang="en"
+                        dir="ltr"
+                      >
+                        {sense.labels.join(" · ")}
+                      </p>
+                    )}
                     <p lang="he" dir="rtl">
                       {sense.meanings.join(" · ")}
                     </p>
@@ -218,6 +227,16 @@ export function ReaderDictionary({
                         {sense.definition}
                       </p>
                     )}
+                    {sense.sourceUrl && (
+                      <a
+                        className="reader-dictionary-source"
+                        href={sense.sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        {sense.source}
+                      </a>
+                    )}
                     {sense.examples.map((text, index) => (
                       <blockquote key={index} lang="en" dir="ltr">
                         {text}
@@ -229,7 +248,29 @@ export function ReaderDictionary({
               <p className="reader-dictionary-saved" role="status">
                 {t("reader.vocabularySaved", { count: result.lookupCount })}
               </p>
-              <small className="reader-dictionary-source">{entry.source}</small>
+              <small className="reader-dictionary-source">
+                {entry.attribution ? (
+                  <>
+                    <a
+                      href={entry.attribution.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {entry.attribution.name}
+                    </a>
+                    {" · "}
+                    <a
+                      href={entry.attribution.licenseUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {entry.attribution.license}
+                    </a>
+                  </>
+                ) : (
+                  entry.source
+                )}
+              </small>
             </>
           )}
         </>

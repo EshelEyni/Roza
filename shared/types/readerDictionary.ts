@@ -5,6 +5,9 @@ export interface ReaderDictionarySense {
   explanations: string[];
   definition: string;
   examples: string[];
+  labels?: string[];
+  source?: string;
+  sourceUrl?: string;
 }
 
 export interface ReaderDictionaryEntry {
@@ -12,6 +15,12 @@ export interface ReaderDictionaryEntry {
   headword: string;
   source: string;
   senses: ReaderDictionarySense[];
+  attribution?: {
+    name: string;
+    url: string;
+    license: string;
+    licenseUrl: string;
+  };
 }
 
 export interface ReaderLookupResult {

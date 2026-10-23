@@ -251,7 +251,17 @@
       "n": "Noun",
       "v": "Verb",
       "a": "Adjective",
-      "r": "Adverb"
+      "r": "Adverb",
+      "pron": "Pronoun",
+      "prep": "Preposition",
+      "conj": "Conjunction",
+      "det": "Determiner",
+      "intj": "Interjection",
+      "num": "Numeral",
+      "name": "Proper noun",
+      "article": "Article",
+      "particle": "Particle",
+      "other": "Other"
     }
   }
 }
