@@ -22,6 +22,7 @@ const readerBookSchema = new Schema<IReaderBook>(
         width: { type: String, enum: ["comfortable", "wide"], default: "comfortable" },
         theme: { type: String, enum: ["light", "sepia", "dark"], default: "sepia" },
         flow: { type: String, enum: ["paginated", "scrolled"], default: "paginated" },
+        pageNumbering: { type: String, enum: ["screen", "publisher"], default: "screen" },
       },
     },
   },

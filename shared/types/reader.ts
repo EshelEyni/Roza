@@ -5,6 +5,7 @@ export type ReaderPreferences = {
   width: "comfortable" | "wide";
   theme: "light" | "sepia" | "dark";
   flow: "paginated" | "scrolled";
+  pageNumbering?: "screen" | "publisher";
 };
 
 export type ReaderState = {

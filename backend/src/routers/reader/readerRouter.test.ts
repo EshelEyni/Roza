@@ -121,6 +121,26 @@ describe("Reader access and isolation", () => {
     expect(update).toEqual({ $set: { state } });
   });
 
+  it.each(["screen", "publisher", undefined])("persists page numbering %s and supports older clients", async pageNumbering => {
+    const existing = { _id: id, state: { location: "", progress: 0 } };
+    (ReaderBookModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue(existing) });
+    (ReaderBookModel.findOneAndUpdate as jest.Mock).mockResolvedValue(existing);
+    const response = await request(app).patch("/api/reader/" + id + "/state")
+      .set("Authorization", "test")
+      .send({ location: "epubcfi(/6/2!/4/2/1:0)", progress: .2, savedAt: Date.now(), preferences: { ...defaultReaderPreferences, pageNumbering } });
+    expect(response.status).toBe(200);
+    expect((ReaderBookModel.findOneAndUpdate as jest.Mock).mock.calls[0][1].$set.state.preferences.pageNumbering).toBe(pageNumbering || "screen");
+  });
+
+  it("rejects unsupported page numbering", async () => {
+    (ReaderBookModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue({ _id: id }) });
+    const response = await request(app).patch("/api/reader/" + id + "/state")
+      .set("Authorization", "test")
+      .send({ location: "epubcfi(/6/2!/4/2/1:0)", progress: .2, savedAt: Date.now(), preferences: { ...defaultReaderPreferences, pageNumbering: "invented" } });
+    expect(response.status).toBe(400);
+    expect(ReaderBookModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   it("reports oversized uploads before storage", async () => {
     const response = await request(app)
       .post("/api/reader")

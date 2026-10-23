@@ -126,7 +126,8 @@ const updateReaderState = asyncErrorCatcher(async (req: Request, res: Response) 
     !["serif", "sans-serif"].includes(preferences.fontFamily) ||
     !["comfortable", "wide"].includes(preferences.width) ||
     !["light", "sepia", "dark"].includes(preferences.theme) ||
-    !["paginated", "scrolled"].includes(preferences.flow)
+    !["paginated", "scrolled"].includes(preferences.flow) ||
+    (preferences.pageNumbering !== undefined && !["screen", "publisher"].includes(preferences.pageNumbering))
   )
     throw new AppError("Invalid reader preferences.", 400);
   const safePreferences = {
@@ -136,6 +137,7 @@ const updateReaderState = asyncErrorCatcher(async (req: Request, res: Response) 
     width: preferences.width,
     theme: preferences.theme,
     flow: preferences.flow,
+    pageNumbering: preferences.pageNumbering ?? "screen",
   };
   // A delayed page-leave request must not overwrite a more recent position.
   const updated = await ReaderBookModel.findOneAndUpdate(

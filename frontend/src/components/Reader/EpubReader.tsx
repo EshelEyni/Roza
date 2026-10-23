@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ePub, {
   Book,
   Contents,
@@ -21,11 +21,15 @@ import {
   FiSettings,
   FiSearch,
   FiMessageSquare,
-  FiX,
 } from "react-icons/fi";
 import { ReaderBook, ReaderPreferences } from "../../../../shared/types/reader";
 import readerApiService from "../../services/readerApiService";
 import { useReaderState } from "../../hooks/useReaderState";
+import { ReaderSheet } from "./ReaderSheet";
+import { useReaderMobile } from "../../hooks/useReaderMobile";
+import { useReaderPageCount } from "../../hooks/useReaderPageCount";
+import { publisherPageAt } from "../../services/readerPublisherPages";
+import { bindReaderTouch } from "../../services/readerTouch";
 import { ReaderContents } from "./ReaderContents";
 import { ReaderSettings } from "./ReaderSettings";
 import { ReaderSearch } from "./ReaderSearch";
@@ -84,6 +88,9 @@ export function EpubReader({
   userId: string;
 }) {
   const { t } = useTranslation();
+  const mobile = useReaderMobile();
+  const mobileRef = useRef(mobile);
+  mobileRef.current = mobile;
   const { state, updateState, saveStatus, retrySave } = useReaderState(
     book,
     userId,
@@ -97,6 +104,7 @@ export function EpubReader({
   const epubRef = useRef<Book>();
   const renditionRef = useRef<Rendition>();
   const changingLayout = useRef(false);
+  const fullscreenResizeAnchor = useRef<string | null>(null);
   const pendingResize = useRef<ReturnType<typeof setTimeout>>();
   const layoutTask = useRef<Promise<void>>(Promise.resolve());
   const explicitNavigation = useRef(false);
@@ -104,12 +112,56 @@ export function EpubReader({
   const [textSelection, setTextSelection] =
     useState<ReaderTextSelection | null>(null);
   const closeLookup = useCallback(() => setTextSelection(null), []);
+  const selectionRef = useRef(textSelection);
+  selectionRef.current = textSelection;
   const [toc, setToc] = useState<NavItem[]>([]);
   const [href, setHref] = useState("");
   const [panel, setPanel] = useState<
     "contents" | "settings" | "search" | "chat" | null
   >(null);
+  const panelRef = useRef(panel);
+  panelRef.current = panel;
+  const closePanel = useCallback(() => setPanel(null), []);
+  function togglePanel(next: NonNullable<typeof panel>) {
+    setTextSelection(null);
+    setPanel(current => (current === next ? null : next));
+  }
+  const [location, setLocation] = useState<Location | null>(null);
   const [searchBook, setSearchBook] = useState<Book | null>(null);
+  const [paginationFile, setPaginationFile] = useState<ArrayBuffer | null>(
+    null,
+  );
+  // Numbering changes only affect the footer, never the EPUB layout or page measurement.
+  const renderingPreferences = useMemo(
+    () => ({
+      fontSize: state.preferences.fontSize,
+      fontFamily: state.preferences.fontFamily,
+      lineHeight: state.preferences.lineHeight,
+      width: state.preferences.width,
+      theme: state.preferences.theme,
+      flow: state.preferences.flow,
+    }),
+    [
+      state.preferences.fontSize,
+      state.preferences.fontFamily,
+      state.preferences.lineHeight,
+      state.preferences.width,
+      state.preferences.theme,
+      state.preferences.flow,
+    ],
+  );
+  const { screen: pageCount, publisherPages } = useReaderPageCount(
+    host,
+    paginationFile,
+    renderingPreferences,
+    location,
+    applyPreferences,
+  );
+  const showPublisherPages = state.preferences.pageNumbering === "publisher";
+  const publisherLabel =
+    publisherPages && location
+      ? (publisherPageAt(publisherPages, location.start.cfi)?.label ?? null)
+      : null;
   const [locationsReady, setLocationsReady] = useState(false);
   const highlightedCfi = useRef("");
   const [loading, setLoading] = useState(true);
@@ -119,6 +171,7 @@ export function EpubReader({
   const [atStart, setAtStart] = useState(false);
   const [atEnd, setAtEnd] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [immersive, setImmersive] = useState(false);
   const [chapter, setChapter] = useState("");
   const readingBoundary = useRef("");
   const chat = useReaderChat(
@@ -128,6 +181,7 @@ export function EpubReader({
 
   const move = useCallback(
     (direction: "next" | "prev") => {
+      if (changingLayout.current) return;
       const rendition = renditionRef.current;
       setTextSelection(null);
       if (rendition)
@@ -144,6 +198,7 @@ export function EpubReader({
     let epub: Book | undefined;
     let rendition: Rendition | undefined;
     let resizeObserver: ResizeObserver | undefined;
+    const touchCleanups: (() => void)[] = [];
     let ready = false;
     let hasLocations = false;
     const element = host.current!;
@@ -151,6 +206,7 @@ export function EpubReader({
       if (event.key === "Escape") setTextSelection(null);
       const target = event.target as HTMLElement | null;
       if (
+        changingLayout.current ||
         event.defaultPrevented ||
         event.ctrlKey ||
         event.metaKey ||
@@ -174,10 +230,13 @@ export function EpubReader({
     };
     async function start() {
       changingLayout.current = false;
+      fullscreenResizeAnchor.current = null;
       explicitNavigation.current = false;
       layoutTask.current = Promise.resolve();
       setLoading(true);
       setSearchBook(null);
+      setPaginationFile(null);
+      setLocation(null);
       setLocationsReady(false);
       highlightedCfi.current = "";
       readingBoundary.current = "";
@@ -191,12 +250,14 @@ export function EpubReader({
         if (cancelled) return;
         epub = ePub({ replacements: "blobUrl" });
         await epub.open(buffer, "binary");
+        await Promise.all([epub.opened, epub.ready]);
         if (cancelled) {
           epub.destroy();
           return;
         }
         epubRef.current = epub;
         setSearchBook(epub);
+        setPaginationFile(buffer);
         let count = 0;
         const fallback: NavItem[] = [];
         epub.spine.each(
@@ -232,8 +293,34 @@ export function EpubReader({
         applyPreferences(rendition, preferences);
         rendition.hooks.content.register((contents: Contents) => {
           contents.document.addEventListener("keydown", onKey);
-          contents.document.addEventListener("pointerdown", () =>
-            setTextSelection(null),
+          contents.document.addEventListener("pointerdown", () => {
+            if (!mobileRef.current) setTextSelection(null);
+          });
+          // iOS owns long-press selection and its draggable native handles.
+          contents.addStylesheetRules(
+            {
+              "html, body": {
+                "-webkit-user-select": "text",
+                "user-select": "text",
+                "touch-action": "pan-y pinch-zoom",
+              },
+            },
+            "reader-touch",
+          );
+          touchCleanups.push(
+            bindReaderTouch(contents.document, {
+              enabled: () =>
+                mobileRef.current &&
+                ready &&
+                !cancelled &&
+                !changingLayout.current,
+              paginated: () =>
+                stateRef.current.preferences.flow === "paginated",
+              blocked: () => !!panelRef.current,
+              selected: () => !!selectionRef.current,
+              dismissSelection: () => setTextSelection(null),
+              move: direction => move(direction),
+            }),
           );
           // Never navigate the app or open remote links from an uploaded document.
           contents.document.addEventListener(
@@ -272,6 +359,7 @@ export function EpubReader({
           const frame = contents.document.defaultView?.frameElement;
           if (!frame) return;
           const offset = frame.getBoundingClientRect();
+          if (mobileRef.current && panelRef.current) return;
           setTextSelection({
             text,
             word,
@@ -283,6 +371,7 @@ export function EpubReader({
         rendition.on("relocated", (location: Location) => {
           if (cancelled || !ready || changingLayout.current) return;
           setTextSelection(null);
+          setLocation(location);
           const start = location.start;
           readingBoundary.current = location.end.cfi || start.cfi;
           setHref(start.href);
@@ -333,21 +422,35 @@ export function EpubReader({
         document.addEventListener("keydown", onKey);
         resizeObserver = new ResizeObserver(() => {
           if (!ready || cancelled || explicitNavigation.current) return;
+          changingLayout.current = true;
           clearTimeout(pendingResize.current);
           pendingResize.current = setTimeout(() => {
             if (!cancelled && rendition && !explicitNavigation.current) {
-              const cfi = stateRef.current.location;
+              const cfi =
+                fullscreenResizeAnchor.current ?? stateRef.current.location;
               changingLayout.current = true;
-              rendition.resize(element.clientWidth, element.clientHeight);
+              const resize = rendition.resize as (
+                width: number,
+                height: number,
+                cfi?: string,
+              ) => void;
+              resize.call(
+                rendition,
+                element.clientWidth,
+                element.clientHeight,
+                cfi || undefined,
+              );
               layoutTask.current = rendition
                 .display(cfi || undefined)
                 .then(() => {
                   if (cancelled) return;
+                  fullscreenResizeAnchor.current = null;
                   changingLayout.current = false;
                   void rendition?.reportLocation();
                 })
                 .catch(() => {
                   if (cancelled) return;
+                  fullscreenResizeAnchor.current = null;
                   changingLayout.current = false;
                   setError(t("reader.navigationError"));
                 });
@@ -362,26 +465,30 @@ export function EpubReader({
         }
       }
     }
-    void start();
+    const opening = start();
     return () => {
       cancelled = true;
       controller.abort();
       clearTimeout(pendingResize.current);
       resizeObserver?.disconnect();
+      touchCleanups.forEach(cleanup => cleanup());
       document.removeEventListener("keydown", onKey);
       renditionRef.current = undefined;
       epubRef.current = undefined;
-      if (epub?.isOpen) epub.destroy();
+      // EPUB open() returns before its navigation and resource work settles.
+      void opening.then(() => {
+        if (epub?.isOpen) epub.destroy();
+      });
       element.replaceChildren();
     };
-  }, [book.id, book.title, state.preferences.flow, attempt, t]);
+  }, [book.id, book.title, state.preferences.flow, attempt, t, move]);
 
   useEffect(() => {
     const rendition = renditionRef.current;
     if (!rendition || loading) return;
     const cfi = stateRef.current.location;
     changingLayout.current = true;
-    applyPreferences(rendition, state.preferences);
+    applyPreferences(rendition, renderingPreferences);
     let cancelled = false;
     const timeout = setTimeout(() => {
       if (explicitNavigation.current) return;
@@ -402,7 +509,7 @@ export function EpubReader({
       cancelled = true;
       clearTimeout(timeout);
     };
-  }, [state.preferences, loading, t]);
+  }, [renderingPreferences, loading, t]);
 
   useEffect(() => {
     const onFullscreen = () =>
@@ -524,6 +631,14 @@ export function EpubReader({
   }
 
   async function toggleFullscreen() {
+    // Capture before fullscreen changes the available reading area.
+    fullscreenResizeAnchor.current = stateRef.current.location;
+    if (mobile) {
+      setImmersive(value => !value);
+      setPanel(null);
+      setTextSelection(null);
+      return;
+    }
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       else await shell.current?.requestFullscreen();
@@ -534,7 +649,11 @@ export function EpubReader({
 
   return (
     <div
-      className={"reader-shell reader-theme-" + state.preferences.theme}
+      className={
+        "reader-shell reader-theme-" +
+        state.preferences.theme +
+        (mobile && immersive ? " reader-immersive" : "")
+      }
       ref={shell}
     >
       {textSelection && (
@@ -568,7 +687,7 @@ export function EpubReader({
           className={
             "reader-icon-button " + (panel === "chat" ? "is-active" : "")
           }
-          onClick={() => setPanel(panel === "chat" ? null : "chat")}
+          onClick={() => togglePanel("chat")}
           aria-label={t("reader.chat.title")}
           aria-expanded={panel === "chat"}
           title={t("reader.chat.title")}
@@ -580,7 +699,7 @@ export function EpubReader({
           className={
             "reader-icon-button " + (panel === "search" ? "is-active" : "")
           }
-          onClick={() => setPanel(panel === "search" ? null : "search")}
+          onClick={() => togglePanel("search")}
           aria-label={t("reader.search")}
           aria-expanded={panel === "search"}
           title={t("reader.search")}
@@ -591,7 +710,7 @@ export function EpubReader({
           className={
             "reader-icon-button " + (panel === "contents" ? "is-active" : "")
           }
-          onClick={() => setPanel(panel === "contents" ? null : "contents")}
+          onClick={() => togglePanel("contents")}
           aria-label={t("reader.contents")}
           aria-expanded={panel === "contents"}
           title={t("reader.contents")}
@@ -602,7 +721,7 @@ export function EpubReader({
           className={
             "reader-icon-button " + (panel === "settings" ? "is-active" : "")
           }
-          onClick={() => setPanel(panel === "settings" ? null : "settings")}
+          onClick={() => togglePanel("settings")}
           aria-label={t("reader.settings")}
           aria-expanded={panel === "settings"}
           title={t("reader.settings")}
@@ -614,29 +733,32 @@ export function EpubReader({
           onClick={() => void toggleFullscreen()}
           aria-label={t("reader.fullscreen")}
           title={t("reader.fullscreen")}
+          aria-pressed={mobile ? immersive : fullscreen}
         >
-          {fullscreen ? <FiMinimize /> : <FiMaximize />}
+          {(mobile ? immersive : fullscreen) ? <FiMinimize /> : <FiMaximize />}
         </button>
       </header>
       <div className="reader-workspace">
         {panel && (
-          <aside
+          <ReaderSheet
+            label={t(
+              panel === "chat"
+                ? "reader.chat.title"
+                : panel === "contents"
+                  ? "reader.contents"
+                  : panel === "search"
+                    ? "reader.search"
+                    : "reader.settings",
+            )}
+            onClose={closePanel}
             className={
-              "reader-panel " +
-              (panel === "search"
+              panel === "search"
                 ? "reader-search-panel"
                 : panel === "chat"
                   ? "reader-chat-panel"
-                  : "")
+                  : ""
             }
           >
-            <button
-              className="reader-panel-close reader-icon-button"
-              onClick={() => setPanel(null)}
-              aria-label={t("reader.close")}
-            >
-              <FiX />
-            </button>
             {panel === "contents" ? (
               <ReaderContents
                 items={toc}
@@ -654,10 +776,13 @@ export function EpubReader({
             ) : (
               <ReaderSettings
                 preferences={state.preferences}
+                publisherPagesAvailable={
+                  publisherPages === null ? null : publisherPages.length > 0
+                }
                 onChange={preferences => updateState({ preferences })}
               />
             )}
-          </aside>
+          </ReaderSheet>
         )}
         <div className={"reader-paper reader-width-" + state.preferences.width}>
           {loading && (
@@ -715,12 +840,43 @@ export function EpubReader({
           </div>
         </div>
       </div>
+      {mobile && saveStatus === "error" && (
+        <p className="reader-notice" role="status">
+          <button
+            className="reader-save-retry"
+            onClick={() => void retrySave()}
+          >
+            {t("reader.saveError")}
+          </button>
+        </p>
+      )}
       {notice && (
         <p className="reader-notice" role="status">
           {notice}
         </p>
       )}
       <footer className="reader-footer">
+        <div className="reader-mobile-progress">
+          <span>{Math.round(state.progress * 100)}%</span>
+          <ReaderProgress
+            progress={state.progress}
+            ready={locationsReady && !loading}
+            onNavigate={onProgressNavigate}
+          />
+          <span>
+            {showPublisherPages && publisherPages?.length
+              ? t("reader.bookPageOfTotal", {
+                  page: publisherLabel || "—",
+                  total: publisherPages[publisherPages.length - 1].label,
+                })
+              : pageCount
+                ? t("reader.pageOfTotal", {
+                    page: pageCount.page,
+                    total: pageCount.total,
+                  })
+                : t("reader.countingPages")}
+          </span>
+        </div>
         <button
           className="reader-icon-button"
           onClick={() => move("prev")}
@@ -737,19 +893,67 @@ export function EpubReader({
             ready={locationsReady && !loading}
             onNavigate={onProgressNavigate}
           />
-          <span>
-            {Math.round(state.progress * 100)}% ·{" "}
-            {saveStatus === "error" ? (
-              <button
-                className="reader-save-retry"
-                onClick={() => void retrySave()}
-              >
-                {t("reader.saveError")}
-              </button>
-            ) : (
-              t(saveStatus === "saving" ? "reader.saving" : "reader.saved")
-            )}
-          </span>
+          <div className="reader-footer-indicators">
+            <button
+              className="reader-page-count reader-page-count-toggle"
+              type="button"
+              aria-pressed={showPublisherPages}
+              title={t(
+                showPublisherPages
+                  ? "reader.showScreenPages"
+                  : "reader.showBookPages",
+              )}
+              aria-label={t(
+                showPublisherPages
+                  ? "reader.showScreenPages"
+                  : "reader.showBookPages",
+              )}
+              onClick={() => {
+                if (publisherPages === null)
+                  setNotice(t("reader.preparingBookPages"));
+                else if (!publisherPages.length)
+                  setNotice(t("reader.noBookPages"));
+                else {
+                  updateState({
+                    preferences: {
+                      ...state.preferences,
+                      pageNumbering: showPublisherPages
+                        ? "screen"
+                        : "publisher",
+                    },
+                  });
+                  setNotice("");
+                }
+              }}
+            >
+              {showPublisherPages && publisherPages?.length
+                ? t("reader.bookPageOfTotal", {
+                    page: publisherLabel || "—",
+                    total: publisherPages[publisherPages.length - 1].label,
+                  })
+                : pageCount
+                  ? t("reader.pageOfTotal", {
+                      page: pageCount.page,
+                      total: pageCount.total,
+                    })
+                  : t("reader.countingPages")}
+            </button>
+            <span>
+              {saveStatus === "error" ? (
+                <button
+                  className="reader-save-retry"
+                  onClick={() => void retrySave()}
+                >
+                  {t("reader.saveError")}
+                </button>
+              ) : (
+                t(saveStatus === "saving" ? "reader.saving" : "reader.saved")
+              )}
+            </span>
+            <span className="reader-percent">
+              {Math.round(state.progress * 100)}%
+            </span>
+          </div>
         </div>
         <button
           className="reader-icon-button"

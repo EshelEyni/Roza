@@ -7,4 +7,5 @@ export const defaultReaderPreferences: ReaderPreferences = {
   width: "comfortable",
   theme: "sepia",
   flow: "paginated",
+  pageNumbering: "screen",
 };

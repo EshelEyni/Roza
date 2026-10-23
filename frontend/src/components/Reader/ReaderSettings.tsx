@@ -4,9 +4,14 @@ import { ReaderPreferences } from "../../../../shared/types/reader";
 type ReaderSettingsProps = {
   preferences: ReaderPreferences;
   onChange: (preferences: ReaderPreferences) => void;
+  publisherPagesAvailable: boolean | null;
 };
 
-export function ReaderSettings({ preferences, onChange }: ReaderSettingsProps) {
+export function ReaderSettings({
+  preferences,
+  onChange,
+  publisherPagesAvailable,
+}: ReaderSettingsProps) {
   const { t } = useTranslation();
   function update(changes: Partial<ReaderPreferences>) {
     onChange({ ...preferences, ...changes });
@@ -87,6 +92,33 @@ export function ReaderSettings({ preferences, onChange }: ReaderSettingsProps) {
           <option value="scrolled">{t("reader.scroll")}</option>
         </select>
       </label>
+      <label>
+        {t("reader.pageNumbering")}
+        <select
+          value={preferences.pageNumbering || "screen"}
+          aria-describedby="reader-page-numbering-hint"
+          onChange={event =>
+            update({
+              pageNumbering: event.target
+                .value as ReaderPreferences["pageNumbering"],
+            })
+          }
+        >
+          <option value="screen">{t("reader.screenPages")}</option>
+          <option value="publisher" disabled={publisherPagesAvailable !== true}>
+            {t("reader.publisherPages")}
+          </option>
+        </select>
+      </label>
+      <p id="reader-page-numbering-hint" className="reader-hint" role="status">
+        {t(
+          publisherPagesAvailable === null
+            ? "reader.preparingBookPages"
+            : publisherPagesAvailable
+              ? "reader.pageNumberingHint"
+              : "reader.noBookPages",
+        )}
+      </p>
     </section>
   );
 }

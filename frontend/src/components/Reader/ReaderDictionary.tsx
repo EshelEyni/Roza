@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FiBookOpen, FiMessageSquare, FiVolume2, FiX } from "react-icons/fi";
+import { ReaderSheet } from "./ReaderSheet";
+import { useReaderMobile } from "../../hooks/useReaderMobile";
 import { ReaderLookupResult } from "../../../../shared/types/readerDictionary";
 import readerApiService from "../../services/readerApiService";
 
@@ -26,6 +28,7 @@ export function ReaderDictionary({
   aiDisabled?: boolean;
 }) {
   const { t } = useTranslation();
+  const mobile = useReaderMobile();
   const [opened, setOpened] = useState(false);
   const [result, setResult] = useState<ReaderLookupResult>();
   const [loading, setLoading] = useState(false);
@@ -39,10 +42,11 @@ export function ReaderDictionary({
 
   useEffect(() => {
     mounted.current = true;
-    button.current?.focus({ preventScroll: true });
+    if (!mobile) button.current?.focus({ preventScroll: true });
     window.speechSynthesis?.getVoices();
     const onOutside = (event: PointerEvent) => {
       if (
+        !(mobile && opened) &&
         event.target instanceof Node &&
         !dialog.current?.contains(event.target)
       )
@@ -59,17 +63,17 @@ export function ReaderDictionary({
       document.removeEventListener("pointerdown", onOutside);
       window.speechSynthesis?.cancel();
     };
-  }, [onClose]);
+  }, [onClose, mobile, opened]);
 
   useEffect(() => {
-    if (opened) dialog.current?.focus({ preventScroll: true });
-  }, [opened]);
+    if (opened && !mobile) dialog.current?.focus({ preventScroll: true });
+  }, [opened, mobile]);
 
   useEffect(() => {
-    if (opened) return;
+    if (opened || mobile) return;
     window.addEventListener("blur", onClose);
     return () => window.removeEventListener("blur", onClose);
-  }, [opened, onClose]);
+  }, [opened, onClose, mobile]);
 
   async function lookup() {
     if (loading || result || !selection.word) return;
@@ -123,14 +127,18 @@ export function ReaderDictionary({
   }
 
   const entry = result?.entry;
-  const actionWidth = selection.word ? 92 : 52;
-  return (
+  const actionWidth = selection.word ? (mobile ? 108 : 92) : mobile ? 60 : 52;
+  const content = (
     <div
       className={"reader-dictionary " + (opened ? "is-open" : "")}
       ref={dialog}
       tabIndex={-1}
       onBlur={event => {
-        if (!opened && !event.currentTarget.contains(event.relatedTarget))
+        if (
+          !mobile &&
+          !opened &&
+          !event.currentTarget.contains(event.relatedTarget)
+        )
           onClose();
       }}
       role="dialog"
@@ -152,7 +160,7 @@ export function ReaderDictionary({
         ),
       }}
     >
-      {opened && (
+      {opened && !mobile && (
         <button
           className="reader-icon-button reader-dictionary-close"
           onClick={onClose}
@@ -332,5 +340,16 @@ export function ReaderDictionary({
         </>
       )}
     </div>
+  );
+  return mobile && opened ? (
+    <ReaderSheet
+      className="reader-dictionary-sheet"
+      label={t("reader.dictionaryTitle")}
+      onClose={onClose}
+    >
+      {content}
+    </ReaderSheet>
+  ) : (
+    content
   );
 }
