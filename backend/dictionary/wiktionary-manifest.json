@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "name": "Wiktionary",
+  "url": "https://en.wiktionary.org/",
+  "license": "CC BY-SA 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by-sa/4.0/",
+  "downloadUrl": "https://kaikki.org/dictionary/English/kaikki.org-dictionary-English.jsonl",
+  "dumpDate": "2026-10-01",
+  "repairedRecords": 1,
+  "inputSha256": "b776a8d3286cefa6e75dfea6382589c12259a83616fd65a02e2da88f4c5b727a",
+  "inputBytes": 3430807113,
+  "counts": {
+    "sourceRecords": 1499161,
+    "headwords": 12599,
+    "forms": 49403,
+    "senses": 17246
+  },
+  "modifications": "Filtered to supported English headwords and attested Hebrew translations; grouped by source meaning; quotations and unrelated fields omitted; forms resolved to translated headwords."
+}

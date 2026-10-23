@@ -4,10 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm:dev:backend\" \"npm:dev:frontend\" \"npm:dev:translate\"",
-    "dev:backend": "cd backend && code . && npm run dev",
-    "dev:frontend": "cd frontend && code . && npm run dev",
-    "dev:translate": "cd frontend\\public\\locales && code ."
+    "dev": "concurrently \"npm:dev:backend\" \"npm:dev:frontend\" ",
+    "dev:backend": "cd backend  && npm run dev",
+    "dev:frontend": "cd frontend  && npm run dev"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

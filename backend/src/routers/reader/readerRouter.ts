@@ -25,6 +25,7 @@ import {
   getAiSettings,
   updateAiSettings,
 } from "../../controllers/reader/readerAiSettingsController";
+import { lookupReaderDictionary } from "../../controllers/reader/readerDictionaryController";
 
 const router = express.Router();
 
@@ -58,6 +59,7 @@ router.post("/:id/conversations", createConversation);
 router.get("/:id/conversations/:conversationId", getConversation);
 router.delete("/:id/conversations/:conversationId", deleteConversation);
 router.post("/:id/conversations/:conversationId/messages", chatLimiter, sendMessage);
+router.post("/:id/dictionary", lookupReaderDictionary);
 router.get("/:id/file", getReaderFile);
 router.get("/:id", getReaderBook);
 router.patch("/:id/state", updateReaderState);

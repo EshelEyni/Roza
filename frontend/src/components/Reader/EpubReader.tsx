@@ -32,7 +32,7 @@ import { ReaderSearch } from "./ReaderSearch";
 import { ReaderProgress } from "./ReaderProgress";
 import { ReaderChat } from "./ReaderChat";
 import { useReaderChat } from "../../hooks/useReaderChat";
-import { ReaderPassage } from "../../../../shared/types/readerChat";
+import { ReaderDictionary, ReaderTextSelection } from "./ReaderDictionary";
 
 const palettes = {
   light: { background: "#fffefa", color: "#28231e" },
@@ -101,6 +101,9 @@ export function EpubReader({
   const layoutTask = useRef<Promise<void>>(Promise.resolve());
   const explicitNavigation = useRef(false);
   const navigationVersion = useRef(0);
+  const [textSelection, setTextSelection] =
+    useState<ReaderTextSelection | null>(null);
+  const closeLookup = useCallback(() => setTextSelection(null), []);
   const [toc, setToc] = useState<NavItem[]>([]);
   const [href, setHref] = useState("");
   const [panel, setPanel] = useState<
@@ -118,7 +121,6 @@ export function EpubReader({
   const [fullscreen, setFullscreen] = useState(false);
   const [chapter, setChapter] = useState("");
   const readingBoundary = useRef("");
-  const [selection, setSelection] = useState<ReaderPassage | null>(null);
   const chat = useReaderChat(
     book.id,
     () => readingBoundary.current || stateRef.current.location,
@@ -127,6 +129,7 @@ export function EpubReader({
   const move = useCallback(
     (direction: "next" | "prev") => {
       const rendition = renditionRef.current;
+      setTextSelection(null);
       if (rendition)
         void rendition[direction]().catch(() =>
           setError(t("reader.navigationError")),
@@ -145,6 +148,7 @@ export function EpubReader({
     let hasLocations = false;
     const element = host.current!;
     const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setTextSelection(null);
       const target = event.target as HTMLElement | null;
       if (
         event.defaultPrevented ||
@@ -177,7 +181,6 @@ export function EpubReader({
       setLocationsReady(false);
       highlightedCfi.current = "";
       readingBoundary.current = "";
-      setSelection(null);
       setError("");
       setNotice("");
       try {
@@ -229,6 +232,9 @@ export function EpubReader({
         applyPreferences(rendition, preferences);
         rendition.hooks.content.register((contents: Contents) => {
           contents.document.addEventListener("keydown", onKey);
+          contents.document.addEventListener("pointerdown", () =>
+            setTextSelection(null),
+          );
           // Never navigate the app or open remote links from an uploaded document.
           contents.document.addEventListener(
             "click",
@@ -248,21 +254,37 @@ export function EpubReader({
           iframe?.setAttribute("title", book.title);
         });
         rendition.on("selected", (cfi: string, contents: Contents) => {
-          if (cancelled) return;
-          const text = contents.range(cfi).toString().trim();
-          if (!text) return;
-          if (text.length > 3000) {
-            setSelection(null);
-            setNotice(t("reader.chat.selectionLimit"));
+          if (cancelled || changingLayout.current) return;
+          const range = contents.range(cfi);
+          const text = range.toString().trim();
+          if (!text || text.length > 3000) {
+            setTextSelection(null);
+            if (text.length > 3000) setNotice(t("reader.chat.selectionLimit"));
             return;
           }
-          setSelection({ cfi, text });
+          const candidate = text.replace(/^[“"‘(]+|[”"’.,;:!?)]+$/g, "");
+          const word =
+            /^[a-zA-Z]+(?:['’‘-][a-zA-Z]+)*$/.test(candidate) &&
+            candidate.length <= 80
+              ? candidate
+              : undefined;
+          const rect = range.getBoundingClientRect();
+          const frame = contents.document.defaultView?.frameElement;
+          if (!frame) return;
+          const offset = frame.getBoundingClientRect();
+          setTextSelection({
+            text,
+            word,
+            cfi,
+            x: offset.left + rect.left,
+            y: offset.top + rect.bottom + 8,
+          });
         });
         rendition.on("relocated", (location: Location) => {
           if (cancelled || !ready || changingLayout.current) return;
+          setTextSelection(null);
           const start = location.start;
           readingBoundary.current = location.end.cfi || start.cfi;
-          setSelection(null);
           setHref(start.href);
           setAtStart(location.atStart);
           setAtEnd(location.atEnd);
@@ -390,6 +412,7 @@ export function EpubReader({
   }, []);
 
   async function navigateTo(target: string) {
+    setTextSelection(null);
     if (target.startsWith("epubcfi(")) {
       const anchor = new EpubCFI(target);
       anchor.collapse(true);
@@ -514,6 +537,20 @@ export function EpubReader({
       className={"reader-shell reader-theme-" + state.preferences.theme}
       ref={shell}
     >
+      {textSelection && (
+        <ReaderDictionary
+          key={textSelection.cfi}
+          selection={textSelection}
+          bookId={book.id}
+          onClose={closeLookup}
+          aiDisabled={chat.sending || chat.loading}
+          onAskAi={() => {
+            chat.start({ cfi: textSelection.cfi, text: textSelection.text });
+            setPanel("chat");
+            closeLookup();
+          }}
+        />
+      )}
       <header className="reader-toolbar">
         <Link
           className="reader-icon-button"
@@ -623,34 +660,6 @@ export function EpubReader({
           </aside>
         )}
         <div className={"reader-paper reader-width-" + state.preferences.width}>
-          {selection && (
-            <div
-              className="reader-selection-actions"
-              role="toolbar"
-              aria-label={t("reader.chat.selectionActions")}
-            >
-              <button
-                className="reader-button"
-                disabled={chat.sending || chat.loading}
-                onMouseDown={event => event.preventDefault()}
-                onClick={() => {
-                  chat.start(selection);
-                  setPanel("chat");
-                  setSelection(null);
-                }}
-              >
-                <FiMessageSquare />
-                {t("reader.chat.ask")}
-              </button>
-              <button
-                className="reader-icon-button"
-                aria-label={t("reader.close")}
-                onClick={() => setSelection(null)}
-              >
-                <FiX />
-              </button>
-            </div>
-          )}
           {loading && (
             <div className="reader-overlay" role="status">
               {t("reader.opening")}

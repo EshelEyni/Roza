@@ -1027,3 +1027,108 @@
 .reader-theme-dark .reader-ai-settings-saved {
   color: #afcd9c;
 }
+
+.reader-dictionary {
+  position: fixed;
+  z-index: 100;
+  width: 52px;
+  max-width: calc(100vw - 24px);
+  max-height: min(70vh, 520px);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid #b7a58a;
+  border-radius: 12px;
+  background: #fffefa;
+  color: #392e24;
+  box-shadow: 0 8px 36px #0003;
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: start;
+}
+.reader-dictionary.is-open {
+  width: 360px;
+  padding: 24px;
+}
+.reader-dictionary-close {
+  float: inline-end;
+  width: 28px;
+  height: 28px;
+}
+.reader-dictionary-action {
+  cursor: pointer;
+}
+.reader-dictionary-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  clear: both;
+}
+.reader-dictionary-heading h2 {
+  font-family: Georgia, serif;
+  font-size: 28px;
+  margin: 4px 0;
+  overflow-wrap: anywhere;
+}
+.reader-dictionary-meanings {
+  font-size: 24px;
+  padding: 16px 0;
+}
+.reader-dictionary summary {
+  cursor: pointer;
+  padding: 12px 0;
+  border-top: 1px solid #d9cbb7;
+}
+.reader-dictionary-sense {
+  padding: 12px 0;
+  border-top: 1px solid #e8dfd0;
+}
+.reader-dictionary-sense p {
+  margin: 6px 0;
+}
+.reader-dictionary-sense blockquote {
+  margin: 8px 0;
+  padding-inline-start: 12px;
+  border-inline-start: 2px solid #b7a58a;
+  font-style: italic;
+}
+.reader-dictionary-saved {
+  font-size: 12px;
+  margin-top: 16px;
+  color: #426239;
+}
+.reader-dictionary-source {
+  display: block;
+  font-size: 10px;
+  color: #726454;
+}
+.reader-theme-dark .reader-dictionary {
+  background: #2c2e29;
+  color: #e5e4da;
+}
+.reader-theme-dark .reader-dictionary-saved {
+  color: #a9c69a;
+}
+.reader-google-attribution {
+  display: inline-flex;
+  margin-top: 8px;
+}
+.reader-google-attribution img {
+  max-width: 100%;
+  height: auto;
+}
+.reader-google-badge-white {
+  display: none;
+}
+.reader-theme-dark .reader-google-badge-color {
+  display: none;
+}
+.reader-theme-dark .reader-google-badge-white {
+  display: block;
+}
+
+.reader-dictionary-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
