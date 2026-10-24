@@ -227,7 +227,7 @@
   margin: 16px 8px 0;
 }
 .reader-shell {
-  height: calc(100dvh - 64px);
+  height: 100dvh;
   min-height: 450px;
   width: 100%;
   display: flex;
@@ -1197,16 +1197,11 @@
     flex: 1;
     overflow: hidden;
   }
-  body:has(.reader-shell) #root > div > header {
-    height: calc(64px + env(safe-area-inset-top));
-    padding-top: calc(8px + env(safe-area-inset-top));
-    flex-shrink: 0;
-  }
   .reader-shell {
     min-height: 0;
-    height: calc(100dvh - 64px - env(safe-area-inset-top));
+    height: 100dvh;
     // Keep the text clear of the persistent reader toolbar and footer.
-    padding-top: 64px;
+    padding-top: 82px;
     padding-bottom: calc(50px + env(safe-area-inset-bottom));
     overflow: hidden;
   }
@@ -1215,10 +1210,7 @@
     inset: 0;
     z-index: 30;
     height: 100dvh;
-    padding-top: calc(64px + env(safe-area-inset-top));
-  }
-  body:has(.reader-immersive) #root > div > header {
-    display: none;
+    padding-top: 82px;
   }
   .reader-toolbar {
     position: absolute;
@@ -1227,15 +1219,19 @@
     z-index: 60;
     justify-content: space-between;
     gap: 4px;
-    padding: 8px max(12px, env(safe-area-inset-right)) 8px
+    padding: 0 max(12px, env(safe-area-inset-right)) 8px
       max(12px, env(safe-area-inset-left));
-    min-height: 64px;
+    min-height: 82px;
+    flex-wrap: wrap;
     background: var(--reader-surface);
   }
-  .reader-immersive .reader-toolbar {
-    padding-top: calc(8px + env(safe-area-inset-top));
-  }
   .reader-toolbar-title {
+    display: block;
+    flex: 0 0 100%;
+    order: 1;
+    text-align: center;
+  }
+  .reader-toolbar-title p {
     display: none;
   }
   .reader-icon-button {

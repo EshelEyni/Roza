@@ -5,6 +5,7 @@ import {
   Route,
   Routes,
   useLocation,
+  useMatch,
   useNavigate,
 } from "react-router-dom";
 import { routes } from "./routes";
@@ -51,6 +52,7 @@ function App() {
   const [isNavigatedToLastPage, setIsNavigatedToLastPage] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const isReaderOpen = !!useMatch("/reader/:id");
 
   useEffect(() => {
     if (loggedInUser && loggedInUser.language && isFetchedLoggedInUser) {
@@ -88,7 +90,7 @@ function App() {
 
   return (
     <div className="flex min-h-screen flex-col items-center overflow-y-scroll bg-app-100 text-gray-50">
-      <AppHeader />
+      {!isReaderOpen && <AppHeader />}
       <Suspense fallback={<Loader isPageLoader={true} />}>
         <Routes>
           <Route index element={<Navigate replace to="/home" />} />
