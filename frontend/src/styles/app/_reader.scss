@@ -1440,9 +1440,7 @@
     border-radius: 0;
     box-shadow: none;
     padding-top: env(safe-area-inset-top);
-    padding-bottom: calc(
-      var(--reader-keyboard, 0px) + env(safe-area-inset-bottom)
-    );
+    padding-bottom: 0;
     background: var(--reader-surface);
   }
   .reader-sheet-fullscreen .reader-sheet-body h2 {
@@ -1541,5 +1539,63 @@
     margin-inline-start: auto;
     padding-inline: 10px;
     font-size: 14px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .reader-sheet-backdrop.reader-sheet-backdrop-fullscreen {
+    // Cover keyboard animation/panning overshoot as well as the viewport.
+    inset: -100dvh -100vw;
+    z-index: 119;
+    background: var(--reader-surface);
+  }
+  .reader-sheet-fullscreen {
+    overscroll-behavior: none;
+  }
+  .reader-chat-panel.reader-sheet-fullscreen > .reader-sheet-body {
+    overflow: hidden;
+  }
+  .reader-chat-panel.reader-sheet-fullscreen .reader-chat {
+    overflow: hidden;
+  }
+}
+
+@media (max-width: 1024px) {
+  .reader-panel.reader-sheet.reader-sheet-fullscreen {
+    padding: 0;
+  }
+  .reader-sheet-fullscreen > .reader-sheet-body {
+    // The backdrop stays full-screen; this inner flex layout follows the visible viewport.
+    position: absolute;
+    inset: var(--reader-viewport-top, 0px) 0 auto;
+    height: var(--reader-viewport-height, 100dvh);
+    min-height: 0;
+    padding: env(safe-area-inset-top) max(0px, env(safe-area-inset-right))
+      var(--reader-modal-bottom-inset, env(safe-area-inset-bottom))
+      max(0px, env(safe-area-inset-left));
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    background: var(--reader-surface);
+  }
+  .reader-sheet-fullscreen .reader-chat {
+    flex: 1;
+    min-height: 0;
+  }
+  .reader-sheet-fullscreen .reader-chat-messages {
+    flex: 1 1 0;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  .reader-sheet-fullscreen .reader-chat-compose {
+    position: static;
+    flex: 0 0 auto;
+    margin: 0;
+    background: var(--reader-surface);
+  }
+  .reader-sheet-fullscreen .reader-chat-compose textarea {
+    resize: none;
   }
 }

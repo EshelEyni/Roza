@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FiArrowLeft,
@@ -29,7 +29,9 @@ export function ReaderChat({
   useEffect(() => {
     setQuestion("");
     setSettingsOpen(false);
-    input.current?.focus();
+  }, [chat.conversation?.id, chat.passage?.cfi]);
+  useLayoutEffect(() => {
+    input.current?.focus({ preventScroll: true });
   }, [chat.conversation?.id, chat.passage?.cfi]);
   useEffect(() => {
     const element = messages.current;
@@ -256,6 +258,7 @@ export function ReaderChat({
           </div>
           <form
             className="reader-chat-compose"
+            autoComplete="off"
             onSubmit={event => void submit(event)}
           >
             <label className="reader-chat-spoilers">
@@ -274,6 +277,8 @@ export function ReaderChat({
             </label>
             <textarea
               id="reader-chat-question"
+              name="book-chat-message"
+              autoComplete="off"
               ref={input}
               dir="auto"
               value={question}

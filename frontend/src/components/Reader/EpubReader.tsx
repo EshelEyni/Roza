@@ -1,3 +1,4 @@
+import { flushSync } from "react-dom";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ePub, {
   Book,
@@ -123,9 +124,21 @@ export function EpubReader({
   const panelRef = useRef(panel);
   panelRef.current = panel;
   const closePanel = useCallback(() => setPanel(null), []);
+  function focusChatInput() {
+    shell.current
+      ?.querySelector<HTMLTextAreaElement>("#reader-chat-question")
+      ?.focus({ preventScroll: true });
+  }
   function togglePanel(next: NonNullable<typeof panel>) {
-    setTextSelection(null);
-    setPanel(current => (current === next ? null : next));
+    const update = () => {
+      setTextSelection(null);
+      setPanel(current => (current === next ? null : next));
+    };
+    if (mobileRef.current && next === "chat") {
+      // Mount and focus during the tap itself so iOS permits the software keyboard.
+      flushSync(update);
+      focusChatInput();
+    } else update();
   }
   const [location, setLocation] = useState<Location | null>(null);
   const [searchBook, setSearchBook] = useState<Book | null>(null);
@@ -304,6 +317,7 @@ export function EpubReader({
           contents.addStylesheetRules(
             {
               "html, body": {
+                "-webkit-touch-callout": "none",
                 "-webkit-user-select": "text",
                 "user-select": "text",
                 "touch-action": "pan-y pinch-zoom",
@@ -669,9 +683,15 @@ export function EpubReader({
           onClose={closeLookup}
           aiDisabled={chat.sending || chat.loading}
           onAskAi={() => {
-            chat.start({ cfi: textSelection.cfi, text: textSelection.text });
-            setPanel("chat");
-            closeLookup();
+            const openChat = () => {
+              chat.start({ cfi: textSelection.cfi, text: textSelection.text });
+              setPanel("chat");
+              closeLookup();
+            };
+            if (mobileRef.current) {
+              flushSync(openChat);
+              focusChatInput();
+            } else openChat();
           }}
         />
       )}
