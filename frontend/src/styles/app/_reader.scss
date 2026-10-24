@@ -1184,6 +1184,19 @@
 }
 
 @media (max-width: 1024px) {
+  // The app's min-h-screen uses 100vh, which exceeds Safari's visible viewport.
+  // Constrain the open reader to the dynamic viewport instead of scrolling it.
+  html:has(.reader-shell),
+  body:has(.reader-shell) {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  .reader-details:has(.reader-shell) {
+    min-height: 0;
+    flex: 1;
+    overflow: hidden;
+  }
   body:has(.reader-shell) #root > div > header {
     height: calc(64px + env(safe-area-inset-top));
     padding-top: calc(8px + env(safe-area-inset-top));
