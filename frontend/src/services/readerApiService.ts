@@ -3,10 +3,7 @@ import { ReaderLookupResult } from "../../../shared/types/readerDictionary";
 import { ReaderBook, ReaderState } from "../../../shared/types/reader";
 import { JsendResponse } from "../../../shared/types/system";
 
-const baseUrl =
-  process.env.NODE_ENV === "production"
-    ? "/api/reader"
-    : "http://localhost:3030/api/reader";
+const baseUrl = "/api/reader";
 
 async function request<T>(
   method: string,

@@ -1,7 +1,7 @@
 import axios, { AxiosError, Method } from "axios";
 import { JsendResponse, ServerErrorData } from "../../../shared/types/system";
 const isProd = process.env.NODE_ENV === "production";
-const BASE_URL = isProd ? "/api/" : "http://localhost:3030/api/";
+const BASE_URL = "/api/";
 
 async function ajax(
   endpoint: string,
