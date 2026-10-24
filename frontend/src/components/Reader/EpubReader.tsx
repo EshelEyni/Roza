@@ -30,6 +30,7 @@ import { useReaderMobile } from "../../hooks/useReaderMobile";
 import { useReaderPageCount } from "../../hooks/useReaderPageCount";
 import { publisherPageAt } from "../../services/readerPublisherPages";
 import { bindReaderTouch } from "../../services/readerTouch";
+import { protectReaderDocument } from "../../services/readerContentSecurity";
 import { ReaderContents } from "./ReaderContents";
 import { ReaderSettings } from "./ReaderSettings";
 import { ReaderSearch } from "./ReaderSearch";
@@ -249,6 +250,7 @@ export function EpubReader({
         );
         if (cancelled) return;
         epub = ePub({ replacements: "blobUrl" });
+        epub.spine.hooks.content.register(protectReaderDocument);
         await epub.open(buffer, "binary");
         await Promise.all([epub.opened, epub.ready]);
         if (cancelled) {
@@ -285,7 +287,9 @@ export function EpubReader({
           spread: "none",
           flow: preferences.flow === "paginated" ? "paginated" : "scrolled-doc",
           manager: preferences.flow === "scrolled" ? "continuous" : "default",
-          allowScriptedContent: false,
+          // WebKit blocks parent event callbacks without this sandbox permission.
+          // protectReaderDocument blocks book scripts before iframe parsing.
+          allowScriptedContent: true,
           gap: 40,
         };
         rendition = epub.renderTo(element, renderOptions);
@@ -608,6 +612,7 @@ export function EpubReader({
         },
       );
       highlightedCfi.current = cfi;
+      if (mobileRef.current) setPanel(null);
     } catch {
       if (renditionRef.current === rendition)
         setNotice(t("reader.navigationError"));
@@ -741,6 +746,8 @@ export function EpubReader({
       <div className="reader-workspace">
         {panel && (
           <ReaderSheet
+            mobileFullscreen={panel === "search" || panel === "chat"}
+            mobileCloseInContent={panel === "search" || panel === "chat"}
             label={t(
               panel === "chat"
                 ? "reader.chat.title"
@@ -767,12 +774,13 @@ export function EpubReader({
               />
             ) : panel === "search" ? (
               <ReaderSearch
+                onClose={closePanel}
                 book={loading ? null : searchBook}
                 locationsReady={locationsReady}
                 onNavigate={cfi => void onSearchNavigate(cfi)}
               />
             ) : panel === "chat" ? (
-              <ReaderChat chat={chat} />
+              <ReaderChat chat={chat} onClose={closePanel} />
             ) : (
               <ReaderSettings
                 preferences={state.preferences}

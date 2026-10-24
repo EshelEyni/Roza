@@ -15,17 +15,23 @@ export function ReaderSheet({
   children,
   className = "",
   label,
+  mobileFullscreen = false,
+  mobileCloseInContent = false,
   onClose,
 }: {
   children: ReactNode;
   className?: string;
   label: string;
+  mobileFullscreen?: boolean;
+  mobileCloseInContent?: boolean;
   onClose: () => void;
 }) {
   const { t } = useTranslation();
   const mobile = useReaderMobile();
   const [height, setHeight] = useState(35);
   const [keyboard, setKeyboard] = useState(0);
+  const panel = useRef<HTMLElement>(null);
+  const fullScreen = mobile && mobileFullscreen;
   const drag = useRef<{ y: number; height: number; viewport: number }>();
   const suppressClick = useRef(false);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -53,12 +59,34 @@ export function ReaderSheet({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
+      if (fullScreen && event.key === "Tab") {
+        const controls = Array.from(
+          panel.current?.querySelectorAll<HTMLElement>(
+            'button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), a[href], [tabindex="0"]',
+          ) || [],
+        ).filter(element => element.getClientRects().length > 0);
+        const first = controls[0];
+        const last = controls[controls.length - 1];
+        if (
+          first &&
+          (event.shiftKey
+            ? document.activeElement === first
+            : document.activeElement === last)
+        ) {
+          event.preventDefault();
+          (event.shiftKey ? last : first).focus();
+        }
+      }
     };
     document.addEventListener("keydown", onKey);
     // Keep touch focus in the EPUB so native selection handles survive.
-    if (!mobile) closeButton.current?.focus({ preventScroll: true });
+    if (
+      !mobile ||
+      (fullScreen && !panel.current?.contains(document.activeElement))
+    )
+      closeButton.current?.focus({ preventScroll: true });
     return () => document.removeEventListener("keydown", onKey);
-  }, [mobile, onClose]);
+  }, [mobile, onClose, fullScreen]);
 
   function finish(event: PointerEvent<HTMLButtonElement>) {
     if (!drag.current) return;
@@ -80,9 +108,15 @@ export function ReaderSheet({
         />
       )}
       <aside
-        className={"reader-panel reader-sheet " + className}
+        ref={panel}
+        className={
+          "reader-panel reader-sheet " +
+          className +
+          (fullScreen ? " reader-sheet-fullscreen" : "")
+        }
         role="dialog"
         aria-label={label}
+        aria-modal={fullScreen || undefined}
         style={
           {
             "--reader-sheet-height": height + "%",
@@ -98,57 +132,63 @@ export function ReaderSheet({
             setHeight(80);
         }}
       >
-        <button
-          className="reader-sheet-grip"
-          aria-label={t("reader.resizePanel")}
-          aria-expanded={height > 57.5}
-          onClick={() => setHeight(value => (value > 57.5 ? 35 : 80))}
-          onPointerDown={event => {
-            suppressClick.current = false;
-            drag.current = {
-              y: event.clientY,
-              height,
-              viewport: window.innerHeight - keyboard,
-            };
-            event.currentTarget.setPointerCapture(event.pointerId);
-          }}
-          onPointerMove={event => {
-            if (!drag.current) return;
-            setHeight(
-              Math.min(
-                80,
-                Math.max(
-                  12,
-                  drag.current.height +
-                    ((drag.current.y - event.clientY) / drag.current.viewport) *
-                      100,
-                ),
-              ),
-            );
-          }}
-          onPointerUp={event => {
-            // A pointer drag should not also trigger the click-to-expand action.
-            if (drag.current && Math.abs(event.clientY - drag.current.y) > 5) {
-              finish(event);
-              event.preventDefault();
-              suppressClick.current = true;
-            } else drag.current = undefined;
-          }}
-          onClickCapture={event => {
-            if (suppressClick.current) {
+        {!fullScreen && (
+          <button
+            className="reader-sheet-grip"
+            aria-label={t("reader.resizePanel")}
+            aria-expanded={height > 57.5}
+            onClick={() => setHeight(value => (value > 57.5 ? 35 : 80))}
+            onPointerDown={event => {
               suppressClick.current = false;
-              event.preventDefault();
-              event.stopPropagation();
-            }
-          }}
-          onPointerCancel={() => {
-            drag.current = undefined;
-            setHeight(value => (value > 57.5 ? 80 : 35));
-          }}
-        >
-          <span />
-        </button>
-        {!mobile && (
+              drag.current = {
+                y: event.clientY,
+                height,
+                viewport: window.innerHeight - keyboard,
+              };
+              event.currentTarget.setPointerCapture(event.pointerId);
+            }}
+            onPointerMove={event => {
+              if (!drag.current) return;
+              setHeight(
+                Math.min(
+                  80,
+                  Math.max(
+                    12,
+                    drag.current.height +
+                      ((drag.current.y - event.clientY) /
+                        drag.current.viewport) *
+                        100,
+                  ),
+                ),
+              );
+            }}
+            onPointerUp={event => {
+              // A pointer drag should not also trigger the click-to-expand action.
+              if (
+                drag.current &&
+                Math.abs(event.clientY - drag.current.y) > 5
+              ) {
+                finish(event);
+                event.preventDefault();
+                suppressClick.current = true;
+              } else drag.current = undefined;
+            }}
+            onClickCapture={event => {
+              if (suppressClick.current) {
+                suppressClick.current = false;
+                event.preventDefault();
+                event.stopPropagation();
+              }
+            }}
+            onPointerCancel={() => {
+              drag.current = undefined;
+              setHeight(value => (value > 57.5 ? 80 : 35));
+            }}
+          >
+            <span />
+          </button>
+        )}
+        {(!mobile || (fullScreen && !mobileCloseInContent)) && (
           <button
             ref={closeButton}
             className="reader-panel-close reader-icon-button"

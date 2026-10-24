@@ -8,10 +8,12 @@ export function ReaderSearch({
   book,
   locationsReady,
   onNavigate,
+  onClose,
 }: {
   book: Book | null;
   locationsReady: boolean;
   onNavigate: (cfi: string) => void;
+  onClose: () => void;
 }) {
   const { t } = useTranslation();
   const [input, setInput] = useState("");
@@ -47,33 +49,42 @@ export function ReaderSearch({
     <section className="reader-search" aria-label={t("reader.search")}>
       <div className="reader-search-heading">
         <h2>{t("reader.search")}</h2>
-        <form onSubmit={onSubmit} className="reader-search-form">
-          <label className="reader-sr-only" htmlFor="reader-search-input">
-            {t("reader.searchPlaceholder")}
-          </label>
-          <input
-            id="reader-search-input"
-            type="search"
-            value={input}
-            onChange={event => {
-              setInput(event.target.value);
-              if (!event.target.value) void search.search("");
-            }}
-            placeholder={t("reader.searchPlaceholder")}
-            maxLength={200}
-            autoFocus
-            autoComplete="off"
-            disabled={!book}
-          />
+        <div className="reader-search-bar-row">
+          <form onSubmit={onSubmit} className="reader-search-form">
+            <label className="reader-sr-only" htmlFor="reader-search-input">
+              {t("reader.searchPlaceholder")}
+            </label>
+            <input
+              id="reader-search-input"
+              type="search"
+              value={input}
+              onChange={event => {
+                setInput(event.target.value);
+                if (!event.target.value) void search.search("");
+              }}
+              placeholder={t("reader.searchPlaceholder")}
+              maxLength={200}
+              autoFocus
+              autoComplete="off"
+              disabled={!book}
+            />
+            <button
+              type="submit"
+              className="reader-icon-button"
+              aria-label={t("reader.submitSearch")}
+              disabled={!book || !input.trim()}
+            >
+              <FiSearch />
+            </button>
+          </form>
           <button
-            type="submit"
-            className="reader-icon-button"
-            aria-label={t("reader.submitSearch")}
-            disabled={!book || !input.trim()}
+            type="button"
+            className="reader-panel-cancel"
+            onClick={onClose}
           >
-            <FiSearch />
+            {t("reader.chat.cancel")}
           </button>
-        </form>
+        </div>
         <p className="reader-search-count" role="status" aria-live="polite">
           {search.searching
             ? t("reader.searching", { count: search.total })

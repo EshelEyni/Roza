@@ -172,3 +172,39 @@ test("swipe click suppression expires and preserves keyboard activation", (conte
   assert.equal(clicks, 2);
   assert.equal(laterClick.defaultPrevented, false);
 });
+
+test("horizontal swipes prevent native scrolling before touchend", () => {
+  const s = setup();
+  s.send("touchstart");
+  const move = s.send("touchmove", 175, 202);
+  assert.equal(move.defaultPrevented, true);
+  assert.deepEqual(s.calls, []);
+  s.send("touchend", 100, 202);
+  assert.deepEqual(s.calls, ["next"]);
+});
+
+test("native selection, scrolling, zoom and long presses keep touchmove defaults", (context) => {
+  let time = 1000;
+  context.mock.method(Date, "now", () => time);
+  for (const mode of ["vertical", "selection", "longpress", "zoom", "scrolled", "blocked"]) {
+    const s = setup({ paginated: () => mode !== "scrolled", blocked: () => mode === "blocked" });
+    s.send("touchstart");
+    if (mode === "selection") s.select("word");
+    if (mode === "longpress") time += 700;
+    const move = mode === "vertical"
+      ? s.send("touchmove", 202, 275)
+      : s.send("touchmove", 100, 202, mode === "zoom" ? 2 : 1);
+    assert.equal(move.defaultPrevented, false, mode);
+    s.cleanup();
+  }
+});
+
+test("a gesture starting vertically cannot later become a page turn", () => {
+  const s = setup();
+  s.send("touchstart");
+  s.send("touchmove", 202, 230);
+  const move = s.send("touchmove", 80, 230);
+  s.send("touchend", 80, 230);
+  assert.equal(move.defaultPrevented, false);
+  assert.deepEqual(s.calls, []);
+});

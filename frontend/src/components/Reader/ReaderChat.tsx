@@ -12,7 +12,13 @@ import { useReaderChat } from "../../hooks/useReaderChat";
 import { ReaderAiSettings } from "./ReaderAiSettings";
 
 type ChatState = ReturnType<typeof useReaderChat>;
-export function ReaderChat({ chat }: { chat: ChatState }) {
+export function ReaderChat({
+  chat,
+  onClose,
+}: {
+  chat: ChatState;
+  onClose: () => void;
+}) {
   const { t } = useTranslation();
   const [question, setQuestion] = useState("");
   const [deleteId, setDeleteId] = useState("");
@@ -78,6 +84,13 @@ export function ReaderChat({ chat }: { chat: ChatState }) {
             aria-expanded={settingsOpen}
           >
             <FiSettings />
+          </button>
+          <button
+            type="button"
+            className="reader-panel-cancel"
+            onClick={onClose}
+          >
+            {t("reader.chat.cancel")}
           </button>
         </div>
       </div>

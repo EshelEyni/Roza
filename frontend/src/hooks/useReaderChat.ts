@@ -5,6 +5,7 @@ import {
   ReaderPassage,
 } from "../../../shared/types/readerChat";
 import readerChatApiService from "../services/readerChatApiService";
+import { createRequestId } from "../services/createRequestId";
 
 export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
   const [conversation, setConversation] = useState<ReaderConversation | null>(
@@ -91,7 +92,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
     if (busy.current || !question.trim()) return false;
     const currentCfi = getCurrentCfi();
     if (!currentCfi) return false;
-    const requestId = retryId || crypto.randomUUID();
+    const requestId = retryId || createRequestId();
     busy.current = true;
     setSending(true);
     setError("");

@@ -5,6 +5,7 @@ import { ReaderSheet } from "./ReaderSheet";
 import { useReaderMobile } from "../../hooks/useReaderMobile";
 import { ReaderLookupResult } from "../../../../shared/types/readerDictionary";
 import readerApiService from "../../services/readerApiService";
+import { createRequestId } from "../../services/createRequestId";
 
 export interface ReaderTextSelection {
   text: string;
@@ -35,7 +36,7 @@ export function ReaderDictionary({
   const [error, setError] = useState(false);
   const [speechError, setSpeechError] = useState(false);
   const [speaking, setSpeaking] = useState(false);
-  const requestId = useRef(crypto.randomUUID());
+  const requestId = useRef(createRequestId());
   const button = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);

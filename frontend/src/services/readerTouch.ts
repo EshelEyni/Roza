@@ -10,7 +10,14 @@ interface TouchOptions {
 /** Native selection owns long presses/handles; only short, single-finger gestures navigate. */
 export function bindReaderTouch(doc: Document, options: TouchOptions) {
   let gesture:
-    | { x: number; y: number; time: number; selected: boolean; moved: boolean }
+    | {
+        x: number;
+        y: number;
+        time: number;
+        selected: boolean;
+        moved: boolean;
+        axis?: "horizontal" | "vertical";
+      }
     | undefined;
   let suppressClickUntil = 0;
   const consume = (event: TouchEvent) => {
@@ -51,8 +58,28 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
       return;
     }
     const touch = event.touches[0];
-    if (Math.hypot(touch.clientX - gesture.x, touch.clientY - gesture.y) > 10)
+    const dx = touch.clientX - gesture.x;
+    const dy = touch.clientY - gesture.y;
+    if (Math.hypot(dx, dy) > 10) {
       gesture.moved = true;
+      gesture.axis ??= Math.abs(dx) > Math.abs(dy) * 1.5
+        ? "horizontal"
+        : "vertical";
+    }
+    // Safari must be stopped during movement, before it takes over the gesture.
+    // Leave long presses, selection handles, vertical scrolling and zoom native.
+    if (
+      gesture.axis === "horizontal" &&
+      !gesture.selected &&
+      !hasSelection() &&
+      Date.now() - gesture.time < 650 &&
+      options.enabled() &&
+      !options.blocked() &&
+      options.paginated() &&
+      event.cancelable
+    ) {
+      event.preventDefault();
+    }
   };
   const end = (event: TouchEvent) => {
     const current = gesture;
@@ -74,6 +101,7 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
     const dy = touch.clientY - current.y;
     const elapsed = Date.now() - current.time;
     if (
+      current.axis !== "vertical" &&
       elapsed < 650 &&
       Math.abs(dx) >= 50 &&
       Math.abs(dx) > Math.abs(dy) * 1.5 &&
@@ -86,14 +114,14 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
   const cancel = () => {
     gesture = undefined;
   };
-  doc.addEventListener("touchstart", start, { passive: true });
-  doc.addEventListener("touchmove", move, { passive: true });
+  doc.addEventListener("touchstart", start, { passive: true, capture: true });
+  doc.addEventListener("touchmove", move, { passive: false, capture: true });
   doc.addEventListener("touchend", end, { passive: false, capture: true });
   doc.addEventListener("click", suppressClick, true);
   doc.addEventListener("touchcancel", cancel);
   return () => {
-    doc.removeEventListener("touchstart", start);
-    doc.removeEventListener("touchmove", move);
+    doc.removeEventListener("touchstart", start, true);
+    doc.removeEventListener("touchmove", move, true);
     doc.removeEventListener("touchend", end, true);
     doc.removeEventListener("click", suppressClick, true);
     doc.removeEventListener("touchcancel", cancel);
