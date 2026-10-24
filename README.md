@@ -278,6 +278,8 @@ The production server serves both the UI and `/api/` on port 3030. The frontend 
 
 ## Docker
 
+For manually triggered GitHub Actions redeployment of the existing Docker Hub image to AWS EC2, follow [the deployment setup guide](docs/manual-deployment.md).
+
 The root `Dockerfile` builds the frontend and backend and copies frontend assets into the final server image. Run from the repository root:
 
 ```powershell

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": "2.2",
+  "description": "Redeploy only the configured Roza container using a protected server script.",
+  "mainSteps": [
+    {
+      "action": "aws:runShellScript",
+      "name": "redeployRoza",
+      "inputs": {
+        "timeoutSeconds": "300",
+        "runCommand": [
+          "exec /usr/local/sbin/roza-redeploy"
+        ]
+      }
+    }
+  ]
+}

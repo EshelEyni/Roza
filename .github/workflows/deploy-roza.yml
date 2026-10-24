@@ -1,0 +1,96 @@
+name: Deploy Roza
+run-name: Redeploy Roza from Docker Hub latest
+
+# Manual only: pushing or merging into main never deploys.
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+
+concurrency:
+  group: roza-production-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      AWS_ROLE_ARN: ${{ vars.AWS_ROLE_ARN }}
+      ROZA_INSTANCE_ID: ${{ vars.ROZA_INSTANCE_ID }}
+      AWS_PAGER: ""
+
+    steps:
+      - name: Check deployment configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          : "${AWS_REGION:?Set the AWS_REGION repository variable}"
+          : "${AWS_ROLE_ARN:?Set the AWS_ROLE_ARN repository variable}"
+          : "${ROZA_INSTANCE_ID:?Set the ROZA_INSTANCE_ID repository variable}"
+          [[ "$ROZA_INSTANCE_ID" =~ ^i-([0-9a-f]{8}|[0-9a-f]{17})$ ]] || {
+            echo "ROZA_INSTANCE_ID is not an EC2 instance ID." >&2
+            exit 1
+          }
+
+      - name: Authenticate to AWS with short-lived credentials
+        # Official aws-actions/configure-aws-credentials v5, pinned to its verified commit.
+        uses: aws-actions/configure-aws-credentials@cabfdba3510de1431bac9dba27511d97497fc100
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: roza-deploy-${{ github.run_id }}
+          role-duration-seconds: 900
+
+      - name: Request redeployment
+        id: command
+        shell: bash
+        run: |
+          set -euo pipefail
+          command_id="$(aws ssm send-command \
+            --document-name Roza-Redeploy \
+            --document-version '1' \
+            --instance-ids "$ROZA_INSTANCE_ID" \
+            --timeout-seconds 120 \
+            --comment "Manual Roza deployment, GitHub run $GITHUB_RUN_ID" \
+            --query 'Command.CommandId' --output text)"
+          echo "id=$command_id" >> "$GITHUB_OUTPUT"
+          echo "Systems Manager command: $command_id"
+
+      - name: Wait for deployment and show the result
+        shell: bash
+        env:
+          COMMAND_ID: ${{ steps.command.outputs.id }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 120); do
+            if result="$(aws ssm get-command-invocation \
+              --command-id "$COMMAND_ID" \
+              --instance-id "$ROZA_INSTANCE_ID" \
+              --output json 2>"$RUNNER_TEMP/roza-ssm-error")"; then
+              status="$(jq -r '.Status' <<< "$result")"
+              case "$status" in
+                Success)
+                  jq -r '.StandardOutputContent, .StandardErrorContent' <<< "$result"
+                  echo "Roza redeployed successfully." >> "$GITHUB_STEP_SUMMARY"
+                  echo "SSM command: $COMMAND_ID" >> "$GITHUB_STEP_SUMMARY"
+                  exit 0
+                  ;;
+                Pending|InProgress|Delayed|Cancelling) ;;
+                *)
+                  jq -r '.Status, .StandardOutputContent, .StandardErrorContent' <<< "$result"
+                  echo "Deployment failed: $status" >&2
+                  exit 1
+                  ;;
+              esac
+            elif ! grep -q 'InvocationDoesNotExist' "$RUNNER_TEMP/roza-ssm-error"; then
+              cat "$RUNNER_TEMP/roza-ssm-error" >&2
+              exit 1
+            fi
+            sleep 5
+          done
+          echo "Timed out waiting for command $COMMAND_ID. Check its status in Systems Manager before retrying." >&2
+          exit 1
