@@ -31,6 +31,9 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
       event.stopImmediatePropagation();
     }
   };
+  const suppressContextMenu = (event: Event) => {
+    if (options.enabled() && !options.blocked()) event.preventDefault();
+  };
   const hasSelection = () => !!doc.getSelection()?.toString().trim();
   const start = (event: TouchEvent) => {
     gesture = undefined;
@@ -118,12 +121,14 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
   doc.addEventListener("touchmove", move, { passive: false, capture: true });
   doc.addEventListener("touchend", end, { passive: false, capture: true });
   doc.addEventListener("click", suppressClick, true);
+  doc.addEventListener("contextmenu", suppressContextMenu, true);
   doc.addEventListener("touchcancel", cancel);
   return () => {
     doc.removeEventListener("touchstart", start, true);
     doc.removeEventListener("touchmove", move, true);
     doc.removeEventListener("touchend", end, true);
     doc.removeEventListener("click", suppressClick, true);
+    doc.removeEventListener("contextmenu", suppressContextMenu, { capture: true });
     doc.removeEventListener("touchcancel", cancel);
   };
 }

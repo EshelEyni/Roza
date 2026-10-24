@@ -208,3 +208,25 @@ test("a gesture starting vertically cannot later become a page turn", () => {
   assert.equal(move.defaultPrevented, false);
   assert.deepEqual(s.calls, []);
 });
+test("mobile reader suppresses native context menu without clearing selection", () => {
+  const s = setup();
+  s.select("selected words");
+  const menu = new Event("contextmenu", { cancelable: true });
+  s.doc.dispatchEvent(menu);
+  assert.equal(menu.defaultPrevented, true);
+  assert.equal(s.doc.getSelection().toString(), "selected words");
+  assert.deepEqual(s.calls, []);
+  s.cleanup();
+  const after = new Event("contextmenu", { cancelable: true });
+  s.doc.dispatchEvent(after);
+  assert.equal(after.defaultPrevented, false);
+});
+
+test("desktop and blocked reader leave the context menu available", () => {
+  for (const overrides of [{ enabled: () => false }, { blocked: () => true }]) {
+    const s = setup(overrides);
+    const menu = new Event("contextmenu", { cancelable: true });
+    s.doc.dispatchEvent(menu);
+    assert.equal(menu.defaultPrevented, false);
+  }
+});
