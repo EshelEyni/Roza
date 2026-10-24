@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "concurrently \"npm:dev:backend\" \"npm:dev:frontend\" ",
     "dev:backend": "cd backend  && npm run dev",
-    "dev:frontend": "cd frontend  && npm run dev"
+    "dev:frontend": "cd frontend  && npm run dev",
+    "docker:publish": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy/publish-image.ps1",
+    "deploy:roza": "gh workflow run deploy-roza.yml --repo EshelEyni/Roza --ref main",
+    "deploy:watch": "gh run watch --repo EshelEyni/Roza"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"

@@ -207,12 +207,18 @@ No AWS access-key secret, SSH private key, dotenv contents, or Docker Hub push t
 Keep using these local commands when you want to publish a new image:
 
 ```powershell
-docker build -t roza .
-docker tag roza esheleyni/roza:latest
-docker push esheleyni/roza:latest
+npm run docker:publish
 ```
 
-Wait for each command to succeed before proceeding. A code push to main does not publish a Docker image in this first version.
+Run this from the repository root in your Windows VS Code terminal, with Docker Desktop running and Docker Hub authenticated using docker login. It runs the three Docker build/tag/push commands in scripts/deploy/publish-image.ps1 and stops immediately if any command fails. It does not redeploy AWS or push Git commits.
+
+To preview the commands without building or publishing:
+
+```powershell
+npm run docker:publish -- -DryRun
+```
+
+A code push to main does not publish a Docker image in this first version.
 
 ## 9. Deploy manually
 
@@ -226,14 +232,21 @@ On GitHub:
 
 This step really redeploys production. The workflow uses short-lived AWS credentials, sends the fixed command, and waits for its result. The server log records the actual pulled image ID.
 
-You can also use an authenticated GitHub CLI:
+You can also trigger the workflow from the local VS Code terminal. Install [GitHub CLI](https://cli.github.com/) once (on Windows: winget install --id GitHub.cli --exact), restart the terminal, and sign in:
 
 ```powershell
-gh workflow run deploy-roza.yml --repo EshelEyni/Roza --ref main
-gh run watch --repo EshelEyni/Roza
+gh auth login
+gh auth status
 ```
 
-Choose the appropriate run when prompted. Once authenticated GitHub access is configured here, an explicit "deploy Roza" request can trigger the same manual workflow.
+Then run these repository-root npm commands after publishing the intended image:
+
+```powershell
+npm run deploy:roza
+npm run deploy:watch
+```
+
+The deploy:roza command dispatches deploy-roza.yml on main using your authenticated GitHub CLI account. This triggers a real production redeployment; it does not build or publish the image. The deploy:watch command only watches progress. Choose the appropriate run when prompted. Once authenticated GitHub access is configured here, an explicit "deploy Roza" request can trigger the same manual workflow.
 
 Normal pushes and merges into main will not trigger this workflow. GitHub documents manual triggers [here](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow).
 
