@@ -1202,7 +1202,7 @@
     height: 100dvh;
     // Keep the text clear of the persistent reader toolbar and footer.
     padding-top: 82px;
-    padding-bottom: calc(50px + env(safe-area-inset-bottom));
+    padding-bottom: calc(65px + env(safe-area-inset-bottom));
     overflow: hidden;
   }
   .reader-shell.reader-immersive {
@@ -1254,25 +1254,50 @@
     inset: auto 0 0;
     z-index: 10;
     min-height: 44px;
-    padding: 10px max(24px, env(safe-area-inset-right))
+    padding: 10px max(12px, env(safe-area-inset-right))
       calc(10px + env(safe-area-inset-bottom))
-      max(24px, env(safe-area-inset-left));
+      max(12px, env(safe-area-inset-left));
+    direction: inherit;
+    gap: 8px;
     background: var(--reader-surface);
   }
-  .reader-footer > .reader-icon-button,
   .reader-footer-center {
     display: none;
   }
+  .reader-footer > .reader-icon-button {
+    order: 0;
+  }
+  .reader-footer > .reader-icon-button:last-child {
+    order: 2;
+  }
+  .reader-footer:dir(rtl) > .reader-icon-button svg {
+    transform: rotate(180deg);
+  }
   .reader-mobile-progress {
     display: grid;
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 1fr);
     align-items: center;
-    width: 100%;
-    gap: 4px 12px;
+    flex: 1;
+    min-width: 0;
+    order: 1;
+    direction: ltr;
+    gap: 0 8px;
     font-size: 12px;
     font-variant-numeric: tabular-nums;
   }
+  .reader-mobile-progress > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .reader-mobile-progress > span:last-child {
+    grid-column: 2;
+    grid-row: 1;
+    text-align: end;
+  }
   .reader-mobile-progress > .reader-progress-control {
+    grid-column: 1 / -1;
+    grid-row: 2;
     min-width: 0;
     min-height: 28px;
   }
