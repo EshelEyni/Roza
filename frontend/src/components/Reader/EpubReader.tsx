@@ -181,6 +181,15 @@ export function EpubReader({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [selectionLimitNotice, setSelectionLimitNotice] = useState<{
+    message: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!selectionLimitNotice) return;
+    const timer = setTimeout(() => setSelectionLimitNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [selectionLimitNotice]);
   const [attempt, setAttempt] = useState(0);
   const [atStart, setAtStart] = useState(false);
   const [atEnd, setAtEnd] = useState(false);
@@ -256,6 +265,7 @@ export function EpubReader({
       readingBoundary.current = "";
       setError("");
       setNotice("");
+      setSelectionLimitNotice(null);
       try {
         const buffer = await readerApiService.getFile(
           book.id,
@@ -310,6 +320,17 @@ export function EpubReader({
         applyPreferences(rendition, preferences);
         rendition.hooks.content.register((contents: Contents) => {
           contents.document.addEventListener("keydown", onKey);
+          const onSelectionChange = () => {
+            const text = contents.document.getSelection()?.toString().trim() || "";
+            if (text.length <= 3000) setSelectionLimitNotice(null);
+          };
+          contents.document.addEventListener("selectionchange", onSelectionChange);
+          touchCleanups.push(() =>
+            contents.document.removeEventListener(
+              "selectionchange",
+              onSelectionChange,
+            ),
+          );
           contents.document.addEventListener("pointerdown", () => {
             if (!mobileRef.current) setTextSelection(null);
           });
@@ -364,9 +385,14 @@ export function EpubReader({
           const text = range.toString().trim();
           if (!text || text.length > 3000) {
             setTextSelection(null);
-            if (text.length > 3000) setNotice(t("reader.chat.selectionLimit"));
+            setSelectionLimitNotice(
+              text.length > 3000
+                ? { message: t("reader.chat.selectionLimit") }
+                : null,
+            );
             return;
           }
+          setSelectionLimitNotice(null);
           const candidate = text.replace(/^[“"‘(]+|[”"’.,;:!?)]+$/g, "");
           const word =
             /^[a-zA-Z]+(?:['’‘-][a-zA-Z]+)*$/.test(candidate) &&
@@ -389,6 +415,7 @@ export function EpubReader({
         rendition.on("relocated", (location: Location) => {
           if (cancelled || !ready || changingLayout.current) return;
           setTextSelection(null);
+          setSelectionLimitNotice(null);
           setLocation(location);
           const start = location.start;
           readingBoundary.current = location.end.cfi || start.cfi;
@@ -878,9 +905,9 @@ export function EpubReader({
           </button>
         </p>
       )}
-      {notice && (
+      {(selectionLimitNotice || notice) && (
         <p className="reader-notice" role="status">
-          {notice}
+          {selectionLimitNotice?.message || notice}
         </p>
       )}
       <footer className="reader-footer">
