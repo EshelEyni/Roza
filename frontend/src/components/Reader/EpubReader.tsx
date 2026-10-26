@@ -19,6 +19,7 @@ import {
   FiBookOpen,
   FiMaximize,
   FiMinimize,
+  FiRefreshCw,
   FiSettings,
   FiSearch,
   FiMessageSquare,
@@ -194,7 +195,6 @@ export function EpubReader({
   const [atStart, setAtStart] = useState(false);
   const [atEnd, setAtEnd] = useState(false);
   const [fullscreen, setFullscreen] = useState(false);
-  const [immersive, setImmersive] = useState(false);
   const [chapter, setChapter] = useState("");
   const readingBoundary = useRef("");
   const chat = useReaderChat(
@@ -679,12 +679,6 @@ export function EpubReader({
   async function toggleFullscreen() {
     // Capture before fullscreen changes the available reading area.
     fullscreenResizeAnchor.current = stateRef.current.location;
-    if (mobile) {
-      setImmersive(value => !value);
-      setPanel(null);
-      setTextSelection(null);
-      return;
-    }
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       else await shell.current?.requestFullscreen();
@@ -697,8 +691,7 @@ export function EpubReader({
     <div
       className={
         "reader-shell reader-theme-" +
-        state.preferences.theme +
-        (mobile && immersive ? " reader-immersive" : "")
+        state.preferences.theme
       }
       ref={shell}
     >
@@ -780,15 +773,26 @@ export function EpubReader({
         >
           <FiSettings />
         </button>
-        <button
-          className="reader-icon-button"
-          onClick={() => void toggleFullscreen()}
-          aria-label={t("reader.fullscreen")}
-          title={t("reader.fullscreen")}
-          aria-pressed={mobile ? immersive : fullscreen}
-        >
-          {(mobile ? immersive : fullscreen) ? <FiMinimize /> : <FiMaximize />}
-        </button>
+        {mobile ? (
+          <button
+            className="reader-icon-button"
+            onClick={() => window.location.reload()}
+            aria-label={t("reader.reload")}
+            title={t("reader.reload")}
+          >
+            <FiRefreshCw />
+          </button>
+        ) : (
+          <button
+            className="reader-icon-button"
+            onClick={() => void toggleFullscreen()}
+            aria-label={t("reader.fullscreen")}
+            title={t("reader.fullscreen")}
+            aria-pressed={fullscreen}
+          >
+            {fullscreen ? <FiMinimize /> : <FiMaximize />}
+          </button>
+        )}
       </header>
       <div className="reader-workspace">
         {panel && (
