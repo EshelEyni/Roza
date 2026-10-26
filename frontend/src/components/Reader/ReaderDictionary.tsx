@@ -16,13 +16,8 @@ import {
 import readerApiService from "../../services/readerApiService";
 import { createRequestId } from "../../services/createRequestId";
 
-export interface ReaderTextSelection {
-  text: string;
-  word?: string;
-  cfi: string;
-  x: number;
-  y: number;
-}
+export type { ReaderTextSelection } from "../../types/reader";
+import type { ReaderTextSelection } from "../../types/reader";
 
 export function ReaderDictionary({
   selection,

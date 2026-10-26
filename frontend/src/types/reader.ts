@@ -21,3 +21,13 @@ export type ReaderSearchSession = {
   total: number;
   sections: ReaderSearchSection[];
 };
+
+export type ReaderPanel = "contents" | "settings" | "search" | "chat";
+export type ReaderDirection = "next" | "prev";
+export interface ReaderTextSelection {
+  text: string;
+  word?: string;
+  cfi: string;
+  x: number;
+  y: number;
+}
