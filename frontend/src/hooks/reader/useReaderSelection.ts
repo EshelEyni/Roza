@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Contents } from "epubjs";
 import { useTranslation } from "react-i18next";
 import type { ReaderTextSelection } from "../../types/reader";
@@ -10,7 +10,14 @@ export function useReaderSelection() {
   const [limitNotice, setLimitNotice] = useState<{ message: string } | null>(
     null,
   );
-  const closeLookup = useCallback(() => setTextSelection(null), []);
+  const selectionDocument = useRef<Document | null>(null);
+  const closeLookup = useCallback(() => {
+    // The sheet backdrop receives the dismissal tap, so the EPUB never clears its range.
+    const doc = selectionDocument.current;
+    selectionDocument.current = null;
+    doc?.getSelection()?.removeAllRanges();
+    setTextSelection(null);
+  }, []);
   const clearLimitNotice = useCallback(() => setLimitNotice(null), []);
   useEffect(() => {
     if (!limitNotice) return;
@@ -19,6 +26,11 @@ export function useReaderSelection() {
   }, [limitNotice]);
   const onSelectionChange = useCallback((doc: Document) => {
     const text = doc.getSelection()?.toString().trim() || "";
+    // A cleared native range must not leave swipe navigation in selection mode.
+    if (!text) {
+      if (selectionDocument.current === doc) selectionDocument.current = null;
+      setTextSelection(null);
+    }
     if (text.length <= 3000) setLimitNotice(null);
   }, []);
   const select = useCallback(
@@ -45,6 +57,7 @@ export function useReaderSelection() {
       if (!frame) return;
       const rect = range.getBoundingClientRect();
       const offset = frame.getBoundingClientRect();
+      selectionDocument.current = contents.document;
       setTextSelection({
         text,
         word,
