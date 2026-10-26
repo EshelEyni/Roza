@@ -776,7 +776,11 @@ export function EpubReader({
         {mobile ? (
           <button
             className="reader-icon-button"
-            onClick={() => window.location.reload()}
+            onClick={() => {
+              setTextSelection(null);
+              setPanel(null);
+              setAttempt(value => value + 1);
+            }}
             aria-label={t("reader.reload")}
             title={t("reader.reload")}
           >
