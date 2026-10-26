@@ -11,7 +11,9 @@ import { lookupReaderWordWithTranslation } from "../../services/reader/readerDic
 
 export const lookupReaderDictionary = asyncErrorCatcher(async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "private, no-store");
-  const { word, requestId, location = "" } = req.body;
+  const { word, requestId, location = "", provider = "auto" } = req.body;
+  if (provider !== "auto" && provider !== "google")
+    throw new AppError("Invalid dictionary provider.", 400);
   if (
     typeof word !== "string" ||
     word.length > 80 ||
@@ -31,7 +33,7 @@ export const lookupReaderDictionary = asyncErrorCatcher(async (req: Request, res
   ) {
     throw new AppError("Book not found.", 404);
   }
-  const entry = await lookupReaderWordWithTranslation(word);
+  const entry = await lookupReaderWordWithTranslation(word, provider);
   if (!entry) {
     res.json({ status: "success", data: { entry: null } });
     return;
@@ -45,6 +47,7 @@ export const lookupReaderDictionary = asyncErrorCatcher(async (req: Request, res
           ...identity,
           word: entry.word,
           headword: entry.headword,
+          provider,
           bookId: req.params.id,
           location,
         },
@@ -59,7 +62,8 @@ export const lookupReaderDictionary = asyncErrorCatcher(async (req: Request, res
     event.headword !== entry.headword ||
     event.word !== entry.word ||
     String(event.bookId) !== req.params.id ||
-    event.location !== location
+    event.location !== location ||
+    (event.provider || "auto") !== provider
   ) {
     throw new AppError("This lookup request belongs to another selection.", 409);
   }

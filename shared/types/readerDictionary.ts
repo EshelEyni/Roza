@@ -1,3 +1,12 @@
+export type ReaderLookupProvider = "auto" | "google";
+
+export interface ReaderDictionaryLookup {
+  word: string;
+  location: string;
+  requestId: string;
+  provider?: ReaderLookupProvider;
+}
+
 export interface ReaderDictionarySense {
   id: string;
   partOfSpeech: string;

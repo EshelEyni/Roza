@@ -421,6 +421,8 @@ Each successful deliberate lookup saves a private vocabulary entry in MongoDB. E
 
 Dictionary assets and full third-party notices live in `backend/dictionary/`; see its [source and rebuilding notes](backend/dictionary/README.md). Keep that directory alongside `backend/build/` in deployments. The production Docker image copies it automatically. The dictionary is loaded once by the backend, and the browser receives only the requested entry. Restart the backend after replacing the dataset.
 
+You can also choose **Translate with Google** inside a dictionary card even when the local dictionary has a result. This explicitly requests Google, retains the local result if the request fails, and uses the same canonical vocabulary word for inflections. An explicit lookup counts as another successful lookup; retrying it does not count twice. Cached Google results may be reused.
+
 ### Google Translate fallback setup
 
 When the local dictionaries have no Hebrew entry, Roza can use **Google Translate** through the [Cloud Translation API](https://cloud.google.com/translate). The backend uses Cloud Translation Basic v2 with the standard NMT model. It sends only the normalized selected English word, never the EPUB, paragraph or reading position.

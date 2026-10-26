@@ -321,6 +321,9 @@
       "particle": "Particle",
       "other": "Other"
     },
-    "automaticTranslation": "Automatic translation by Google Translate."
+    "automaticTranslation": "Automatic translation by Google Translate.",
+    "translateWithGoogle": "Translate with Google",
+    "googleLookupError": "Google Translate could not complete this lookup. Check the service configuration or try again.",
+    "googleWordNotFound": "Google Translate did not return a Hebrew translation for this word."
   }
 }

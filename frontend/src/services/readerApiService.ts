@@ -1,5 +1,8 @@
 import axios from "axios";
-import { ReaderLookupResult } from "../../../shared/types/readerDictionary";
+import {
+  ReaderDictionaryLookup,
+  ReaderLookupResult,
+} from "../../../shared/types/readerDictionary";
 import { ReaderBook, ReaderState } from "../../../shared/types/reader";
 import { JsendResponse } from "../../../shared/types/system";
 
@@ -97,10 +100,8 @@ function saveOnLeave(id: string, state: ReaderState) {
 
 export default {
   request,
-  lookupWord: (
-    id: string,
-    selection: { word: string; location: string; requestId: string },
-  ) => request<ReaderLookupResult>("POST", "/" + id + "/dictionary", selection),
+  lookupWord: (id: string, selection: ReaderDictionaryLookup) =>
+    request<ReaderLookupResult>("POST", "/" + id + "/dictionary", selection),
   getAccess: () => request<{ enabled: boolean }>("GET", "/access"),
   query: () => request<ReaderBook[]>("GET"),
   getById: (id: string) => request<ReaderBook>("GET", "/" + id),

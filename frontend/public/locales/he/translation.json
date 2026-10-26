@@ -325,6 +325,9 @@
       "particle": "מילית",
       "other": "אחר"
     },
-    "automaticTranslation": "תרגום אוטומטי באמצעות Google Translate."
+    "automaticTranslation": "תרגום אוטומטי באמצעות Google Translate.",
+    "translateWithGoogle": "תרגום באמצעות Google",
+    "googleLookupError": "החיפוש ב-Google Translate לא הושלם. יש לבדוק את הגדרות השירות או לנסות שוב.",
+    "googleWordNotFound": "Google Translate לא החזיר תרגום לעברית עבור המילה הזו."
   }
 }

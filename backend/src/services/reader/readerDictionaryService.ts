@@ -1,9 +1,11 @@
 import fs from "fs";
+import { AppError } from "../error/errorService";
 import { translateReaderWord } from "./googleTranslateService";
 import path from "path";
 import {
   ReaderDictionaryEntry,
   ReaderDictionarySense,
+  ReaderLookupProvider,
 } from "../../../../shared/types/readerDictionary";
 
 interface DictionaryData {
@@ -67,6 +69,13 @@ export function lookupReaderWord(input: string): ReaderDictionaryEntry | null {
 }
 export async function lookupReaderWordWithTranslation(
   input: string,
+  provider: ReaderLookupProvider = "auto",
 ): Promise<ReaderDictionaryEntry | null> {
-  return lookupReaderWord(input) || translateReaderWord(normalizeReaderWord(input));
+  const local = lookupReaderWord(input);
+  if (provider === "auto") return local || translateReaderWord(normalizeReaderWord(input));
+  if (!process.env.GOOGLE_TRANSLATE_API_KEY?.trim())
+    throw new AppError("Google Translate is not configured on the server.", 503);
+  const translated = await translateReaderWord(normalizeReaderWord(input));
+  // A second provider must not split an inflected word into a separate vocabulary entry.
+  return translated && local ? { ...translated, headword: local.headword } : translated;
 }

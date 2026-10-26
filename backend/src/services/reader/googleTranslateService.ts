@@ -79,7 +79,7 @@ async function requestTranslation(
   }
 }
 
-/** Accepts a normalized single English word; called only after local dictionary lookup misses. */
+/** Accepts a normalized single English word for fallback or an explicit Google lookup. */
 export async function translateReaderWord(word: string): Promise<ReaderDictionaryEntry | null> {
   const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY?.trim();
   if (!apiKey || !/^[a-z]+(?:['-][a-z]+)*$/.test(word) || word.length > 80) return null;

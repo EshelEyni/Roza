@@ -20,6 +20,7 @@ const readerLookupSchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, required: true },
     requestId: { type: String, required: true },
+    provider: { type: String, enum: ["auto", "google"], default: "auto" },
     headword: { type: String, required: true },
     word: { type: String, required: true },
     bookId: { type: Schema.Types.ObjectId, required: true },

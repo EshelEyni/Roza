@@ -6,10 +6,10 @@ describe("Google Translate fallback", () => {
     (
       require("./googleTranslateService") as typeof import("./googleTranslateService")
     ).translateReaderWord(word);
-  const lookup = (word: string) =>
+  const lookup = (word: string, provider: "auto" | "google" = "auto") =>
     (
       require("./readerDictionaryService") as typeof import("./readerDictionaryService")
-    ).lookupReaderWordWithTranslation(word);
+    ).lookupReaderWordWithTranslation(word, provider);
   const success = (text = "מְהַסֵּס") => ({
     ok: true,
     status: 200,
@@ -118,5 +118,25 @@ describe("Google Translate fallback", () => {
   it("rejects malformed successful responses", async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ data: {} }) });
     await expect(translate("reluctant")).rejects.toMatchObject({ statusCode: 502 });
+  });
+
+  it("explicitly translates locally known words through Google", async () => {
+    const entry = await lookup("book", "google");
+    expect(entry?.source).toBe("Google Translate");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+  it("keeps Google's result under the local canonical headword", async () => {
+    const entry = await lookup("books", "google");
+    expect(entry).toMatchObject({ word: "books", headword: "book", source: "Google Translate" });
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).q).toBe("books");
+  });
+  it("reports missing Google configuration rather than pretending to use Google", async () => {
+    delete process.env.GOOGLE_TRANSLATE_API_KEY;
+    await expect(lookup("book", "google")).rejects.toMatchObject({ statusCode: 503 });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+  it("does not silently substitute a local result when an explicit Google request fails", async () => {
+    fetchMock.mockResolvedValue({ ok: false, status: 429 });
+    await expect(lookup("book", "google")).rejects.toMatchObject({ statusCode: 503 });
   });
 });

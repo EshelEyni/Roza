@@ -1,9 +1,18 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiBookOpen, FiMessageSquare, FiVolume2, FiX } from "react-icons/fi";
+import {
+  FiBookOpen,
+  FiGlobe,
+  FiMessageSquare,
+  FiVolume2,
+  FiX,
+} from "react-icons/fi";
 import { ReaderSheet } from "./ReaderSheet";
 import { useReaderMobile } from "../../hooks/useReaderMobile";
-import { ReaderLookupResult } from "../../../../shared/types/readerDictionary";
+import {
+  ReaderLookupProvider,
+  ReaderLookupResult,
+} from "../../../../shared/types/readerDictionary";
 import readerApiService from "../../services/readerApiService";
 import { createRequestId } from "../../services/createRequestId";
 
@@ -34,6 +43,8 @@ export function ReaderDictionary({
   const [result, setResult] = useState<ReaderLookupResult>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
+  const [lookupProvider, setLookupProvider] =
+    useState<ReaderLookupProvider>("auto");
   const [speechError, setSpeechError] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const requestId = useRef(createRequestId());
@@ -76,8 +87,13 @@ export function ReaderDictionary({
     return () => window.removeEventListener("blur", onClose);
   }, [opened, onClose, mobile]);
 
-  async function lookup() {
-    if (loading || result || !selection.word) return;
+  async function lookup(
+    provider: ReaderLookupProvider = "auto",
+    retry = false,
+  ) {
+    if (loading || !selection.word) return;
+    if (!retry) requestId.current = createRequestId();
+    setLookupProvider(provider);
     setOpened(true);
     setLoading(true);
     setError(false);
@@ -86,6 +102,7 @@ export function ReaderDictionary({
         word: selection.word,
         location: selection.cfi,
         requestId: requestId.current,
+        provider,
       });
       if (mounted.current) setResult(data);
     } catch {
@@ -221,16 +238,44 @@ export function ReaderDictionary({
           {speechError && (
             <p role="status">{t("reader.pronunciationUnavailable")}</p>
           )}
+          {result && entry?.kind !== "translation" && (
+            <button
+              type="button"
+              className="reader-button reader-google-lookup"
+              disabled={loading}
+              onClick={() => void lookup("google")}
+            >
+              <FiGlobe aria-hidden="true" />
+              {t("reader.translateWithGoogle")}
+            </button>
+          )}
           {loading && <p role="status">{t("reader.lookupLoading")}</p>}
           {error && (
             <div role="alert">
-              <p>{t("reader.lookupError")}</p>
-              <button className="reader-button" onClick={() => void lookup()}>
+              <p>
+                {t(
+                  lookupProvider === "google"
+                    ? "reader.googleLookupError"
+                    : "reader.lookupError",
+                )}
+              </p>
+              <button
+                className="reader-button"
+                onClick={() => void lookup(lookupProvider, true)}
+              >
                 {t("reader.retry")}
               </button>
             </div>
           )}
-          {result && !entry && <p role="status">{t("reader.wordNotFound")}</p>}
+          {result && !entry && (
+            <p role="status">
+              {t(
+                lookupProvider === "google"
+                  ? "reader.googleWordNotFound"
+                  : "reader.wordNotFound",
+              )}
+            </p>
+          )}
           {entry && (
             <>
               <p

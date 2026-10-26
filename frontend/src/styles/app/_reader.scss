@@ -1595,3 +1595,11 @@
     resize: none;
   }
 }
+.reader-google-lookup {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin: 12px 0;
+}

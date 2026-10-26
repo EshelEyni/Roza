@@ -190,4 +190,13 @@ describe("Reader access and isolation", () => {
     expect(response.status).toBe(400);
     expect(ReaderBookModel.exists).not.toHaveBeenCalled();
   });
+
+  it.each(["invalid", null, ["google"]])("rejects unsupported lookup provider %p before database access", async provider => {
+    const response = await request(app)
+      .post("/api/reader/" + id + "/dictionary")
+      .set("Authorization", "test")
+      .send({ word: "book", requestId: "dictionary-provider-test", provider });
+    expect(response.status).toBe(400);
+    expect(ReaderBookModel.exists).not.toHaveBeenCalled();
+  });
 });
