@@ -382,6 +382,25 @@
     "automaticTranslation": "תרגום אוטומטי באמצעות Google Translate.",
     "translateWithGoogle": "תרגום באמצעות Google",
     "googleLookupError": "החיפוש ב-Google Translate לא הושלם. יש לבדוק את הגדרות השירות או לנסות שוב.",
-    "googleWordNotFound": "Google Translate לא החזיר תרגום לעברית עבור המילה הזו."
+    "googleWordNotFound": "Google Translate לא החזיר תרגום לעברית עבור המילה הזו.",
+    "groups": {
+      "title": "שיחות AI",
+      "one": "קבוצת טאבים אחת",
+      "two": "שתי קבוצות טאבים · שני תכנים גלויים",
+      "all": "כל השיחות",
+      "split": "פיצול לצד",
+      "merge": "איחוד עמודות",
+      "group": "קבוצה {{number}}",
+      "focused": "במיקוד",
+      "move": "העברת הטאב לקבוצה השנייה",
+      "moveFrom": "העברת הטאב הנבחר מקבוצה {{number}} לצד",
+      "newIn": "שיחה חדשה בקבוצה {{number}}",
+      "tabsIn": "טאבים בקבוצה {{number}}",
+      "resize": "חלוקת הרוחב בין קבוצות הטאבים",
+      "emptyTitle": "מה נפתח לצד?",
+      "emptyHint": "אפשר לפתוח שיחה קיימת או להתחיל שיחה חדשה בקבוצה הזאת.",
+      "openBeside": "פתיחה לצד",
+      "openBesideTitle": "פתיחה לצד: {{title}}"
+    }
   }
 }

@@ -15,7 +15,7 @@ export function ReaderPanelResize({ width, onWidthChange, minimumWidth = 440, la
     const next = clamp(width), limit = maximum();
     const element = panel();
     // Retain the original split layout up to its cap; only the excess overlays the book.
-    const splitLimit = Math.min(760, Math.max(minimumWidth, limit - 480));
+    const splitLimit = Math.min(760, Math.max(440, limit - 480));
     element?.parentElement?.style.setProperty("--reader-panel-dock-width", Math.min(next, splitLimit) + "px");
     element?.style.setProperty("--reader-panel-width", next + "px");
     element?.style.setProperty("--reader-panel-min-width", minimumWidth + "px");

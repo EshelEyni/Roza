@@ -378,6 +378,25 @@
     "automaticTranslation": "Automatic translation by Google Translate.",
     "translateWithGoogle": "Translate with Google",
     "googleLookupError": "Google Translate could not complete this lookup. Check the service configuration or try again.",
-    "googleWordNotFound": "Google Translate did not return a Hebrew translation for this word."
+    "googleWordNotFound": "Google Translate did not return a Hebrew translation for this word.",
+    "groups": {
+      "title": "AI conversations",
+      "one": "One tab group",
+      "two": "Two tab groups · two views",
+      "all": "All conversations",
+      "split": "Split beside",
+      "merge": "Merge columns",
+      "group": "Group {{number}}",
+      "focused": "Focused",
+      "move": "Move tab to other group",
+      "moveFrom": "Move selected tab from group {{number}} beside",
+      "newIn": "New conversation in group {{number}}",
+      "tabsIn": "Tabs in group {{number}}",
+      "resize": "Resize the two tab groups",
+      "emptyTitle": "What would you like beside this?",
+      "emptyHint": "Open an existing conversation or start a new one in this group.",
+      "openBeside": "Open beside",
+      "openBesideTitle": "Open beside: {{title}}"
+    }
   }
 }

@@ -13,16 +13,16 @@ import {
   FiSend,
   FiSettings,
 } from "react-icons/fi";
-import { useReaderChat } from "../../hooks/useReaderChat";
+import type { ReaderChatView } from "../../hooks/useReaderChat";
 import { ReaderAiSettings } from "./ReaderAiSettings";
 
-type ChatState = ReturnType<typeof useReaderChat>;
+type ChatState = ReaderChatView;
 export function ReaderChat({
   chat,
-  onClose,
+  onClose, embedded = false, visible = true, focused = true,
 }: {
   chat: ChatState;
-  onClose: () => void;
+  onClose: () => void; embedded?: boolean; visible?: boolean; focused?: boolean;
 }) {
   const { t } = useTranslation();
   const { draft: question, setDraft: setQuestion } = chat;
@@ -30,6 +30,8 @@ export function ReaderChat({
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [documentVisible, setDocumentVisible] = useState(typeof document === "undefined" || !document.hidden);
   const messages = useRef<HTMLDivElement>(null);
+  const previouslyVisible = useRef(false);
+  const questionId = embedded ? "reader-chat-question-" + chat.activeTabKey : "reader-chat-question";
   const scrollStates = useRef(new Map<string, ReaderChatScrollState>());
   const visibleTab = useRef<string>();
   const focusedTab = useRef<string>();
@@ -39,19 +41,21 @@ export function ReaderChat({
     setSettingsOpen(false);
   }, [chat.draftVersion]);
   useEffect(() => {
-    const update = () => { setDocumentVisible(!document.hidden); setViewing(!document.hidden && !settingsOpen && !history); };
+    const update = () => { setDocumentVisible(!document.hidden); setViewing(visible && !document.hidden && !settingsOpen && !history); };
     update();
     document.addEventListener("visibilitychange", update);
     return () => { setViewing(false); document.removeEventListener("visibilitychange", update); };
-  }, [setViewing, history, settingsOpen]);
+  }, [setViewing, history, settingsOpen, visible]);
   useLayoutEffect(() => {
-    if (!documentVisible || history || settingsOpen || !activeTabKey) return;
+    const becameVisible = visible && !previouslyVisible.current;
+    previouslyVisible.current = visible;
+    if (!visible || !documentVisible || history || settingsOpen || !activeTabKey) return;
     const element = messages.current;
     if (!element) return;
     const key = activeTabKey;
     const completed = conversation?.turns.filter(turn => turn.status === "completed").map(turn => turn.id) || [];
     const unseen = completed.some(id => !activeTab?.viewedAnswerIds.includes(id));
-    const switched = visibleTab.current !== key;
+    const switched = visibleTab.current !== key || becameVisible;
     const previous = scrollStates.current.get(key);
     if ((switched || !previous || previous.container !== element) && activeTab?.scrollTop !== undefined && !unseen) {
       element.scrollTop = activeTab.scrollTop;
@@ -62,12 +66,12 @@ export function ReaderChat({
     }
     visibleTab.current = key;
     rememberScroll(key, element.scrollTop, completed);
-  }, [activeTabKey, activeTab, conversation, pending?.id, sending, history, settingsOpen, loading, rememberScroll, documentVisible]);
+  }, [activeTabKey, activeTab, conversation, pending?.id, sending, history, settingsOpen, loading, rememberScroll, documentVisible, visible]);
   useLayoutEffect(() => {
-    if (focusedTab.current !== activeTabKey && !history && !settingsOpen && document.activeElement?.getAttribute("role") !== "tab")
+    if (visible && focused && focusedTab.current !== activeTabKey && !history && !settingsOpen && document.activeElement?.getAttribute("role") !== "tab")
       input.current?.focus({ preventScroll: true });
     focusedTab.current = activeTabKey;
-  }, [activeTabKey, history, settingsOpen]);
+  }, [activeTabKey, history, settingsOpen, visible, focused]);
   function submit(event: FormEvent) {
     event.preventDefault();
     const text = question.trim();
@@ -107,7 +111,8 @@ export function ReaderChat({
     </>;
   }
   return (
-    <section className="reader-chat" aria-label={t("reader.chat.title")}>
+    <section className={"reader-chat" + (embedded ? " reader-chat-embedded" : "")} aria-label={t("reader.chat.title")}>
+      {!embedded && <>
       <div className="reader-chat-heading">
         <h2>{t("reader.chat.title")}</h2>
         <div className="reader-chat-actions">
@@ -154,12 +159,14 @@ export function ReaderChat({
       </div>
       <ReaderChatResize chat={chat} />
       <ReaderChatTabs chat={chat} />
-      {chat.workspace.lastClosed && <div className="reader-chat-tab-notice" role="status">
+      </>}
+      {embedded && <div className="reader-chat-conversation-heading"><h3 title={chat.activeTab?.title}>{chat.activeTab?.title || t("reader.chat.new")}</h3></div>}
+      {!embedded && chat.workspace.lastClosed && <div className="reader-chat-tab-notice" role="status">
         <span>{t("reader.chat.tabs.closed")}</span>
         <button type="button" onClick={chat.reopenTab}>{t("reader.chat.tabs.undo")}</button>
       </div>}
-      {chat.workspace.storageWarning && <p className="reader-chat-status" role="status">{t("reader.chat.tabs.storageWarning")}</p>}
-      <div id="reader-chat-tabpanel" className="reader-chat-tabpanel" role="tabpanel"
+      {!embedded && chat.workspace.storageWarning && <p className="reader-chat-status" role="status">{t("reader.chat.tabs.storageWarning")}</p>}
+      <div id={embedded ? "reader-chat-content-" + activeTabKey : "reader-chat-tabpanel"} className="reader-chat-tabpanel" role={embedded ? undefined : "tabpanel"}
         aria-labelledby={chat.activeTabKey}>
       {!settingsOpen && chat.conversation?.contextSummaryFailed && (
         <p className="reader-chat-status" role="status">
@@ -197,7 +204,7 @@ export function ReaderChat({
             ref={messages}
             role="log"
             aria-live={chat.history ? "off" : "polite"}
-            onScroll={event => { if (chat.activeTabKey) chat.rememberScroll(chat.activeTabKey, event.currentTarget.scrollTop); }}
+            onScroll={event => { if (visible && chat.activeTabKey) chat.rememberScroll(chat.activeTabKey, event.currentTarget.scrollTop); }}
             aria-label={t("reader.chat.messages")}
           >
             {!turns.length && !chat.pending && (
@@ -296,11 +303,11 @@ export function ReaderChat({
               />
               {t("reader.chat.spoilers")}
             </label>
-            <label className="reader-sr-only" htmlFor="reader-chat-question">
+            <label className="reader-sr-only" htmlFor={questionId}>
               {t("reader.chat.question")}
             </label>
             <textarea
-              id="reader-chat-question"
+              id={questionId}
               name="book-chat-message"
               autoComplete="off"
               ref={input}
@@ -337,7 +344,7 @@ export function ReaderChat({
         </>
       )}
       </div>
-      {chat.history && <ReaderChatHistory chat={chat} />}
+      {!embedded && chat.history && <ReaderChatHistory chat={chat} />}
     </section>
   );
 }

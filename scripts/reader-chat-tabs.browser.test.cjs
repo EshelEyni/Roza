@@ -45,7 +45,7 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
    assert.equal(await page.locator('.reader-chat-panel').count(),0);
    await page.getByRole('button',{name:'Toggle chat',exact:true}).click();
    const snapshot=()=>page.evaluate(()=>window.tabTest.snapshot());
-   const textarea=page.locator('#reader-chat-question');
+   const textarea=page.locator('.reader-chat-compose textarea:visible');
    await textarea.fill('Question A');await page.getByRole('button',{name:label.send,exact:true}).click();await until(()=>requests.length===1);
    const a=(await snapshot()).activeKey;
    await textarea.fill('Draft A');await page.locator('.reader-chat-new-tab').click();
@@ -58,9 +58,9 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
    const dialog=page.locator('.reader-chat-history-drawer');await dialog.waitFor();await page.getByRole('textbox',{name:label.search,exact:true}).fill('Conversation 2');
    await page.locator('.reader-chat-history-item').getByRole('button').first().click();assert.equal(await page.getByRole('tab').count(),2);assert.equal(await textarea.inputValue(),'Draft B');
    await page.getByRole('button',{name:label.all,exact:true}).click();await page.getByRole('textbox',{name:label.search,exact:true}).fill('Earlier');await page.locator('.reader-chat-history-item').getByRole('button').first().click();
-   await page.locator('.reader-chat-answer').waitFor();const earlier=(await snapshot()).activeKey;
-   await page.locator('.reader-chat-messages').evaluate(node=>{node.scrollTop=100;node.dispatchEvent(new Event('scroll'))});
-   await page.getByRole('tab',{name:/Conversation 1/}).click();await page.getByRole('tab',{name:/Earlier conversation/}).click();assert.equal(await page.locator('.reader-chat-messages').evaluate(n=>n.scrollTop),100);
+   await page.locator('.reader-chat-answer:visible').waitFor();const earlier=(await snapshot()).activeKey;
+   await page.locator('.reader-chat-messages:visible').evaluate(node=>{node.scrollTop=100;node.dispatchEvent(new Event('scroll'))});
+   await page.getByRole('tab',{name:/Conversation 1/}).click();await page.getByRole('tab',{name:/Earlier conversation/}).click();assert.equal(await page.locator('.reader-chat-messages:visible').evaluate(n=>n.scrollTop),100);
    const closeName=(lang==='he'?'סגירת טאב: ':'Close tab: ')+'Earlier conversation';await page.getByRole('button',{name:closeName,exact:true}).click();assert.equal(await page.getByRole('tab').count(),2);
    await page.getByRole('button',{name:label.undo,exact:true}).click();assert.equal((await snapshot()).activeKey,earlier);
    const separator=page.getByRole('separator');await separator.focus();await separator.press('ArrowLeft');assert.equal((await snapshot()).panelWidth,500);
@@ -98,7 +98,7 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
    await page.getByRole('tab',{name:/Conversation 2/}).click();await page.reload();await page.waitForFunction(()=>window.tabTest&&window.tabTest.snapshot().tabs[window.tabTest.snapshot().activeKey]?.conversation);
    assert.equal(await page.getByRole('tab').count(),3);assert.equal(await textarea.inputValue(),'Draft B');
    await page.getByRole('tab',{name:/Conversation 1/}).focus();await page.keyboard.press(lang==='he'?'ArrowLeft':'ArrowRight');assert.equal((await snapshot()).activeKey,b);
-   await page.getByRole('button',{name:label.all,exact:true}).click();await page.getByRole('textbox',{name:label.search,exact:true}).fill('no matching text');assert.equal(await page.locator('.reader-chat-history-item').count(),0);
+   await page.getByRole('button',{name:label.all,exact:true}).click();await page.getByRole('textbox',{name:label.search,exact:true}).fill('no matching text');assert.equal(await page.locator('.reader-chat-history-item:visible').count(),0);
    await page.keyboard.press('Escape');assert.equal(await dialog.count(),0);assert.equal(await page.getByRole('button',{name:label.all,exact:true}).evaluate(n=>n===document.activeElement),true, await page.evaluate(()=>document.activeElement.outerHTML));
    // The hook outlives the visible chat: closing the panel while replying keeps the result.
    await textarea.fill('Background question');await page.getByRole('button',{name:label.send,exact:true}).click();await until(()=>requests.length===3);
@@ -119,6 +119,7 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
    for(const panel of ['contents','search','settings']){
     await page.getByLabel('Panel',{exact:true}).selectOption(panel);
     assert.equal(await page.getByRole('separator').count(),1,'Each panel must have exactly one resize handle');
+    assert.equal(await page.locator('.reader-group-grid').count(),0);assert.equal(await page.getByRole('tablist').count(),0,'Book tools remain standalone');
     const side=page.locator('.reader-resizable-panel'),handle=page.getByRole('separator');
     assert.equal((await side.boundingBox()).width,sharedWidth,'Switching panels must keep the same width');
     await handle.press('Home');assert.equal((await side.boundingBox()).width,440);
@@ -148,7 +149,7 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
     assert.ok((await page.locator('.reader-resizable-panel').boundingBox()).width<=390);
    }
    await page.getByLabel('Panel',{exact:true}).selectOption('chat');
-   assert.equal(await page.locator('.reader-chat-tabbar').isVisible(),false);assert.equal(await textarea.isVisible(),true);
+   assert.equal(await page.locator('.reader-group-grid').count(),0);assert.equal(await textarea.isVisible(),true);
    assert.deepEqual(errors,[]);
   }finally{for(const request of requests)request.finish();await tick();await page.close()}
  });

@@ -164,3 +164,72 @@ test('legacy per-panel widths migrate to the existing shared chat width',()=>{
  restored.setPanelWidth(1000);
  const updated=JSON.parse(storage.getItem(key));assert.equal(updated.panelWidth,1000);assert.equal('sidePanelWidths' in updated,false);
 });
+
+test('legacy workspace migrates to one group without losing order, active tab or shared width',async()=>{
+ const storage=memory();const {store}=setup({},storage);await store.open('one');await store.open('two');store.setDraft('Keep me');store.setPanelWidth(900);
+ const key='roza-chat-workspace:v1:alice:book',saved=JSON.parse(storage.getItem(key));delete saved.groups;delete saved.focusedGroupId;delete saved.groupRatio;storage.setItem(key,JSON.stringify(saved));
+ const restored=setup({},storage).store;await flush();const s=restored.getSnapshot();
+ assert.equal(s.groups.length,1);assert.deepEqual(s.groups[0].keys,saved.openKeys);assert.equal(s.activeKey,saved.activeKey);assert.equal(restored.active.draft,'Keep me');assert.equal(s.panelWidth,900);
+});
+
+test('two visible groups send independently and neither visible answer is marked unread',async()=>{
+ const a=deferred(),b=deferred();let creates=0;const {store}=setup({create:async()=>conv('c'+ ++creates),send:(_,id)=>id==='c1'?a.promise:b.promise});
+ const first=store.active.key;store.send('A','a-position');store.setDraft('Draft A');await flush();
+ const secondGroup=store.splitGroup();assert.equal(store.active,undefined);assert.equal(store.getSnapshot().panelWidth,720);
+ store.start(undefined,secondGroup);const second=store.active.key;store.send('B','b-position');store.setDraft('Draft B');await flush();
+ store.setTabViewing(first,true);store.setTabViewing(second,true);b.resolve(conv('c2',[turn('request-2')]));a.resolve(conv('c1',[turn('request-1')]));await flush();
+ const s=store.getSnapshot();assert.equal(s.tabs[first].draft,'Draft A');assert.equal(s.tabs[second].draft,'Draft B');assert.equal(s.tabs[first].unread,false);assert.equal(s.tabs[second].unread,false);
+ store.setDraft('Explicit A',first);assert.equal(store.active.draft,'Draft B');assert.equal(store.getSnapshot().tabs[first].draft,'Explicit A');
+});
+
+test('moving a sending tab keeps the request, original boundary and draft attached to its key',async()=>{
+ const response=deferred();let body;const {store}=setup({create:async()=>conv('one'),send:(_,__,request)=>{body=request;return response.promise}});
+ const key=store.active.key;store.attach({cfi:'start',endCfi:'end',text:'Selected'});store.send('Question','position');store.setDraft('Unsent');await flush();
+ const target=store.splitGroup();store.moveTab(key,target);assert.equal(store.active.key,key);assert.equal(store.getSnapshot().groups[0].keys.length,0);
+ response.resolve(conv('one',[turn('request-1')]));await flush();assert.equal(store.active.draft,'Unsent');assert.equal(body.currentCfi,'end');assert.equal(store.active.conversation.turns.length,1);
+ assert.equal(store.getSnapshot().groups.flatMap(g=>g.keys).filter(id=>id===key).length,1);
+});
+
+test('conversations open uniquely and explicit beside moves the existing chat',async()=>{
+ const {store}=setup();await store.open('saved');const key=store.active.key,source=store.getSnapshot().focusedGroupId;
+ const target=store.splitGroup();assert.notEqual(source,target);assert.equal(store.active,undefined);
+ await store.open('saved',target);assert.equal(store.getSnapshot().focusedGroupId,source);
+ await store.open('saved',source,true);assert.equal(store.getSnapshot().focusedGroupId,target);
+ assert.equal(store.getSnapshot().groups.flatMap(g=>g.keys).filter(id=>id===key).length,1);
+});
+
+test('closing the last tab collapses its group; undo recreates it and merge preserves focus and all tabs',()=>{
+ const {store}=setup();const first=store.active.key,target=store.splitGroup();store.start(undefined,target);const second=store.active.key;
+ store.closeTab(second);assert.equal(store.getSnapshot().groups.length,1);store.reopenTab();assert.equal(store.getSnapshot().groups.length,2);assert.equal(store.active.key,second);
+ store.mergeGroups();assert.equal(store.getSnapshot().groups.length,1);assert.equal(store.active.key,second);assert.deepEqual(new Set(store.getSnapshot().groups[0].keys),new Set([first,second]));
+});
+
+test('chat group selection, ratio and focused group survive reload with shared width',async()=>{
+ const storage=memory(),{store}=setup({},storage);await store.open('saved');const first=store.active.key;
+ const group=store.splitGroup();store.start(undefined,group);store.setDraft('Second conversation');const second=store.active.key;
+ store.setGroupRatio(.62);store.setPanelWidth(1000);store.flush();
+ const restored=setup({},storage).store;await flush();const s=restored.getSnapshot();assert.deepEqual(s.groups,store.getSnapshot().groups);assert.equal(s.groupRatio,.62);assert.equal(s.panelWidth,1000);assert.equal(s.activeKey,second);
+ assert.ok(s.openKeys.includes(first));assert.equal(setup({},storage,'bob').store.getSnapshot().groups.length,1);
+});
+
+test('restoring corrupt groups rejects duplicate and unknown keys without losing legacy conversations',()=>{
+ const storage=memory(),{store}=setup({},storage);store.flush();const key='roza-chat-workspace:v1:alice:book',saved=JSON.parse(storage.getItem(key)),first=store.active.key;
+ saved.groups=[{id:'group-one',keys:[first,'__proto__','tool-search'],activeKey:first},{id:'group-two',keys:[first,'unknown','tool-search'],activeKey:'unknown'}];
+ storage.setItem(key,JSON.stringify(saved));const s=setup({},storage).store.getSnapshot();assert.deepEqual(s.groups[0].keys,[first]);assert.equal(s.groups.length,1);assert.equal(s.groups[0].activeKey,first);
+});
+
+test('closing a visible pending group marks its eventual response unread',async()=>{
+ const response=deferred(),{store}=setup({create:async()=>conv('saved'),send:()=>response.promise});
+ const key=store.active.key;store.send('Question','position');await flush();store.setTabViewing(key,true);store.closeTab(key);
+ response.resolve(conv('saved',[turn('request-1')]));await flush();assert.equal(store.getSnapshot().tabs[key].unread,true);
+});
+
+
+test('obsolete book-tool tabs are removed from stored AI groups without losing chats or shared width',()=>{
+ const storage=memory(),{store}=setup({},storage);store.setDraft('Keep the chat');store.setPanelWidth(920);store.flush();
+ const key='roza-chat-workspace:v1:alice:book',saved=JSON.parse(storage.getItem(key)),first=store.active.key;
+ saved.groups=[{id:'group-chat',keys:[first,'tool-contents'],activeKey:'tool-contents'},{id:'group-tools',keys:['tool-search','tool-settings'],activeKey:'tool-search'}];saved.focusedGroupId='group-tools';
+ storage.setItem(key,JSON.stringify(saved));const restored=setup({},storage).store,s=restored.getSnapshot();
+ assert.equal(s.groups.length,1);assert.deepEqual(s.groups[0].keys,[first]);assert.equal(s.activeKey,first);assert.equal(restored.active.draft,'Keep the chat');assert.equal(s.panelWidth,920);
+ restored.flush();assert.equal(JSON.stringify(JSON.parse(storage.getItem(key)).groups).includes('tool-'),false);
+});

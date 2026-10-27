@@ -1,3 +1,4 @@
+import type { Book } from "epubjs";
 import React, { useCallback, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import i18next from "i18next";
@@ -12,6 +13,11 @@ import "../../frontend/src/styles/app/_reader.scss";
 const rtl = new URLSearchParams(location.search).get("lang") === "he";
 await i18next.use(initReactI18next).init({ lng: rtl ? "he" : "en", resources: { en: { translation: en }, he: { translation: he } } });
 document.documentElement.dir = rtl ? "rtl" : "ltr";
+const fixtureSection = { url: "fixture-chapter", href: "chapter3", cfiFromRange: () => "epubcfi(/6/2!/4/2/1:0)" };
+const fixtureSearchBook = { spine: { each: (visit: (section: typeof fixtureSection) => void) => visit(fixtureSection) },
+  navigation: { toc: [{ href: "chapter3", label: "Chapter three", subitems: [] }] },
+  load: async () => new DOMParser().parseFromString("<html><body><p>The house keeps memories. A house can feel like home.</p></body></html>", "text/html"),
+  pageList: { pageFromCfi: () => -1 } } as unknown as Book;
 function Fixture() {
   const chat = useReaderChat("fixture-book", () => "current-reading-cfi", "fixture-user");
   const [opened, setOpened] = useState(true);
@@ -33,7 +39,7 @@ function Fixture() {
     <main className="reader-workspace">
       <ReaderPanels panel={opened ? panel : null} closePanel={closePanel}
         toc={[{ id: "chapter3", href: "chapter3", label: rtl ? "פרק שלישי" : "Chapter three", subitems: [] }]}
-        href="chapter3" onNavigate={() => {}} loading={false} searchBook={null} locationsReady={false}
+        href="chapter3" onNavigate={() => {}} loading={false} searchBook={fixtureSearchBook} locationsReady={false}
         onSearchNavigate={async () => {}} chat={chat} state={readerState}
         updateState={changes => setReaderState(previous => ({ ...previous, ...changes }))} publisherPagesAvailable={false} />
       <article className="reader-paper"><div /><div style={{ padding: "50px 28px", font: "21px/1.9 Georgia,serif" }}>

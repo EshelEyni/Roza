@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { ReaderWorkspace } from "./ReaderWorkspace";
 import { ReaderPanelResize } from "./ReaderPanelResize";
 import { useTranslation } from "react-i18next";
 import { ReaderSheet } from "./ReaderSheet";
@@ -38,6 +40,13 @@ export function ReaderPanels({
   publisherPagesAvailable,
 }: Props) {
   const { t } = useTranslation();
+  const [desktop, setDesktop] = useState(() => window.matchMedia("(min-width: 1100px)").matches);
+  useEffect(() => {
+    const query = window.matchMedia("(min-width: 1100px)");
+    const update = () => setDesktop(query.matches);
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
   if (!panel) return null;
   return (
     <ReaderSheet
@@ -57,7 +66,7 @@ export function ReaderPanels({
         panel === "search"
           ? "reader-search-panel"
           : panel === "chat"
-            ? "reader-chat-panel"
+            ? (desktop ? "reader-groups-panel reader-chat-panel" : "reader-chat-panel")
             : ""
       )}
     >
@@ -77,7 +86,7 @@ export function ReaderPanels({
           onNavigate={cfi => void onSearchNavigate(cfi)}
         />
       ) : panel === "chat" ? (
-        <ReaderChat chat={chat} onClose={closePanel} />
+        desktop ? <ReaderWorkspace chat={chat} onClose={closePanel} /> : <ReaderChat chat={chat} onClose={closePanel} />
       ) : (
         <ReaderSettings
           preferences={state.preferences}

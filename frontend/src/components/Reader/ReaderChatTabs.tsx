@@ -1,9 +1,9 @@
 import { useEffect, useRef, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { FiPlus, FiX, FiMessageSquare, FiLoader, FiEdit3 } from "react-icons/fi";
-import type { useReaderChat } from "../../hooks/useReaderChat";
+import type { ReaderChatView } from "../../hooks/useReaderChat";
 
-type Chat = ReturnType<typeof useReaderChat>;
+type Chat = ReaderChatView;
 export function ReaderChatTabs({ chat }: { chat: Chat }) {
   const { t } = useTranslation();
   const list = useRef<HTMLDivElement>(null);

@@ -5,7 +5,7 @@ import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
 import en from "../../frontend/public/locales/en/translation.json";
 import { ReaderChat } from "../../frontend/src/components/Reader/ReaderChat";
-import type { useReaderChat } from "../../frontend/src/hooks/useReaderChat";
+import type { ReaderChatView } from "../../frontend/src/hooks/useReaderChat";
 import type { ReaderConversation, ReaderPassage } from "../../shared/types/readerChat";
 import "../../frontend/src/styles/app/_reader.scss";
 
@@ -38,7 +38,7 @@ function Fixture() {
   const chat = {
     activeTabKey: "fixture", activeTab: undefined, unavailable: false, errorKey: undefined,
     workspace: { tabs: {}, openKeys: [], activeKey: "fixture", items: [], cursor: null,
-      history: false, historyLoading: false, historyError: "", removing: [], lastClosed: null, storageWarning: false, panelWidth: 480 },
+      history: false, historyLoading: false, historyError: "", removing: [], lastClosed: null, storageWarning: false, panelWidth: 480, groups: [{ id: "group-main", keys: ["fixture"], activeKey: "fixture" }], focusedGroupId: "group-main", groupRatio: .5 },
     selectTab: () => {}, closeTab: () => {}, reopenTab: () => {}, retryLoad: () => {}, rememberScroll: () => {},
     flush: () => {}, setViewing: () => {}, setPanelWidth: () => {},
     conversation, draft, setDraft, passage, items: [], cursor: null,
@@ -48,7 +48,7 @@ function Fixture() {
     setHistory: () => {}, start: () => setScenario("draft"), attach: () => {},
     open: async () => {}, remove: async () => {}, loadHistory: async () => {},
     send: (question: string) => { setSentQuestion(question); setScenario("sent"); return true; },
-  } satisfies ReturnType<typeof useReaderChat>;
+  } satisfies ReaderChatView;
   return <div className="reader-shell reader-theme-sepia"><div className="reader-panel reader-chat-panel">
     <ReaderChat chat={chat} onClose={() => {}} />
   </div></div>;

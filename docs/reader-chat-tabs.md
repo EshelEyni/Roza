@@ -24,3 +24,14 @@ On desktop resizing has two stages. Up to 760px, widening the chat reduces the r
 The browser suites run real React components and the real hook against intercepted reader API responses, in English and Hebrew, including desktop widths 1100/1280/1440/1920 and a mobile layout regression check. Set `PLAYWRIGHT_MODULE` to an installed Playwright package and optionally `CHAT_TABS_SCREENSHOT_DIR` for screenshots. They require an installed Edge browser by default; `PLAYWRIGHT_CHANNEL` can override it. No live AI request is issued.
 
 The initial tabs implementation started at `fb9dd8b` in an isolated worktree and preserved the reader quote presentation changes. It was subsequently merged into `main`; the shared resizing updates are maintained on `main`.
+
+
+## Split tab groups
+
+Desktop now supports one or two tab groups. The Split beside action creates an empty second group and ensures at least 720px for two readable columns. Each group owns its selected tab, while the workspace owns the focused group and internal ratio. Only AI conversations are internal tabs. Book search, contents and reading settings remain standalone panels with their original simple views; they share only the outer width and resize behavior with chat. Normal opening focuses an existing tab; Open beside or Move beside moves it explicitly without making a duplicate. Closing the last tab collapses that group; undo recreates it. Merge keeps all tabs and the focused selection.
+
+Group layout and ratio are stored with the existing account/book localStorage record; older records migrate into one group, preserving tab order and the shared outer width. The original two-stage outer resize remains: split resizing through 760px (or the responsive minimum-reader bound), then overlay expansion. The internal separator only redistributes space within the panel.
+
+`ReaderWorkspace` renders a stable keyed list of views into a grid. Moving a tab changes its grid position rather than unmounting it, so conversation drafts and scroll state survive movement and selection changes. Conversation actions are bound to a specific tab key. Both visible conversations are tracked as visible independently of focus; responses to hidden/closed tabs retain unread markers. Mobile uses the original single-view panel while retaining the desktop group layout.
+
+Additional validation: `node --test scripts/reader-split-groups.browser.test.cjs` exercises two real visible chats, independent requests and focus, native tab dragging, standalone book-panel isolation, split/merge/undo, restore, internal resize, four desktop widths, and mobile fallback in English and Hebrew. The browser fixture uses intercepted server responses and a deterministic book search document, not a live AI provider.

@@ -10,11 +10,13 @@ export type ReaderChatTab = {
   loading: boolean; sending: boolean; unread: boolean; error: string; errorKey?: string;
   preferencesRestored?: boolean; unavailable: boolean; scrollTop?: number; viewedAnswerIds: string[]; updatedAt: string;
 };
-type ClosedTab = { key: string; index: number };
+export type ReaderWorkspaceGroup = { id: string; keys: string[]; activeKey: string | null };
+type ClosedTab = { key: string; index: number; groupId?: string; groupIndex?: number };
 export type ReaderChatWorkspaceState = {
   tabs: Record<string, ReaderChatTab>; openKeys: string[]; activeKey: string | null;
   items: ReaderConversationSummary[]; cursor: string | null; history: boolean;
   historyLoading: boolean; historyError: string; removing: string[];
+  groups: ReaderWorkspaceGroup[]; focusedGroupId: string; groupRatio: number;
   lastClosed: ClosedTab | null; storageWarning: boolean; panelWidth: number;
 };
 type Api = typeof readerChatApiService;
@@ -41,6 +43,7 @@ export class ReaderChatWorkspace {
   private storageKey: string;
   private legacyKey: string;
   private viewing = false;
+  private visibleTabs = new Set<string>();
   private loads = new Map<string, Promise<void>>();
   private versions = new Map<string, number>();
   private historyVersion = 0;
@@ -53,8 +56,10 @@ export class ReaderChatWorkspace {
     const initial = emptyTab();
     this.state = { tabs: { [initial.key]: initial }, openKeys: [initial.key], activeKey: initial.key,
       items: [], cursor: null, history: false, historyLoading: false, historyError: "", removing: [],
-      lastClosed: null, storageWarning: false, panelWidth: 480 };
+      lastClosed: null, storageWarning: false, panelWidth: 480,
+      groups: [{ id: "group-main", keys: [initial.key], activeKey: initial.key }], focusedGroupId: "group-main", groupRatio: .5 };
     this.restore();
+    this.restoreGroups();
   }
   getSnapshot = () => this.state;
   subscribe = (listener: () => void) => { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; };
@@ -106,6 +111,72 @@ export class ReaderChatWorkspace {
       }
     } catch { this.state = { ...this.state, storageWarning: true }; }
   }
+  private restoreGroups() {
+    let saved: { groups?: unknown; focusedGroupId?: string; groupRatio?: number } = {};
+    try { if (this.storageKey) saved = JSON.parse(this.storage()?.getItem(this.storageKey) || "{}"); } catch { /* Legacy restore handles the warning. */ }
+    const seen = new Set<string>();
+    let groups: ReaderWorkspaceGroup[] = [];
+    if (Array.isArray(saved?.groups)) for (const value of saved.groups.slice(0, 2)) {
+      if (!value || typeof value.id !== "string" || !/^group-[\w-]+$/.test(value.id) || groups.some(g => g.id === value.id) || !Array.isArray(value.keys)) continue;
+      const keys = value.keys.filter((key: unknown): key is string => typeof key === "string" &&
+        Object.prototype.hasOwnProperty.call(this.state.tabs, key) && !seen.has(key) && !!seen.add(key));
+      // Discard obsolete tool-only groups saved by the earlier mixed-panel implementation.
+      if (!keys.length && value.keys.some((key: unknown) => typeof key === "string" && key.startsWith("tool-"))) continue;
+      groups.push({ id: value.id, keys, activeKey: keys.includes(value.activeKey) ? value.activeKey : keys[0] || null });
+    }
+    if (!groups.length) groups = [{ id: "group-main", keys: [...this.state.openKeys], activeKey: this.state.activeKey }];
+    else {
+      groups[0].keys.push(...this.state.openKeys.filter(key => !seen.has(key)));
+      groups = groups.map(g => ({ ...g, activeKey: g.activeKey && g.keys.includes(g.activeKey) ? g.activeKey : g.keys[0] || null }));
+    }
+    const focusedGroupId = groups.some(g => g.id === saved?.focusedGroupId) ? saved.focusedGroupId! : groups[0].id;
+    const selected = groups.find(g => g.id === focusedGroupId)?.activeKey;
+    this.state = { ...this.state, groups, focusedGroupId, activeKey: selected && this.state.tabs[selected] ? selected : null,
+      openKeys: groups.flatMap(g => g.keys).filter(key => !!this.state.tabs[key]),
+      groupRatio: Number.isFinite(saved?.groupRatio) ? Math.max(.1, Math.min(.9, saved.groupRatio!)) : .5 };
+  }
+  private layout(groups: ReaderWorkspaceGroup[], focusedGroupId = this.state.focusedGroupId, extra: Partial<ReaderChatWorkspaceState> = {}) {
+    if (!groups.length) groups = [{ id: "group-main", keys: [], activeKey: null }];
+    if (!groups.some(g => g.id === focusedGroupId)) focusedGroupId = groups[0].id;
+    const selected = groups.find(g => g.id === focusedGroupId)?.activeKey;
+    this.update({ ...extra, groups, focusedGroupId,
+      openKeys: groups.flatMap(g => g.keys).filter(key => !!(extra.tabs || this.state.tabs)[key]),
+      activeKey: selected && (extra.tabs || this.state.tabs)[selected] ? selected : null });
+  }
+  focusGroup = (id: string) => { if (this.state.groups.some(g => g.id === id) && this.state.focusedGroupId !== id) this.layout(this.state.groups, id); };
+  splitGroup = () => {
+    if (this.state.groups.length === 2) return this.state.groups.find(g => g.id !== this.state.focusedGroupId)!.id;
+    const group = { id: "group-" + Date.now() + "-" + ++sequence, keys: [], activeKey: null };
+    this.layout([...this.state.groups, group], group.id, { panelWidth: Math.max(720, this.state.panelWidth), history: false });
+    return group.id;
+  };
+  mergeGroups = () => {
+    const keep = this.state.groups.find(g => g.id === this.state.focusedGroupId)!;
+    const others = this.state.groups.filter(g => g !== keep);
+    this.layout([{ ...keep, keys: [...keep.keys, ...others.flatMap(g => g.keys)], activeKey: keep.activeKey || others[0]?.activeKey || null }], keep.id);
+  };
+  setGroupRatio = (ratio: number) => { if (Number.isFinite(ratio)) this.update({ groupRatio: Math.max(.1, Math.min(.9, ratio)) }); };
+  moveTab = (key: string, targetId: string, beforeKey?: string) => {
+    const source = this.state.groups.find(g => g.keys.includes(key)), target = this.state.groups.find(g => g.id === targetId);
+    if (!source || !target || source === target && beforeKey === key) return;
+    const groups = this.state.groups.map(g => {
+      const index = g.keys.indexOf(key), keys = g.keys.filter(id => id !== key);
+      if (g.id === targetId) {
+        const at = beforeKey ? keys.indexOf(beforeKey) : -1;
+        keys.splice(at < 0 ? keys.length : at, 0, key);
+        return { ...g, keys, activeKey: key };
+      }
+      return g === source ? { ...g, keys, activeKey: g.activeKey === key ? keys[index] || keys[index - 1] || null : g.activeKey } : g;
+    });
+    this.layout(groups, targetId, { history: false });
+  };
+  moveToSide = (key: string) => {
+    const source = this.state.groups.find(g => g.keys.includes(key));
+    if (!source) return;
+    const target = this.state.groups.length === 1 ? this.splitGroup() : this.state.groups.find(g => g.id !== source.id)!.id;
+    this.moveTab(key, target);
+  };
+  setTabViewing = (key: string, visible: boolean) => { if (visible) this.visibleTabs.add(key); else this.visibleTabs.delete(key); };
   private persist() {
     if (!this.storageKey || !this.savingEnabled) return;
     try {
@@ -118,7 +189,7 @@ export class ReaderChatWorkspace {
         viewedAnswerIds: tab.viewedAnswerIds, unread: tab.unread,
       }));
       storage.setItem(this.storageKey, JSON.stringify({ version: 1, tabs, openKeys: this.state.openKeys,
-        activeKey: this.state.activeKey, panelWidth: this.state.panelWidth }));
+        activeKey: this.state.activeKey, panelWidth: this.state.panelWidth, groups: this.state.groups, focusedGroupId: this.state.focusedGroupId, groupRatio: this.state.groupRatio }));
       // Keep the legacy pointer for the single-conversation experience and migration.
       if (this.active?.serverId) storage.setItem(this.legacyKey, this.active.serverId);
       else storage.removeItem(this.legacyKey);
@@ -133,8 +204,8 @@ export class ReaderChatWorkspace {
   /** A departed account/book cannot overwrite the workspace if an old request finishes later. */
   setSavingEnabled = (enabled: boolean) => { this.savingEnabled = enabled; };
   setViewing = (viewing: boolean) => { this.viewing = viewing; };
-  setDraft = (draft: string) => { if (this.active) this.patch(this.active.key, { draft }); };
-  setSpoilersAllowed = (spoilersAllowed: boolean) => { if (this.active) this.patch(this.active.key, { spoilersAllowed }); };
+  setDraft = (draft: string, key = this.state.activeKey) => { if (key) this.patch(key, { draft }); };
+  setSpoilersAllowed = (spoilersAllowed: boolean, key = this.state.activeKey) => { if (key) this.patch(key, { spoilersAllowed }); };
   setHistory = (history: boolean) => { this.update({ history }, false); };
   setPanelWidth = (panelWidth: number) => { this.update({ panelWidth: Number.isFinite(panelWidth) ? Math.max(440, panelWidth) : 480 }); };
   rememberScroll = (key: string, scrollTop: number, viewedAnswerIds?: string[]) => {
@@ -148,39 +219,57 @@ export class ReaderChatWorkspace {
   };
   flush = () => { this.persist(); };
   selectTab = (key: string) => {
-    if (!this.state.openKeys.includes(key)) return;
-    this.update({ activeKey: key, history: false });
+    const group = this.state.groups.find(g => g.keys.includes(key));
+    if (group) this.layout(this.state.groups.map(g => g === group ? { ...g, activeKey: key } : g), group.id, { history: false });
   };
-  start = (selected?: ReaderPassage) => {
-    const blank = this.state.openKeys.map(key => this.state.tabs[key]).find(tab =>
-      !tab.serverId && !tab.draft && !tab.pending && !tab.passage);
+  start = (selected?: ReaderPassage, groupId = this.state.focusedGroupId) => {
+    const group = this.state.groups.find(g => g.id === groupId) || this.state.groups[0];
+    const blank = group.keys.map(key => this.state.tabs[key]).find(tab => tab && !tab.serverId && !tab.draft && !tab.pending && !tab.passage);
     if (blank) { if (selected) this.patch(blank.key, { passage: selected }); this.selectTab(blank.key); return; }
     const tab = emptyTab(); tab.passage = selected;
-    this.update({ tabs: { ...this.state.tabs, [tab.key]: tab }, openKeys: [...this.state.openKeys, tab.key], activeKey: tab.key, history: false });
+    this.layout(this.state.groups.map(g => g === group ? { ...g, keys: [...g.keys, tab.key], activeKey: tab.key } : g), group.id,
+      { tabs: { ...this.state.tabs, [tab.key]: tab }, history: false });
   };
+  private withoutTab(key: string) {
+    let groups = this.state.groups.map(g => {
+      const index = g.keys.indexOf(key), keys = g.keys.filter(id => id !== key);
+      return { ...g, keys, activeKey: g.activeKey === key ? keys[index] || keys[index - 1] || null : g.activeKey };
+    });
+    if (groups.length > 1) groups = groups.filter(g => g.keys.length || !this.state.groups.find(original => original.id === g.id)!.keys.includes(key));
+    return groups;
+  }
   closeTab = (key: string) => {
-    const index = this.state.openKeys.indexOf(key);
-    if (index < 0) return;
-    const openKeys = this.state.openKeys.filter(id => id !== key);
-    this.update({ openKeys, activeKey: this.state.activeKey === key ? openKeys[index] || openKeys[index - 1] || null : this.state.activeKey,
-      lastClosed: { key, index } });
+    const groupIndex = this.state.groups.findIndex(g => g.keys.includes(key));
+    if (groupIndex < 0) return;
+    const group = this.state.groups[groupIndex], index = group.keys.indexOf(key);
+    this.layout(this.withoutTab(key), this.state.focusedGroupId, { lastClosed: { key, index, groupId: group.id, groupIndex } });
   };
   reopenTab = () => {
     const closed = this.state.lastClosed;
     if (!closed || !this.state.tabs[closed.key]) return;
-    const openKeys = this.state.openKeys.filter(key => key !== closed.key);
-    openKeys.splice(Math.min(closed.index, openKeys.length), 0, closed.key);
-    this.update({ openKeys, activeKey: closed.key, history: false, lastClosed: null });
+    const groups = this.state.groups.map(g => {
+      const keys = g.keys.filter(key => key !== closed.key);
+      return { ...g, keys, activeKey: g.activeKey === closed.key ? keys[0] || null : g.activeKey };
+    });
+    let group = groups.find(g => g.id === closed.groupId);
+    if (!group && groups.length < 2) {
+      group = { id: closed.groupId || "group-" + ++sequence, keys: [], activeKey: null };
+      groups.splice(Math.min(closed.groupIndex || 0, groups.length), 0, group);
+    }
+    group ||= groups.find(g => g.id === this.state.focusedGroupId) || groups[0];
+    group.keys.splice(Math.min(closed.index, group.keys.length), 0, closed.key); group.activeKey = closed.key;
+    this.layout(groups, group.id, { history: false, lastClosed: null, panelWidth: groups.length === 2 ? Math.max(720, this.state.panelWidth) : this.state.panelWidth });
   };
-  open = async (id: string) => {
+  open = async (id: string, groupId = this.state.focusedGroupId, beside = false) => {
     let tab = Object.values(this.state.tabs).find(tab => tab.key === id || tab.serverId === id);
     if (!tab) {
-      tab = emptyTab(id);
-      tab.title = this.state.items.find(item => item.id === id)?.title || "";
+      tab = emptyTab(id); tab.title = this.state.items.find(item => item.id === id)?.title || "";
       this.update({ tabs: { ...this.state.tabs, [tab.key]: tab } }, false);
     }
-    const openKeys = this.state.openKeys.includes(tab.key) ? this.state.openKeys : [...this.state.openKeys, tab.key];
-    this.update({ openKeys, activeKey: tab.key, history: false });
+    if (beside) groupId = this.state.groups.length === 1 ? this.splitGroup() : this.state.groups.find(g => g.id !== groupId)!.id;
+    const owner = this.state.groups.find(g => g.keys.includes(tab!.key));
+    if (owner) { if (beside) this.moveTab(tab.key, groupId); else this.selectTab(tab.key); }
+    else this.layout(this.state.groups.map(g => g.id === groupId ? { ...g, keys: [...g.keys, tab!.key], activeKey: tab!.key } : g), groupId, { history: false });
     if (tab.serverId && !tab.conversation && !tab.sending) await this.load(tab.key);
   };
   private load(key: string): Promise<void> {
@@ -210,13 +299,14 @@ export class ReaderChatWorkspace {
     this.loads.set(key, promise);
     return promise;
   }
-  retryLoad = () => { if (this.active) void this.load(this.active.key); };
-  attach = (passage: ReaderPassage) => {
-    if (this.active && !this.active.loading && !this.active.sending && !this.active.pending)
-      this.patch(this.active.key, { passage, error: "" });
+  retryLoad = (key = this.state.activeKey) => { if (key) void this.load(key); };
+  attach = (passage: ReaderPassage, key = this.state.activeKey) => {
+    const tab = key ? this.state.tabs[key] : undefined;
+    if (tab && !tab.loading && !tab.sending && !tab.pending)
+      this.patch(tab.key, { passage, error: "" });
   };
-  send = (question: string, currentCfi: string, retryId?: string) => {
-    const tab = this.active;
+  send = (question: string, currentCfi: string, retryId?: string, key = this.state.activeKey) => {
+    const tab = key ? this.state.tabs[key] : undefined;
     if (!tab || tab.loading || tab.sending || tab.unavailable || (tab.pending && retryId !== tab.pending.id)) return false;
     const original = retryId ? tab.conversation?.turns.find(turn => turn.id === retryId) ||
       (tab.pending?.id === retryId ? tab.pending : undefined) : undefined;
@@ -248,7 +338,7 @@ export class ReaderChatWorkspace {
         passageCfi: pending.passage?.cfi, passageEndCfi: pending.passage?.endCfi });
       const tab = this.state.tabs[key];
       this.patch(key, { conversation: updated, title: updated.title || tab.title, passage: updated.passage,
-        pending: null, unread: !(this.viewing && this.state.activeKey === key && !this.state.history), updatedAt: updated.updatedAt });
+        pending: null, unread: !((this.visibleTabs.has(key) && this.state.groups.some(g => g.activeKey === key) || this.viewing && this.state.activeKey === key) && !this.state.history), updatedAt: updated.updatedAt });
       // Never overwrite a new draft or spoiler preference composed while the request was in flight.
       if (tab.serverId) this.upsertSummary(updated);
     } catch (error) {
@@ -293,9 +383,9 @@ export class ReaderChatWorkspace {
       if (tab) {
         this.versions.set(tab.key, (this.versions.get(tab.key) || 0) + 1);
         const tabs = { ...this.state.tabs }; delete tabs[tab.key];
-        const index = this.state.openKeys.indexOf(tab.key), openKeys = this.state.openKeys.filter(key => key !== tab.key);
-        this.update({ tabs, openKeys, activeKey: this.state.activeKey === tab.key ? openKeys[index] || openKeys[index - 1] || null : this.state.activeKey,
-          lastClosed: this.state.lastClosed?.key === tab.key ? null : this.state.lastClosed });
+        this.visibleTabs.delete(tab.key);
+        this.layout(this.withoutTab(tab.key), this.state.focusedGroupId,
+          { tabs, lastClosed: this.state.lastClosed?.key === tab.key ? null : this.state.lastClosed });
       }
       this.update({ items: this.state.items.filter(item => item.id !== id) });
     } catch (error) { this.update({ historyError: (error as Error).message }, false); }

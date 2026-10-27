@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiPlus, FiSearch, FiTrash2, FiX } from "react-icons/fi";
-import type { useReaderChat } from "../../hooks/useReaderChat";
+import { FiPlus, FiSearch, FiTrash2, FiX, FiColumns } from "react-icons/fi";
+import type { ReaderChatView } from "../../hooks/useReaderChat";
 
-type Chat = ReturnType<typeof useReaderChat>;
-export function ReaderChatHistory({ chat }: { chat: Chat }) {
+type Chat = ReaderChatView;
+export function ReaderChatHistory({ chat, onOpenBeside }: { chat: Chat;
+  onOpenBeside?: (id: string) => void;
+}) {
   const { t } = useTranslation();
   const [search, setSearch] = useState("");
   const [deleteId, setDeleteId] = useState("");
@@ -57,11 +59,13 @@ export function ReaderChatHistory({ chat }: { chat: Chat }) {
         {[true, false].map(open => {
           const rows = items.filter(item => !!(item.tab && chat.workspace.openKeys.includes(item.tab.key)) === open);
           return rows.length ? <div key={String(open)} className="reader-chat-history-group"><h4>{t(open ? "reader.chat.tabs.openNow" : "reader.chat.tabs.other")}</h4>
-            {rows.map(item => <div className="reader-chat-history-item" key={item.id}>
+            {rows.map(item => <div className="reader-chat-history-item" key={item.id} data-reader-history-id={item.id}>
               <button type="button" onClick={() => void chat.open(item.id)}><strong dir="auto">{item.title}</strong>
                 <span className="reader-chat-history-meta">{item.tab?.sending ? t("reader.chat.tabs.generating") : item.tab?.unread ? t("reader.chat.tabs.unread")
                   : open ? t("reader.chat.tabs.alreadyOpen") : t("reader.chat.tabs.openTab")}
                   {item.tab?.draft && <span> · {t("reader.chat.tabs.draft")}</span>}</span></button>
+              {onOpenBeside && <button type="button" className="reader-icon-button" title={t("reader.groups.openBeside")}
+                aria-label={t("reader.groups.openBesideTitle", { title: item.title })} onClick={() => onOpenBeside(item.id)}><FiColumns /></button>}
               {deleteId === item.id ? <div className="reader-chat-delete-confirm"><span>{t("reader.chat.deleteConfirm")}</span>
                 <button className="reader-button" disabled={chat.workspace.removing.includes(item.id)}
                   onClick={() => { void chat.remove(item.id); setDeleteId(""); }}>{t("reader.chat.delete")}</button>
