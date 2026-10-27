@@ -1,3 +1,6 @@
+import { readerAiConfig } from "./readerAiConfig";
+import type { ReaderAiModel } from "../../../../shared/types/readerAiSettings";
+import { readerAiModels } from "./readerAiModels";
 import { AppError } from "../error/errorService";
 
 export type ReaderAiInput = { role: "user" | "assistant"; content: string };
@@ -29,7 +32,7 @@ function providerError(status: number, error?: ProviderError): AppError {
     );
   if (code === "model_not_found")
     return new AppError(
-      "OpenAI could not access the configured model. Check READER_AI_MODEL and that the API project has access to it.",
+      "OpenAI could not access the configured model. Choose an accessible model in AI settings or check READER_AI_MODEL for the server default.",
       503,
     );
   if (code === "context_length_exceeded")
@@ -56,7 +59,20 @@ function providerError(status: number, error?: ProviderError): AppError {
   );
 }
 
-async function askReaderAi(instructions: string, input: ReaderAiInput[]): Promise<string> {
+async function askReaderAi(
+  instructions: string,
+  input: ReaderAiInput[],
+  selectedModel: ReaderAiModel = "default",
+): Promise<string> {
+  if (!readerAiModels.includes(selectedModel))
+    throw new AppError("Choose a supported AI model.", 400);
+  const model = selectedModel === "default"
+    ? process.env.READER_AI_MODEL || "gpt-4.1-mini"
+    : selectedModel;
+  const reasoningModel = /^gpt-6(?:[.-]|$)/.test(model);
+  // UTF-8 byte size is a conservative envelope, not an exact token count.
+  if (Buffer.byteLength(JSON.stringify({ instructions, input }), "utf8") > readerAiConfig.maxRequestBytes)
+    throw new AppError("The combined question, instructions and context are too large. Shorten the selection or instructions and retry.", 400);
   const key = process.env.OPENAI_API_KEY;
   if (!key)
     throw new AppError(
@@ -64,17 +80,19 @@ async function askReaderAi(instructions: string, input: ReaderAiInput[]): Promis
       503,
     );
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 60000);
+  const timer = setTimeout(() => controller.abort(), readerAiConfig.timeoutMs);
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
       headers: { Authorization: "Bearer " + key, "Content-Type": "application/json" },
       signal: controller.signal,
       body: JSON.stringify({
-        model: process.env.READER_AI_MODEL || "gpt-4.1-mini",
+        model,
         instructions,
         input,
-        max_output_tokens: 1200,
+        // Reasoning tokens and visible text share the generation budget.
+        max_output_tokens: reasoningModel ? readerAiConfig.reasoningOutputTokens : readerAiConfig.outputTokens,
+        ...(reasoningModel ? { reasoning: { effort: "low" } } : {}),
         store: false,
       }),
     });
@@ -121,7 +139,7 @@ async function askReaderAi(instructions: string, input: ReaderAiInput[]): Promis
         "OpenAI completed the request but returned no answer text. Retry this question.",
         502,
       );
-    if (answer.length > 16000)
+    if (answer.length > readerAiConfig.maxAnswerChars)
       throw new AppError(
         "OpenAI's answer exceeds Roza's saved-answer length limit. Ask a more focused question.",
         502,
@@ -130,7 +148,7 @@ async function askReaderAi(instructions: string, input: ReaderAiInput[]): Promis
   } catch (error) {
     if (error instanceof AppError) throw error;
     if (controller.signal.aborted)
-      throw new AppError("OpenAI did not respond within 60 seconds. Retry this question.", 504);
+      throw new AppError("OpenAI did not respond within 120 seconds. Retry this question.", 504);
     throw new AppError(
       "The backend could not connect to OpenAI. Check this PC's network connection and retry.",
       502,

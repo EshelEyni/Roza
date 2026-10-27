@@ -1,3 +1,4 @@
+import { readerAiLimits } from "../../services/readerAiLimits";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Contents, Location } from "epubjs";
 import { useTranslation } from "react-i18next";
@@ -101,7 +102,7 @@ export function useReaderSelection() {
         current.current = next;
         setTextSelection(next);
         setLimitNotice(
-          result.text.length > 3000
+          result.text.length > readerAiLimits.passage
             ? { message: t("reader.chat.selectionLimit") }
             : null,
         );
@@ -198,7 +199,7 @@ export function useReaderSelection() {
       current.current = null;
       setTextSelection(null);
     }
-    if (text.length <= 3000) setLimitNotice(null);
+    if (text.length <= readerAiLimits.passage) setLimitNotice(null);
   }, []);
   const select = useCallback(
     (cfi: string, contents: Contents) => {
@@ -221,7 +222,7 @@ export function useReaderSelection() {
         return;
       }
       setLimitNotice(
-        text.length > 3000
+        text.length > readerAiLimits.passage
           ? { message: t("reader.chat.selectionLimit") }
           : null,
       );

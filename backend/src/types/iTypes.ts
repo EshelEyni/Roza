@@ -138,6 +138,7 @@ export interface IReaderBook extends Document {
 }
 
 export interface IReaderConversation extends Document {
+  contextOmittedTurns?: number;
   userId: mongoose.Types.ObjectId;
   bookId: mongoose.Types.ObjectId;
   title: string;
@@ -151,6 +152,8 @@ export interface IReaderConversation extends Document {
     answer: string;
     status: "pending" | "completed" | "failed";
     currentCfi: string;
+    passage?: { cfi: string; endCfi?: string; text: string };
+    excerpts?: { label: string; text: string }[];
     spoilersAllowed: boolean;
     createdAt: Date;
   }[];

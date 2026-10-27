@@ -31,8 +31,28 @@ describe("Reader AI provider", () => {
     expect(JSON.parse(request.body)).toMatchObject({
       model: "test-model",
       store: false,
-      max_output_tokens: 1200,
+      max_output_tokens: 4000,
     });
+  });
+  it.each(["gpt-4.1-mini", "gpt-6-luna", "gpt-6.1-terra", "gpt-6.1-sol", "gpt-6-astra"] as const)(
+    "uses the saved %s selection instead of the environment", async model => {
+      process.env.READER_AI_MODEL = "different-server-default";
+      (global.fetch as jest.Mock).mockResolvedValue({
+        ok: true,
+        json: async () => ({ status: "completed", output: [
+          { type: "message", content: [{ type: "output_text", text: "Answer" }] },
+        ] }),
+      });
+      await askReaderAi("", [], model);
+      const body = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+      expect(body.model).toBe(model);
+      expect(body.max_output_tokens).toBe(model === "gpt-4.1-mini" ? 4000 : 12000);
+      expect(body.reasoning).toEqual(model === "gpt-4.1-mini" ? undefined : { effort: "low" });
+    },
+  );
+  it("rejects an oversized combined input before calling the provider", async () => {
+    await expect(askReaderAi("", [{ role: "user", content: "א".repeat(240001) }])).rejects.toThrow("too large");
+    expect(global.fetch).not.toHaveBeenCalled();
   });
   it("does not present incomplete or empty answers as successful", async () => {
     (global.fetch as jest.Mock).mockResolvedValue({

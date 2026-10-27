@@ -1,3 +1,4 @@
+import { readerAiLimits } from "../../services/readerAiLimits";
 import type { ReaderBook } from "../../../../shared/types/reader";
 import { useEpubReader } from "../../hooks/reader/useEpubReader";
 import { ReaderDictionary } from "./ReaderDictionary";
@@ -30,7 +31,7 @@ export function EpubReader({
             reader.chat.sending ||
             reader.chat.loading ||
             reader.selectionBusy ||
-            reader.textSelection.text.length > 3000
+            reader.textSelection.text.length > readerAiLimits.passage
           }
           onAskAi={reader.askAi}
           onExtend={reader.extendSelection}

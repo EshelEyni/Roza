@@ -4,12 +4,14 @@ export type ReaderChatTurn = {
   question: string;
   answer: string;
   status: "pending" | "completed" | "failed";
+  passage?: ReaderPassage;
   createdAt: string;
 };
 export type ReaderConversationSummary = {
   id: string;
   title: string;
   passage?: ReaderPassage;
+  contextOmittedTurns?: number;
   spoilersAllowed: boolean;
   createdAt: string;
   updatedAt: string;

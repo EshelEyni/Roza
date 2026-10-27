@@ -31,6 +31,8 @@ export default {
       question: string;
       currentCfi: string;
       spoilersAllowed: boolean;
+      passageCfi?: string;
+      passageEndCfi?: string;
     },
   ) =>
     readerApiService.request<ReaderConversation>(

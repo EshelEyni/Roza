@@ -1,3 +1,4 @@
+import { readerAiLimits } from "../../services/readerAiLimits";
 import { useCallback, useState, type RefObject } from "react";
 import { flushSync } from "react-dom";
 import type { ReaderPanel, ReaderTextSelection } from "../../types/reader";
@@ -42,9 +43,9 @@ export function useReaderPanelActions({
     }, next === "chat");
   }
   function askAi() {
-    if (!textSelection || textSelection.text.length > 3000) return;
+    if (!textSelection || textSelection.text.length > readerAiLimits.passage) return;
     updatePanel(() => {
-      chat.start({
+      chat.attach({
         cfi: textSelection.cfi,
         text: textSelection.text,
         endCfi: textSelection.endCfi,

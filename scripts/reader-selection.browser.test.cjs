@@ -153,7 +153,7 @@ test(
           assert.ok(full.length > 3000);
           assert.equal(
             await page.getByRole("button", { name: "Ask AI" }).isDisabled(),
-            true,
+            full.length > 20000,
           );
 
           // Refining the endpoint and reversing direction use exact DOM offsets.

@@ -49,7 +49,7 @@ jest.mock("../../services/reader/readerAiSettingsService", () => ({
   ...jest.requireActual("../../services/reader/readerAiSettingsService"),
   getReaderAiSettings: jest
     .fn()
-    .mockResolvedValue({ answerLength: "short", simpleLanguage: true, customInstructions: "" }),
+    .mockResolvedValue({ model: "gpt-6.1-terra", answerLength: "short", simpleLanguage: true, customInstructions: "" }),
 }));
 const app = express();
 app.use(express.json());
@@ -226,7 +226,8 @@ describe("Reader conversations", () => {
       "selected-cfi",
       undefined,
     );
-    const [instructions, input] = (askReaderAi as jest.Mock).mock.calls[0];
+    const [instructions, input, model] = (askReaderAi as jest.Mock).mock.calls[0];
+    expect(model).toBe("gpt-6.1-terra");
     expect(instructions).toContain("language of the current question");
     expect(instructions).toContain("Avoid ALL spoilers");
     expect(instructions).toContain("2–4 short sentences");
@@ -237,6 +238,32 @@ describe("Reader conversations", () => {
         "turns.$[turn].status"
       ],
     ).toBe("completed");
+  });
+  it("accepts a long question without changing the model or discarding its text", async () => {
+    (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(conversation());
+    const question = "Explain this sentence. ".repeat(200);
+    const result = await request(app).post(url + "/messages").set("Authorization", "test")
+      .send({ ...body, question });
+    expect(result.status).toBe(200);
+    const [, input] = (askReaderAi as jest.Mock).mock.calls[0];
+    expect(input[input.length - 1].content).toBe(question.trim());
+  });
+  it("attaches a new server-resolved passage to the same conversation and turn", async () => {
+    (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(conversation());
+    const result = await request(app).post(url + "/messages").set("Authorization", "test")
+      .send({ ...body, passageCfi: "new-passage", passageEndCfi: "new-end" });
+    expect(result.status).toBe(200);
+    const update = (ReaderConversationModel.findOneAndUpdate as jest.Mock).mock.calls[0][1];
+    expect(update.$set.passage.cfi).toBe("new-passage");
+    expect(update.$push.turns.passage.cfi).toBe("new-passage");
+    expect(update.$push.turns.excerpts).toHaveLength(1);
+    expect(ReaderConversationModel.create).not.toHaveBeenCalled();
+  });
+  it("rejects malformed attached passage endpoints before a paid call", async () => {
+    const result = await request(app).post(url + "/messages").set("Authorization", "test")
+      .send({ ...body, passageEndCfi: "end-only" });
+    expect(result.status).toBe(400);
+    expect(askReaderAi).not.toHaveBeenCalled();
   });
   it("marks failed requests retryable and releases only its own lock", async () => {
     (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(conversation());
@@ -261,7 +288,7 @@ describe("Reader conversations", () => {
         await request(app)
           .post(url + "/messages")
           .set("Authorization", "test")
-          .send({ ...body, question: "x".repeat(2001) })
+          .send({ ...body, question: "x".repeat(10001) })
       ).status,
     ).toBe(400);
     expect(mockRetrieve).not.toHaveBeenCalled();

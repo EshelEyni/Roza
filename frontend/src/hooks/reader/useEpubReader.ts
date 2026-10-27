@@ -68,6 +68,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   const chat = useReaderChat(
     book.id,
     () => runtime.readingBoundary.current || runtime.stateRef.current.location,
+    userId,
   );
   const panelActions = useReaderPanelActions({
     mobile,

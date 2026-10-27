@@ -1,3 +1,4 @@
+import { readerAiLimits } from "../../services/readerAiLimits";
 import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
@@ -93,6 +94,11 @@ export function ReaderChat({
           </button>
         </div>
       </div>
+      {!settingsOpen && !!chat.conversation?.contextOmittedTurns && (
+        <p className="reader-chat-status" role="status">
+          {t("reader.chat.contextLimited", { count: chat.conversation.contextOmittedTurns })}
+        </p>
+      )}
       {!settingsOpen && chat.error && (
         <p className="reader-chat-error" role="alert">
           {chat.error}
@@ -198,6 +204,12 @@ export function ReaderChat({
                 <div className="reader-chat-message reader-chat-question">
                   <span>{t("reader.chat.you")}</span>
                   <p dir="auto">{turn.question}</p>
+                  {turn.passage && (
+                    <details className="reader-chat-passage">
+                      <summary>{t("reader.chat.passage")}</summary>
+                      <blockquote dir="auto">{turn.passage.text}</blockquote>
+                    </details>
+                  )}
                 </div>
                 {turn.status === "completed" ? (
                   <div className="reader-chat-message reader-chat-answer">
@@ -281,7 +293,7 @@ export function ReaderChat({
               value={question}
               onChange={event => setQuestion(event.target.value)}
               placeholder={t("reader.chat.question")}
-              maxLength={2000}
+              maxLength={readerAiLimits.question}
               disabled={chat.loading}
               rows={3}
               onKeyDown={event => {

@@ -1,10 +1,21 @@
+import { readerAiLimits } from "../../services/readerAiLimits";
 import { FormEvent, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { ReaderAiSettings } from "../../../../shared/types/readerAiSettings";
+import { readerAiModels, type ReaderAiSettings } from "../../../../shared/types/readerAiSettings";
 import readerAiSettingsApiService from "../../services/readerAiSettingsApiService";
 
+const modelDescriptionKeys: Record<NonNullable<ReaderAiSettings["model"]>, string> = {
+  default: "server",
+  "gpt-4.1-mini": "mini",
+  "gpt-6-luna": "luna",
+  "gpt-6.1-terra": "terra",
+  "gpt-6.1-sol": "sol",
+  "gpt-6-astra": "astra",
+};
+
 const defaults: ReaderAiSettings = {
-  answerLength: "short",
+  model: "default",
+  answerLength: "standard",
   simpleLanguage: true,
   customInstructions: "",
 };
@@ -83,6 +94,25 @@ export function ReaderAiSettings({ onClose }: { onClose: () => void }) {
       {ready && (
         <form onSubmit={event => void save(event)}>
           <fieldset disabled={saving}>
+            <label htmlFor="reader-ai-model">{t("reader.chat.settings.model")}</label>
+            <select
+              id="reader-ai-model"
+              value={settings.model ?? "default"}
+              onChange={event =>
+                change({ model: event.target.value as ReaderAiSettings["model"] })
+              }
+              aria-describedby="reader-ai-model-hint"
+            >
+              {readerAiModels.map(model => (
+                <option key={model} value={model}>
+                  {model === "default" ? t("reader.chat.settings.modelDefault") : model}
+                  {" — " + t("reader.chat.settings.modelDescriptions." + modelDescriptionKeys[model])}
+                </option>
+              ))}
+            </select>
+            <p id="reader-ai-model-hint" className="reader-ai-settings-hint">
+              {t("reader.chat.settings.modelHint")}
+            </p>
             <label htmlFor="reader-ai-answer-length">
               {t("reader.chat.settings.length")}
             </label>
@@ -121,7 +151,7 @@ export function ReaderAiSettings({ onClose }: { onClose: () => void }) {
               id="reader-ai-instructions"
               dir="auto"
               value={settings.customInstructions}
-              maxLength={1500}
+              maxLength={readerAiLimits.instructions}
               rows={7}
               placeholder={t("reader.chat.settings.example")}
               onChange={event =>
@@ -136,7 +166,7 @@ export function ReaderAiSettings({ onClose }: { onClose: () => void }) {
               {t("reader.chat.settings.hint")}
             </p>
             <span className="reader-ai-settings-count">
-              {settings.customInstructions.length}/1500
+              {settings.customInstructions.length}/{readerAiLimits.instructions}
             </span>
             <div className="reader-ai-settings-buttons">
               <button

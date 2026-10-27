@@ -7,7 +7,7 @@ import {
 import readerChatApiService from "../services/readerChatApiService";
 import { createRequestId } from "../services/createRequestId";
 
-export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
+export function useReaderChat(bookId: string, getCurrentCfi: () => string, userId?: string) {
   const [conversation, setConversation] = useState<ReaderConversation | null>(
     null,
   );
@@ -25,6 +25,14 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
     id: string;
     question: string;
   } | null>(null);
+  const activeKey = userId ? "roza-active-chat:" + userId + ":" + bookId : "";
+  function remember(id?: string) {
+    try {
+      if (!activeKey) return;
+      if (id) window.localStorage.setItem(activeKey, id);
+      else window.localStorage.removeItem(activeKey);
+    } catch { /* Storage is optional; saved chats remain on the server. */ }
+  }
   const alive = useRef(true);
   const busy = useRef(false);
   const generation = useRef(0);
@@ -35,6 +43,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
     };
   }, []);
 
+  const restoreKey = useRef("");
   const loadHistory = useCallback(
     async (before?: string) => {
       if (busy.current) return;
@@ -63,6 +72,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
   function start(selected?: ReaderPassage) {
     if (busy.current) return;
     generation.current++;
+    remember();
     setDraft("");
     setDraftVersion(value => value + 1);
     setConversation(null);
@@ -81,6 +91,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
       const found = await readerChatApiService.getById(bookId, id);
       if (!alive.current) return;
       setConversation(found);
+      remember(found.id);
       setDraftVersion(value => value + 1);
       setPassage(found.passage);
       setSpoilersAllowed(found.spoilersAllowed);
@@ -125,6 +136,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
         );
         if (!alive.current) return false;
         setConversation(target);
+        remember(target.id);
         setPassage(target.passage);
       }
       const updated = await readerChatApiService.send(bookId, target.id, {
@@ -132,6 +144,8 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
         question: question.trim(),
         currentCfi,
         spoilersAllowed,
+        passageCfi: passage?.cfi,
+        passageEndCfi: passage?.endCfi,
       });
       if (!alive.current) return false;
       setConversation(updated);
@@ -167,6 +181,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
       if (!alive.current) return;
       setItems(previous => previous.filter(item => item.id !== id));
       if (conversation?.id === id) {
+        remember();
         setConversation(null);
         setPassage(undefined);
         setPending(null);
@@ -178,8 +193,25 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
       if (alive.current) setLoading(false);
     }
   }
+  function attach(selected: ReaderPassage) {
+    if (busy.current || pending) return;
+    setPassage(selected);
+    setHistory(false);
+    setError("");
+    setDraftVersion(value => value + 1);
+  }
+  useEffect(() => {
+    if (!activeKey || restoreKey.current === activeKey) return;
+    restoreKey.current = activeKey;
+    let saved: string | null = null;
+    try { saved = window.localStorage.getItem(activeKey); } catch { return; }
+    if (saved) void open(saved);
+    // The key changes only when the authenticated account or book changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeKey]);
   return {
     conversation,
+    attach,
     draft,
     setDraft,
     passage,

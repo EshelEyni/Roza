@@ -1,4 +1,5 @@
 import { Schema } from "mongoose";
+import { readerAiConfig } from "../../../services/reader/readerAiConfig";
 import { IReaderConversation } from "../../../types/iTypes";
 
 const readerConversationSchema = new Schema<IReaderConversation>(
@@ -17,6 +18,7 @@ const readerConversationSchema = new Schema<IReaderConversation>(
       ),
       default: undefined,
     },
+    contextOmittedTurns: { type: Number, default: 0 },
     spoilersAllowed: { type: Boolean, default: false },
     lockedUntil: { type: Date, default: new Date(0), select: false },
     lockToken: { type: String, select: false },
@@ -24,11 +26,16 @@ const readerConversationSchema = new Schema<IReaderConversation>(
       {
         _id: false,
         id: { type: String, required: true },
-        question: { type: String, required: true, maxlength: 2000 },
+        question: { type: String, required: true, maxlength: readerAiConfig.maxQuestionChars },
         currentCfi: { type: String, required: true },
         spoilersAllowed: { type: Boolean, default: false },
-        answer: { type: String, default: "", maxlength: 16000 },
+        answer: { type: String, default: "", maxlength: readerAiConfig.maxAnswerChars },
         status: { type: String, enum: ["pending", "completed", "failed"], required: true },
+        passage: {
+          type: new Schema({ cfi: String, endCfi: String, text: String }, { _id: false }),
+          default: undefined,
+        },
+        excerpts: { type: [new Schema({ label: String, text: String }, { _id: false })], default: undefined },
         createdAt: { type: Date, default: Date.now },
       },
     ],

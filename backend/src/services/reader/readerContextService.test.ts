@@ -50,7 +50,11 @@ describe("Reader book context", () => {
     expect(() => book().passage(crossEnd, crossStart)).toThrow();
     expect(() => book().passage(crossStart, "epubcfi(/6/200!/4/2/1:10)")).toThrow();
     expect(() => book().passage(crossStart, "epubcfi(/6/2!/4/2/1:0)")).toThrow();
-    expect(() => book("x".repeat(3005)).passage(crossStart, crossEnd)).toThrow("3,000");
+    expect(() => book("x".repeat(20005)).passage(crossStart, crossEnd)).toThrow("20,000");
+  });
+  it("accepts a literary passage longer than the previous 3,000 character cap", () => {
+    const text = "x".repeat(12000);
+    expect(book(text).passage("epubcfi(/6/2!/4/2,/1:0,/1:12000)").text).toBe(text);
   });
   it("resolves exact selected text from the saved edition, including CFI assertions", () => {
     expect(book().passage(passage).text).toBe("garden");

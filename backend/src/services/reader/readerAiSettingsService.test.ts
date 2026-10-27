@@ -5,13 +5,13 @@ import {
 } from "./readerAiSettingsService";
 
 describe("Reader AI instructions", () => {
-  it("defaults to short, simple answers without changing spoiler or language rules", () => {
-    expect(defaultReaderAiSettings.answerLength).toBe("short");
+  it("defaults to complete, simple explanations without a fixed paragraph cap", () => {
+    expect(defaultReaderAiSettings.answerLength).toBe("standard");
     const instructions = readerStyleInstructions(defaultReaderAiSettings);
-    expect(instructions).toContain("2–4 short sentences");
-    expect(instructions).toContain("under 80 words");
+    expect(instructions).toContain("complete explanation");
+    expect(instructions).not.toContain("under 80 words");
     expect(instructions).toContain("simple everyday words");
-    expect(instructions).toContain("explicitly asks for more detail");
+    expect(readerStyleInstructions({ ...defaultReaderAiSettings, answerLength: "short" })).toContain("explicitly asks for more detail");
   });
   it("includes user instructions as preferences and applies the chosen length", () => {
     const instructions = readerStyleInstructions({
@@ -20,7 +20,7 @@ describe("Reader AI instructions", () => {
       customInstructions: "Explain metaphors.",
     });
     expect(instructions).toContain("Explain metaphors.");
-    expect(instructions).toContain("one or two short paragraphs");
+    expect(instructions).toContain("complete explanation");
     expect(instructions).toContain("compatible");
     expect(instructions).not.toContain("2–4 short sentences");
   });
@@ -35,9 +35,10 @@ describe("Reader AI instructions", () => {
     for (const value of [
       null,
       {},
+      { ...defaultReaderAiSettings, model: "arbitrary-model" },
       { ...defaultReaderAiSettings, answerLength: "unlimited" },
       { ...defaultReaderAiSettings, simpleLanguage: "true" },
-      { ...defaultReaderAiSettings, customInstructions: "x".repeat(1501) },
+      { ...defaultReaderAiSettings, customInstructions: "x".repeat(8001) },
     ])
       expect(() => validateReaderAiSettings(value)).toThrow();
   });

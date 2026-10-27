@@ -1,3 +1,4 @@
+import { readerAiConfig } from "./readerAiConfig";
 import AdmZip from "adm-zip";
 import {
   DOMParser,
@@ -8,8 +9,8 @@ import {
 import path from "path";
 import { AppError } from "../error/errorService";
 
-const MAX_CONTEXT_CHARS = 8000;
-const MAX_PASSAGE_CHARS = 3000;
+const MAX_CONTEXT_CHARS = readerAiConfig.maxBookContextChars;
+const MAX_PASSAGE_CHARS = readerAiConfig.maxPassageChars;
 type Section = { href: string; source: string; linear: boolean };
 type Position = { index: number; start: string; end: string };
 
@@ -140,7 +141,7 @@ class ReaderContext {
         if (end < start) throw new AppError("Invalid selected passage.", 400);
         pieces.push(section.text.slice(start, end).trim());
         if (pieces.join("\n").length > MAX_PASSAGE_CHARS)
-          throw new AppError("Select a passage of up to 3,000 characters.", 400);
+          throw new AppError("Select a passage of up to 20,000 characters.", 400);
       }
       const text = pieces.join("\n").trim();
       if (!text) throw new AppError("Select a passage containing text.", 400);
@@ -150,7 +151,7 @@ class ReaderContext {
     const start = offsetAt(section.document, section.offsets, position.start);
     const end = offsetAt(section.document, section.offsets, position.end);
     if (end <= start || end - start > MAX_PASSAGE_CHARS)
-      throw new AppError("Select a passage of up to 3,000 characters.", 400);
+      throw new AppError("Select a passage of up to 20,000 characters.", 400);
     const text = section.text.slice(start, end).trim();
     if (!text) throw new AppError("Select a passage containing text.", 400);
     return { cfi, text };
@@ -186,7 +187,7 @@ class ReaderContext {
             ].includes(term),
         ),
       ),
-    ].slice(0, 20);
+    ].slice(0, 40);
     const excerpts: { label: string; text: string; score: number }[] = [];
     const add = (label: string, text: string, score: number) => {
       const clean = text.trim();
@@ -203,18 +204,20 @@ class ReaderContext {
         : offsetAt(selected.document, selected.offsets, anchor.end);
       if (spoilersAllowed || this.isAtOrBefore(passageEndCfi || passageCfi, currentCfi)) {
         passage = this.passage(passageCfi, passageEndCfi).text;
-        const cutoff =
-          spoilersAllowed || anchor.index < position.index ? selected.text.length : boundary;
-        add(
-          "Around selected passage",
-          selected.text.slice(Math.max(0, start - 900), Math.min(cutoff, end + 600)),
-          100,
-        );
+        // The selected passage is sent separately; spend the excerpt budget on its surroundings.
+        add("Before selected passage", selected.text.slice(Math.max(0, start - 2500), start), 100);
+        const finalPosition = passageEndCfi ? parsePosition(passageEndCfi) : anchor;
+        const finalSection = finalPosition.index === anchor.index ? selected : this.section(finalPosition.index);
+        const finalEnd = passageEndCfi
+          ? offsetAt(finalSection.document, finalSection.offsets, finalPosition.end) : end;
+        const cutoff = spoilersAllowed || finalPosition.index < position.index
+          ? finalSection.text.length : boundary;
+        add("After selected passage", finalSection.text.slice(finalEnd, Math.min(cutoff, finalEnd + 1500)), 99);
       }
     }
     add(
       "At current reading position",
-      current.text.slice(Math.max(0, boundary - 1800), boundary),
+      current.text.slice(Math.max(0, boundary - 4000), boundary),
       90,
     );
     for (let index = 0; index < this.sections.length; index++) {
@@ -224,22 +227,22 @@ class ReaderContext {
         !spoilersAllowed && index === position.index
           ? section.text.slice(0, boundary)
           : section.text;
-      for (let start = 0; start < available.length; start += 1000) {
-        const chunk = available.slice(start, start + 1200);
+      for (let start = 0; start < available.length; start += 2200) {
+        const chunk = available.slice(start, start + 2600);
         const lower = chunk.toLowerCase();
         const score = terms.reduce((total, term) => total + (lower.includes(term) ? 1 : 0), 0);
         if (score) {
           add("Section " + (index + 1) + ": " + section.href, chunk, score);
           // Keep only a small top set rather than retaining all matching book text.
           excerpts.sort((a, b) => b.score - a.score);
-          if (excerpts.length > 8) excerpts.length = 8;
+          if (excerpts.length > 16) excerpts.length = 16;
         }
       }
     }
     let remaining = MAX_CONTEXT_CHARS;
     const context = excerpts
       .sort((a, b) => b.score - a.score)
-      .slice(0, 5)
+      .slice(0, 8)
       .map(entry => {
         const text = entry.text.slice(0, Math.max(0, remaining));
         remaining -= text.length;

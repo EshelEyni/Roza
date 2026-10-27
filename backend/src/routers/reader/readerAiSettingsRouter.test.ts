@@ -25,7 +25,7 @@ app.use(
     res.status(err.statusCode || 500).json({ status: "fail", message: err.message });
   },
 );
-const defaults = { answerLength: "short", simpleLanguage: true, customInstructions: "" };
+const defaults = { model: "default", answerLength: "standard", simpleLanguage: true, customInstructions: "" };
 describe("Reader AI settings", () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -47,7 +47,7 @@ describe("Reader AI settings", () => {
     ).toBe(403);
     expect(ReaderAiSettingsModel.findOneAndUpdate).not.toHaveBeenCalled();
   });
-  it("returns short/simple defaults without leaking user data", async () => {
+  it("returns adaptive/simple defaults without leaking user data", async () => {
     const result = await request(app).get("/api/reader/ai-settings").set("Authorization", "test");
     expect(result.status).toBe(200);
     expect(result.body.data).toEqual(defaults);
@@ -57,6 +57,7 @@ describe("Reader AI settings", () => {
   it("saves and reopens only the signed-in user's allowed settings", async () => {
     const settings = {
       ...defaults,
+      model: "gpt-6.1-terra",
       answerLength: "detailed",
       customInstructions: "Explain metaphors.",
     };
@@ -65,7 +66,7 @@ describe("Reader AI settings", () => {
         await request(app)
           .patch("/api/reader/ai-settings")
           .set("Authorization", "test")
-          .send({ ...settings, userId: "attacker", model: "unexpected" })
+          .send({ ...settings, userId: "attacker", unexpected: "ignored" })
       ).status,
     ).toBe(200);
     expect(ReaderAiSettingsModel.findOneAndUpdate).toHaveBeenCalledWith(
@@ -81,13 +82,27 @@ describe("Reader AI settings", () => {
       (await request(app).get("/api/reader/ai-settings").set("Authorization", "test")).body.data,
     ).toEqual(settings);
   });
+  it("reads legacy saved settings with the server default model", async () => {
+    (ReaderAiSettingsModel.findOne as jest.Mock).mockResolvedValue({
+      answerLength: "detailed", simpleLanguage: false, customInstructions: "Explain metaphors.",
+    });
+    const result = await request(app).get("/api/reader/ai-settings").set("Authorization", "test");
+    expect(result.body.data.model).toBe("default");
+    expect(result.body.data.answerLength).toBe("detailed");
+  });
+  it("rejects unsupported model IDs before writing", async () => {
+    const result = await request(app).patch("/api/reader/ai-settings")
+      .set("Authorization", "test").send({ ...defaults, model: "arbitrary-model" });
+    expect(result.status).toBe(400);
+    expect(ReaderAiSettingsModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
   it("rejects malformed instructions before writing", async () => {
     expect(
       (
         await request(app)
           .patch("/api/reader/ai-settings")
           .set("Authorization", "test")
-          .send({ ...defaults, customInstructions: "x".repeat(1501) })
+          .send({ ...defaults, customInstructions: "x".repeat(8001) })
       ).status,
     ).toBe(400);
     expect(ReaderAiSettingsModel.findOneAndUpdate).not.toHaveBeenCalled();

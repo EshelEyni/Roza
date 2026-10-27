@@ -38,7 +38,7 @@ function ReaderDetailsContent() {
       </div>
     );
   return (
-    <EpubReader key={book.data.id} book={book.data} userId={loggedInUser.id} />
+    <EpubReader key={loggedInUser.id + ":" + book.data.id} book={book.data} userId={loggedInUser.id} />
   );
 }
 

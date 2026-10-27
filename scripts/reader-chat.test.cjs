@@ -48,17 +48,18 @@ const deferred = () => {
 const flush = () => new Promise(resolve => setImmediate(resolve));
 const conversation = turns => ({ id: "conversation", turns, spoilersAllowed: false });
 const turn = (id, question) => ({ id, question, answer: "answer", status: "completed" });
-function setup(api, currentCfi = "cfi") {
+function setup(api, currentCfi = "cfi", userId) {
   let id = 0;
   const hook = harness("hooks/useReaderChat.ts", {
     "../services/readerChatApiService": { default: api },
     "../services/createRequestId": { createRequestId: () => `request-${++id}` },
   });
-  const renderChat = () => hook("book", () => currentCfi);
+  const renderChat = () => hook("book", () => currentCfi, userId);
   const jsx = (type, props) => ({ type, props });
   const component = harness("components/Reader/ReaderChat.tsx", {
     "react/jsx-runtime": { jsx, jsxs: jsx },
     "react-i18next": { useTranslation: () => ({ t: key => key }) },
+    "../../services/readerAiLimits": { readerAiLimits: { question: 10000 } },
   });
   const render = () => component({ chat: renderChat(), onClose() {} });
   render(); // Initial draft reset effect.
@@ -174,4 +175,85 @@ test("a failed request recovered from history renders its saved message only onc
   visit(s.render());
   assert.equal(count, 1);
   assert.ok(find(s.render(), node => node.type === "button" && node.props.children === "reader.retry"));
+});
+
+
+test("attaching another passage preserves the same conversation and previous answers", async () => {
+  let creates = 0;
+  const sent = [];
+  const old = turn("old", "Earlier");
+  const s = setup({
+    create: async () => { creates++; return conversation([old]); },
+    send: async (_book, id, body) => {
+      sent.push({ id, body });
+      return { ...conversation([old, turn(body.requestId, body.question)]),
+        passage: body.passageCfi ? { cfi: body.passageCfi, text: "New passage" } : undefined };
+    },
+  });
+  s.renderChat().send("First");
+  await flush();
+  s.renderChat().attach({ cfi: "new-cfi", endCfi: "end-cfi", text: "New passage" });
+  assert.equal(s.renderChat().conversation.turns[0].answer, "answer");
+  s.renderChat().send("Explain this passage");
+  await flush();
+  assert.equal(creates, 1);
+  assert.equal(sent[1].id, "conversation");
+  assert.equal(sent[1].body.passageCfi, "new-cfi");
+  assert.equal(sent[1].body.passageEndCfi, "end-cfi");
+});
+
+test("reload restores the account/book active conversation and New chat clears its pointer", async () => {
+  const original = global.window;
+  const storage = new Map();
+  global.window = { localStorage: {
+    getItem: key => storage.get(key) || null,
+    setItem: (key, value) => storage.set(key, value),
+    removeItem: key => storage.delete(key),
+  } };
+  try {
+    let restores = 0;
+    const api = {
+      create: async () => conversation([]),
+      send: async (_book, _id, body) => conversation([turn(body.requestId, body.question)]),
+      getById: async (_book, id) => { restores++; assert.equal(id, "conversation"); return conversation([turn("saved", "Saved")]); },
+    };
+    const first = setup(api, "cfi", "alice");
+    first.renderChat().send("Question");
+    await flush();
+    assert.equal(storage.get("roza-active-chat:alice:book"), "conversation");
+    const reloaded = setup(api, "cfi", "alice");
+    await flush();
+    assert.equal(reloaded.renderChat().conversation.turns[0].id, "saved");
+    assert.equal(restores, 1);
+    const other = setup(api, "cfi", "bob");
+    await flush();
+    assert.equal(other.renderChat().conversation, null);
+    assert.equal(restores, 1);
+    reloaded.renderChat().start();
+    assert.equal(storage.has("roza-active-chat:alice:book"), false);
+    assert.equal(reloaded.renderChat().conversation, null);
+  } finally { global.window = original; }
+});
+
+test("unavailable browser storage does not prevent sending or saving chats", async () => {
+  const original = global.window;
+  global.window = { get localStorage() { throw new Error("Storage blocked"); } };
+  try {
+    const s = setup({
+      create: async () => conversation([]),
+      send: async (_book, _id, body) => conversation([turn(body.requestId, body.question)]),
+    }, "cfi", "alice");
+    assert.equal(s.renderChat().send("Question"), true);
+    await flush();
+    assert.equal(s.renderChat().conversation.turns.length, 1);
+    assert.equal(s.renderChat().error, "");
+  } finally { global.window = original; }
+});
+
+test("context omissions are visible while saved transcript remains readable", async () => {
+  const saved = { ...conversation([turn("old", "Earlier")]), contextOmittedTurns: 2 };
+  const s = setup({ getById: async () => saved });
+  await s.renderChat().open("conversation");
+  assert.ok(find(s.render(), node => node.type === "p" && node.props.children === "reader.chat.contextLimited"));
+  assert.ok(find(s.render(), node => node.type === "p" && node.props.children === "Earlier"));
 });

@@ -189,7 +189,7 @@ function Fixture() {
             Object.assign(window, { askedText: selection.textSelection?.text })
           }
           aiDisabled={
-            selection.busy || selection.textSelection.text.length > 3000
+            selection.busy || selection.textSelection.text.length > 20000
           }
           onExtend={(direction) => selection.extend(runtime.current, direction)}
           extending={selection.extending}
