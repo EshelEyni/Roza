@@ -16,6 +16,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [sending, setSending] = useState(false);
+  const [draftVersion, setDraftVersion] = useState(0);
   const [history, setHistory] = useState(false);
   const [error, setError] = useState("");
   const [spoilersAllowed, setSpoilersAllowed] = useState(false);
@@ -61,6 +62,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
   function start(selected?: ReaderPassage) {
     if (busy.current) return;
     generation.current++;
+    setDraftVersion(value => value + 1);
     setConversation(null);
     setPassage(selected);
     setSpoilersAllowed(false);
@@ -77,6 +79,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
       const found = await readerChatApiService.getById(bookId, id);
       if (!alive.current) return;
       setConversation(found);
+      setDraftVersion(value => value + 1);
       setPassage(found.passage);
       setSpoilersAllowed(found.spoilersAllowed);
       setPending(null);
@@ -88,10 +91,23 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
       if (alive.current) setLoading(false);
     }
   }
-  async function send(question: string, retryId?: string) {
-    if (busy.current || !question.trim()) return false;
+  function send(question: string, retryId?: string) {
+    // Resolve a failed local message before accepting another submission.
+    if (
+      busy.current ||
+      !question.trim() ||
+      (pending && retryId !== pending.id)
+    ) return false;
     const currentCfi = getCurrentCfi();
     if (!currentCfi) return false;
+    void performSend(question, currentCfi, retryId);
+    return true;
+  }
+  async function performSend(
+    question: string,
+    currentCfi: string,
+    retryId?: string,
+  ) {
     const requestId = retryId || createRequestId();
     busy.current = true;
     setSending(true);
@@ -167,6 +183,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
     cursor,
     loading,
     sending,
+    draftVersion,
     history,
     error,
     spoilersAllowed,

@@ -29,7 +29,7 @@ export function ReaderChat({
   useEffect(() => {
     setQuestion("");
     setSettingsOpen(false);
-  }, [chat.conversation?.id, chat.passage?.cfi]);
+  }, [chat.draftVersion]);
   useLayoutEffect(() => {
     input.current?.focus({ preventScroll: true });
   }, [chat.conversation?.id, chat.passage?.cfi]);
@@ -37,13 +37,12 @@ export function ReaderChat({
     const element = messages.current;
     if (element) element.scrollTop = element.scrollHeight;
   }, [chat.conversation?.turns.length, chat.sending, chat.pending]);
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
     const text = question.trim();
     if (!text || disabled) return;
-    // Leave the typed draft available on failure; retries reuse the saved request id.
-    const retry = chat.pending?.question === text ? chat.pending.id : undefined;
-    if (await chat.send(text, retry)) setQuestion("");
+    if (chat.pending) return;
+    if (chat.send(text)) setQuestion("");
   }
   const turns = chat.conversation?.turns || [];
   const pendingIsSaved = turns.some(turn => turn.id === chat.pending?.id);
@@ -208,7 +207,7 @@ export function ReaderChat({
                     <p dir="auto">{turn.answer}</p>
                   </div>
                 ) : (
-                  <div className="reader-chat-status">
+                  <div className="reader-chat-status" role="status">
                     <p>
                       {t(
                         chat.sending && chat.pending?.id === turn.id
@@ -285,7 +284,7 @@ export function ReaderChat({
               onChange={event => setQuestion(event.target.value)}
               placeholder={t("reader.chat.question")}
               maxLength={2000}
-              disabled={disabled}
+              disabled={chat.loading}
               rows={3}
               onKeyDown={event => {
                 if (
@@ -303,7 +302,7 @@ export function ReaderChat({
               <button
                 className="reader-button"
                 type="submit"
-                disabled={disabled || !question.trim()}
+                disabled={disabled || !!chat.pending || !question.trim()}
               >
                 <FiSend />
                 {t("reader.chat.send")}

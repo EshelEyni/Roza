@@ -1,0 +1,177 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const ts = require("../frontend/node_modules/typescript");
+
+// Exercise the real hook and component with deterministic renders and deferred APIs.
+function harness(file, dependencies) {
+  const slots = [];
+  let index = 0;
+  let effects = [];
+  const react = {
+    useState(initial) {
+      const i = index++;
+      if (!(i in slots)) slots[i] = initial;
+      return [slots[i], value => { slots[i] = typeof value === "function" ? value(slots[i]) : value; }];
+    },
+    useRef(initial) {
+      const i = index++;
+      return slots[i] ||= { current: initial };
+    },
+    useCallback: callback => callback,
+    useEffect(callback, deps) {
+      const i = index++;
+      if (!slots[i] || deps.some((dep, j) => dep !== slots[i][j])) effects.push(callback);
+      slots[i] = deps;
+    },
+  };
+  react.useLayoutEffect = react.useEffect;
+  const exports = {};
+  const code = ts.transpileModule(fs.readFileSync(path.join(__dirname, "../frontend/src", file), "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
+  }).outputText;
+  new Function("require", "exports", code)(name => name === "react" ? react : dependencies[name] || {}, exports);
+  return (...args) => {
+    index = 0;
+    effects = [];
+    const result = Object.values(exports)[0](...args);
+    effects.forEach(effect => effect());
+    return result;
+  };
+}
+const deferred = () => {
+  let resolve, reject;
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+  return { promise, resolve, reject };
+};
+const flush = () => new Promise(resolve => setImmediate(resolve));
+const conversation = turns => ({ id: "conversation", turns, spoilersAllowed: false });
+const turn = (id, question) => ({ id, question, answer: "answer", status: "completed" });
+function setup(api, currentCfi = "cfi") {
+  let id = 0;
+  const hook = harness("hooks/useReaderChat.ts", {
+    "../services/readerChatApiService": { default: api },
+    "../services/createRequestId": { createRequestId: () => `request-${++id}` },
+  });
+  const renderChat = () => hook("book", () => currentCfi);
+  const jsx = (type, props) => ({ type, props });
+  const component = harness("components/Reader/ReaderChat.tsx", {
+    "react/jsx-runtime": { jsx, jsxs: jsx },
+    "react-i18next": { useTranslation: () => ({ t: key => key }) },
+  });
+  const render = () => component({ chat: renderChat(), onClose() {} });
+  render(); // Initial draft reset effect.
+  return { renderChat, render };
+}
+function find(node, predicate) {
+  if (!node || typeof node !== "object") return;
+  if (predicate(node)) return node;
+  for (const child of [node.props?.children].flat(Infinity)) {
+    const found = find(child, predicate);
+    if (found) return found;
+  }
+}
+const input = tree => find(tree, node => node.type === "textarea");
+const submit = tree => find(tree, node => node.type === "form").props.onSubmit({ preventDefault() {} });
+
+test("slow first send clears immediately, renders pending, blocks duplicates and preserves new draft through success", async () => {
+  const create = deferred(), response = deferred();
+  let calls = 0;
+  const s = setup({ create: () => create.promise, send: () => { calls++; return response.promise; } });
+  input(s.render()).props.onChange({ target: { value: "First" } });
+  submit(s.render());
+  let tree = s.render();
+  assert.equal(input(tree).props.value, "");
+  assert.equal(input(tree).props.disabled, false);
+  assert.equal(s.renderChat().pending.question, "First");
+  assert.ok(find(tree, node => node.props?.role === "status"));
+  assert.equal(s.renderChat().send("First"), false);
+  input(tree).props.onChange({ target: { value: "Next draft" } });
+  create.resolve(conversation([]));
+  await flush();
+  s.render();
+  assert.equal(input(s.render()).props.value, "Next draft");
+  submit(s.render());
+  assert.equal(calls, 1);
+  response.resolve(conversation([turn("request-1", "First")]));
+  await flush();
+  assert.equal(input(s.render()).props.value, "Next draft");
+  assert.equal(s.renderChat().pending, null);
+  assert.equal(s.renderChat().sending, false);
+});
+
+test("failure preserves optimistic message; retry reuses ID, preserves history and draft", async () => {
+  const response = deferred();
+  const requests = [];
+  const old = turn("old", "Earlier");
+  const api = {
+    create: async () => conversation([old]),
+    getById: async () => conversation([old]),
+    send: (_book, _id, body) => { requests.push(body); return response.promise; },
+  };
+  const s = setup(api);
+  input(s.render()).props.onChange({ target: { value: "Question" } });
+  submit(s.render());
+  await flush();
+  response.reject(new Error("Offline"));
+  await flush();
+  const chat = s.renderChat();
+  assert.equal(chat.pending.question, "Question");
+  assert.equal(chat.error, "Offline");
+  input(s.render()).props.onChange({ target: { value: "Draft" } });
+  const retry = find(s.render(), node => node.type === "button" && node.props.children === "reader.retry");
+  assert.ok(retry);
+  api.send = async (_book, _id, body) => { requests.push(body); return conversation([old, turn(body.requestId, body.question)]); };
+  retry.props.onClick();
+  await flush();
+  assert.equal(requests[0].requestId, requests[1].requestId);
+  assert.deepEqual(s.renderChat().conversation.turns.map(t => t.id), ["old", "request-1"]);
+  assert.equal(input(s.render()).props.value, "Draft");
+});
+
+test("creation failure retains the question and can retry with the same ID", async () => {
+  const api = { create: async () => { throw new Error("Unavailable"); } };
+  const s = setup(api);
+  assert.equal(s.renderChat().send("Question"), true);
+  await flush();
+  assert.equal(s.renderChat().pending.question, "Question");
+  assert.equal(s.renderChat().sending, false);
+  assert.equal(s.renderChat().send("Another"), false);
+  api.create = async () => conversation([]);
+  api.send = async (_book, _id, body) => conversation([turn(body.requestId, body.question)]);
+  assert.equal(s.renderChat().send("Question", s.renderChat().pending.id), true);
+  await flush();
+  assert.equal(s.renderChat().conversation.turns[0].id, "request-1");
+  assert.equal(s.renderChat().pending, null);
+});
+
+test("a rejected submission leaves the draft intact", () => {
+  const s = setup({}, "");
+  input(s.render()).props.onChange({ target: { value: "Draft" } });
+  submit(s.render());
+  assert.equal(input(s.render()).props.value, "Draft");
+  assert.equal(s.renderChat().pending, null);
+});
+
+test("a failed request recovered from history renders its saved message only once", async () => {
+  const s = setup({
+    create: async () => conversation([turn("old", "Earlier")]),
+    send: async () => { throw new Error("Disconnected"); },
+    getById: async () => conversation([
+      turn("old", "Earlier"),
+      { ...turn("request-1", "Question"), status: "failed" },
+    ]),
+  });
+  s.renderChat().send("Question");
+  await flush();
+  let count = 0;
+  function visit(node) {
+    if (!node || typeof node !== "object") return;
+    if (node.type === "p" && node.props.children === "Question") count++;
+    [node.props?.children].flat(Infinity).forEach(visit);
+  }
+  visit(s.render());
+  assert.equal(count, 1);
+  assert.ok(find(s.render(), node => node.type === "button" && node.props.children === "reader.retry"));
+});
