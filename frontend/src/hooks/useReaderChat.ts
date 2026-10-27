@@ -24,6 +24,9 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string, userI
   const [pending, setPending] = useState<{
     id: string;
     question: string;
+    currentCfi: string;
+    spoilersAllowed: boolean;
+    passage?: ReaderPassage;
   } | null>(null);
   const activeKey = userId ? "roza-active-chat:" + userId + ":" + bookId : "";
   function remember(id?: string) {
@@ -111,28 +114,38 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string, userI
       !question.trim() ||
       (pending && retryId !== pending.id)
     ) return false;
-    const currentCfi = getCurrentCfi();
-    if (!currentCfi) return false;
-    void performSend(question, currentCfi, retryId);
+    const original = retryId ? conversation?.turns.find(turn => turn.id === retryId)
+      || (pending?.id === retryId ? pending : undefined) : undefined;
+    const requestPassage = retryId ? original?.passage : passage;
+    const currentCfi = retryId ? original?.currentCfi || ""
+      : requestPassage?.endCfi || requestPassage?.cfi || getCurrentCfi();
+    const requestSpoilersAllowed = retryId ? original?.spoilersAllowed ?? false : spoilersAllowed;
+    if (!currentCfi) {
+      setError("The original reading position is unavailable. Select the passage again and start a new question.");
+      return false;
+    }
+    void performSend(question, currentCfi, requestSpoilersAllowed, requestPassage, retryId);
     return true;
   }
   async function performSend(
     question: string,
     currentCfi: string,
+    requestSpoilersAllowed: boolean,
+    requestPassage: ReaderPassage | undefined,
     retryId?: string,
   ) {
     const requestId = retryId || createRequestId();
     busy.current = true;
     setSending(true);
     setError("");
-    setPending({ id: requestId, question: question.trim() });
+    setPending({ id: requestId, question: question.trim(), currentCfi, spoilersAllowed: requestSpoilersAllowed, passage: requestPassage });
     let target = conversation;
     try {
       if (!target) {
         target = await readerChatApiService.create(
           bookId,
-          passage?.cfi,
-          passage?.endCfi,
+          requestPassage?.cfi,
+          requestPassage?.endCfi,
         );
         if (!alive.current) return false;
         setConversation(target);
@@ -143,9 +156,9 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string, userI
         requestId,
         question: question.trim(),
         currentCfi,
-        spoilersAllowed,
-        passageCfi: passage?.cfi,
-        passageEndCfi: passage?.endCfi,
+        spoilersAllowed: requestSpoilersAllowed,
+        passageCfi: requestPassage?.cfi,
+        passageEndCfi: requestPassage?.endCfi,
       });
       if (!alive.current) return false;
       setConversation(updated);

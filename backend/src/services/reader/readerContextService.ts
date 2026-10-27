@@ -8,6 +8,7 @@ import {
 } from "@xmldom/xmldom";
 import path from "path";
 import { AppError } from "../error/errorService";
+import type { ReaderPassage } from "../../../../shared/types/readerChat";
 
 const MAX_CONTEXT_CHARS = readerAiConfig.maxBookContextChars;
 const MAX_PASSAGE_CHARS = readerAiConfig.maxPassageChars;
@@ -109,17 +110,31 @@ class ReaderContext {
     const section = this.sections[index];
     if (!section) throw new AppError("Reading position is outside this book.", 400);
     const document = parseXml(section.source);
+    // Match protectReaderDocument, which inserts a head before EPUB.js creates CFIs.
+    if (!elements(document, "head").length) {
+      const head = document.createElementNS("http://www.w3.org/1999/xhtml", "head");
+      document.documentElement!.insertBefore(head, document.documentElement!.firstChild);
+    }
     return { ...section, document, ...documentText(document) };
   }
   isAtOrBefore(earlier: string, current: string) {
+    try {
+      return this.comparePositions(earlier, current);
+    } catch (error) {
+      // An unresolvable historical boundary must not block the new question or
+      // admit history whose spoiler boundary cannot be established.
+      if (error instanceof AppError) return false;
+      throw error;
+    }
+  }
+  private comparePositions(earlier: string, current: string) {
     const a = parsePosition(earlier);
     const b = parsePosition(current);
-    if (a.index !== b.index) return a.index < b.index;
-    const section = this.section(a.index);
-    return (
-      offsetAt(section.document, section.offsets, a.end) <=
-      offsetAt(section.document, section.offsets, b.end)
-    );
+    const earlierSection = this.section(a.index);
+    const currentSection = a.index === b.index ? earlierSection : this.section(b.index);
+    const earlierOffset = offsetAt(earlierSection.document, earlierSection.offsets, a.end);
+    const currentOffset = offsetAt(currentSection.document, currentSection.offsets, b.end);
+    return a.index !== b.index ? a.index < b.index : earlierOffset <= currentOffset;
   }
   passage(cfi: string, endCfi?: string) {
     const position = parsePosition(cfi);
@@ -157,6 +172,31 @@ class ReaderContext {
     return { cfi, text };
   }
   retrieve(
+    question: string,
+    currentCfi: string,
+    spoilersAllowed: boolean,
+    selected?: ReaderPassage | string,
+    passageEndCfi?: string,
+  ) {
+    if (!selected || typeof selected === "string")
+      return this.retrieveAtPosition(question, currentCfi, spoilersAllowed, selected, passageEndCfi);
+
+    // Text saved by createConversation was extracted from the owned edition.
+    // Its CFI enriches that text; it is not a prerequisite for using it. Keep
+    // selected-passage questions anchored to the selection, not today's page.
+    const passage = selected.text.slice(0, MAX_PASSAGE_CHARS).trim();
+    if (!passage) throw new AppError("The saved passage is unavailable. Select it again.", 400);
+    try {
+      const result = this.retrieveAtPosition(question, selected.endCfi || selected.cfi, spoilersAllowed, selected.cfi, selected.endCfi);
+      // A shifted CFI can still resolve to different words. Do not substitute
+      // that text or its surroundings for the original passage.
+      if (result.passage === passage) return { ...result, passage };
+    } catch (error) {
+      if (!(error instanceof AppError)) throw error;
+    }
+    return { passage, context: [] };
+  }
+  private retrieveAtPosition(
     question: string,
     currentCfi: string,
     spoilersAllowed: boolean,

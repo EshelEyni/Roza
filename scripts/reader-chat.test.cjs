@@ -63,7 +63,7 @@ function setup(api, currentCfi = "cfi", userId) {
   });
   const render = () => component({ chat: renderChat(), onClose() {} });
   render(); // Initial draft reset effect.
-  return { renderChat, render };
+  return { renderChat, render, navigate(cfi) { currentCfi = cfi; } };
 }
 function find(node, predicate) {
   if (!node || typeof node !== "object") return;
@@ -288,4 +288,55 @@ test("a summary failure is visible while the saved answer remains readable", asy
   await s.renderChat().open("conversation");
   assert.ok(find(s.render(), node => node.type === "p" && node.props.children === "reader.chat.summaryUnavailable"));
   assert.ok(find(s.render(), node => node.type === "p" && node.props.children === "answer"));
+});
+
+test("retry after navigation preserves the original position and spoiler setting", async () => {
+  const requests = [];
+  const api = {
+    create: async () => conversation([]),
+    getById: async () => conversation([]),
+    send: async (_book, _id, body) => { requests.push(body); throw Error("offline"); },
+  };
+  const s = setup(api, "original-page");
+  s.renderChat().send("Question");
+  await flush();
+  s.navigate("different-chapter");
+  s.renderChat().setSpoilersAllowed(true);
+  const pending = s.renderChat().pending;
+  assert.equal(s.renderChat().send(pending.question, pending.id), true);
+  await flush();
+  assert.equal(requests[1].currentCfi, "original-page");
+  assert.equal(requests[1].spoilersAllowed, false);
+  assert.equal(requests[1].requestId, requests[0].requestId);
+});
+
+test("cross-chapter passage sends use its end boundary even while renderer is unavailable", async () => {
+  let request;
+  const s = setup({
+    create: async () => conversation([]),
+    send: async (_book, _id, body) => { request = body; return conversation([]); },
+  }, "");
+  s.renderChat().start({ cfi: "selection-start", endCfi: "selection-end", text: "Selected words" });
+  assert.equal(s.renderChat().send("Explain"), true);
+  await flush();
+  assert.equal(request.currentCfi, "selection-end");
+  assert.equal(request.passageCfi, "selection-start");
+  assert.equal(request.passageEndCfi, "selection-end");
+});
+
+test("reopened failed turn retries its own passage rather than a newly attached one", async () => {
+  let request;
+  const original = { ...turn("failed", "Question"), status: "failed", currentCfi: "old-end",
+    spoilersAllowed: false, passage: { cfi: "old-start", endCfi: "old-end", text: "Original words" } };
+  const s = setup({
+    getById: async () => conversation([original]),
+    send: async (_book, _id, body) => { request = body; return conversation([original]); },
+  }, "new-page");
+  await s.renderChat().open("conversation");
+  s.renderChat().attach({ cfi: "new-selection", text: "Other words" });
+  assert.equal(s.renderChat().send("Question", "failed"), true);
+  await flush();
+  assert.equal(request.currentCfi, "old-end");
+  assert.equal(request.passageCfi, "old-start");
+  assert.equal(request.passageEndCfi, "old-end");
 });
