@@ -21,6 +21,8 @@ export function useEpubNavigation(
   const { t } = useTranslation();
   const {
     changingLayout,
+    layoutVersion,
+    fullscreenResizeAnchor,
     renditionRef,
     navigationVersion,
     explicitNavigation,
@@ -42,6 +44,9 @@ export function useEpubNavigation(
     if (!rendition) return;
     const version = ++navigationVersion.current;
     explicitNavigation.current = true;
+    changingLayout.current = true;
+    ++layoutVersion.current;
+    fullscreenResizeAnchor.current = null;
     clearTimeout(pendingResize.current);
     try {
       await layoutTask.current;

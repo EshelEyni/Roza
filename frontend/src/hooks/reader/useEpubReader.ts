@@ -51,12 +51,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     updateState,
     setNotice,
   );
-  useEpubPreferences(
-    runtime,
-    pagination.renderingPreferences,
-    engine.loading,
-    setError,
-  );
+  useEpubPreferences(runtime, pagination.renderingPreferences, engine.loading);
   const navigation = useEpubNavigation(runtime, {
     closeLookup: selection.closeLookup,
     closePanel,

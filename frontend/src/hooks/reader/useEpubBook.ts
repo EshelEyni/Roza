@@ -151,8 +151,10 @@ export function useEpubBook(
         setToc(navigation.toc.length ? navigation.toc : fallback);
         const preferences = stateRef.current.preferences;
         const renderOptions: RenditionOptions & { gap: number } = {
-          width: "100%",
-          height: "100%",
+          // ResizeObserver owns resizing; percentage sizes also install an
+          // independent EPUB.js window resize handler.
+          width: element.clientWidth,
+          height: element.clientHeight,
           spread: "none",
           flow: preferences.flow === "paginated" ? "paginated" : "scrolled-doc",
           manager: preferences.flow === "scrolled" ? "continuous" : "default",
@@ -229,6 +231,14 @@ export function useEpubBook(
         }
         if (cancelled) return;
         ready = true;
+        stopObserving = observeReaderLayout(
+          element,
+          rendition,
+          runtime,
+          () => ready && !cancelled,
+          setError,
+          t("reader.navigationError"),
+        );
         setLoading(false);
         await rendition.reportLocation();
         void epub.locations
@@ -241,14 +251,6 @@ export function useEpubBook(
           })
           .catch(() => undefined);
         document.addEventListener("keydown", onKey);
-        stopObserving = observeReaderLayout(
-          element,
-          rendition,
-          runtime,
-          () => ready && !cancelled,
-          setError,
-          t("reader.navigationError"),
-        );
       } catch (err) {
         if (!cancelled) {
           setLoading(false);

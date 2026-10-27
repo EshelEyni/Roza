@@ -7,7 +7,13 @@ export function useReaderFullscreen(
 ) {
   const { t } = useTranslation();
   const [fullscreen, setFullscreen] = useState(false);
-  const { shell, fullscreenResizeAnchor, stateRef } = runtime;
+  const {
+    shell,
+    fullscreenResizeAnchor,
+    stateRef,
+    changingLayout,
+    layoutVersion,
+  } = runtime;
   useEffect(() => {
     const onFullscreen = () =>
       setFullscreen(document.fullscreenElement === shell.current);
@@ -17,11 +23,18 @@ export function useReaderFullscreen(
 
   async function toggleFullscreen() {
     // Capture before fullscreen changes the available reading area.
+    if (!shell.current || changingLayout.current) return;
+    const version = ++layoutVersion.current;
     fullscreenResizeAnchor.current = stateRef.current.location;
+    changingLayout.current = true;
     try {
       if (document.fullscreenElement) await document.exitFullscreen();
       else await shell.current?.requestFullscreen();
     } catch {
+      if (version === layoutVersion.current) {
+        fullscreenResizeAnchor.current = null;
+        changingLayout.current = false;
+      }
       setNotice(t("reader.fullscreenError"));
     }
   }
