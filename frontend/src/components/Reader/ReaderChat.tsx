@@ -1,14 +1,17 @@
+import { ReaderChatResize } from "./ReaderChatResize";
+import { buildReaderChatView, readerPassageKey, type ReaderChatMessageView } from "../../services/readerChatPresentation";
+import { ReaderChatTabs } from "./ReaderChatTabs";
+import { ReaderChatHistory } from "./ReaderChatHistory";
+import { ReaderChatQuote } from "./ReaderChatQuote";
 import { scrollReaderChat, type ReaderChatScrollState } from "../../services/readerChatScroll";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  FiArrowLeft,
   FiMessageSquare,
   FiPlus,
   FiSend,
   FiSettings,
-  FiTrash2,
 } from "react-icons/fi";
 import { useReaderChat } from "../../hooks/useReaderChat";
 import { ReaderAiSettings } from "./ReaderAiSettings";
@@ -23,23 +26,48 @@ export function ReaderChat({
 }) {
   const { t } = useTranslation();
   const { draft: question, setDraft: setQuestion } = chat;
-  const [deleteId, setDeleteId] = useState("");
+  const { setViewing, rememberScroll, activeTabKey, activeTab, conversation, pending, sending, history, loading } = chat;
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [documentVisible, setDocumentVisible] = useState(typeof document === "undefined" || !document.hidden);
   const messages = useRef<HTMLDivElement>(null);
-  const scrollState = useRef<ReaderChatScrollState | null>(null);
+  const scrollStates = useRef(new Map<string, ReaderChatScrollState>());
+  const visibleTab = useRef<string>();
+  const focusedTab = useRef<string>();
   const input = useRef<HTMLTextAreaElement>(null);
   const disabled = chat.sending || chat.loading;
   useEffect(() => {
     setSettingsOpen(false);
   }, [chat.draftVersion]);
+  useEffect(() => {
+    const update = () => { setDocumentVisible(!document.hidden); setViewing(!document.hidden && !settingsOpen && !history); };
+    update();
+    document.addEventListener("visibilitychange", update);
+    return () => { setViewing(false); document.removeEventListener("visibilitychange", update); };
+  }, [setViewing, history, settingsOpen]);
   useLayoutEffect(() => {
-    input.current?.focus({ preventScroll: true });
-  }, [chat.conversation?.id, chat.passage?.cfi]);
-  useLayoutEffect(() => {
+    if (!documentVisible || history || settingsOpen || !activeTabKey) return;
     const element = messages.current;
     if (!element) return;
-    scrollState.current = scrollReaderChat(element, scrollState.current, chat.conversation, chat.pending?.id);
-  }, [chat.conversation, chat.pending?.id, chat.sending, chat.history, settingsOpen]);
+    const key = activeTabKey;
+    const completed = conversation?.turns.filter(turn => turn.status === "completed").map(turn => turn.id) || [];
+    const unseen = completed.some(id => !activeTab?.viewedAnswerIds.includes(id));
+    const switched = visibleTab.current !== key;
+    const previous = scrollStates.current.get(key);
+    if ((switched || !previous || previous.container !== element) && activeTab?.scrollTop !== undefined && !unseen) {
+      element.scrollTop = activeTab.scrollTop;
+      scrollStates.current.set(key, { container: element, conversationId: conversation?.id,
+        completedIds: new Set(completed), pendingId: pending?.id });
+    } else {
+      scrollStates.current.set(key, scrollReaderChat(element, switched ? null : previous || null, conversation, pending?.id));
+    }
+    visibleTab.current = key;
+    rememberScroll(key, element.scrollTop, completed);
+  }, [activeTabKey, activeTab, conversation, pending?.id, sending, history, settingsOpen, loading, rememberScroll, documentVisible]);
+  useLayoutEffect(() => {
+    if (focusedTab.current !== activeTabKey && !history && !settingsOpen && document.activeElement?.getAttribute("role") !== "tab")
+      input.current?.focus({ preventScroll: true });
+    focusedTab.current = activeTabKey;
+  }, [activeTabKey, history, settingsOpen]);
   function submit(event: FormEvent) {
     event.preventDefault();
     const text = question.trim();
@@ -49,6 +77,35 @@ export function ReaderChat({
   }
   const turns = chat.conversation?.turns || [];
   const pendingIsSaved = turns.some(turn => turn.id === chat.pending?.id);
+  const view = buildReaderChatView(turns, chat.conversation?.passage, chat.pending, chat.passage);
+  function revealPassage(sourceId: string) {
+    const container = messages.current;
+    if (!container) return;
+    const source = Array.from(container.querySelectorAll<HTMLElement>("[data-reader-chat-source]"))
+      .find(element => element.dataset.readerChatSource === sourceId);
+    if (!source) return;
+    container.scrollTop += source.getBoundingClientRect().top - container.getBoundingClientRect().top - container.clientTop - 12;
+    source.focus({ preventScroll: true });
+  }
+  function userContent(message: ReaderChatMessageView) {
+    return <>
+      {message.passage && (
+        <ReaderChatQuote key={readerPassageKey(message.passage)} passage={message.passage} sourceId={message.id} />
+      )}
+      {message.referenceId && (
+        <button type="button" className="reader-chat-source-reference"
+          title={t("reader.chat.viewOriginalQuote")} onClick={() => revealPassage(message.referenceId!)}>
+          <span aria-hidden="true">↩</span> {t("reader.chat.samePassage")}
+        </button>
+      )}
+      {message.question && (
+        <div className={message.passage ? "reader-chat-authored-question" : undefined}>
+          {message.passage && <span className="reader-chat-question-label">{t("reader.chat.yourQuestion")}</span>}
+          <p dir="auto">{message.question}</p>
+        </div>
+      )}
+    </>;
+  }
   return (
     <section className="reader-chat" aria-label={t("reader.chat.title")}>
       <div className="reader-chat-heading">
@@ -56,7 +113,6 @@ export function ReaderChat({
         <div className="reader-chat-actions">
           <button
             className="reader-button"
-            disabled={disabled}
             onClick={() => {
               setSettingsOpen(false);
               chat.start();
@@ -67,14 +123,13 @@ export function ReaderChat({
           </button>
           <button
             className="reader-button"
-            disabled={disabled}
             onClick={() => {
               setSettingsOpen(false);
               void chat.loadHistory();
             }}
           >
             <FiMessageSquare />
-            {t("reader.chat.saved")}
+            <span className="reader-chat-saved-label">{t("reader.chat.saved")}</span><span className="reader-chat-all-label">{t("reader.chat.tabs.all")}</span>
           </button>
           <button
             className={
@@ -97,6 +152,15 @@ export function ReaderChat({
           </button>
         </div>
       </div>
+      <ReaderChatResize chat={chat} />
+      <ReaderChatTabs chat={chat} />
+      {chat.workspace.lastClosed && <div className="reader-chat-tab-notice" role="status">
+        <span>{t("reader.chat.tabs.closed")}</span>
+        <button type="button" onClick={chat.reopenTab}>{t("reader.chat.tabs.undo")}</button>
+      </div>}
+      {chat.workspace.storageWarning && <p className="reader-chat-status" role="status">{t("reader.chat.tabs.storageWarning")}</p>}
+      <div id="reader-chat-tabpanel" className="reader-chat-tabpanel" role="tabpanel"
+        aria-labelledby={chat.activeTabKey}>
       {!settingsOpen && chat.conversation?.contextSummaryFailed && (
         <p className="reader-chat-status" role="status">
           {t("reader.chat.summaryUnavailable")}
@@ -112,6 +176,8 @@ export function ReaderChat({
           {chat.error}
         </p>
       )}
+      {!settingsOpen && chat.errorKey && <p className="reader-chat-error" role="alert">{t("reader.chat.tabs." + chat.errorKey)}</p>}
+      {chat.unavailable && <button type="button" className="reader-button" onClick={chat.retryLoad}>{t("reader.retry")}</button>}
       {chat.loading && (
         <p className="reader-chat-status" role="status">
           {t("reader.chat.loading")}
@@ -119,83 +185,19 @@ export function ReaderChat({
       )}
       {settingsOpen ? (
         <ReaderAiSettings onClose={() => setSettingsOpen(false)} />
-      ) : chat.history ? (
-        <div className="reader-chat-history">
-          <button
-            className="reader-button"
-            disabled={disabled}
-            onClick={() => chat.setHistory(false)}
-          >
-            <FiArrowLeft />
-            {t("reader.chat.back")}
-          </button>
-          {!chat.loading && !chat.items.length && (
-            <p>{t("reader.chat.noSaved")}</p>
-          )}
-          {chat.items.map(item => (
-            <div className="reader-chat-history-item" key={item.id}>
-              <button
-                disabled={disabled}
-                onClick={() => void chat.open(item.id)}
-              >
-                <strong dir="auto">{item.title}</strong>
-                <time>{new Date(item.updatedAt).toLocaleDateString()}</time>
-              </button>
-              {deleteId === item.id ? (
-                <div className="reader-chat-delete-confirm">
-                  <span>{t("reader.chat.deleteConfirm")}</span>
-                  <button
-                    className="reader-button"
-                    disabled={disabled}
-                    onClick={() => {
-                      void chat.remove(item.id);
-                      setDeleteId("");
-                    }}
-                  >
-                    {t("reader.chat.delete")}
-                  </button>
-                  <button
-                    className="reader-button"
-                    onClick={() => setDeleteId("")}
-                  >
-                    {t("reader.chat.cancel")}
-                  </button>
-                </div>
-              ) : (
-                <button
-                  className="reader-icon-button"
-                  disabled={disabled}
-                  aria-label={t("reader.chat.delete")}
-                  onClick={() => setDeleteId(item.id)}
-                >
-                  <FiTrash2 />
-                </button>
-              )}
-            </div>
-          ))}
-          {chat.cursor && (
-            <button
-              className="reader-button"
-              disabled={disabled}
-              onClick={() => void chat.loadHistory(chat.cursor!)}
-            >
-              {t("reader.chat.more")}
-            </button>
-          )}
+      ) : !chat.activeTabKey ? (
+        <div className="reader-chat-workspace-empty"><h3>{t("reader.chat.tabs.emptyTitle")}</h3>
+          <p>{t("reader.chat.tabs.emptyHint")}</p>
+          <button type="button" className="reader-button" onClick={() => chat.start()}><FiPlus />{t("reader.chat.new")}</button>
         </div>
       ) : (
         <>
-          {chat.passage && (
-            <details className="reader-chat-passage" open>
-              <summary>{t("reader.chat.passage")}</summary>
-              <blockquote dir="auto">{chat.passage.text}</blockquote>
-            </details>
-          )}
           <div
             className="reader-chat-messages"
             ref={messages}
             role="log"
-            aria-live="polite"
+            aria-live={chat.history ? "off" : "polite"}
+            onScroll={event => { if (chat.activeTabKey) chat.rememberScroll(chat.activeTabKey, event.currentTarget.scrollTop); }}
             aria-label={t("reader.chat.messages")}
           >
             {!turns.length && !chat.pending && (
@@ -207,17 +209,11 @@ export function ReaderChat({
                 )}
               </p>
             )}
-            {turns.map(turn => (
+            {view.entries.map(({ turn, message }) => (
               <div className="reader-chat-turn" key={turn.id}>
                 <div className="reader-chat-message reader-chat-question">
                   <span>{t("reader.chat.you")}</span>
-                  <p dir="auto">{turn.question || turn.passage?.text || t("reader.chat.selectionOnly")}</p>
-                  {turn.passage && turn.question && (
-                    <details className="reader-chat-passage">
-                      <summary>{t("reader.chat.passage")}</summary>
-                      <blockquote dir="auto">{turn.passage.text}</blockquote>
-                    </details>
-                  )}
+                  {userContent(message)}
                 </div>
                 {turn.status === "completed" ? (
                   <div className="reader-chat-message reader-chat-answer" data-reader-chat-answer={turn.id}>
@@ -248,10 +244,10 @@ export function ReaderChat({
                 )}
               </div>
             ))}
-            {chat.pending && !pendingIsSaved && (
+            {chat.pending && view.pending && (
               <div className="reader-chat-message reader-chat-question">
                 <span>{t("reader.chat.you")}</span>
-                <p dir="auto">{chat.pending.question || chat.pending.passage?.text || t("reader.chat.selectionOnly")}</p>
+                {userContent(view.pending)}
                 {!chat.sending && (
                   <button
                     className="reader-button"
@@ -272,12 +268,23 @@ export function ReaderChat({
                   {t("reader.chat.generating")}
                 </p>
               )}
+            {view.draftPassage && (
+              <div className="reader-chat-draft-source" data-reader-chat-draft>
+                <ReaderChatQuote key={readerPassageKey(view.draftPassage)} passage={view.draftPassage} draft />
+              </div>
+            )}
           </div>
           <form
             className="reader-chat-compose"
             autoComplete="off"
             onSubmit={event => void submit(event)}
           >
+            {view.attachedReferenceId && !chat.pending && (
+              <button type="button" className="reader-chat-source-reference reader-chat-compose-reference"
+                onClick={() => revealPassage(view.attachedReferenceId!)}>
+                <span aria-hidden="true">↩</span> {t("reader.chat.samePassage")}
+              </button>
+            )}
             <label className="reader-chat-spoilers">
               <input
                 type="checkbox"
@@ -320,7 +327,7 @@ export function ReaderChat({
               <button
                 className="reader-button"
                 type="submit"
-                disabled={disabled || !!chat.pending || (!question.trim() && !chat.passage?.text.trim())}
+                disabled={disabled || chat.unavailable || !!chat.pending || (!question.trim() && !chat.passage?.text.trim())}
               >
                 <FiSend />
                 {t("reader.chat.send")}
@@ -329,6 +336,8 @@ export function ReaderChat({
           </form>
         </>
       )}
+      </div>
+      {chat.history && <ReaderChatHistory chat={chat} />}
     </section>
   );
 }

@@ -1,0 +1,79 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const { pathToFileURL } = require('node:url');
+const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const root = path.resolve(__dirname,'..');
+const tick = () => new Promise(resolve=>setImmediate(resolve));
+const until = async fn => { for(let i=0;i<150;i++){if(fn())return;await new Promise(r=>setTimeout(r,20))}throw Error('Timed out waiting for intercepted request') };
+
+test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, resize and mobile', {timeout:120000},async t=>{
+ const {createServer}=await import(pathToFileURL(path.join(root,'frontend/node_modules/vite/dist/node/index.js')));
+ const {default:react}=await import(pathToFileURL(path.join(root,'frontend/node_modules/@vitejs/plugin-react/dist/index.mjs')));
+ const aliases=['react','react-dom','i18next','react-i18next','react-icons','axios'].map(name=>({find:name,replacement:path.join(root,'frontend/node_modules',name).replaceAll('\\','/')}));
+ const server=await createServer({configFile:false,appType:'custom',root,cacheDir:path.join(root,'frontend/node_modules/.vite-chat-tabs-test'),
+   optimizeDeps:{entries:['scripts/fixtures/reader-chat-tabs.tsx']},resolve:{alias:aliases},plugins:[react()],server:{host:'127.0.0.1',port:0,fs:{allow:[root]}}});
+ server.middlewares.use('/tabs-test',async(_,res)=>{res.setHeader('Content-Type','text/html');res.end(await server.transformIndexHtml('/tabs-test',
+  '<html><head><meta name="viewport" content="width=device-width, initial-scale=1"><style>html,body,#root{height:100%;margin:0;font-family:Arial,sans-serif}*{box-sizing:border-box}button{cursor:pointer;background:none;border:0;font:inherit}p,h1,h2,h3,h4{margin:0}</style></head><body><div id="root"></div><script type="module" src="/scripts/fixtures/reader-chat-tabs.tsx"></script></body></html>'))});
+ await server.listen();let browser;
+ try{browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL||'msedge'});
+ for(const lang of ['en','he'])await t.test(lang,async()=>{
+  const page=await browser.newPage({viewport:{width:1440,height:960}}),errors=[],saved=new Map(),requests=[];let created=0;
+  const base=id=>({id,title:id,turns:[],spoilersAllowed:false,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
+  saved.set('Earlier conversation', {...base('Earlier conversation'),turns:[{id:'old',question:'Earlier question',answer:Array(30).fill('An earlier answer for testing independent scroll.').join('\n\n'),status:'completed',currentCfi:'old-cfi',createdAt:new Date().toISOString()}]});
+  page.on('pageerror',e=>errors.push(e.message));
+  await page.route('**/api/reader/**',async route=>{
+   const req=route.request(),url=new URL(req.url()),segments=url.pathname.split('/'),id=decodeURIComponent(segments[5]||'');
+   const respond=data=>route.fulfill({json:{status:'success',data}});
+   if(segments[4]!=='conversations')throw Error('Unexpected API '+url.pathname);
+   if(req.method()==='GET'&&!id)return respond({items:[...saved.values()].map(({turns,...rest})=>rest),nextCursor:null});
+   if(req.method()==='POST'&&!id){const conversation=base('Conversation '+ ++created);saved.set(conversation.id,conversation);return respond(conversation)}
+   if(req.method()==='GET')return respond(saved.get(id));
+   if(req.method()==='DELETE'){saved.delete(id);return respond(null)}
+   if(req.method()==='POST'&&segments[6]==='messages'){
+    const body=req.postDataJSON();let resolve;const promise=new Promise(r=>resolve=r);requests.push({id,body,finish:()=>resolve()});await promise;
+    const previous=saved.get(id),updated={...previous,turns:[...previous.turns,{id:body.requestId,question:body.question,answer:'Answer for '+body.question,status:'completed',currentCfi:body.currentCfi,spoilersAllowed:body.spoilersAllowed,createdAt:new Date().toISOString()}]};saved.set(id,updated);return respond(updated);
+   }
+   throw Error('Unexpected request '+req.method()+' '+url.pathname);
+  });
+  const label={send:lang==='he'?'שליחה':'Send',all:lang==='he'?'כל השיחות':'All conversations',search:lang==='he'?'חיפוש שיחות…':'Search conversations…',closeList:lang==='he'?'סגירת רשימת השיחות':'Close conversation list',undo:lang==='he'?'פתיחה מחדש':'Reopen tab'};
+  try{
+   await page.goto(server.resolvedUrls.local[0]+'tabs-test?lang='+lang);await page.waitForFunction(()=>!!window.tabTest);
+   const snapshot=()=>page.evaluate(()=>window.tabTest.snapshot());
+   const textarea=page.locator('#reader-chat-question');
+   await textarea.fill('Question A');await page.getByRole('button',{name:label.send,exact:true}).click();await until(()=>requests.length===1);
+   const a=(await snapshot()).activeKey;
+   await textarea.fill('Draft A');await page.locator('.reader-chat-new-tab').click();
+   await textarea.fill('Question B');await page.getByRole('button',{name:label.send,exact:true}).click();await until(()=>requests.length===2);
+   const b=(await snapshot()).activeKey;await textarea.fill('Draft B');
+   await page.getByRole('tab',{name:/Conversation 1/}).click();assert.equal(await textarea.inputValue(),'Draft A');
+   requests[1].finish();requests[0].finish();await page.waitForFunction(()=>Object.values(window.tabTest.snapshot().tabs).filter(tab=>tab.sending).length===0);
+   assert.equal((await snapshot()).tabs[b].unread,true);assert.equal((await snapshot()).tabs[a].conversation.turns[0].answer,'Answer for Question A');
+   await page.getByRole('button',{name:label.all,exact:true}).click();
+   const dialog=page.locator('.reader-chat-history-drawer');await dialog.waitFor();await page.getByRole('textbox',{name:label.search,exact:true}).fill('Conversation 2');
+   await page.locator('.reader-chat-history-item').getByRole('button').first().click();assert.equal(await page.getByRole('tab').count(),2);assert.equal(await textarea.inputValue(),'Draft B');
+   await page.getByRole('button',{name:label.all,exact:true}).click();await page.getByRole('textbox',{name:label.search,exact:true}).fill('Earlier');await page.locator('.reader-chat-history-item').getByRole('button').first().click();
+   await page.locator('.reader-chat-answer').waitFor();const earlier=(await snapshot()).activeKey;
+   await page.locator('.reader-chat-messages').evaluate(node=>{node.scrollTop=100;node.dispatchEvent(new Event('scroll'))});
+   await page.getByRole('tab',{name:/Conversation 1/}).click();await page.getByRole('tab',{name:/Earlier conversation/}).click();assert.equal(await page.locator('.reader-chat-messages').evaluate(n=>n.scrollTop),100);
+   const closeName=(lang==='he'?'סגירת טאב: ':'Close tab: ')+'Earlier conversation';await page.getByRole('button',{name:closeName,exact:true}).click();assert.equal(await page.getByRole('tab').count(),2);
+   await page.getByRole('button',{name:label.undo,exact:true}).click();assert.equal((await snapshot()).activeKey,earlier);
+   const separator=page.getByRole('separator');await separator.focus();await separator.press('ArrowLeft');assert.equal((await snapshot()).panelWidth,500);
+   await page.getByRole('tab',{name:/Conversation 2/}).click();await page.reload();await page.waitForFunction(()=>window.tabTest&&window.tabTest.snapshot().tabs[window.tabTest.snapshot().activeKey]?.conversation);
+   assert.equal(await page.getByRole('tab').count(),3);assert.equal(await textarea.inputValue(),'Draft B');
+   await page.getByRole('tab',{name:/Conversation 1/}).focus();await page.keyboard.press(lang==='he'?'ArrowLeft':'ArrowRight');assert.equal((await snapshot()).activeKey,b);
+   await page.getByRole('button',{name:label.all,exact:true}).click();await page.getByRole('textbox',{name:label.search,exact:true}).fill('no matching text');assert.equal(await page.locator('.reader-chat-history-item').count(),0);
+   await page.keyboard.press('Escape');assert.equal(await dialog.count(),0);assert.equal(await page.getByRole('button',{name:label.all,exact:true}).evaluate(n=>n===document.activeElement),true, await page.evaluate(()=>document.activeElement.outerHTML));
+   // The hook outlives the visible chat: closing the panel while replying keeps the result.
+   await textarea.fill('Background question');await page.getByRole('button',{name:label.send,exact:true}).click();await until(()=>requests.length===3);
+   await page.getByRole('button',{name:'Toggle chat',exact:true}).click();requests[2].finish();await page.waitForFunction(()=>Object.values(window.tabTest.snapshot().tabs).every(tab=>!tab.sending));
+   await page.getByRole('button',{name:'Toggle chat',exact:true}).click();assert.equal((await snapshot()).tabs[b].conversation.turns.length,2);
+   for(const width of [1100,1280,1440,1920]){await page.setViewportSize({width,height:960});const layout=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth,chat:document.querySelector('.reader-chat-panel').getBoundingClientRect().width,paper:document.querySelector('.reader-paper').getBoundingClientRect().width}));assert.equal(layout.overflow,false,JSON.stringify(layout));assert.ok(layout.chat>=440&&layout.paper>=480,JSON.stringify(layout))}
+   await page.setViewportSize({width:1440,height:960});
+   if(process.env.CHAT_TABS_SCREENSHOT_DIR){await page.screenshot({path:path.join(process.env.CHAT_TABS_SCREENSHOT_DIR,`chat-tabs-${lang}.png`)});await page.getByRole('button',{name:'Theme',exact:true}).click();await page.screenshot({path:path.join(process.env.CHAT_TABS_SCREENSHOT_DIR,`chat-tabs-${lang}-dark.png`)})}
+   await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('.reader-chat-tabbar').isVisible(),false);assert.equal(await textarea.isVisible(),true);
+   assert.deepEqual(errors,[]);
+  }finally{for(const request of requests)request.finish();await tick();await page.close()}
+ });
+ }finally{await browser?.close();await server.close()}
+});

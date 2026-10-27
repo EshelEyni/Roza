@@ -28,8 +28,6 @@ export function EpubReader({
           bookId={book.id}
           onClose={reader.closeLookup}
           aiDisabled={
-            reader.chat.sending ||
-            reader.chat.loading ||
             reader.selectionBusy ||
             reader.textSelection.text.length > readerAiLimits.passage
           }
