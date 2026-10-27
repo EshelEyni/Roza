@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { FiColumns, FiMessageSquare, FiPlus, FiX, FiSettings, FiArrowLeft, FiList, FiMove, FiLoader, FiEdit3 } from "react-icons/fi";
+import { FiColumns, FiMessageSquare, FiPlus, FiX, FiSettings, FiArrowLeft, FiArrowRight, FiList, FiLoader, FiEdit3 } from "react-icons/fi";
 import type { useReaderChat } from "../../hooks/useReaderChat";
 import { ReaderPanelResize } from "./ReaderPanelResize";
 import { ReaderChat } from "./ReaderChat";
@@ -12,7 +12,7 @@ type Props = {
   chat: Chat; onClose: () => void;
 };
 export function ReaderWorkspace({ chat, onClose }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { groups, focusedGroupId, groupRatio, panelWidth } = chat.workspace;
   const split = groups.length === 2;
   const grid = useRef<HTMLDivElement>(null);
@@ -90,7 +90,7 @@ export function ReaderWorkspace({ chat, onClose }: Props) {
           <span className="reader-group-focus-label">{group.id === focusedGroupId ? t("reader.groups.focused") : ""}</span>
           <div className="reader-group-controls"><button type="button" className="reader-icon-button" disabled={!group.activeKey}
             title={t("reader.groups.move")} aria-label={t("reader.groups.moveFrom", { number: index + 1 })}
-            onClick={() => group.activeKey && chat.moveToSide(group.activeKey)}><FiMove /></button>
+            onClick={() => group.activeKey && chat.moveToSide(group.activeKey)}>{(index === 0) === (i18n.dir() === "rtl") ? <FiArrowLeft /> : <FiArrowRight />}</button>
             <button type="button" className="reader-icon-button reader-chat-new-tab" title={t("reader.chat.new")}
               aria-label={t("reader.groups.newIn", { number: index + 1 })} onClick={() => chat.start(undefined, group.id)}><FiPlus /></button></div>
         </div>
