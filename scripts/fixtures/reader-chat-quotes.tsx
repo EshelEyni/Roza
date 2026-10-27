@@ -36,8 +36,13 @@ function Fixture() {
     } });
   }, [conversation]);
   const chat = {
+    activeTabKey: "fixture", activeTab: undefined, unavailable: false, errorKey: undefined,
+    workspace: { tabs: {}, openKeys: [], activeKey: "fixture", items: [], cursor: null,
+      history: false, historyLoading: false, historyError: "", removing: [], lastClosed: null, storageWarning: false, panelWidth: 480 },
+    selectTab: () => {}, closeTab: () => {}, reopenTab: () => {}, retryLoad: () => {}, rememberScroll: () => {},
+    flush: () => {}, setViewing: () => {}, setPanelWidth: () => {},
     conversation, draft, setDraft, passage, items: [], cursor: null,
-    loading: false, sending: scenario === "pending", draftVersion: 0, history: false, error: "",
+    loading: false, sending: scenario === "pending", draftVersion: "fixture", history: false, error: "",
     spoilersAllowed, setSpoilersAllowed,
     pending: scenario === "pending" ? { id: "optimistic", question: "", passage, currentCfi: passage.cfi, spoilersAllowed: false } : null,
     setHistory: () => {}, start: () => setScenario("draft"), attach: () => {},

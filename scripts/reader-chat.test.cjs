@@ -27,6 +27,7 @@ function harness(file, dependencies, exportName) {
     },
   };
   react.useLayoutEffect = react.useEffect;
+  react.useSyncExternalStore = (_subscribe, snapshot) => snapshot();
   const exports = {};
   const code = ts.transpileModule(fs.readFileSync(path.join(__dirname, "../frontend/src", file), "utf8"), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
@@ -45,6 +46,12 @@ new Function("exports", ts.transpileModule(fs.readFileSync(path.join(__dirname,
   "../frontend/src/services/readerChatPresentation.ts"), "utf8"), {
   compilerOptions: { module: ts.ModuleKind.CommonJS },
 }).outputText)(presentationExports);
+const workspaceExports = {};
+new Function("exports", ts.transpileModule(fs.readFileSync(path.join(__dirname,
+  "../frontend/src/services/readerChatWorkspace.ts"), "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+}).outputText)(workspaceExports);
+global.document ||= { hidden: false, activeElement: null, addEventListener() {}, removeEventListener() {} };
 const deferred = () => {
   let resolve, reject;
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
@@ -57,6 +64,7 @@ function setup(api, currentCfi = "cfi", userId) {
   let id = 0;
   const hook = harness("hooks/useReaderChat.ts", {
     "../services/readerChatApiService": { default: api },
+    "../services/readerChatWorkspace": workspaceExports,
     "../services/createRequestId": { createRequestId: () => `request-${++id}` },
   });
   const renderChat = () => hook("book", () => currentCfi, userId);
