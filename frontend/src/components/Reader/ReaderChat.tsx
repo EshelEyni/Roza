@@ -1,3 +1,4 @@
+import { scrollReaderChat, type ReaderChatScrollState } from "../../services/readerChatScroll";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -25,6 +26,7 @@ export function ReaderChat({
   const [deleteId, setDeleteId] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const messages = useRef<HTMLDivElement>(null);
+  const scrollState = useRef<ReaderChatScrollState | null>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const disabled = chat.sending || chat.loading;
   useEffect(() => {
@@ -33,14 +35,15 @@ export function ReaderChat({
   useLayoutEffect(() => {
     input.current?.focus({ preventScroll: true });
   }, [chat.conversation?.id, chat.passage?.cfi]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = messages.current;
-    if (element) element.scrollTop = element.scrollHeight;
-  }, [chat.conversation?.turns.length, chat.sending, chat.pending]);
+    if (!element) return;
+    scrollState.current = scrollReaderChat(element, scrollState.current, chat.conversation, chat.pending?.id);
+  }, [chat.conversation, chat.pending?.id, chat.sending, chat.history, settingsOpen]);
   function submit(event: FormEvent) {
     event.preventDefault();
     const text = question.trim();
-    if (!text || disabled) return;
+    if ((!text && !chat.passage?.text.trim()) || disabled) return;
     if (chat.pending) return;
     if (chat.send(text)) setQuestion("");
   }
@@ -208,8 +211,8 @@ export function ReaderChat({
               <div className="reader-chat-turn" key={turn.id}>
                 <div className="reader-chat-message reader-chat-question">
                   <span>{t("reader.chat.you")}</span>
-                  <p dir="auto">{turn.question}</p>
-                  {turn.passage && (
+                  <p dir="auto">{turn.question || turn.passage?.text || t("reader.chat.selectionOnly")}</p>
+                  {turn.passage && turn.question && (
                     <details className="reader-chat-passage">
                       <summary>{t("reader.chat.passage")}</summary>
                       <blockquote dir="auto">{turn.passage.text}</blockquote>
@@ -217,7 +220,7 @@ export function ReaderChat({
                   )}
                 </div>
                 {turn.status === "completed" ? (
-                  <div className="reader-chat-message reader-chat-answer">
+                  <div className="reader-chat-message reader-chat-answer" data-reader-chat-answer={turn.id}>
                     <span>{t("reader.chat.assistant")}</span>
                     <p dir="auto">{turn.answer}</p>
                   </div>
@@ -248,7 +251,7 @@ export function ReaderChat({
             {chat.pending && !pendingIsSaved && (
               <div className="reader-chat-message reader-chat-question">
                 <span>{t("reader.chat.you")}</span>
-                <p dir="auto">{chat.pending.question}</p>
+                <p dir="auto">{chat.pending.question || chat.pending.passage?.text || t("reader.chat.selectionOnly")}</p>
                 {!chat.sending && (
                   <button
                     className="reader-button"
@@ -297,7 +300,7 @@ export function ReaderChat({
               dir="auto"
               value={question}
               onChange={event => setQuestion(event.target.value)}
-              placeholder={t("reader.chat.question")}
+              placeholder={t(chat.passage ? "reader.chat.optionalQuestion" : "reader.chat.question")}
               maxLength={readerAiLimits.question}
               disabled={chat.loading}
               rows={3}
@@ -317,7 +320,7 @@ export function ReaderChat({
               <button
                 className="reader-button"
                 type="submit"
-                disabled={disabled || !!chat.pending || !question.trim()}
+                disabled={disabled || !!chat.pending || (!question.trim() && !chat.passage?.text.trim())}
               >
                 <FiSend />
                 {t("reader.chat.send")}

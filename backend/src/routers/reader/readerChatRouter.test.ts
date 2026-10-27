@@ -4,6 +4,8 @@ import { ReaderBookModel } from "../../models/reader/readerBookModel";
 import { ReaderConversationModel } from "../../models/reader/readerConversationModel";
 import { askReaderAi } from "../../services/reader/readerAiService";
 import readerRouter from "./readerRouter";
+import { chatLimiter } from "../../controllers/reader/readerChatController";
+import { getReaderAiSettings } from "../../services/reader/readerAiSettingsService";
 
 const mockOwner = "507f1f77bcf86cd799439011";
 const mockRetrieve = jest.fn(() => ({
@@ -83,6 +85,7 @@ const conversation = () => ({
 describe("Reader conversations", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    chatLimiter.resetKey(mockOwner);
     process.env.READER_ENABLED = "true";
     process.env.READER_ALLOWED_USER_IDS = mockOwner;
     process.env.OPENAI_API_KEY = "test-only";
@@ -231,12 +234,92 @@ describe("Reader conversations", () => {
     expect(instructions).toContain("Avoid ALL spoilers");
     expect(instructions).toContain("2–4 short sentences");
     expect(instructions).toContain("simple everyday words");
-    expect(input[input.length - 1]).toEqual({ role: "user", content: body.question });
+    expect(input[input.length - 1].role).toBe("user");
+    expect(JSON.parse(input[input.length - 1].content)).toEqual({ question: body.question, selectedText: "garden" });
     expect(
       (ReaderConversationModel.findOneAndUpdate as jest.Mock).mock.calls[1][1].$set[
         "turns.$[turn].status"
       ],
     ).toBe("completed");
+  });
+  it("binds the reported Hebrew define-word request to the selected word in the final AI message", async () => {
+    const saved = { ...conversation(), passage: {
+      cfi: "epubcfi(/6/16!/4/34[ins0000365],/3:509,/3:516)", text: "screed",
+    } };
+    (ReaderConversationModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue(saved) });
+    (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(saved);
+    mockRetrieve.mockReturnValueOnce({ passage: "screed", context: [
+      { label: "Before selected passage", text: "I remembered the exhaustive, persuasive" },
+    ] });
+    const result = await request(app).post(url + "/messages").set("Authorization", "test")
+      .send({ ...body, question: "פרש מילה" });
+    expect(result.status).toBe(200);
+    const [instructions, input] = (askReaderAi as jest.Mock).mock.calls[0];
+    const current = input[input.length - 1];
+    expect(current.role).toBe("user");
+    expect(JSON.parse(current.content)).toEqual({ question: "פרש מילה", selectedText: "screed" });
+    expect(instructions).toContain("Do not ask which word or passage");
+    expect(instructions).toContain("follow that explicit request instead");
+    expect(input[0].content).not.toContain('"selectedPassage"');
+    const pending = (ReaderConversationModel.findOneAndUpdate as jest.Mock).mock.calls[0][1].$push.turns;
+    expect(pending.question).toBe("פרש מילה");
+    expect(pending.passage.text).toBe("screed");
+  });
+  it("submits only the selected word and uses the saved skill without a manufactured question", async () => {
+    const saved = { ...conversation(), passage: { cfi: "selected-cfi", text: "screed" } };
+    const skill = "Answer in Hebrew. If the user sends one English word only, translate it briefly into Hebrew.";
+    (getReaderAiSettings as jest.Mock).mockResolvedValueOnce({
+      model: "gpt-6.1-terra", answerLength: "detailed", simpleLanguage: true, customInstructions: skill,
+    });
+    (ReaderConversationModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue(saved) });
+    (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(saved);
+    mockRetrieve.mockReturnValueOnce({ passage: "screed", context: [] });
+    const result = await request(app).post(url + "/messages").set("Authorization", "test")
+      .send({ ...body, question: "" });
+    expect(result.status).toBe(200);
+    const [instructions, input] = (askReaderAi as jest.Mock).mock.calls[0];
+    expect(JSON.parse(input[input.length - 1].content)).toEqual({ selectedText: "screed" });
+    expect(instructions).toContain(skill);
+    expect(instructions).toContain("Specific single-word or passage rules override generic answer-length defaults");
+    expect(instructions).not.toContain("Give a thorough, organized explanation with useful examples");
+    const update = (ReaderConversationModel.findOneAndUpdate as jest.Mock).mock.calls[0][1];
+    expect(update.$push.turns.question).toBe("");
+    expect(update.$push.turns.passage.text).toBe("screed");
+    expect(update.$set.title).toBe("screed");
+  });
+  it("rejects a blank question without a saved or selected passage before calling AI", async () => {
+    const saved = { ...conversation(), passage: undefined };
+    (ReaderConversationModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue(saved) });
+    const result = await request(app).post(url + "/messages").set("Authorization", "test")
+      .send({ ...body, question: "   " });
+    expect(result.status).toBe(400);
+    expect(askReaderAi).not.toHaveBeenCalled();
+    expect(ReaderConversationModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+  it("retries a selection-only request with its saved passage and no replacement question", async () => {
+    const saved = { ...conversation(), turns: [{ id: body.requestId, question: "", answer: "",
+      status: "failed", currentCfi: "original-cfi", spoilersAllowed: false,
+      passage: { cfi: "original-cfi", text: "screed" },
+    }] };
+    (ReaderConversationModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue(saved) });
+    (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(saved);
+    mockRetrieve.mockReturnValueOnce({ passage: "screed", context: [] });
+    const result = await request(app).post(url + "/messages").set("Authorization", "test")
+      .send({ ...body, question: "", passageCfi: "another-cfi" });
+    expect(result.status).toBe(200);
+    const [, input] = (askReaderAi as jest.Mock).mock.calls[0];
+    expect(JSON.parse(input[input.length - 1].content)).toEqual({ selectedText: "screed" });
+    expect(mockRetrieve).toHaveBeenCalledWith(expect.any(String), "original-cfi", false, saved.turns[0].passage);
+  });
+  it("keeps general questions unchanged when there is no selected text", async () => {
+    const saved = { ...conversation(), passage: undefined };
+    (ReaderConversationModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue(saved) });
+    (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(saved);
+    mockRetrieve.mockReturnValueOnce({ passage: "", context: [] });
+    const result = await request(app).post(url + "/messages").set("Authorization", "test").send(body);
+    expect(result.status).toBe(200);
+    const [, input] = (askReaderAi as jest.Mock).mock.calls[0];
+    expect(input[input.length - 1]).toEqual({ role: "user", content: body.question });
   });
   it("accepts a long question without changing the model or discarding its text", async () => {
     (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(conversation());
@@ -245,7 +328,7 @@ describe("Reader conversations", () => {
       .send({ ...body, question });
     expect(result.status).toBe(200);
     const [, input] = (askReaderAi as jest.Mock).mock.calls[0];
-    expect(input[input.length - 1].content).toBe(question.trim());
+    expect(JSON.parse(input[input.length - 1].content).question).toBe(question.trim());
   });
   it("attaches a new server-resolved passage to the same conversation and turn", async () => {
     (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(conversation());

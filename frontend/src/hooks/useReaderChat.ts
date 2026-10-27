@@ -111,12 +111,12 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string, userI
     // Resolve a failed local message before accepting another submission.
     if (
       busy.current ||
-      !question.trim() ||
       (pending && retryId !== pending.id)
     ) return false;
     const original = retryId ? conversation?.turns.find(turn => turn.id === retryId)
       || (pending?.id === retryId ? pending : undefined) : undefined;
     const requestPassage = retryId ? original?.passage : passage;
+    if (!question.trim() && !requestPassage?.text.trim()) return false;
     const currentCfi = retryId ? original?.currentCfi || ""
       : requestPassage?.endCfi || requestPassage?.cfi || getCurrentCfi();
     const requestSpoilersAllowed = retryId ? original?.spoilersAllowed ?? false : spoilersAllowed;

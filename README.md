@@ -372,7 +372,7 @@ See [the Reader PRD](docs/epub-reader-prd.md) for the complete product scope.
 
 ### Reader AI chat
 
-Open the **Book chat** button in the reader toolbar for a general question. To discuss a passage, select up to 20,000 characters and choose **Ask AI**. The right-side panel keeps the passage visible, supports English and Hebrew questions, and lets you create, reopen, and delete saved conversations for that book. Press Enter to send or Shift+Enter for a new line. No AI request is made until you send a question.
+Open the **Book chat** button in the reader toolbar for a general question. To discuss a passage, select up to 20,000 characters and choose **Ask AI**. The right-side panel keeps the passage visible, supports English and Hebrew questions, and lets you create, reopen, and delete saved conversations for that book. With a selection attached, Send and Enter also work with an empty question: the selected text is submitted as-is and the saved custom instructions decide the task and language. An entirely empty message with no selected text remains blocked. Press Enter to send or Shift+Enter for a new line. No AI request is made until you send a question.
 
 Add the following server-only keys to both environment files used by this project (`.env` and `backend/.env`), then restart the backend:
 

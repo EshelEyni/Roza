@@ -24,6 +24,16 @@ describe("Reader AI instructions", () => {
     expect(instructions).toContain("compatible");
     expect(instructions).not.toContain("2–4 short sentences");
   });
+  it("lets the saved skill define a selection-only task and language over generic length defaults", () => {
+    const skill = "Answer in Hebrew. Translate a single English word briefly.";
+    const instructions = readerStyleInstructions({ ...defaultReaderAiSettings,
+      answerLength: "detailed", customInstructions: skill,
+    }, true);
+    expect(instructions).toContain(skill);
+    expect(instructions).toContain("requested task and response language");
+    expect(instructions).toContain("Specific single-word or passage rules override generic answer-length defaults");
+    expect(instructions).not.toContain("Give a thorough, organized explanation with useful examples");
+  });
   it("validates values and does not persist unrecognized fields", () => {
     expect(
       validateReaderAiSettings({

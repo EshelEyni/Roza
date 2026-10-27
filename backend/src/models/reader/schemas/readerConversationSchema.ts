@@ -36,7 +36,15 @@ const readerConversationSchema = new Schema<IReaderConversation>(
       {
         _id: false,
         id: { type: String, required: true },
-        question: { type: String, required: true, maxlength: readerAiConfig.maxQuestionChars },
+        question: {
+          type: String, default: "", maxlength: readerAiConfig.maxQuestionChars,
+          validate: {
+            validator: function (this: { passage?: { text?: string } }, value: string) {
+              return typeof value === "string" && (!!value.trim() || !!this.passage?.text?.trim());
+            },
+            message: "A question or selected passage is required.",
+          },
+        },
         currentCfi: { type: String, required: true },
         spoilersAllowed: { type: Boolean, default: false },
         answer: { type: String, default: "", maxlength: readerAiConfig.maxAnswerChars },

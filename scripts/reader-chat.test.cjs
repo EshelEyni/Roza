@@ -340,3 +340,77 @@ test("reopened failed turn retries its own passage rather than a newly attached 
   assert.equal(request.passageCfi, "old-start");
   assert.equal(request.passageEndCfi, "old-end");
 });
+
+
+test("selected word can be submitted from the form without a typed question", async () => {
+  let request;
+  const selected = { cfi: "word-cfi", text: "screed" };
+  const s = setup({
+    create: async () => ({ ...conversation([]), passage: selected }),
+    send: async (_book, _id, body) => {
+      request = body;
+      return { ...conversation([{ ...turn(body.requestId, ""), passage: selected }]), passage: selected };
+    },
+  }, "");
+  s.renderChat().start(selected);
+  const tree = s.render();
+  const button = find(tree, node => node.type === "button" && node.props.type === "submit");
+  assert.equal(button.props.disabled, false);
+  assert.equal(input(tree).props.value, "");
+  assert.equal(input(tree).props.placeholder, "reader.chat.optionalQuestion");
+  submit(tree);
+  await flush();
+  assert.equal(request.question, "");
+  assert.equal(request.passageCfi, "word-cfi");
+  assert.equal(request.currentCfi, "word-cfi");
+  assert.ok(find(s.render(), node => node.type === "p" && node.props.children === "screed"));
+});
+
+test("a selected paragraph with whitespace-only draft sends the selection without inventing a question", async () => {
+  let request;
+  const selected = { cfi: "start", endCfi: "end", text: "A long sentence with several clauses." };
+  const s = setup({
+    create: async () => ({ ...conversation([]), passage: selected }),
+    send: async (_book, _id, body) => { request = body; return { ...conversation([]), passage: selected }; },
+  });
+  s.renderChat().start(selected);
+  input(s.render()).props.onChange({ target: { value: "  \n " } });
+  submit(s.render());
+  await flush();
+  assert.equal(request.question, "");
+  assert.equal(request.passageEndCfi, "end");
+});
+
+test("a completely empty submission stays disabled and never creates a chat", () => {
+  let creates = 0;
+  const s = setup({ create: async () => { creates++; return conversation([]); } });
+  assert.equal(find(s.render(), node => node.type === "button" && node.props.type === "submit").props.disabled, true);
+  assert.equal(s.renderChat().send(""), false);
+  submit(s.render());
+  assert.equal(creates, 0);
+});
+
+test("selection-only retry retains its original selected word and request ID", async () => {
+  const selected = { cfi: "word-cfi", text: "screed" };
+  const requests = [];
+  const api = {
+    create: async () => ({ ...conversation([]), passage: selected }),
+    getById: async () => ({ ...conversation([]), passage: selected }),
+    send: async (_book, _id, body) => { requests.push(body); throw new Error("Offline"); },
+  };
+  const s = setup(api);
+  s.renderChat().start(selected);
+  assert.equal(s.renderChat().send(""), true);
+  await flush();
+  const pending = s.renderChat().pending;
+  assert.equal(pending.question, "");
+  assert.equal(pending.passage.text, "screed");
+  s.navigate("different-page");
+  api.send = async (_book, _id, body) => { requests.push(body); return { ...conversation([]), passage: selected }; };
+  assert.equal(s.renderChat().send("", pending.id), true);
+  await flush();
+  assert.equal(requests[1].requestId, requests[0].requestId);
+  assert.equal(requests[1].question, "");
+  assert.equal(requests[1].passageCfi, "word-cfi");
+  assert.equal(requests[1].currentCfi, "word-cfi");
+});
