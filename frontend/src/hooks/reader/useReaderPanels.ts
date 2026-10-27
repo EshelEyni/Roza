@@ -45,7 +45,7 @@ export function useReaderPanelActions({
   function askAi() {
     if (!textSelection || textSelection.text.length > readerAiLimits.passage) return;
     updatePanel(() => {
-      chat.attach({
+      chat.start({
         cfi: textSelection.cfi,
         text: textSelection.text,
         endCfi: textSelection.endCfi,

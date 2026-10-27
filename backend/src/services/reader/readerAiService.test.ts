@@ -50,6 +50,16 @@ describe("Reader AI provider", () => {
       expect(body.reasoning).toEqual(model === "gpt-4.1-mini" ? undefined : { effort: "low" });
     },
   );
+  it.each(["gpt-4.1-mini", "gpt-6.1-terra"] as const)("uses bounded summary generation with %s", async model => {
+    (global.fetch as jest.Mock).mockResolvedValue({ ok: true, json: async () => ({
+      status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: "Memory" }] }],
+    }) });
+    await askReaderAi("Summarize", [{ role: "user", content: "Old turns" }], model, "summary");
+    const payload = JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body);
+    expect(payload.model).toBe(model);
+    expect(payload.max_output_tokens).toBe(model === "gpt-4.1-mini" ? 1800 : 6000);
+    expect(payload.store).toBe(false);
+  });
   it("rejects an oversized combined input before calling the provider", async () => {
     await expect(askReaderAi("", [{ role: "user", content: "א".repeat(240001) }])).rejects.toThrow("too large");
     expect(global.fetch).not.toHaveBeenCalled();

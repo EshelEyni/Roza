@@ -8,12 +8,12 @@ const build = (turns: ReturnType<typeof make>[], question = "Follow up", request
   buildReaderHistory(turns, requestId, question, "safe", allow, earlier => earlier === "safe");
 
 describe("Reader source-aware history", () => {
-  it("replays more than six pairs in chronological order with original assistant roles", () => {
+  it("replays at most six recent pairs in chronological order with original assistant roles", () => {
     const history = build(Array.from({ length: 20 }, (_, i) => make(String(i))));
-    expect(history.input).toHaveLength(40);
-    expect(history.input[0]).toEqual({ role: "user", content: "Question 0" });
-    expect(history.input[39]).toEqual({ role: "assistant", content: "Answer 19" });
-    expect(history.omitted).toBe(0);
+    expect(history.input).toHaveLength(12);
+    expect(history.input[0]).toEqual({ role: "user", content: "Question 14" });
+    expect(history.input[11]).toEqual({ role: "assistant", content: "Answer 19" });
+    expect(history.omitted).toBe(14);
   });
   it("does not let an oversized recent turn hide smaller preceding turns", () => {
     const history = build([make("small"), make("large", { answer: "א".repeat(90000) })]);
@@ -25,8 +25,8 @@ describe("Reader source-aware history", () => {
     const history = build([make("old", { question: "Explain Swann" }),
       ...Array.from({ length: 28 }, (_, i) => make(String(i)))], "What about Swann?");
     expect(history.input[0].content).toContain("Swann");
-    expect(history.input).toHaveLength(50);
-    expect(history.omitted).toBe(4);
+    expect(history.input).toHaveLength(14);
+    expect(history.omitted).toBe(22);
   });
   it("includes original passage evidence and uses recent history for follow-up retrieval", () => {
     const history = build([make("one", {

@@ -265,6 +265,44 @@ describe("Reader conversations", () => {
     expect(result.status).toBe(400);
     expect(askReaderAi).not.toHaveBeenCalled();
   });
+  it("saves a rolling summary before answering and reuses it on a failed answer retry", async () => {
+    const original = {
+      ...conversation(),
+      turns: Array.from({ length: 7 }, (_, i) => ({
+        id: "old-" + i, question: "Earlier question " + i, answer: "Earlier answer " + i,
+        status: "completed", currentCfi: body.currentCfi, spoilersAllowed: false,
+      })),
+    };
+    (ReaderConversationModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue(original) });
+    (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(original);
+    (askReaderAi as jest.Mock).mockReset()
+      .mockResolvedValueOnce("Stored older discussion")
+      .mockRejectedValueOnce(new Error("Answer failed"));
+    expect((await request(app).post(url + "/messages").set("Authorization", "test").send(body)).status).toBe(500);
+    const summary = (ReaderConversationModel.findOneAndUpdate as jest.Mock).mock.calls[1][1].$set.memorySummary;
+    expect(summary.turnIds).toHaveLength(3);
+    expect((askReaderAi as jest.Mock).mock.calls[0][3]).toBe("summary");
+    expect((ReaderConversationModel.findOneAndUpdate as jest.Mock).mock.calls[1][0].lockToken).toBeTruthy();
+    (ReaderConversationModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue({ ...original, memorySummary: summary }) });
+    (askReaderAi as jest.Mock).mockClear().mockResolvedValue("Final answer");
+    expect((await request(app).post(url + "/messages").set("Authorization", "test").send(body)).status).toBe(200);
+    expect(askReaderAi).toHaveBeenCalledTimes(1);
+    expect(JSON.stringify((askReaderAi as jest.Mock).mock.calls[0][1])).toContain("Stored older discussion");
+  });
+  it("answers with recent history when summary generation fails and reports that fallback", async () => {
+    const original = { ...conversation(), turns: Array.from({ length: 7 }, (_, i) => ({
+      id: "old-" + i, question: "Question " + i, answer: "Answer " + i,
+      status: "completed", currentCfi: body.currentCfi, spoilersAllowed: false,
+    })) };
+    (ReaderConversationModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue(original) });
+    (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(original);
+    (askReaderAi as jest.Mock).mockReset().mockRejectedValueOnce(new Error("Summary failed")).mockResolvedValue("Answer");
+    expect((await request(app).post(url + "/messages").set("Authorization", "test").send(body)).status).toBe(200);
+    const finalUpdate = (ReaderConversationModel.findOneAndUpdate as jest.Mock).mock.calls[1][1].$set;
+    expect(finalUpdate.contextSummaryFailed).toBe(true);
+    expect(finalUpdate["turns.$[turn].status"]).toBe("completed");
+    expect(askReaderAi).toHaveBeenCalledTimes(2);
+  });
   it("marks failed requests retryable and releases only its own lock", async () => {
     (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(conversation());
     (askReaderAi as jest.Mock).mockRejectedValue(new Error("Mock provider failure"));

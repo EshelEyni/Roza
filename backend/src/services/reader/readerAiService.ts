@@ -63,6 +63,7 @@ async function askReaderAi(
   instructions: string,
   input: ReaderAiInput[],
   selectedModel: ReaderAiModel = "default",
+  purpose: "answer" | "summary" = "answer",
 ): Promise<string> {
   if (!readerAiModels.includes(selectedModel))
     throw new AppError("Choose a supported AI model.", 400);
@@ -79,8 +80,13 @@ async function askReaderAi(
       "AI chat is not configured. Add OPENAI_API_KEY to the backend environment.",
       503,
     );
+  const timeoutMs = purpose === "summary" ? readerAiConfig.summaryTimeoutMs : readerAiConfig.timeoutMs;
+  const maxOutputTokens = purpose === "summary"
+    ? (reasoningModel ? readerAiConfig.summaryReasoningOutputTokens : readerAiConfig.summaryOutputTokens)
+    : (reasoningModel ? readerAiConfig.reasoningOutputTokens : readerAiConfig.outputTokens);
+  const maxAnswerChars = purpose === "summary" ? readerAiConfig.maxSummaryChars : readerAiConfig.maxAnswerChars;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), readerAiConfig.timeoutMs);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch("https://api.openai.com/v1/responses", {
       method: "POST",
@@ -91,7 +97,7 @@ async function askReaderAi(
         instructions,
         input,
         // Reasoning tokens and visible text share the generation budget.
-        max_output_tokens: reasoningModel ? readerAiConfig.reasoningOutputTokens : readerAiConfig.outputTokens,
+        max_output_tokens: maxOutputTokens,
         ...(reasoningModel ? { reasoning: { effort: "low" } } : {}),
         store: false,
       }),
@@ -139,7 +145,7 @@ async function askReaderAi(
         "OpenAI completed the request but returned no answer text. Retry this question.",
         502,
       );
-    if (answer.length > readerAiConfig.maxAnswerChars)
+    if (answer.length > maxAnswerChars)
       throw new AppError(
         "OpenAI's answer exceeds Roza's saved-answer length limit. Ask a more focused question.",
         502,
@@ -148,7 +154,7 @@ async function askReaderAi(
   } catch (error) {
     if (error instanceof AppError) throw error;
     if (controller.signal.aborted)
-      throw new AppError("OpenAI did not respond within 120 seconds. Retry this question.", 504);
+      throw new AppError("OpenAI did not respond within " + timeoutMs / 1000 + " seconds. Retry this question.", 504);
     throw new AppError(
       "The backend could not connect to OpenAI. Check this PC's network connection and retry.",
       502,

@@ -283,6 +283,7 @@
       "contextNote": "Uses a few relevant excerpts. Enter to send, Shift+Enter for a new line.",
       "passageHint": "What would you like to understand about this passage?",
       "generalHint": "Ask about a character, an idea, or what is happening in the book. No spoilers beyond your current position unless you allow them.",
+      "summaryUnavailable": "The conversation summary could not be updated. This answer uses recent messages and any safe existing summary; your original messages remain saved.",
       "contextLimited": "Some earlier turns are outside this answer’s context budget or spoiler boundary. They remain saved; mention a specific topic to retrieve relevant earlier turns.",
       "selectionLimit": "Select a passage of up to 20,000 characters to ask AI.",
       "selectionActions": "Selected passage actions",

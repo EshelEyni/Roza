@@ -138,6 +138,8 @@ export interface IReaderBook extends Document {
 }
 
 export interface IReaderConversation extends Document {
+  memorySummary?: import("../services/reader/readerMemoryService").ReaderMemorySummary;
+  contextSummaryFailed?: boolean;
   contextOmittedTurns?: number;
   userId: mongoose.Types.ObjectId;
   bookId: mongoose.Types.ObjectId;

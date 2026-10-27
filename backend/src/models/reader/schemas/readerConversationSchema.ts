@@ -18,6 +18,16 @@ const readerConversationSchema = new Schema<IReaderConversation>(
       ),
       default: undefined,
     },
+    memorySummary: {
+      type: new Schema({
+        text: { type: String, required: true, maxlength: readerAiConfig.maxSummaryChars },
+        turnIds: [String], sourceHashes: [String],
+        spoilersAllowed: { type: Boolean, required: true },
+        model: { type: String, required: true }, createdAt: { type: Date, required: true },
+      }, { _id: false }),
+      default: undefined,
+    },
+    contextSummaryFailed: { type: Boolean, default: false },
     contextOmittedTurns: { type: Number, default: 0 },
     spoilersAllowed: { type: Boolean, default: false },
     lockedUntil: { type: Date, default: new Date(0), select: false },
@@ -50,6 +60,7 @@ const readerConversationSchema = new Schema<IReaderConversation>(
         delete result.userId;
         delete result.lockedUntil;
         delete result.lockToken;
+        delete result.memorySummary;
         return result;
       },
     },

@@ -5,7 +5,7 @@ const path = require("node:path");
 const ts = require("../frontend/node_modules/typescript");
 
 // Exercise the real hook and component with deterministic renders and deferred APIs.
-function harness(file, dependencies) {
+function harness(file, dependencies, exportName) {
   const slots = [];
   let index = 0;
   let effects = [];
@@ -35,7 +35,7 @@ function harness(file, dependencies) {
   return (...args) => {
     index = 0;
     effects = [];
-    const result = Object.values(exports)[0](...args);
+    const result = (exportName ? exports[exportName] : Object.values(exports)[0])(...args);
     effects.forEach(effect => effect());
     return result;
   };
@@ -256,4 +256,36 @@ test("context omissions are visible while saved transcript remains readable", as
   await s.renderChat().open("conversation");
   assert.ok(find(s.render(), node => node.type === "p" && node.props.children === "reader.chat.contextLimited"));
   assert.ok(find(s.render(), node => node.type === "p" && node.props.children === "Earlier"));
+});
+
+
+test("Ask AI from lookup starts a new passage chat on desktop and mobile", () => {
+  for (const mobile of [false, true]) {
+    const selected = { cfi: "new-passage", endCfi: "end", text: "A different passage" };
+    const started = [];
+    let closed = 0, panel;
+    const render = harness("hooks/reader/useReaderPanels.ts", {
+      "react-dom": { flushSync: callback => callback() },
+      "../../services/readerAiLimits": { readerAiLimits: { passage: 20000 } },
+    }, "useReaderPanelActions");
+    const actions = render({
+      mobile, shell: { current: null }, closeLookup: () => closed++,
+      setPanel: value => { panel = value; },
+      chat: { start: passage => started.push(passage), attach: () => assert.fail("Must start a new chat") },
+      textSelection: selected,
+    });
+    actions.askAi();
+    assert.deepEqual(started, [selected]);
+    assert.equal(panel, "chat");
+    assert.equal(closed, 1);
+  }
+});
+
+
+test("a summary failure is visible while the saved answer remains readable", async () => {
+  const saved = { ...conversation([turn("old", "Question")]), contextSummaryFailed: true };
+  const s = setup({ getById: async () => saved });
+  await s.renderChat().open("conversation");
+  assert.ok(find(s.render(), node => node.type === "p" && node.props.children === "reader.chat.summaryUnavailable"));
+  assert.ok(find(s.render(), node => node.type === "p" && node.props.children === "answer"));
 });

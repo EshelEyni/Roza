@@ -12,6 +12,7 @@ export type ReaderConversationSummary = {
   title: string;
   passage?: ReaderPassage;
   contextOmittedTurns?: number;
+  contextSummaryFailed?: boolean;
   spoilersAllowed: boolean;
   createdAt: string;
   updatedAt: string;

@@ -94,6 +94,11 @@ export function ReaderChat({
           </button>
         </div>
       </div>
+      {!settingsOpen && chat.conversation?.contextSummaryFailed && (
+        <p className="reader-chat-status" role="status">
+          {t("reader.chat.summaryUnavailable")}
+        </p>
+      )}
       {!settingsOpen && !!chat.conversation?.contextOmittedTurns && (
         <p className="reader-chat-status" role="status">
           {t("reader.chat.contextLimited", { count: chat.conversation.contextOmittedTurns })}

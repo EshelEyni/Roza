@@ -1,4 +1,5 @@
 import { readerAiConfig } from "../../services/reader/readerAiConfig";
+import { eligibleReaderTurns, updateReaderSummary } from "../../services/reader/readerMemoryService";
 import { buildReaderHistory } from "../../services/reader/readerHistoryService";
 import { Request, Response } from "express";
 import mongoose from "mongoose";
@@ -58,7 +59,7 @@ const listConversations = asyncErrorCatcher(async (req: Request, res: Response) 
     ...owner(req),
     ...(before ? { _id: { $lt: before } } : {}),
   })
-    .select("-turns")
+    .select("-turns -memorySummary")
     .sort({ _id: -1 })
     .limit(21);
   const hasMore = conversations.length > 20;
@@ -162,8 +163,10 @@ const sendMessage = asyncErrorCatcher(async (req: Request, res: Response) => {
     ? context.passage(requestedCfi, requestedEndCfi) : conversation.passage);
   if (selectedPassage && !allow && !context.isAtOrBefore(selectedPassage.endCfi || selectedPassage.cfi, currentCfi))
     throw new AppError("The selected passage is beyond the current reading boundary. Navigate to it or allow spoilers.", 400);
-  const history = buildReaderHistory(conversation.turns, requestId, question, currentCfi,
-    allow, (earlier, current) => context.isAtOrBefore(earlier, current));
+  const effectiveModel = !settings.model || settings.model === "default"
+    ? process.env.READER_AI_MODEL || "gpt-4.1-mini" : settings.model;
+  let history = buildReaderHistory(conversation.turns, requestId, question, currentCfi,
+    allow, (earlier, current) => context.isAtOrBefore(earlier, current), conversation.memorySummary, effectiveModel);
   const retrieved = context.retrieve(
     history.retrievalQuery, currentCfi, allow, selectedPassage?.cfi, selectedPassage?.endCfi,
   );
@@ -218,6 +221,22 @@ const sendMessage = asyncErrorCatcher(async (req: Request, res: Response) => {
   if (!claimed)
     throw new AppError("Another answer is being generated. Please wait and retry.", 409);
   try {
+    const { eligible } = eligibleReaderTurns(conversation.turns, requestId, currentCfi,
+      allow, (earlier, current) => context.isAtOrBefore(earlier, current));
+    const memory = await updateReaderSummary(eligible, conversation.memorySummary, allow, effectiveModel,
+      (instructions, input) => askReaderAi(instructions, input, settings.model, "summary"));
+    if (memory.updated) {
+      // Save before answering: a later answer failure/retry can reuse this paid summary.
+      // Renew the lease so the summary and answer never share one short deadline.
+      const stored = await ReaderConversationModel.findOneAndUpdate(
+        { ...filter, lockToken: token },
+        { $set: { memorySummary: memory.summary, lockedUntil: new Date(Date.now() + readerAiConfig.lockMs) } },
+        { new: true },
+      );
+      if (!stored) throw new AppError("Could not save conversation memory. Please retry.", 409);
+    }
+    history = buildReaderHistory(conversation.turns, requestId, question, currentCfi,
+      allow, (earlier, current) => context.isAtOrBefore(earlier, current), memory.summary, effectiveModel);
     const instructions = [
       "You are Roza's thoughtful reading companion. Answer in the language of the current question (including Hebrew). Use readable plain text and clear paragraphs. Match the depth to the question.",
       readerStyleInstructions(settings),
@@ -227,6 +246,7 @@ const sendMessage = asyncErrorCatcher(async (req: Request, res: Response) => {
       allow
         ? "The user explicitly allows spoilers in this conversation."
         : "Avoid ALL spoilers beyond the current reading boundary, regardless of earlier reading history or prior chats. Do not reveal later events from memory. Supplied excerpts have been restricted to that boundary.",
+      "A supplied conversation summary is a fallible memory aid, not authoritative book evidence. Prefer exact source passages and recent explicit corrections. Do not claim to remember details absent from both the summary and messages.",
       "Use only the bounded conversation history provided. If an older detail is missing, ask rather than pretending to remember.",
     ].join("\n");
     const input: ReaderAiInput[] = [
@@ -251,6 +271,8 @@ const sendMessage = asyncErrorCatcher(async (req: Request, res: Response) => {
         $set: {
           "turns.$[turn].answer": answer,
           "turns.$[turn].status": "completed",
+          contextOmittedTurns: history.omitted,
+          contextSummaryFailed: memory.failed,
           lockedUntil: new Date(0),
         },
         $unset: { lockToken: 1 },
