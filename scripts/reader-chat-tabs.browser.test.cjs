@@ -64,16 +64,28 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
    const closeName=(lang==='he'?'סגירת טאב: ':'Close tab: ')+'Earlier conversation';await page.getByRole('button',{name:closeName,exact:true}).click();assert.equal(await page.getByRole('tab').count(),2);
    await page.getByRole('button',{name:label.undo,exact:true}).click();assert.equal((await snapshot()).activeKey,earlier);
    const separator=page.getByRole('separator');await separator.focus();await separator.press('ArrowLeft');assert.equal((await snapshot()).panelWidth,500);
-   const bookRect=await page.locator('.reader-paper').boundingBox();
-   const unchangedBook=async()=>assert.deepEqual(await page.locator('.reader-paper').boundingBox(),bookRect,'Resizing chat must not move or narrow the reader');
+   const paper=page.locator('.reader-paper');
+   const bookAt500=await paper.boundingBox();
+   for(let i=0;i<5;i++)await separator.press('ArrowLeft');
+   const bookAt600=await paper.boundingBox();
+   assert.equal(bookAt500.width-bookAt600.width,100,'Before 760px both panes must resize');
+   for(let i=0;i<8;i++)await separator.press('ArrowLeft');
+   assert.equal((await snapshot()).panelWidth,760);
+   const bookRect=await paper.boundingBox();
+   assert.equal(bookAt600.width-bookRect.width,160,'The split stage must continue through 760px');
+   const unchangedBook=async()=>assert.deepEqual(await paper.boundingBox(),bookRect,'Above 760px chat must overlay the fixed reader');
+   await separator.press('ArrowLeft');assert.equal((await snapshot()).panelWidth,780);await unchangedBook();
    await separator.press('End');
    const workspaceRect=await page.locator('.reader-workspace').boundingBox();
    assert.equal((await page.locator('.reader-chat-panel').boundingBox()).width,workspaceRect.width);
-   assert.ok((await snapshot()).panelWidth>760,'Chat must expand beyond the old cap');
    assert.equal(await separator.getAttribute('aria-valuemax'),String(workspaceRect.width));
    await unchangedBook();
-   await separator.press('Home');assert.equal((await page.locator('.reader-chat-panel').boundingBox()).width,440);await unchangedBook();
-   const grip=await separator.boundingBox();
+   // Drag from full width through the split boundary and back into overlay mode.
+   let grip=await separator.boundingBox();
+   await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);await page.mouse.down();
+   await page.mouse.move(workspaceRect.x+workspaceRect.width-600,grip.y+grip.height/2,{steps:12});await page.mouse.up();
+   assert.deepEqual(await paper.boundingBox(),bookAt600,'Dragging back below 760px resumes the original split');
+   grip=await separator.boundingBox();
    await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);await page.mouse.down();
    await page.mouse.move(workspaceRect.x+workspaceRect.width-1000,grip.y+grip.height/2,{steps:12});await page.mouse.up();
    assert.equal((await page.locator('.reader-chat-panel').boundingBox()).width,1000);await unchangedBook();
@@ -93,7 +105,14 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
    await page.getByRole('button',{name:'Toggle chat',exact:true}).click();requests[2].finish();await page.waitForFunction(()=>Object.values(window.tabTest.snapshot().tabs).every(tab=>!tab.sending));
    await page.getByRole('button',{name:'Toggle chat',exact:true}).click();assert.equal((await snapshot()).tabs[b].conversation.turns.length,2);
    for(const width of [1100,1280,1440,1920]){await page.setViewportSize({width,height:960});const layout=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth,chat:document.querySelector('.reader-chat-panel').getBoundingClientRect().width,paper:document.querySelector('.reader-paper').getBoundingClientRect().width}));assert.equal(layout.overflow,false,JSON.stringify(layout));assert.ok(layout.chat>=440&&layout.paper>=480,JSON.stringify(layout))}
+   await page.setViewportSize({width:1100,height:960});
+   await separator.press('End');
+   assert.equal((await paper.boundingBox()).width,480,'Narrow desktops retain the original minimum reader width');
+   assert.equal((await page.locator('.reader-chat-panel').boundingBox()).width,1100);
    await page.setViewportSize({width:1440,height:960});
+   await page.waitForFunction(()=>document.querySelector('.reader-paper').getBoundingClientRect().width===680);
+   assert.equal((await paper.boundingBox()).width,680,'Viewport changes recompute the split threshold');
+   await separator.press('Home');for(let i=0;i<3;i++)await separator.press('ArrowLeft');
    if(process.env.CHAT_TABS_SCREENSHOT_DIR){await page.screenshot({path:path.join(process.env.CHAT_TABS_SCREENSHOT_DIR,`chat-tabs-${lang}.png`)});await page.getByRole('button',{name:'Theme',exact:true}).click();await page.screenshot({path:path.join(process.env.CHAT_TABS_SCREENSHOT_DIR,`chat-tabs-${lang}-dark.png`)})}
    await page.setViewportSize({width:390,height:844});assert.equal(await page.locator('.reader-chat-tabbar').isVisible(),false);assert.equal(await textarea.isVisible(),true);
    assert.deepEqual(errors,[]);

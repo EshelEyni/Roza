@@ -1718,8 +1718,8 @@
 .reader-chat-history-drawer > .reader-button { flex-shrink: 0; }
 .reader-chat-history-drawer :focus-visible { outline: 2px solid #b18b55; outline-offset: 3px; }
 @media (min-width: 1100px) {
-  // Reserve the starting dock only. Extra chat width covers the book instead of repaginating it.
-  .reader-workspace:has(> .reader-chat-panel) { padding-right: 480px; }
+  // Resize both panes up to the original split cap; only additional chat width overlays the book.
+  .reader-workspace:has(> .reader-chat-panel) { padding-right: var(--reader-chat-dock-width, 480px); }
   .reader-panel.reader-chat-panel {
     position: absolute;
     inset-block: 0;

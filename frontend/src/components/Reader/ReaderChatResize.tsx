@@ -12,7 +12,11 @@ export function ReaderChatResize({ chat }: { chat: ReturnType<typeof useReaderCh
   const clamp = useCallback((width: number) => Math.max(440, Math.min(maximum(), width)), [maximum]);
   const preview = useCallback((width: number) => {
     const next = clamp(width), limit = maximum();
-    panel()?.style.setProperty("--reader-chat-panel-width", next + "px");
+    const element = panel();
+    // Retain the original split layout up to its cap; only the excess overlays the book.
+    const splitLimit = Math.min(760, Math.max(440, limit - 480));
+    element?.parentElement?.style.setProperty("--reader-chat-dock-width", Math.min(next, splitLimit) + "px");
+    element?.style.setProperty("--reader-chat-panel-width", next + "px");
     setBounds(previous => previous.maximum === limit && previous.width === next ? previous : { maximum: limit, width: next });
   }, [panel, clamp, maximum]);
   useLayoutEffect(() => {
