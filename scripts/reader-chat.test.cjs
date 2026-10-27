@@ -40,6 +40,11 @@ function harness(file, dependencies, exportName) {
     return result;
   };
 }
+const presentationExports = {};
+new Function("exports", ts.transpileModule(fs.readFileSync(path.join(__dirname,
+  "../frontend/src/services/readerChatPresentation.ts"), "utf8"), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS },
+}).outputText)(presentationExports);
 const deferred = () => {
   let resolve, reject;
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
@@ -60,6 +65,8 @@ function setup(api, currentCfi = "cfi", userId) {
     "react/jsx-runtime": { jsx, jsxs: jsx },
     "react-i18next": { useTranslation: () => ({ t: key => key }) },
     "../../services/readerAiLimits": { readerAiLimits: { question: 10000 } },
+    "../../services/readerChatPresentation": presentationExports,
+    "./ReaderChatQuote": { ReaderChatQuote: "ReaderChatQuote" },
   });
   const render = () => component({ chat: renderChat(), onClose() {} });
   render(); // Initial draft reset effect.
@@ -363,7 +370,7 @@ test("selected word can be submitted from the form without a typed question", as
   assert.equal(request.question, "");
   assert.equal(request.passageCfi, "word-cfi");
   assert.equal(request.currentCfi, "word-cfi");
-  assert.ok(find(s.render(), node => node.type === "p" && node.props.children === "screed"));
+  assert.ok(find(s.render(), node => node.type === "ReaderChatQuote" && node.props.passage.text === "screed"));
 });
 
 test("a selected paragraph with whitespace-only draft sends the selection without inventing a question", async () => {

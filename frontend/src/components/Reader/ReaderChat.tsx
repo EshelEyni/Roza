@@ -1,3 +1,5 @@
+import { buildReaderChatView, readerPassageKey, type ReaderChatMessageView } from "../../services/readerChatPresentation";
+import { ReaderChatQuote } from "./ReaderChatQuote";
 import { scrollReaderChat, type ReaderChatScrollState } from "../../services/readerChatScroll";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { FormEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
@@ -49,6 +51,35 @@ export function ReaderChat({
   }
   const turns = chat.conversation?.turns || [];
   const pendingIsSaved = turns.some(turn => turn.id === chat.pending?.id);
+  const view = buildReaderChatView(turns, chat.conversation?.passage, chat.pending, chat.passage);
+  function revealPassage(sourceId: string) {
+    const container = messages.current;
+    if (!container) return;
+    const source = Array.from(container.querySelectorAll<HTMLElement>("[data-reader-chat-source]"))
+      .find(element => element.dataset.readerChatSource === sourceId);
+    if (!source) return;
+    container.scrollTop += source.getBoundingClientRect().top - container.getBoundingClientRect().top - container.clientTop - 12;
+    source.focus({ preventScroll: true });
+  }
+  function userContent(message: ReaderChatMessageView) {
+    return <>
+      {message.passage && (
+        <ReaderChatQuote key={readerPassageKey(message.passage)} passage={message.passage} sourceId={message.id} />
+      )}
+      {message.referenceId && (
+        <button type="button" className="reader-chat-source-reference"
+          title={t("reader.chat.viewOriginalQuote")} onClick={() => revealPassage(message.referenceId!)}>
+          <span aria-hidden="true">↩</span> {t("reader.chat.samePassage")}
+        </button>
+      )}
+      {message.question && (
+        <div className={message.passage ? "reader-chat-authored-question" : undefined}>
+          {message.passage && <span className="reader-chat-question-label">{t("reader.chat.yourQuestion")}</span>}
+          <p dir="auto">{message.question}</p>
+        </div>
+      )}
+    </>;
+  }
   return (
     <section className="reader-chat" aria-label={t("reader.chat.title")}>
       <div className="reader-chat-heading">
@@ -185,12 +216,6 @@ export function ReaderChat({
         </div>
       ) : (
         <>
-          {chat.passage && (
-            <details className="reader-chat-passage" open>
-              <summary>{t("reader.chat.passage")}</summary>
-              <blockquote dir="auto">{chat.passage.text}</blockquote>
-            </details>
-          )}
           <div
             className="reader-chat-messages"
             ref={messages}
@@ -207,17 +232,11 @@ export function ReaderChat({
                 )}
               </p>
             )}
-            {turns.map(turn => (
+            {view.entries.map(({ turn, message }) => (
               <div className="reader-chat-turn" key={turn.id}>
                 <div className="reader-chat-message reader-chat-question">
                   <span>{t("reader.chat.you")}</span>
-                  <p dir="auto">{turn.question || turn.passage?.text || t("reader.chat.selectionOnly")}</p>
-                  {turn.passage && turn.question && (
-                    <details className="reader-chat-passage">
-                      <summary>{t("reader.chat.passage")}</summary>
-                      <blockquote dir="auto">{turn.passage.text}</blockquote>
-                    </details>
-                  )}
+                  {userContent(message)}
                 </div>
                 {turn.status === "completed" ? (
                   <div className="reader-chat-message reader-chat-answer" data-reader-chat-answer={turn.id}>
@@ -248,10 +267,10 @@ export function ReaderChat({
                 )}
               </div>
             ))}
-            {chat.pending && !pendingIsSaved && (
+            {chat.pending && view.pending && (
               <div className="reader-chat-message reader-chat-question">
                 <span>{t("reader.chat.you")}</span>
-                <p dir="auto">{chat.pending.question || chat.pending.passage?.text || t("reader.chat.selectionOnly")}</p>
+                {userContent(view.pending)}
                 {!chat.sending && (
                   <button
                     className="reader-button"
@@ -272,12 +291,23 @@ export function ReaderChat({
                   {t("reader.chat.generating")}
                 </p>
               )}
+            {view.draftPassage && (
+              <div className="reader-chat-draft-source" data-reader-chat-draft>
+                <ReaderChatQuote key={readerPassageKey(view.draftPassage)} passage={view.draftPassage} draft />
+              </div>
+            )}
           </div>
           <form
             className="reader-chat-compose"
             autoComplete="off"
             onSubmit={event => void submit(event)}
           >
+            {view.attachedReferenceId && !chat.pending && (
+              <button type="button" className="reader-chat-source-reference reader-chat-compose-reference"
+                onClick={() => revealPassage(view.attachedReferenceId!)}>
+                <span aria-hidden="true">↩</span> {t("reader.chat.samePassage")}
+              </button>
+            )}
             <label className="reader-chat-spoilers">
               <input
                 type="checkbox"
