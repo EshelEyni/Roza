@@ -1,7 +1,7 @@
 import AdmZip from "adm-zip";
 import { ReaderContext, MAX_CONTEXT_CHARS } from "./readerContextService";
 
-function book(firstText?: string) {
+function book(firstText?: string, firstSection?: string) {
   const zip = new AdmZip();
   const add = (name: string, text: string) => zip.addFile(name, Buffer.from(text));
   add(
@@ -14,9 +14,9 @@ function book(firstText?: string) {
   );
   add(
     "OPS/one.xhtml",
-    firstText
+    firstSection || (firstText
       ? `<html><head/><body><p>${firstText}</p></body></html>`
-      : "<html><head><title>Test</title></head><body><p>The garden was quiet.</p><p>The secret was revealed later.</p></body></html>",
+      : "<html><head><title>Test</title></head><body><p>The garden was quiet.</p><p>The secret was revealed later.</p></body></html>"),
   );
   add("OPS/two.xhtml", "<html><head/><body><p>The ending reveals FUTURE_SECRET.</p></body></html>");
   return new ReaderContext(zip.toBuffer());
@@ -24,8 +24,58 @@ function book(firstText?: string) {
 const beforeSecret = "epubcfi(/6/2!/4/2/1:21)";
 const passage = "epubcfi(/6/2!/4/2,/1:4,/1:10)";
 describe("Reader book context", () => {
+  it("matches the reader's inserted head when resolving a rendered CFI", () => {
+    expect(
+      book(undefined, "<html><body><p>The garden was quiet.</p></body></html>").passage(passage).text,
+    ).toBe("garden");
+  });
+  it("keeps a verified saved passage when its CFI no longer resolves", () => {
+    const saved = { cfi: "epubcfi(/6/2!/4/200,/1:4,/1:10)", text: "garden" };
+    expect(book().retrieve("Explain", "not-a-current-cfi", false, saved)).toEqual({
+      passage: "garden",
+      context: [],
+    });
+  });
+  it("does not substitute different text when a saved CFI shifts", () => {
+    expect(
+      book().retrieve("Explain", beforeSecret, false, { cfi: passage, text: "original words" }),
+    ).toEqual({
+      passage: "original words",
+      context: [],
+    });
+  });
+  it("answers a saved selection independently of the current page without later excerpts", () => {
+    const saved = { cfi: passage, text: "garden" };
+    const result = book().retrieve(
+      "Explain secret FUTURE_SECRET",
+      "epubcfi(/6/2!/4/2/1:0)",
+      false,
+      saved,
+    );
+    expect(result.passage).toBe("garden");
+    expect(JSON.stringify(result)).not.toContain("revealed later");
+    expect(JSON.stringify(result)).not.toContain("FUTURE_SECRET");
+    expect(book().retrieve("Explain secret FUTURE_SECRET", "", false, saved)).toEqual(result);
+  });
+  it("excludes history whose position cannot be resolved", () => {
+    expect(book().isAtOrBefore("epubcfi(/6/2!/4/200/1:0)", beforeSecret)).toBe(false);
+  });
+  it("does not invent context for an invalid position without a saved passage", () => {
+    expect(() => book().retrieve("Explain", "epubcfi(/6/2!/4/200/1:0)", false)).toThrow();
+    expect(() =>
+      book().retrieve("Explain", beforeSecret, false, { cfi: passage, text: "" }),
+    ).toThrow();
+  });
+
   const crossStart = "epubcfi(/6/2!/4/2/1:4)";
   const crossEnd = "epubcfi(/6/4!/4/2/1:10)";
+  it("uses a saved cross-section passage's final endpoint as its boundary", () => {
+    const saved = book().passage(crossStart, crossEnd);
+    const result = book().retrieve("Explain", "", false, saved);
+    expect(result.passage).toBe(saved.text);
+    expect(result.context.length).toBeGreaterThan(0);
+    expect(JSON.stringify(result)).not.toContain("FUTURE_SECRET");
+  });
   it("reconstructs cross-section passages in reading order from server-owned text", () => {
     expect(book().passage(crossStart, crossEnd)).toEqual({
       cfi: crossStart,

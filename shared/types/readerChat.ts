@@ -6,6 +6,8 @@ export type ReaderChatTurn = {
   status: "pending" | "completed" | "failed";
   passage?: ReaderPassage;
   createdAt: string;
+  currentCfi?: string;
+  spoilersAllowed?: boolean;
 };
 export type ReaderConversationSummary = {
   id: string;

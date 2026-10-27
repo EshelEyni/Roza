@@ -221,10 +221,9 @@ describe("Reader conversations", () => {
     ).toBe(200);
     expect(mockRetrieve).toHaveBeenCalledWith(
       body.question,
-      body.currentCfi,
-      false,
       "selected-cfi",
-      undefined,
+      false,
+      conversation().passage,
     );
     const [instructions, input, model] = (askReaderAi as jest.Mock).mock.calls[0];
     expect(model).toBe("gpt-6.1-terra");
@@ -281,6 +280,80 @@ describe("Reader conversations", () => {
     expect(filter.lockToken).toBeTruthy();
     expect(update.$set["turns.$[turn].status"]).toBe("failed");
     expect(update.$unset.lockToken).toBe(1);
+  });
+  it("retries with the persisted position and spoiler setting after navigation", async () => {
+    const originalCfi = "epubcfi(/6/2!/4/2/1:10)";
+    const saved = {
+      ...conversation(),
+      passage: undefined,
+      turns: [
+        {
+          id: body.requestId,
+          question: body.question,
+          status: "failed",
+          currentCfi: originalCfi,
+          spoilersAllowed: false,
+        },
+      ],
+    };
+    (ReaderConversationModel.findOne as jest.Mock).mockReturnValue({
+      select: jest.fn().mockResolvedValue(saved),
+    });
+    (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(saved);
+    const response = await request(app)
+      .post(url + "/messages")
+      .set("Authorization", "test")
+      .send({ ...body, currentCfi: "epubcfi(/6/4!/4/2/1:50)", spoilersAllowed: true });
+    expect(response.status).toBe(200);
+    expect(mockRetrieve).toHaveBeenCalledWith(body.question, originalCfi, false, undefined);
+    const update = (ReaderConversationModel.findOneAndUpdate as jest.Mock).mock.calls[0][1].$set;
+    expect(update["turns.$[turn].currentCfi"]).toBeUndefined();
+    expect(update["turns.$[turn].spoilersAllowed"]).toBeUndefined();
+  });
+  it("uses the saved passage when the current renderer has no reading boundary", async () => {
+    (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(conversation());
+    const response = await request(app)
+      .post(url + "/messages")
+      .set("Authorization", "test")
+      .send({ ...body, currentCfi: "" });
+    expect(response.status).toBe(200);
+    expect(mockRetrieve).toHaveBeenCalledWith(
+      body.question,
+      "selected-cfi",
+      false,
+      conversation().passage,
+    );
+  });
+  it("does not substitute today's page for a legacy retry with no saved position", async () => {
+    const saved = {
+      ...conversation(),
+      turns: [{ id: body.requestId, question: body.question, status: "failed" }],
+    };
+    (ReaderConversationModel.findOne as jest.Mock).mockReturnValue({
+      select: jest.fn().mockResolvedValue(saved),
+    });
+    const response = await request(app)
+      .post(url + "/messages")
+      .set("Authorization", "test")
+      .send(body);
+    expect(response.status).toBe(400);
+    expect(response.body.message).toContain("original reading position");
+    expect(askReaderAi).not.toHaveBeenCalled();
+  });
+  it("rejects a missing book before using a saved passage", async () => {
+    (ReaderBookModel.findOne as jest.Mock).mockReturnValue({
+      select: jest.fn().mockResolvedValue(null),
+    });
+    expect(
+      (
+        await request(app)
+          .post(url + "/messages")
+          .set("Authorization", "test")
+          .send(body)
+      ).status,
+    ).toBe(404);
+    expect(mockRetrieve).not.toHaveBeenCalled();
+    expect(askReaderAi).not.toHaveBeenCalled();
   });
   it("rejects oversized questions before loading context or calling AI", async () => {
     expect(

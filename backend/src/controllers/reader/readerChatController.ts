@@ -109,15 +109,15 @@ const deleteConversation = asyncErrorCatcher(async (req: Request, res: Response)
 const sendMessage = asyncErrorCatcher(async (req: Request, res: Response) => {
   const book = await bookFor(req);
   const filter = conversationFilter(req);
-  const { requestId, question, currentCfi, spoilersAllowed } = req.body;
+  const { requestId, question, currentCfi: requestedBoundary, spoilersAllowed } = req.body;
   if (
     typeof requestId !== "string" ||
     !/^[a-zA-Z0-9-]{16,80}$/.test(requestId) ||
     typeof question !== "string" ||
     !question.trim() ||
     question.length > readerAiConfig.maxQuestionChars ||
-    typeof currentCfi !== "string" ||
-    currentCfi.length > 4096 ||
+    typeof requestedBoundary !== "string" ||
+    requestedBoundary.length > 4096 ||
     typeof spoilersAllowed !== "boolean"
   )
     throw new AppError(
@@ -147,7 +147,7 @@ const sendMessage = asyncErrorCatcher(async (req: Request, res: Response) => {
   const settings = await getReaderAiSettings(getLoggedInUserIdFromReq());
   const context = await contextFor(book.fileId);
   // Only direct, unambiguous opt-in phrases change the saved preference; the checkbox also allows opting in/out.
-  const allow =
+  const allow = existing ? existing.spoilersAllowed :
     spoilersAllowed ||
     /(?:i (?:don't|dont|do not) care about spoilers|spoilers are (?:okay|ok|fine)|אפשר ספוילרים|לא אכפת לי מספוילרים)/i.test(
       question,
@@ -158,14 +158,17 @@ const sendMessage = asyncErrorCatcher(async (req: Request, res: Response) => {
       (requestedEndCfi !== undefined && (typeof requestedEndCfi !== "string" || !requestedCfi)))
     throw new AppError("Invalid selected passage.", 400);
   // A retry keeps the passage used for the original question.
-  const selectedPassage = existing?.passage || (requestedCfi
+  const selectedPassage = existing ? existing.passage : (requestedCfi
     ? context.passage(requestedCfi, requestedEndCfi) : conversation.passage);
-  if (selectedPassage && !allow && !context.isAtOrBefore(selectedPassage.endCfi || selectedPassage.cfi, currentCfi))
-    throw new AppError("The selected passage is beyond the current reading boundary. Navigate to it or allow spoilers.", 400);
+  // A selected passage supplies its own boundary; retries retain their saved one.
+  const currentCfi = existing ? existing.currentCfi
+    : selectedPassage?.endCfi || selectedPassage?.cfi || requestedBoundary;
+  if (!currentCfi)
+    throw new AppError("The original reading position is unavailable. Select the passage again and start a new question.", 400);
   const history = buildReaderHistory(conversation.turns, requestId, question, currentCfi,
     allow, (earlier, current) => context.isAtOrBefore(earlier, current));
   const retrieved = context.retrieve(
-    history.retrievalQuery, currentCfi, allow, selectedPassage?.cfi, selectedPassage?.endCfi,
+    history.retrievalQuery, currentCfi, allow, selectedPassage,
   );
   const token = randomUUID();
   const lock = {
@@ -188,8 +191,6 @@ const sendMessage = asyncErrorCatcher(async (req: Request, res: Response) => {
         ...(existing
           ? {
               "turns.$[turn].status": "pending",
-              "turns.$[turn].currentCfi": currentCfi,
-              "turns.$[turn].spoilersAllowed": allow,
               "turns.$[turn].passage": selectedPassage,
               "turns.$[turn].excerpts": retrieved.context,
             }
