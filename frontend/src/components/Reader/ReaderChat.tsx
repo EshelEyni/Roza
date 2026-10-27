@@ -20,14 +20,13 @@ export function ReaderChat({
   onClose: () => void;
 }) {
   const { t } = useTranslation();
-  const [question, setQuestion] = useState("");
+  const { draft: question, setDraft: setQuestion } = chat;
   const [deleteId, setDeleteId] = useState("");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const messages = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLTextAreaElement>(null);
   const disabled = chat.sending || chat.loading;
   useEffect(() => {
-    setQuestion("");
     setSettingsOpen(false);
   }, [chat.draftVersion]);
   useLayoutEffect(() => {
@@ -57,7 +56,6 @@ export function ReaderChat({
             onClick={() => {
               setSettingsOpen(false);
               chat.start();
-              setQuestion("");
             }}
           >
             <FiPlus />

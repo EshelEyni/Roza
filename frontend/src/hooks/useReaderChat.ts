@@ -11,6 +11,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
   const [conversation, setConversation] = useState<ReaderConversation | null>(
     null,
   );
+  const [draft, setDraft] = useState("");
   const [passage, setPassage] = useState<ReaderPassage | undefined>();
   const [items, setItems] = useState<ReaderConversationSummary[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
@@ -62,6 +63,7 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
   function start(selected?: ReaderPassage) {
     if (busy.current) return;
     generation.current++;
+    setDraft("");
     setDraftVersion(value => value + 1);
     setConversation(null);
     setPassage(selected);
@@ -178,6 +180,8 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
   }
   return {
     conversation,
+    draft,
+    setDraft,
     passage,
     items,
     cursor,
