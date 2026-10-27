@@ -10,12 +10,13 @@ export type ReaderChatTab = {
   loading: boolean; sending: boolean; unread: boolean; error: string; errorKey?: string;
   preferencesRestored?: boolean; unavailable: boolean; scrollTop?: number; viewedAnswerIds: string[]; updatedAt: string;
 };
+export type ReaderSidePanel = "contents" | "search" | "settings";
 type ClosedTab = { key: string; index: number };
 export type ReaderChatWorkspaceState = {
   tabs: Record<string, ReaderChatTab>; openKeys: string[]; activeKey: string | null;
   items: ReaderConversationSummary[]; cursor: string | null; history: boolean;
   historyLoading: boolean; historyError: string; removing: string[];
-  lastClosed: ClosedTab | null; storageWarning: boolean; panelWidth: number;
+  lastClosed: ClosedTab | null; storageWarning: boolean; panelWidth: number; sidePanelWidths: Record<ReaderSidePanel, number>;
 };
 type Api = typeof readerChatApiService;
 type StorageAccess = () => Pick<Storage, "getItem" | "setItem" | "removeItem"> | undefined;
@@ -53,7 +54,7 @@ export class ReaderChatWorkspace {
     const initial = emptyTab();
     this.state = { tabs: { [initial.key]: initial }, openKeys: [initial.key], activeKey: initial.key,
       items: [], cursor: null, history: false, historyLoading: false, historyError: "", removing: [],
-      lastClosed: null, storageWarning: false, panelWidth: 480 };
+      lastClosed: null, storageWarning: false, panelWidth: 480, sidePanelWidths: { contents: 285, search: 360, settings: 285 } };
     this.restore();
   }
   getSnapshot = () => this.state;
@@ -96,7 +97,12 @@ export class ReaderChatWorkspace {
         }
         const openKeys = [...new Set<string>(saved.openKeys.filter((key: unknown) => typeof key === "string" && Object.prototype.hasOwnProperty.call(tabs, key)))];
         this.state = { ...this.state, tabs, openKeys, activeKey: openKeys.includes(saved.activeKey) ? saved.activeKey : openKeys[0] || null,
-          panelWidth: Number.isFinite(saved.panelWidth) ? Math.max(440, saved.panelWidth) : 480 };
+          panelWidth: Number.isFinite(saved.panelWidth) ? Math.max(440, saved.panelWidth) : 480,
+          sidePanelWidths: {
+            contents: Number.isFinite(saved.sidePanelWidths?.contents) ? Math.max(260, saved.sidePanelWidths.contents) : 285,
+            search: Number.isFinite(saved.sidePanelWidths?.search) ? Math.max(260, saved.sidePanelWidths.search) : 360,
+            settings: Number.isFinite(saved.sidePanelWidths?.settings) ? Math.max(260, saved.sidePanelWidths.settings) : 285,
+          } };
       } else {
         const legacy = storage?.getItem(this.legacyKey);
         if (legacy) {
@@ -118,7 +124,7 @@ export class ReaderChatWorkspace {
         viewedAnswerIds: tab.viewedAnswerIds, unread: tab.unread,
       }));
       storage.setItem(this.storageKey, JSON.stringify({ version: 1, tabs, openKeys: this.state.openKeys,
-        activeKey: this.state.activeKey, panelWidth: this.state.panelWidth }));
+        activeKey: this.state.activeKey, panelWidth: this.state.panelWidth, sidePanelWidths: this.state.sidePanelWidths }));
       // Keep the legacy pointer for the single-conversation experience and migration.
       if (this.active?.serverId) storage.setItem(this.legacyKey, this.active.serverId);
       else storage.removeItem(this.legacyKey);
@@ -137,6 +143,9 @@ export class ReaderChatWorkspace {
   setSpoilersAllowed = (spoilersAllowed: boolean) => { if (this.active) this.patch(this.active.key, { spoilersAllowed }); };
   setHistory = (history: boolean) => { this.update({ history }, false); };
   setPanelWidth = (panelWidth: number) => { this.update({ panelWidth: Number.isFinite(panelWidth) ? Math.max(440, panelWidth) : 480 }); };
+  setSidePanelWidth = (panel: ReaderSidePanel, width: number) => {
+    if (Number.isFinite(width)) this.update({ sidePanelWidths: { ...this.state.sidePanelWidths, [panel]: Math.max(260, width) } });
+  };
   rememberScroll = (key: string, scrollTop: number, viewedAnswerIds?: string[]) => {
     if (this.state.tabs[key]) {
       // Scroll events need no React render or storage write on every pixel.

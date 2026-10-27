@@ -144,3 +144,24 @@ test('chat width has no fixed desktop maximum and survives reload independently 
  store.setPanelWidth(10);assert.equal(store.getSnapshot().panelWidth,440);
  store.setPanelWidth(Infinity);assert.equal(store.getSnapshot().panelWidth,480);
 });
+
+
+test('side panels retain independent widths by account and book, without changing the chat width',()=>{
+ const storage=memory();const {store}=setup({},storage);
+ store.setPanelWidth(1000);store.setSidePanelWidth('contents',900);store.setSidePanelWidth('search',700);store.setSidePanelWidth('settings',500);
+ const restored=setup({},storage).store;
+ assert.deepEqual(restored.getSnapshot().sidePanelWidths,{contents:900,search:700,settings:500});
+ assert.equal(restored.getSnapshot().panelWidth,1000);
+ assert.deepEqual(setup({},storage,'bob').store.getSnapshot().sidePanelWidths,{contents:285,search:360,settings:285});
+ assert.deepEqual(setup({},storage,'alice','other-book').store.getSnapshot().sidePanelWidths,{contents:285,search:360,settings:285});
+});
+
+test('existing saved chat workspaces upgrade with original side panel widths',()=>{
+ const storage=memory();const {store}=setup({},storage);store.setPanelWidth(800);
+ const key='roza-chat-workspace:v1:alice:book',saved=JSON.parse(storage.getItem(key));delete saved.sidePanelWidths;storage.setItem(key,JSON.stringify(saved));
+ const restored=setup({},storage).store;
+ assert.equal(restored.getSnapshot().panelWidth,800);
+ assert.deepEqual(restored.getSnapshot().sidePanelWidths,{contents:285,search:360,settings:285});
+ restored.setSidePanelWidth('search',Infinity);assert.equal(restored.getSnapshot().sidePanelWidths.search,360);
+ restored.setSidePanelWidth('settings',10);assert.equal(restored.getSnapshot().sidePanelWidths.settings,260);
+});

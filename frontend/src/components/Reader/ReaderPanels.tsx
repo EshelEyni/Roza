@@ -1,3 +1,4 @@
+import { ReaderPanelResize } from "./ReaderPanelResize";
 import { useTranslation } from "react-i18next";
 import { ReaderSheet } from "./ReaderSheet";
 import { ReaderContents } from "./ReaderContents";
@@ -52,14 +53,16 @@ export function ReaderPanels({
               : "reader.settings",
       )}
       onClose={closePanel}
-      className={
+      className={"reader-resizable-panel " + (
         panel === "search"
           ? "reader-search-panel"
           : panel === "chat"
             ? "reader-chat-panel"
             : ""
-      }
+      )}
     >
+      {panel !== "chat" && <ReaderPanelResize width={chat.workspace.sidePanelWidths[panel]}
+        onWidthChange={width => chat.setSidePanelWidth(panel, width)} />}
       {panel === "contents" ? (
         <ReaderContents
           items={toc}

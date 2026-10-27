@@ -1698,7 +1698,7 @@
 /* Desktop conversation workspace. Mobile retains its single visible conversation. */
 .reader-chat { position: relative; }
 .reader-chat-tabpanel { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-.reader-chat-tabbar, .reader-chat-all-label, .reader-chat-tab-notice, .reader-chat-resize { display: none; }
+.reader-chat-tabbar, .reader-chat-all-label, .reader-chat-tab-notice, .reader-panel-resize { display: none; }
 .reader-chat-workspace-empty { margin: auto; padding: 30px 24px; text-align: center; line-height: 1.8; }
 .reader-chat-workspace-empty p { margin: 12px 0 20px; opacity: .8; }
 .reader-chat-history-overlay { position: absolute; inset: 0; z-index: 8; background: #0005; display: flex; justify-content: flex-start; }
@@ -1719,17 +1719,20 @@
 .reader-chat-history-drawer :focus-visible { outline: 2px solid #b18b55; outline-offset: 3px; }
 @media (min-width: 1100px) {
   // Resize both panes up to the original split cap; only additional chat width overlays the book.
-  .reader-workspace:has(> .reader-chat-panel) { padding-right: var(--reader-chat-dock-width, 480px); }
-  .reader-panel.reader-chat-panel {
+  .reader-workspace:has(> .reader-chat-panel),
+  .reader-workspace:has(> .reader-resizable-panel) { padding-right: var(--reader-panel-dock-width, 480px); }
+  .reader-panel.reader-chat-panel,
+  .reader-panel.reader-resizable-panel {
     position: absolute;
     inset-block: 0;
     right: 0;
-    width: min(var(--reader-chat-panel-width, 480px), 100%);
-    min-width: 440px;
+    width: min(var(--reader-panel-width, 480px), 100%);
+    min-width: var(--reader-panel-min-width, 440px);
     max-width: 100%;
   }
   // The positioned chat content must not intercept clicks on the sheet's visible close control.
-  .reader-chat-panel > .reader-panel-close { z-index: 7; }
+  .reader-chat-panel > .reader-panel-close,
+  .reader-resizable-panel > .reader-panel-close { z-index: 7; }
   .reader-chat-heading { padding: 22px 20px 14px; }
   .reader-chat-heading h2 { font-size: 21px; margin-bottom: 12px; }
   .reader-chat-heading .reader-chat-actions > .reader-button:first-child { display: none; }
@@ -1749,10 +1752,10 @@
   .reader-chat-tab-busy { animation: reader-chat-tab-spin 1.5s linear infinite; }
   .reader-chat-tab-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 18px; background: #a389611c; font-size: 12px; flex-shrink: 0; }
   .reader-chat-tab-notice button { text-decoration: underline; color: inherit; min-height: 32px; }
-  .reader-chat-resize { position: absolute; inset-block: 0; left: 0; width: 8px; z-index: 6; display: flex; align-items: center; justify-content: center; cursor: col-resize; touch-action: none; }
-  .reader-chat-resize span { width: 3px; height: 38px; border-radius: 3px; background: #8e7e6555; }
-  .reader-chat-resize:hover span, .reader-chat-resize:focus-visible span { background: #b18b55; }
-  .reader-chat-resize:focus-visible { outline: 2px solid #b18b55; outline-offset: -2px; }
+  .reader-panel-resize { position: absolute; inset-block: 0; left: 0; width: 8px; z-index: 6; display: flex; align-items: center; justify-content: center; cursor: col-resize; touch-action: none; }
+  .reader-panel-resize span { width: 3px; height: 38px; border-radius: 3px; background: #8e7e6555; }
+  .reader-panel-resize:hover span, .reader-chat-resize:focus-visible span { background: #b18b55; }
+  .reader-panel-resize:focus-visible { outline: 2px solid #b18b55; outline-offset: -2px; }
 }
 @keyframes reader-chat-tab-spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .reader-chat-tab-busy { animation: none; } }
