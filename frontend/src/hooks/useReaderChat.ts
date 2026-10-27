@@ -32,6 +32,6 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string, userI
     send: (question: string, retryId?: string) => store.send(question, getCurrentCfi(), retryId),
     selectTab: store.selectTab, closeTab: store.closeTab, reopenTab: store.reopenTab,
     retryLoad: store.retryLoad, rememberScroll: store.rememberScroll, flush: store.flush,
-    setViewing: store.setViewing, setPanelWidth: store.setPanelWidth, setSidePanelWidth: store.setSidePanelWidth,
+    setViewing: store.setViewing, setPanelWidth: store.setPanelWidth,
   };
 }

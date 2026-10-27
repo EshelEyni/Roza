@@ -61,8 +61,8 @@ export function ReaderPanels({
             : ""
       )}
     >
-      {panel !== "chat" && <ReaderPanelResize width={chat.workspace.sidePanelWidths[panel]}
-        onWidthChange={width => chat.setSidePanelWidth(panel, width)} />}
+      {panel !== "chat" && <ReaderPanelResize width={chat.workspace.panelWidth}
+        onWidthChange={chat.setPanelWidth} />}
       {panel === "contents" ? (
         <ReaderContents
           items={toc}

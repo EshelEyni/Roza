@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
-export function ReaderPanelResize({ width, onWidthChange, minimumWidth = 260, label, className = "" }: {
+export function ReaderPanelResize({ width, onWidthChange, minimumWidth = 440, label, className = "" }: {
   width: number; onWidthChange: (width: number) => void; minimumWidth?: number; label?: string; className?: string;
 }) {
   const { t } = useTranslation();

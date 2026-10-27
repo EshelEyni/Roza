@@ -146,22 +146,21 @@ test('chat width has no fixed desktop maximum and survives reload independently 
 });
 
 
-test('side panels retain independent widths by account and book, without changing the chat width',()=>{
+test('all reader panels share one persisted width scoped to account and book',()=>{
  const storage=memory();const {store}=setup({},storage);
- store.setPanelWidth(1000);store.setSidePanelWidth('contents',900);store.setSidePanelWidth('search',700);store.setSidePanelWidth('settings',500);
- const restored=setup({},storage).store;
- assert.deepEqual(restored.getSnapshot().sidePanelWidths,{contents:900,search:700,settings:500});
- assert.equal(restored.getSnapshot().panelWidth,1000);
- assert.deepEqual(setup({},storage,'bob').store.getSnapshot().sidePanelWidths,{contents:285,search:360,settings:285});
- assert.deepEqual(setup({},storage,'alice','other-book').store.getSnapshot().sidePanelWidths,{contents:285,search:360,settings:285});
+ store.setPanelWidth(900);assert.equal(setup({},storage).store.getSnapshot().panelWidth,900);
+ store.setPanelWidth(700);assert.equal(setup({},storage).store.getSnapshot().panelWidth,700);
+ assert.equal(setup({},storage,'bob').store.getSnapshot().panelWidth,480);
+ assert.equal(setup({},storage,'alice','other-book').store.getSnapshot().panelWidth,480);
+ const saved=JSON.parse(storage.getItem('roza-chat-workspace:v1:alice:book'));
+ assert.equal(saved.panelWidth,700);assert.equal('sidePanelWidths' in saved,false);
 });
 
-test('existing saved chat workspaces upgrade with original side panel widths',()=>{
+test('legacy per-panel widths migrate to the existing shared chat width',()=>{
  const storage=memory();const {store}=setup({},storage);store.setPanelWidth(800);
- const key='roza-chat-workspace:v1:alice:book',saved=JSON.parse(storage.getItem(key));delete saved.sidePanelWidths;storage.setItem(key,JSON.stringify(saved));
- const restored=setup({},storage).store;
- assert.equal(restored.getSnapshot().panelWidth,800);
- assert.deepEqual(restored.getSnapshot().sidePanelWidths,{contents:285,search:360,settings:285});
- restored.setSidePanelWidth('search',Infinity);assert.equal(restored.getSnapshot().sidePanelWidths.search,360);
- restored.setSidePanelWidth('settings',10);assert.equal(restored.getSnapshot().sidePanelWidths.settings,260);
+ const key='roza-chat-workspace:v1:alice:book',saved=JSON.parse(storage.getItem(key));
+ saved.sidePanelWidths={contents:900,search:700,settings:500};storage.setItem(key,JSON.stringify(saved));
+ const restored=setup({},storage).store;assert.equal(restored.getSnapshot().panelWidth,800);
+ restored.setPanelWidth(1000);
+ const updated=JSON.parse(storage.getItem(key));assert.equal(updated.panelWidth,1000);assert.equal('sidePanelWidths' in updated,false);
 });

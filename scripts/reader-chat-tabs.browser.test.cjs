@@ -114,14 +114,15 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
    assert.equal((await paper.boundingBox()).width,680,'Viewport changes recompute the split threshold');
    await separator.press('Home');for(let i=0;i<3;i++)await separator.press('ArrowLeft');
    if(process.env.CHAT_TABS_SCREENSHOT_DIR){await page.screenshot({path:path.join(process.env.CHAT_TABS_SCREENSHOT_DIR,`chat-tabs-${lang}.png`)});await page.getByRole('button',{name:'Theme',exact:true}).click();await page.screenshot({path:path.join(process.env.CHAT_TABS_SCREENSHOT_DIR,`chat-tabs-${lang}-dark.png`)})}
-   // Exercise all remaining panels through the actual ReaderPanels component.
+   // All panels use the same saved width, including after switching and reloading.
+   let sharedWidth=500;
    for(const panel of ['contents','search','settings']){
     await page.getByLabel('Panel',{exact:true}).selectOption(panel);
     assert.equal(await page.getByRole('separator').count(),1,'Each panel must have exactly one resize handle');
     const side=page.locator('.reader-resizable-panel'),handle=page.getByRole('separator');
-    assert.equal((await side.boundingBox()).width,panel==='search'?360:285,'Preserve original default width');
-    await handle.press('Home');assert.equal((await side.boundingBox()).width,260);
-    for(let i=0;i<25;i++)await handle.press('ArrowLeft');
+    assert.equal((await side.boundingBox()).width,sharedWidth,'Switching panels must keep the same width');
+    await handle.press('Home');assert.equal((await side.boundingBox()).width,440);
+    for(let i=0;i<16;i++)await handle.press('ArrowLeft');
     assert.equal((await side.boundingBox()).width,760);
     const bookAtCap=await paper.boundingBox();assert.equal(bookAtCap.width,680);
     await handle.press('End');assert.deepEqual(await paper.boundingBox(),bookAtCap,'Other panels must overlay the fixed reader beyond 760px');
@@ -129,17 +130,17 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
     let sideGrip=await handle.boundingBox();
     await page.mouse.move(sideGrip.x+sideGrip.width/2,sideGrip.y+sideGrip.height/2);await page.mouse.down();
     await page.mouse.move(1440-900,sideGrip.y+sideGrip.height/2,{steps:8});await page.mouse.up();
-    assert.equal((await side.boundingBox()).width,900);assert.deepEqual(await paper.boundingBox(),bookAtCap);
+    assert.equal((await side.boundingBox()).width,900);assert.deepEqual(await paper.boundingBox(),bookAtCap);sharedWidth=900;
     await page.locator('.reader-resizable-panel > .reader-panel-close').click();assert.equal(await side.count(),0);
     await page.getByRole('button',{name:'Toggle chat',exact:true}).click();assert.equal((await side.boundingBox()).width,900);
    }
    await page.reload();await page.waitForFunction(()=>!!window.tabTest);
    for(const panel of ['contents','search','settings']){
     await page.getByLabel('Panel',{exact:true}).selectOption(panel);
-    assert.equal((await page.locator('.reader-resizable-panel').boundingBox()).width,900,'Each panel width survives reload independently');
+    assert.equal((await page.locator('.reader-resizable-panel').boundingBox()).width,900,'Shared panel width survives reload');
    }
    await page.getByLabel('Panel',{exact:true}).selectOption('chat');
-   assert.equal((await page.locator('.reader-chat-panel').boundingBox()).width,500,'Resizing other panels must preserve the chat width');
+   assert.equal((await page.locator('.reader-chat-panel').boundingBox()).width,900,'Resizing another panel also updates the chat width');
    await page.setViewportSize({width:390,height:844});
    for(const panel of ['contents','search','settings']){
     await page.getByLabel('Panel',{exact:true}).selectOption(panel);

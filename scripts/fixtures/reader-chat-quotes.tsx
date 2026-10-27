@@ -38,9 +38,9 @@ function Fixture() {
   const chat = {
     activeTabKey: "fixture", activeTab: undefined, unavailable: false, errorKey: undefined,
     workspace: { tabs: {}, openKeys: [], activeKey: "fixture", items: [], cursor: null,
-      history: false, historyLoading: false, historyError: "", removing: [], lastClosed: null, storageWarning: false, panelWidth: 480, sidePanelWidths: { contents: 285, search: 360, settings: 285 } },
+      history: false, historyLoading: false, historyError: "", removing: [], lastClosed: null, storageWarning: false, panelWidth: 480 },
     selectTab: () => {}, closeTab: () => {}, reopenTab: () => {}, retryLoad: () => {}, rememberScroll: () => {},
-    flush: () => {}, setViewing: () => {}, setPanelWidth: () => {}, setSidePanelWidth: () => {},
+    flush: () => {}, setViewing: () => {}, setPanelWidth: () => {},
     conversation, draft, setDraft, passage, items: [], cursor: null,
     loading: false, sending: scenario === "pending", draftVersion: "fixture", history: false, error: "",
     spoilersAllowed, setSpoilersAllowed,
