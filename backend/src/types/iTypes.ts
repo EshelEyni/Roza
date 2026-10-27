@@ -141,7 +141,7 @@ export interface IReaderConversation extends Document {
   userId: mongoose.Types.ObjectId;
   bookId: mongoose.Types.ObjectId;
   title: string;
-  passage?: { cfi: string; text: string };
+  passage?: { cfi: string; text: string; endCfi?: string };
   spoilersAllowed: boolean;
   lockedUntil: Date;
   lockToken?: string;

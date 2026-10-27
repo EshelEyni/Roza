@@ -30,4 +30,5 @@ export interface ReaderTextSelection {
   cfi: string;
   x: number;
   y: number;
+  endCfi?: string;
 }

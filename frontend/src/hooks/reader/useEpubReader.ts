@@ -98,6 +98,10 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     notice: selection.limitNotice || notice,
     textSelection: selection.textSelection,
     closeLookup: selection.closeLookup,
+    extendSelection: (direction: "next" | "prev") =>
+      selection.extend(runtime, direction),
+    selectionExtending: selection.extending,
+    selectionBusy: selection.busy,
     host: runtime.host,
     shell: runtime.shell,
     move,

@@ -31,8 +31,15 @@ export function useEpubBook(
   setNotice: (message: string) => void,
 ) {
   const { t } = useTranslation();
-  const { closeLookup, clearLimitNotice, onSelectionChange, select } =
-    selection;
+  const {
+    closeLookup,
+    clearLimitNotice,
+    onSelectionChange,
+    select,
+    isExtending,
+    copySelection,
+    extend,
+  } = selection;
   const [toc, setToc] = useState<NavItem[]>([]);
   const [href, setHref] = useState("");
   const [location, setLocation] = useState<Location | null>(null);
@@ -74,6 +81,21 @@ export function useEpubBook(
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeLookup();
       const target = event.target as HTMLElement | null;
+      if (
+        event.shiftKey &&
+        !event.defaultPrevented &&
+        !event.ctrlKey &&
+        !event.metaKey &&
+        !event.altKey &&
+        (event.key === "PageDown" || event.key === "PageUp") &&
+        runtime.selectionRef.current &&
+        !panelRef.current &&
+        !target?.closest("input, textarea, select, [contenteditable=true]")
+      ) {
+        event.preventDefault();
+        void extend(runtime, event.key === "PageDown" ? "next" : "prev");
+        return;
+      }
       if (
         changingLayout.current ||
         event.defaultPrevented ||
@@ -169,12 +191,13 @@ export function useEpubBook(
             bindReaderContents(
               contents,
               runtime,
-              { onSelectionChange, closeLookup },
+              { onSelectionChange, closeLookup, isExtending, copySelection },
               {
                 onKey,
                 enabled: () => ready && !cancelled && !changingLayout.current,
                 move,
                 title: book.title,
+                extend: direction => extend(runtime, direction),
               },
             ),
           );
@@ -190,7 +213,12 @@ export function useEpubBook(
         });
         rendition.on("relocated", (location: Location) => {
           if (cancelled || !ready || changingLayout.current) return;
-          closeLookup();
+          // Native selection can scroll the iframe into view and emit relocation.
+          // Explicit navigation already dismisses selection; a layout report must not erase it.
+          const nativeSelectionActive = (
+            rendition?.getContents() as unknown as Contents[] | undefined
+          )?.some(contents => !!contents.document.getSelection()?.toString().trim());
+          if (!isExtending() && !nativeSelectionActive) closeLookup();
           clearLimitNotice();
           setLocation(location);
           const start = location.start;
@@ -259,6 +287,7 @@ export function useEpubBook(
     const opening = start();
     return () => {
       cancelled = true;
+      closeLookup();
       controller.abort();
       clearTimeout(pendingResize.current);
       stopObserving?.();
@@ -284,6 +313,9 @@ export function useEpubBook(
     clearLimitNotice,
     onSelectionChange,
     select,
+    isExtending,
+    copySelection,
+    extend,
     setError,
     setNotice,
   ]);

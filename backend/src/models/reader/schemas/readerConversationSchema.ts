@@ -8,7 +8,11 @@ const readerConversationSchema = new Schema<IReaderConversation>(
     title: { type: String, required: true, maxlength: 100 },
     passage: {
       type: new Schema(
-        { cfi: { type: String, required: true }, text: { type: String, required: true } },
+        {
+          cfi: { type: String, required: true },
+          text: { type: String, required: true },
+          endCfi: String,
+        },
         { _id: false },
       ),
       default: undefined,

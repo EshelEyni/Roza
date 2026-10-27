@@ -1,4 +1,4 @@
-export type ReaderPassage = { cfi: string; text: string };
+export type ReaderPassage = { cfi: string; text: string; endCfi?: string };
 export type ReaderChatTurn = {
   id: string;
   question: string;

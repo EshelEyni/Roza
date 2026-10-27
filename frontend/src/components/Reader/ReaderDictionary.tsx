@@ -6,6 +6,9 @@ import {
   FiMessageSquare,
   FiVolume2,
   FiX,
+  FiCopy,
+  FiArrowLeft,
+  FiArrowRight,
 } from "react-icons/fi";
 import { ReaderSheet } from "./ReaderSheet";
 import { useReaderMobile } from "../../hooks/useReaderMobile";
@@ -25,12 +28,22 @@ export function ReaderDictionary({
   onClose,
   onAskAi,
   aiDisabled = false,
+  onExtend,
+  extending,
+  busy,
+  atStart,
+  atEnd,
 }: {
   selection: ReaderTextSelection;
   bookId: string;
   onClose: () => void;
   onAskAi: () => void;
   aiDisabled?: boolean;
+  onExtend: (direction: "next" | "prev") => Promise<void>;
+  extending: boolean;
+  busy: boolean;
+  atStart: boolean;
+  atEnd: boolean;
 }) {
   const { t } = useTranslation();
   const mobile = useReaderMobile();
@@ -42,14 +55,15 @@ export function ReaderDictionary({
     useState<ReaderLookupProvider>("auto");
   const [speechError, setSpeechError] = useState(false);
   const [speaking, setSpeaking] = useState(false);
+  const [copyStatus, setCopyStatus] = useState("");
   const requestId = useRef(createRequestId());
   const button = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
+  useEffect(() => setCopyStatus(""), [selection.text]);
 
   useEffect(() => {
     mounted.current = true;
-    if (!mobile) button.current?.focus({ preventScroll: true });
     window.speechSynthesis?.getVoices();
     const onOutside = (event: PointerEvent) => {
       if (
@@ -140,16 +154,35 @@ export function ReaderDictionary({
   }
 
   const entry = result?.entry;
-  const actionWidth = selection.word ? (mobile ? 108 : 92) : mobile ? 60 : 52;
+  async function copy() {
+    try {
+      await navigator.clipboard.writeText(selection.text);
+      setCopyStatus(t("reader.selectionCopied"));
+    } catch {
+      setCopyStatus(t("reader.selectionCopyError"));
+    }
+  }
+  const actionWidth = selection.word
+    ? mobile
+      ? 320
+      : 272
+    : mobile
+      ? 268
+      : 228;
   const content = (
     <div
       className={"reader-dictionary " + (opened ? "is-open" : "")}
       ref={dialog}
       tabIndex={-1}
+      onPointerDown={event => {
+        // Keep the iframe's native range while activating a selection action.
+        if (!opened) event.preventDefault();
+      }}
       onBlur={event => {
         if (
           !mobile &&
           !opened &&
+          !extending &&
           !event.currentTarget.contains(event.relatedTarget)
         )
           onClose();
@@ -169,7 +202,7 @@ export function ReaderDictionary({
         ),
         top: Math.max(
           12,
-          Math.min(selection.y, window.innerHeight - (opened ? 430 : 80)),
+          Math.min(selection.y, window.innerHeight - (opened ? 430 : 140)),
         ),
       }}
     >
@@ -183,29 +216,72 @@ export function ReaderDictionary({
         </button>
       )}
       {!opened ? (
-        <div className="reader-dictionary-actions">
-          {selection.word && (
+        <>
+          <div className="reader-dictionary-actions" aria-busy={busy}>
+            {selection.word && (
+              <button
+                ref={button}
+                className="reader-icon-button reader-dictionary-action"
+                aria-label={t("reader.lookupHebrew")}
+                title={t("reader.lookupHebrew")}
+                onClick={() => void lookup()}
+              >
+                <FiBookOpen aria-hidden="true" />
+              </button>
+            )}
             <button
-              ref={button}
+              ref={selection.word ? undefined : button}
               className="reader-icon-button reader-dictionary-action"
-              aria-label={t("reader.lookupHebrew")}
-              title={t("reader.lookupHebrew")}
-              onClick={() => void lookup()}
+              aria-label={t("reader.chat.ask")}
+              title={t("reader.chat.ask")}
+              disabled={aiDisabled}
+              onClick={onAskAi}
             >
-              <FiBookOpen aria-hidden="true" />
+              <FiMessageSquare aria-hidden="true" />
             </button>
+            <button
+              className="reader-icon-button"
+              disabled={busy}
+              onClick={() => void copy()}
+              aria-label={t("reader.selectionCopy")}
+              title={t("reader.selectionCopy")}
+            >
+              <FiCopy aria-hidden="true" />
+            </button>
+            <button
+              className="reader-icon-button"
+              disabled={busy || atStart}
+              onClick={() => void onExtend("prev")}
+              aria-label={t("reader.selectionPrevious")}
+              title={t("reader.selectionPrevious")}
+            >
+              <FiArrowLeft aria-hidden="true" />
+            </button>
+            <button
+              className="reader-icon-button"
+              disabled={busy || atEnd}
+              onClick={() => void onExtend("next")}
+              aria-label={t("reader.selectionNext")}
+              title={t("reader.selectionNext")}
+            >
+              <FiArrowRight aria-hidden="true" />
+            </button>
+            <button
+              className="reader-icon-button"
+              onClick={onClose}
+              aria-label={t("reader.close")}
+              title={t("reader.close")}
+            >
+              <FiX aria-hidden="true" />
+            </button>
+          </div>
+          {extending && (
+            <p className="reader-selection-help">
+              {t("reader.selectionExtendHelp")}
+            </p>
           )}
-          <button
-            ref={selection.word ? undefined : button}
-            className="reader-icon-button reader-dictionary-action"
-            aria-label={t("reader.chat.ask")}
-            title={t("reader.chat.ask")}
-            disabled={aiDisabled}
-            onClick={onAskAi}
-          >
-            <FiMessageSquare aria-hidden="true" />
-          </button>
-        </div>
+          {copyStatus && <p role="status">{copyStatus}</p>}
+        </>
       ) : (
         <>
           <div className="reader-dictionary-heading">

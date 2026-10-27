@@ -70,9 +70,12 @@ const listConversations = asyncErrorCatcher(async (req: Request, res: Response) 
 const createConversation = asyncErrorCatcher(async (req: Request, res: Response) => {
   const book = await bookFor(req);
   const cfi = req.body.passageCfi;
+  const endCfi = req.body.passageEndCfi;
   if (cfi !== undefined && typeof cfi !== "string")
     throw new AppError("Invalid selected passage.", 400);
-  const passage = cfi ? (await contextFor(book.fileId)).passage(cfi) : undefined;
+  if (endCfi !== undefined && (typeof endCfi !== "string" || !cfi))
+    throw new AppError("Invalid selected passage.", 400);
+  const passage = cfi ? (await contextFor(book.fileId)).passage(cfi, endCfi) : undefined;
   const conversation = await ReaderConversationModel.create({
     ...owner(req),
     passage,
@@ -145,7 +148,13 @@ const sendMessage = asyncErrorCatcher(async (req: Request, res: Response) => {
     /(?:i (?:don't|dont|do not) care about spoilers|spoilers are (?:okay|ok|fine)|אפשר ספוילרים|לא אכפת לי מספוילרים)/i.test(
       question,
     );
-  const retrieved = context.retrieve(question, currentCfi, allow, conversation.passage?.cfi);
+  const retrieved = context.retrieve(
+    question,
+    currentCfi,
+    allow,
+    conversation.passage?.cfi,
+    conversation.passage?.endCfi,
+  );
   const token = randomUUID();
   const lock = {
     ...filter,

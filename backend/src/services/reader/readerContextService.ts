@@ -10,7 +10,7 @@ import { AppError } from "../error/errorService";
 
 const MAX_CONTEXT_CHARS = 8000;
 const MAX_PASSAGE_CHARS = 3000;
-type Section = { href: string; source: string };
+type Section = { href: string; source: string; linear: boolean };
 type Position = { index: number; start: string; end: string };
 
 function parseXml(source: string) {
@@ -101,7 +101,7 @@ class ReaderContext {
       const href = manifest.get(item.getAttribute("idref"));
       if (!href) throw new AppError("Book context is unavailable.", 400);
       const name = resolve(root, href);
-      return { href, source: zip.readAsText(name) };
+      return { href, source: zip.readAsText(name), linear: item.getAttribute("linear") !== "no" };
     });
   }
   private section(index: number) {
@@ -120,8 +120,32 @@ class ReaderContext {
       offsetAt(section.document, section.offsets, b.end)
     );
   }
-  passage(cfi: string) {
+  passage(cfi: string, endCfi?: string) {
     const position = parsePosition(cfi);
+    if (endCfi !== undefined) {
+      const endPosition = parsePosition(endCfi);
+      if (endPosition.index < position.index) throw new AppError("Invalid selected passage.", 400);
+      const pieces: string[] = [];
+      for (let index = position.index; index <= endPosition.index; index++) {
+        const section = this.section(index);
+        if (!section.linear && index !== position.index && index !== endPosition.index) continue;
+        const start =
+          index === position.index
+            ? offsetAt(section.document, section.offsets, position.start)
+            : 0;
+        const end =
+          index === endPosition.index
+            ? offsetAt(section.document, section.offsets, endPosition.end)
+            : section.text.length;
+        if (end < start) throw new AppError("Invalid selected passage.", 400);
+        pieces.push(section.text.slice(start, end).trim());
+        if (pieces.join("\n").length > MAX_PASSAGE_CHARS)
+          throw new AppError("Select a passage of up to 3,000 characters.", 400);
+      }
+      const text = pieces.join("\n").trim();
+      if (!text) throw new AppError("Select a passage containing text.", 400);
+      return { cfi, endCfi, text };
+    }
     const section = this.section(position.index);
     const start = offsetAt(section.document, section.offsets, position.start);
     const end = offsetAt(section.document, section.offsets, position.end);
@@ -131,7 +155,13 @@ class ReaderContext {
     if (!text) throw new AppError("Select a passage containing text.", 400);
     return { cfi, text };
   }
-  retrieve(question: string, currentCfi: string, spoilersAllowed: boolean, passageCfi?: string) {
+  retrieve(
+    question: string,
+    currentCfi: string,
+    spoilersAllowed: boolean,
+    passageCfi?: string,
+    passageEndCfi?: string,
+  ) {
     const position = parsePosition(currentCfi);
     const current = this.section(position.index);
     const boundary = offsetAt(current.document, current.offsets, position.end);
@@ -168,13 +198,11 @@ class ReaderContext {
       const anchor = parsePosition(passageCfi);
       const selected = this.section(anchor.index);
       const start = offsetAt(selected.document, selected.offsets, anchor.start);
-      const end = offsetAt(selected.document, selected.offsets, anchor.end);
-      if (
-        spoilersAllowed ||
-        anchor.index < position.index ||
-        (anchor.index === position.index && end <= boundary)
-      ) {
-        passage = selected.text.slice(start, end).slice(0, MAX_PASSAGE_CHARS).trim();
+      const end = passageEndCfi
+        ? selected.text.length
+        : offsetAt(selected.document, selected.offsets, anchor.end);
+      if (spoilersAllowed || this.isAtOrBefore(passageEndCfi || passageCfi, currentCfi)) {
+        passage = this.passage(passageCfi, passageEndCfi).text;
         const cutoff =
           spoilersAllowed || anchor.index < position.index ? selected.text.length : boundary;
         add(

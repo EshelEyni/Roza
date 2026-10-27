@@ -26,8 +26,18 @@ export function EpubReader({
           selection={reader.textSelection}
           bookId={book.id}
           onClose={reader.closeLookup}
-          aiDisabled={reader.chat.sending || reader.chat.loading}
+          aiDisabled={
+            reader.chat.sending ||
+            reader.chat.loading ||
+            reader.selectionBusy ||
+            reader.textSelection.text.length > 3000
+          }
           onAskAi={reader.askAi}
+          onExtend={reader.extendSelection}
+          extending={reader.selectionExtending}
+          busy={reader.selectionBusy}
+          atStart={reader.atStart}
+          atEnd={reader.atEnd}
         />
       )}
       <ReaderToolbar

@@ -1129,8 +1129,13 @@
 
 .reader-dictionary-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 2px;
+}
+.reader-selection-help {
+  margin: 4px;
+  font-size: 12px;
 }
 
 /* Shared panels retain desktop sidebars and become draggable sheets on phones. */

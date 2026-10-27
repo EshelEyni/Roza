@@ -11,9 +11,10 @@ export default {
       items: ReaderConversationSummary[];
       nextCursor: string | null;
     }>("GET", path(bookId) + (before ? "?before=" + before : "")),
-  create: (bookId: string, passageCfi?: string) =>
+  create: (bookId: string, passageCfi?: string, passageEndCfi?: string) =>
     readerApiService.request<ReaderConversation>("POST", path(bookId), {
       passageCfi,
+      passageEndCfi,
     }),
   getById: (bookId: string, id: string) =>
     readerApiService.request<ReaderConversation>(

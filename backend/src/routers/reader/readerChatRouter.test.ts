@@ -36,7 +36,11 @@ jest.mock("../../services/reader/readerStorageService", () => ({
 jest.mock("../../services/reader/readerContextService", () => ({
   ReaderContext: jest.fn().mockImplementation(() => ({
     retrieve: mockRetrieve,
-    passage: (cfi: string) => ({ cfi, text: "garden" }),
+    passage: (cfi: string, endCfi?: string) => ({
+      cfi,
+      text: "garden",
+      ...(endCfi ? { endCfi } : {}),
+    }),
     isAtOrBefore: () => true,
   })),
 }));
@@ -137,6 +141,37 @@ describe("Reader conversations", () => {
     );
     expect(askReaderAi).not.toHaveBeenCalled();
   });
+  it("persists validated cross-section passage endpoints", async () => {
+    (ReaderConversationModel.create as jest.Mock).mockResolvedValue(conversation());
+    expect(
+      (
+        await request(app)
+          .post(base)
+          .set("Authorization", "test")
+          .send({
+            passageCfi: "selected-cfi",
+            passageEndCfi: "end-cfi",
+            passage: { text: "injected" },
+          })
+      ).status,
+    ).toBe(201);
+    expect(ReaderConversationModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        passage: { cfi: "selected-cfi", endCfi: "end-cfi", text: "garden" },
+      }),
+    );
+  });
+  it("rejects an end CFI without a starting passage or with an invalid type", async () => {
+    for (const payload of [
+      { passageEndCfi: "end-cfi" },
+      { passageCfi: "selected-cfi", passageEndCfi: {} },
+    ]) {
+      expect(
+        (await request(app).post(base).set("Authorization", "test").send(payload)).status,
+      ).toBe(400);
+    }
+    expect(ReaderConversationModel.create).not.toHaveBeenCalled();
+  });
   it("returns completed retries without another paid call", async () => {
     const saved = {
       ...conversation(),
@@ -189,6 +224,7 @@ describe("Reader conversations", () => {
       body.currentCfi,
       false,
       "selected-cfi",
+      undefined,
     );
     const [instructions, input] = (askReaderAi as jest.Mock).mock.calls[0];
     expect(instructions).toContain("language of the current question");

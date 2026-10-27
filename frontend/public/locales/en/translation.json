@@ -163,6 +163,13 @@
   "showLess": "Show Less",
   "words": "Words",
   "reader": {
+    "selectionCopy": "Copy selected text",
+    "selectionCopied": "Copied",
+    "selectionCopyError": "Could not copy. Try the browser Copy command.",
+    "selectionPrevious": "Extend selection to the previous page",
+    "selectionNext": "Extend selection to the next page",
+    "selectionExtendHelp": "Use the arrows to extend across pages. Select text on this page to adjust the endpoint. Close to start a new selection.",
+    "selectionError": "Could not extend the selection. Please try again.",
     "nav": "Reader",
     "eyebrow": "A little space to get lost in a book",
     "library": "Your reading room",

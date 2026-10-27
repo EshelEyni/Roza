@@ -100,7 +100,11 @@ export function useReaderChat(bookId: string, getCurrentCfi: () => string) {
     let target = conversation;
     try {
       if (!target) {
-        target = await readerChatApiService.create(bookId, passage?.cfi);
+        target = await readerChatApiService.create(
+          bookId,
+          passage?.cfi,
+          passage?.endCfi,
+        );
         if (!alive.current) return false;
         setConversation(target);
         setPassage(target.passage);

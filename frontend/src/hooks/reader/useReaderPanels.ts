@@ -42,9 +42,13 @@ export function useReaderPanelActions({
     }, next === "chat");
   }
   function askAi() {
-    if (!textSelection) return;
+    if (!textSelection || textSelection.text.length > 3000) return;
     updatePanel(() => {
-      chat.start({ cfi: textSelection.cfi, text: textSelection.text });
+      chat.start({
+        cfi: textSelection.cfi,
+        text: textSelection.text,
+        endCfi: textSelection.endCfi,
+      });
       setPanel("chat");
       closeLookup();
     }, true);
