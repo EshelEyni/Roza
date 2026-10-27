@@ -96,7 +96,7 @@ export class ReaderChatWorkspace {
         }
         const openKeys = [...new Set<string>(saved.openKeys.filter((key: unknown) => typeof key === "string" && Object.prototype.hasOwnProperty.call(tabs, key)))];
         this.state = { ...this.state, tabs, openKeys, activeKey: openKeys.includes(saved.activeKey) ? saved.activeKey : openKeys[0] || null,
-          panelWidth: typeof saved.panelWidth === "number" ? Math.max(440, Math.min(760, saved.panelWidth)) : 480 };
+          panelWidth: Number.isFinite(saved.panelWidth) ? Math.max(440, saved.panelWidth) : 480 };
       } else {
         const legacy = storage?.getItem(this.legacyKey);
         if (legacy) {
@@ -136,7 +136,7 @@ export class ReaderChatWorkspace {
   setDraft = (draft: string) => { if (this.active) this.patch(this.active.key, { draft }); };
   setSpoilersAllowed = (spoilersAllowed: boolean) => { if (this.active) this.patch(this.active.key, { spoilersAllowed }); };
   setHistory = (history: boolean) => { this.update({ history }, false); };
-  setPanelWidth = (panelWidth: number) => { this.update({ panelWidth: Math.max(440, Math.min(760, panelWidth)) }); };
+  setPanelWidth = (panelWidth: number) => { this.update({ panelWidth: Number.isFinite(panelWidth) ? Math.max(440, panelWidth) : 480 }); };
   rememberScroll = (key: string, scrollTop: number, viewedAnswerIds?: string[]) => {
     if (this.state.tabs[key]) {
       // Scroll events need no React render or storage write on every pixel.

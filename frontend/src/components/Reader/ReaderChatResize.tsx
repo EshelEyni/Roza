@@ -1,4 +1,4 @@
-import { useCallback, useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { useReaderChat } from "../../hooks/useReaderChat";
 
@@ -6,13 +6,27 @@ export function ReaderChatResize({ chat }: { chat: ReturnType<typeof useReaderCh
   const { t } = useTranslation();
   const handle = useRef<HTMLDivElement>(null);
   const drag = useRef<{ right: number; width: number }>();
+  const [bounds, setBounds] = useState({ maximum: 440, width: 440 });
   const panel = useCallback(() => handle.current?.closest<HTMLElement>(".reader-chat-panel"), []);
-  const clamp = useCallback((width: number) => Math.max(440, Math.min(760, (panel()?.parentElement?.clientWidth || window.innerWidth) - 480, width)), [panel]);
-  const preview = useCallback((width: number) => { panel()?.style.setProperty("--reader-chat-panel-width", clamp(width) + "px"); }, [panel, clamp]);
-  useLayoutEffect(() => { preview(chat.workspace.panelWidth); }, [chat.workspace.panelWidth, preview]);
+  const maximum = useCallback(() => Math.max(440, panel()?.parentElement?.clientWidth || window.innerWidth), [panel]);
+  const clamp = useCallback((width: number) => Math.max(440, Math.min(maximum(), width)), [maximum]);
+  const preview = useCallback((width: number) => {
+    const next = clamp(width), limit = maximum();
+    panel()?.style.setProperty("--reader-chat-panel-width", next + "px");
+    setBounds(previous => previous.maximum === limit && previous.width === next ? previous : { maximum: limit, width: next });
+  }, [panel, clamp, maximum]);
+  useLayoutEffect(() => {
+    const refresh = () => preview(drag.current?.width ?? chat.workspace.panelWidth);
+    refresh();
+    const observer = typeof ResizeObserver === "undefined" ? null : new ResizeObserver(refresh);
+    const workspace = panel()?.parentElement;
+    if (workspace) observer?.observe(workspace);
+    window.addEventListener("resize", refresh);
+    return () => { observer?.disconnect(); window.removeEventListener("resize", refresh); };
+  }, [chat.workspace.panelWidth, preview, panel]);
   return <div ref={handle} className="reader-chat-resize" role="separator" tabIndex={0}
     aria-label={t("reader.chat.tabs.resize")} aria-orientation="vertical"
-    aria-valuemin={440} aria-valuemax={760} aria-valuenow={Math.round(chat.workspace.panelWidth)}
+    aria-valuemin={440} aria-valuemax={Math.round(bounds.maximum)} aria-valuenow={Math.round(bounds.width)}
     onPointerDown={event => {
       const rect = panel()?.getBoundingClientRect();
       if (!rect) return;
@@ -28,7 +42,7 @@ export function ReaderChatResize({ chat }: { chat: ReturnType<typeof useReaderCh
     onKeyDown={event => {
       if (event.key === "ArrowLeft" || event.key === "ArrowRight" || event.key === "Home" || event.key === "End") {
         event.preventDefault();
-        chat.setPanelWidth(clamp(event.key === "Home" ? 440 : event.key === "End" ? 760 :
+        chat.setPanelWidth(clamp(event.key === "Home" ? 440 : event.key === "End" ? maximum() :
           (panel()?.getBoundingClientRect().width || chat.workspace.panelWidth) + (event.key === "ArrowLeft" ? 20 : -20)));
       }
     }}><span /></div>;

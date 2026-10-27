@@ -1718,7 +1718,18 @@
 .reader-chat-history-drawer > .reader-button { flex-shrink: 0; }
 .reader-chat-history-drawer :focus-visible { outline: 2px solid #b18b55; outline-offset: 3px; }
 @media (min-width: 1100px) {
-  .reader-panel.reader-chat-panel { width: min(var(--reader-chat-panel-width, 480px), calc(100% - 480px)); min-width: 440px; }
+  // Reserve the starting dock only. Extra chat width covers the book instead of repaginating it.
+  .reader-workspace:has(> .reader-chat-panel) { padding-right: 480px; }
+  .reader-panel.reader-chat-panel {
+    position: absolute;
+    inset-block: 0;
+    right: 0;
+    width: min(var(--reader-chat-panel-width, 480px), 100%);
+    min-width: 440px;
+    max-width: 100%;
+  }
+  // The positioned chat content must not intercept clicks on the sheet's visible close control.
+  .reader-chat-panel > .reader-panel-close { z-index: 7; }
   .reader-chat-heading { padding: 22px 20px 14px; }
   .reader-chat-heading h2 { font-size: 21px; margin-bottom: 12px; }
   .reader-chat-heading .reader-chat-actions > .reader-button:first-child { display: none; }

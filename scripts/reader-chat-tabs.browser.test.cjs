@@ -39,6 +39,11 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
   const label={send:lang==='he'?'שליחה':'Send',all:lang==='he'?'כל השיחות':'All conversations',search:lang==='he'?'חיפוש שיחות…':'Search conversations…',closeList:lang==='he'?'סגירת רשימת השיחות':'Close conversation list',undo:lang==='he'?'פתיחה מחדש':'Reopen tab'};
   try{
    await page.goto(server.resolvedUrls.local[0]+'tabs-test?lang='+lang);await page.waitForFunction(()=>!!window.tabTest);
+   const headerClose=page.locator('.reader-chat-panel > .reader-panel-close');
+   assert.equal(await headerClose.evaluate(button=>{const r=button.getBoundingClientRect();return button.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}),true,'The close button beside the chat heading must receive pointer events');
+   await headerClose.click();
+   assert.equal(await page.locator('.reader-chat-panel').count(),0);
+   await page.getByRole('button',{name:'Toggle chat',exact:true}).click();
    const snapshot=()=>page.evaluate(()=>window.tabTest.snapshot());
    const textarea=page.locator('#reader-chat-question');
    await textarea.fill('Question A');await page.getByRole('button',{name:label.send,exact:true}).click();await until(()=>requests.length===1);
@@ -59,6 +64,25 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
    const closeName=(lang==='he'?'סגירת טאב: ':'Close tab: ')+'Earlier conversation';await page.getByRole('button',{name:closeName,exact:true}).click();assert.equal(await page.getByRole('tab').count(),2);
    await page.getByRole('button',{name:label.undo,exact:true}).click();assert.equal((await snapshot()).activeKey,earlier);
    const separator=page.getByRole('separator');await separator.focus();await separator.press('ArrowLeft');assert.equal((await snapshot()).panelWidth,500);
+   const bookRect=await page.locator('.reader-paper').boundingBox();
+   const unchangedBook=async()=>assert.deepEqual(await page.locator('.reader-paper').boundingBox(),bookRect,'Resizing chat must not move or narrow the reader');
+   await separator.press('End');
+   const workspaceRect=await page.locator('.reader-workspace').boundingBox();
+   assert.equal((await page.locator('.reader-chat-panel').boundingBox()).width,workspaceRect.width);
+   assert.ok((await snapshot()).panelWidth>760,'Chat must expand beyond the old cap');
+   assert.equal(await separator.getAttribute('aria-valuemax'),String(workspaceRect.width));
+   await unchangedBook();
+   await separator.press('Home');assert.equal((await page.locator('.reader-chat-panel').boundingBox()).width,440);await unchangedBook();
+   const grip=await separator.boundingBox();
+   await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);await page.mouse.down();
+   await page.mouse.move(workspaceRect.x+workspaceRect.width-1000,grip.y+grip.height/2,{steps:12});await page.mouse.up();
+   assert.equal((await page.locator('.reader-chat-panel').boundingBox()).width,1000);await unchangedBook();
+   // Closing the expanded panel uses the real header X, not a fixture shortcut.
+   await headerClose.click();assert.equal(await page.locator('.reader-chat-panel').count(),0);
+   await page.getByRole('button',{name:'Toggle chat',exact:true}).click();
+   assert.equal((await page.locator('.reader-chat-panel').boundingBox()).width,1000);await unchangedBook();
+   await separator.press('Home');for(let i=0;i<3;i++)await separator.press('ArrowLeft');
+
    await page.getByRole('tab',{name:/Conversation 2/}).click();await page.reload();await page.waitForFunction(()=>window.tabTest&&window.tabTest.snapshot().tabs[window.tabTest.snapshot().activeKey]?.conversation);
    assert.equal(await page.getByRole('tab').count(),3);assert.equal(await textarea.inputValue(),'Draft B');
    await page.getByRole('tab',{name:/Conversation 1/}).focus();await page.keyboard.press(lang==='he'?'ArrowLeft':'ArrowRight');assert.equal((await snapshot()).activeKey,b);

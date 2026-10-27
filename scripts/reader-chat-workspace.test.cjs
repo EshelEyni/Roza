@@ -135,3 +135,12 @@ test('a slow history response cannot hide a conversation completed during the re
  const key=store.active.key;store.closeTab(key);history.resolve({items:[],nextCursor:null});await refreshing;
  assert.equal(store.getSnapshot().items[0].id,'fresh');
 });
+
+
+test('chat width has no fixed desktop maximum and survives reload independently of viewport',()=>{
+ const storage=memory();const {store}=setup({},storage);
+ store.setPanelWidth(1250);assert.equal(store.getSnapshot().panelWidth,1250);
+ assert.equal(setup({},storage).store.getSnapshot().panelWidth,1250);
+ store.setPanelWidth(10);assert.equal(store.getSnapshot().panelWidth,440);
+ store.setPanelWidth(Infinity);assert.equal(store.getSnapshot().panelWidth,480);
+});
