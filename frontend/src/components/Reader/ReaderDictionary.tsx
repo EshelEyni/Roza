@@ -37,7 +37,7 @@ export function ReaderDictionary({
   selection: ReaderTextSelection;
   bookId: string;
   onClose: () => void;
-  onAskAi: () => void;
+  onAskAi: (autoSubmit?: boolean) => void;
   aiDisabled?: boolean;
   onExtend: (direction: "next" | "prev") => Promise<void>;
   extending: boolean;
@@ -169,6 +169,9 @@ export function ReaderDictionary({
     : mobile
       ? 268
       : 228;
+  // CSS viewport units keep these bounds current when the window is resized.
+  const popupWidth = opened ? 360 : actionWidth;
+  const popupTop = `clamp(12px, ${selection.y}px, max(12px, calc(100dvh - ${opened ? 442 : 152}px)))`;
   const content = (
     <div
       className={"reader-dictionary " + (opened ? "is-open" : "")}
@@ -191,19 +194,11 @@ export function ReaderDictionary({
       aria-label={t(
         opened ? "reader.dictionaryTitle" : "reader.chat.selectionActions",
       )}
-      style={{
-        width: opened ? undefined : actionWidth,
-        left: Math.max(
-          12,
-          Math.min(
-            selection.x,
-            window.innerWidth - (opened ? 380 : actionWidth + 12),
-          ),
-        ),
-        top: Math.max(
-          12,
-          Math.min(selection.y, window.innerHeight - (opened ? 430 : 140)),
-        ),
+      style={mobile && opened ? undefined : {
+        width: popupWidth,
+        left: `clamp(12px, ${selection.x}px, max(12px, calc(100dvw - ${popupWidth + 12}px)))`,
+        top: popupTop,
+        maxHeight: `min(520px, calc(100dvh - ${popupTop} - 12px))`,
       }}
     >
       {opened && !mobile && (
@@ -235,7 +230,7 @@ export function ReaderDictionary({
               aria-label={t("reader.chat.ask")}
               title={t("reader.chat.ask")}
               disabled={aiDisabled}
-              onClick={onAskAi}
+              onClick={() => onAskAi()}
             >
               <FiMessageSquare aria-hidden="true" />
             </button>
@@ -309,17 +304,28 @@ export function ReaderDictionary({
           {speechError && (
             <p role="status">{t("reader.pronunciationUnavailable")}</p>
           )}
-          {result && entry?.kind !== "translation" && (
+          <div className="reader-dictionary-lookup-actions">
+            {result && entry?.kind !== "translation" && (
+              <button
+                type="button"
+                className="reader-button reader-dictionary-lookup-action"
+                disabled={loading}
+                onClick={() => void lookup("google")}
+              >
+                <FiGlobe aria-hidden="true" />
+                {t("reader.translateWithGoogle")}
+              </button>
+            )}
             <button
               type="button"
-              className="reader-button reader-google-lookup"
-              disabled={loading}
-              onClick={() => void lookup("google")}
+              className="reader-button reader-dictionary-lookup-action"
+              disabled={aiDisabled}
+              onClick={() => onAskAi(true)}
             >
-              <FiGlobe aria-hidden="true" />
-              {t("reader.translateWithGoogle")}
+              <FiMessageSquare aria-hidden="true" />
+              {t("reader.chat.ask")}
             </button>
-          )}
+          </div>
           {loading && <p role="status">{t("reader.lookupLoading")}</p>}
           {error && (
             <div role="alert">

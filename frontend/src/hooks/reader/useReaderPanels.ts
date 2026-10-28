@@ -42,17 +42,19 @@ export function useReaderPanelActions({
       setPanel(current => (current === next ? null : next));
     }, next === "chat");
   }
-  function askAi() {
+  function askAi(autoSubmit = false) {
     if (!textSelection || textSelection.text.length > readerAiLimits.passage) return;
     updatePanel(() => {
-      chat.start({
+      const key = chat.start({
         cfi: textSelection.cfi,
         text: textSelection.text,
         endCfi: textSelection.endCfi,
       });
+      // An empty question submits the attached selection using saved AI instructions.
+      if (autoSubmit) chat.forTab(key).send("");
       setPanel("chat");
       closeLookup();
-    }, true);
+    }, !autoSubmit);
   }
   return { togglePanel, askAi };
 }

@@ -225,10 +225,11 @@ export class ReaderChatWorkspace {
   start = (selected?: ReaderPassage, groupId = this.state.focusedGroupId) => {
     const group = this.state.groups.find(g => g.id === groupId) || this.state.groups[0];
     const blank = group.keys.map(key => this.state.tabs[key]).find(tab => tab && !tab.serverId && !tab.draft && !tab.pending && !tab.passage);
-    if (blank) { if (selected) this.patch(blank.key, { passage: selected }); this.selectTab(blank.key); return; }
+    if (blank) { if (selected) this.patch(blank.key, { passage: selected }); this.selectTab(blank.key); return blank.key; }
     const tab = emptyTab(); tab.passage = selected;
     this.layout(this.state.groups.map(g => g === group ? { ...g, keys: [...g.keys, tab.key], activeKey: tab.key } : g), group.id,
       { tabs: { ...this.state.tabs, [tab.key]: tab }, history: false });
+    return tab.key;
   };
   private withoutTab(key: string) {
     let groups = this.state.groups.map(g => {
