@@ -27,6 +27,7 @@ export function EpubReader({
           selection={reader.textSelection}
           bookId={book.id}
           onClose={reader.closeLookup}
+          onTranslationDismiss={reader.markTranslation}
           aiDisabled={
             reader.selectionBusy ||
             reader.textSelection.text.length > readerAiLimits.passage
@@ -57,6 +58,7 @@ export function EpubReader({
           toc={reader.toc}
           href={reader.href}
           onNavigate={reader.onNavigate}
+          onPassageNavigate={reader.onPassageNavigate}
           loading={reader.loading}
           searchBook={reader.searchBook}
           locationsReady={reader.locationsReady}

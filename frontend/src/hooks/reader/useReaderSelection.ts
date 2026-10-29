@@ -9,7 +9,9 @@ import {
   selectionEndpoints,
 } from "../../services/readerSelectionRange";
 
-export function useReaderSelection() {
+export function useReaderSelection(onBeforeSelection?: () => void) {
+  const beforeSelection = useRef(onBeforeSelection);
+  beforeSelection.current = onBeforeSelection;
   const { t } = useTranslation();
   const [textSelection, setTextSelection] =
     useState<ReaderTextSelection | null>(null);
@@ -206,6 +208,7 @@ export function useReaderSelection() {
       if (turning.current || !contents.document) return;
       const range = contents.range(cfi);
       const text = range.toString().trim();
+      if (text) beforeSelection.current?.();
       if (session.current) {
         const endpoints = selectionEndpoints(cfi);
         void publishRange(

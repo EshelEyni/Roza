@@ -15,6 +15,7 @@ type Props = Pick<
   | "toc"
   | "href"
   | "onNavigate"
+  | "onPassageNavigate"
   | "loading"
   | "searchBook"
   | "locationsReady"
@@ -30,6 +31,7 @@ export function ReaderPanels({
   toc,
   href,
   onNavigate,
+  onPassageNavigate,
   loading,
   searchBook,
   locationsReady,
@@ -86,7 +88,7 @@ export function ReaderPanels({
           onNavigate={cfi => void onSearchNavigate(cfi)}
         />
       ) : panel === "chat" ? (
-        desktop ? <ReaderWorkspace chat={chat} onClose={closePanel} /> : <ReaderChat chat={chat} onClose={closePanel} />
+        desktop ? <ReaderWorkspace chat={chat} onClose={closePanel} onPassageNavigate={onPassageNavigate} /> : <ReaderChat chat={chat} onClose={closePanel} onPassageNavigate={onPassageNavigate} />
       ) : (
         <ReaderSettings
           preferences={state.preferences}

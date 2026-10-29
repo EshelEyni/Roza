@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ReaderBook } from "../../../../shared/types/reader";
 import { useReaderState } from "../useReaderState";
 import { useReaderMobile } from "../useReaderMobile";
 import { useReaderChat } from "../useReaderChat";
 import { useEpubRuntime } from "./useEpubRuntime";
+import { useReaderPassageMarker } from "./useReaderPassageMarker";
+import type { ReaderPassage } from "../../../../shared/types/readerChat";
 import { useReaderSelection } from "./useReaderSelection";
 import { useReaderPanels, useReaderPanelActions } from "./useReaderPanels";
 import { useEpubPageTurns } from "./useEpubPageTurns";
@@ -20,7 +22,8 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     book,
     userId,
   );
-  const selection = useReaderSelection();
+  const clearLocator = useRef<() => void>();
+  const selection = useReaderSelection(() => clearLocator.current?.());
   const { panel, setPanel, closePanel } = useReaderPanels();
   const runtime = useEpubRuntime(
     state,
@@ -29,6 +32,14 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     panel,
     selection.textSelection,
   );
+  const { markPassage, clearMarker } = useReaderPassageMarker(runtime);
+  clearLocator.current = clearMarker;
+  const activeSelection = useRef(selection.textSelection);
+  activeSelection.current = selection.textSelection;
+  const markTranslation = useCallback((passage: ReaderPassage) => {
+    if (activeSelection.current && activeSelection.current.cfi !== passage.cfi) return;
+    void markPassage(passage, "blue").catch(() => undefined);
+  }, [markPassage]);
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -60,6 +71,8 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   const navigation = useEpubNavigation(runtime, {
     closeLookup: selection.closeLookup,
     closePanel,
+    markPassage,
+    clearMarker,
     locationsReady: engine.locationsReady,
     setError,
     setNotice,
@@ -99,6 +112,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     notice: selection.limitNotice || notice,
     textSelection: selection.textSelection,
     closeLookup: selection.closeLookup,
+    markTranslation,
     extendSelection: (direction: "next" | "prev") =>
       selection.extend(runtime, direction),
     selectionExtending: selection.extending,

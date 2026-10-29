@@ -14,7 +14,7 @@ function load(file, dependencies = {}) {
   return exports;
 }
 
-function setup() {
+function setup(onBeforeSelection) {
   const states = [];
   const { useReaderSelection } = load("hooks/reader/useReaderSelection.ts", {
     react: {
@@ -28,8 +28,9 @@ function setup() {
       },
     },
     "react-i18next": { useTranslation: () => ({ t: key => key }) },
+    "../../services/readerAiLimits": { readerAiLimits: { passage: 12000 } },
   });
-  const selection = useReaderSelection();
+  const selection = useReaderSelection(onBeforeSelection);
   let text = "word";
   const doc = new EventTarget();
   doc.getSelection = () => ({
@@ -121,4 +122,10 @@ test("a gesture started on selection cannot turn a page when selection clears mi
   assert.deepEqual(s.turns, []);
   s.swipe();
   assert.deepEqual(s.turns, ["next"]);
+});
+
+test("new native selection clears locator marks before publishing the range", () => {
+  let cleared = 0;
+  setup(() => cleared++);
+  assert.equal(cleared, 1);
 });

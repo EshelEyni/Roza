@@ -296,6 +296,7 @@
       "generalHint": "Ask about a character, an idea, or what is happening in the book. No spoilers beyond your current position unless you allow them.",
       "summaryUnavailable": "The conversation summary could not be updated. This answer uses recent messages and any safe existing summary; your original messages remain saved.",
       "contextLimited": "Some earlier turns are outside this answer’s context budget or spoiler boundary. They remain saved; mention a specific topic to retrieve relevant earlier turns.",
+      "showInBook": "Show and highlight this passage in the book",
       "quoteSource": "From your book",
       "quoteDraft": "Selected text to send",
       "quoteMore": "Read full passage",

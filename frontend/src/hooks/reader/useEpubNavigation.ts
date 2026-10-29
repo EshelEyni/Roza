@@ -1,5 +1,6 @@
 import { EpubCFI } from "epubjs";
 import { useTranslation } from "react-i18next";
+import type { ReaderPassage } from "../../../../shared/types/readerChat";
 import type { EpubRuntime } from "./useEpubRuntime";
 
 export function useEpubNavigation(
@@ -7,12 +8,16 @@ export function useEpubNavigation(
   {
     closeLookup,
     closePanel,
+    markPassage,
+    clearMarker,
     locationsReady,
     setError,
     setNotice,
   }: {
     closeLookup: () => void;
     closePanel: () => void;
+    clearMarker: () => void;
+    markPassage: (passage: ReaderPassage, color: "blue" | "yellow") => Promise<void>;
     locationsReady: boolean;
     setError: (error: string) => void;
     setNotice: (notice: string) => void;
@@ -32,6 +37,7 @@ export function useEpubNavigation(
     epubRef,
   } = runtime;
   async function navigateTo(target: string) {
+    clearMarker();
     closeLookup();
     if (target.startsWith("epubcfi(")) {
       const anchor = new EpubCFI(target);
@@ -128,6 +134,21 @@ export function useEpubNavigation(
     }
   }
 
+  async function onPassageNavigate(passage: ReaderPassage) {
+    const rendition = renditionRef.current;
+    if (!rendition) return;
+    if (mobileRef.current) closePanel();
+    try {
+      const task = navigateTo(passage.cfi);
+      const version = navigationVersion.current;
+      await task;
+      if (renditionRef.current !== rendition || version !== navigationVersion.current) return;
+      await markPassage(passage, "yellow");
+    } catch {
+      if (renditionRef.current === rendition) setNotice(t("reader.navigationError"));
+    }
+  }
+
   async function onProgressNavigate(progress: number) {
     const epub = epubRef.current;
     const rendition = renditionRef.current;
@@ -144,5 +165,5 @@ export function useEpubNavigation(
     }
   }
 
-  return { onNavigate, onSearchNavigate, onProgressNavigate };
+  return { onNavigate, onSearchNavigate, onProgressNavigate, onPassageNavigate };
 }

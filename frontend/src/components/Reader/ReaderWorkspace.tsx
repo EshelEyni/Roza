@@ -7,11 +7,13 @@ import { ReaderChat } from "./ReaderChat";
 import { ReaderChatHistory } from "./ReaderChatHistory";
 import { ReaderAiSettings } from "./ReaderAiSettings";
 
+import type { ReaderPassage } from "../../../../shared/types/readerChat";
+
 type Chat = ReturnType<typeof useReaderChat>;
 type Props = {
-  chat: Chat; onClose: () => void;
+  chat: Chat; onClose: () => void; onPassageNavigate?: (passage: ReaderPassage) => void;
 };
-export function ReaderWorkspace({ chat, onClose }: Props) {
+export function ReaderWorkspace({ chat, onClose, onPassageNavigate }: Props) {
   const { t, i18n } = useTranslation();
   const { groups, focusedGroupId, groupRatio, panelWidth } = chat.workspace;
   const split = groups.length === 2;
@@ -131,7 +133,7 @@ export function ReaderWorkspace({ chat, onClose }: Props) {
           hidden={!visible} className="reader-group-view"
           data-reader-group-id={group.id} data-drop-target={dropGroup === group.id} style={{ gridColumn: index * 2 + 1, gridRow: 2 }}
           onPointerDown={() => chat.focusGroup(group.id)} onFocusCapture={() => chat.focusGroup(group.id)}>
-          {<ReaderChat chat={chat.forTab(key)} onClose={onClose} embedded visible={visible && !aiSettings}
+          {<ReaderChat onPassageNavigate={onPassageNavigate} chat={chat.forTab(key)} onClose={onClose} embedded visible={visible && !aiSettings}
             focused={group.id === focusedGroupId} />}
         </article>;
       })}

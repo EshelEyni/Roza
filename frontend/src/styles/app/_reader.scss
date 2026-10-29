@@ -1893,3 +1893,8 @@
 .reader-archive-dialog h2 { margin: 0 0 10px; font-family: Georgia, serif; font-size: 25px; }
 .reader-archive-dialog p { margin: 0; line-height: 1.7; overflow-wrap: anywhere; }
 .reader-archive-dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+
+.reader-chat-quote-reveal { width: 100%; text-align: start; cursor: pointer; }
+.reader-chat-quote-reveal:hover { text-decoration: underline; }
+.reader-chat-quote-reveal:focus-visible { outline: 2px solid #b18b55; outline-offset: 3px; }
+.reader-chat-quote-text { cursor: pointer; }

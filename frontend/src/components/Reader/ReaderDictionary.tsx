@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FiBookOpen,
@@ -25,7 +25,8 @@ import type { ReaderTextSelection } from "../../types/reader";
 export function ReaderDictionary({
   selection,
   bookId,
-  onClose,
+  onClose: closePopup,
+  onTranslationDismiss,
   onAskAi,
   aiDisabled = false,
   onExtend,
@@ -37,6 +38,7 @@ export function ReaderDictionary({
   selection: ReaderTextSelection;
   bookId: string;
   onClose: () => void;
+  onTranslationDismiss?: (selection: ReaderTextSelection) => void;
   onAskAi: (autoSubmit?: boolean) => void;
   aiDisabled?: boolean;
   onExtend: (direction: "next" | "prev") => Promise<void>;
@@ -60,6 +62,23 @@ export function ReaderDictionary({
   const button = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
+  const lastSelection = useRef(selection);
+  lastSelection.current = selection;
+  const translated = useRef(false);
+  const dismissal = useRef(onTranslationDismiss);
+  dismissal.current = onTranslationDismiss;
+  useEffect(() => () => {
+    if (translated.current) {
+      translated.current = false;
+      dismissal.current?.(lastSelection.current);
+    }
+  }, []);
+  const onClose = useCallback(() => {
+    const mark = translated.current;
+    translated.current = false;
+    closePopup();
+    if (mark) onTranslationDismiss?.(lastSelection.current);
+  }, [closePopup, onTranslationDismiss]);
   useEffect(() => setCopyStatus(""), [selection.text]);
 
   useEffect(() => {
@@ -103,6 +122,7 @@ export function ReaderDictionary({
     if (loading || !selection.word) return;
     if (!retry) requestId.current = createRequestId();
     setLookupProvider(provider);
+    translated.current = true;
     setOpened(true);
     setLoading(true);
     setError(false);

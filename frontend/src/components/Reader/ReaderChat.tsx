@@ -16,12 +16,16 @@ import {
 import type { ReaderChatView } from "../../hooks/useReaderChat";
 import { ReaderAiSettings } from "./ReaderAiSettings";
 
+import type { ReaderPassage } from "../../../../shared/types/readerChat";
+
 type ChatState = ReaderChatView;
 export function ReaderChat({
   chat,
+  onPassageNavigate,
   onClose, embedded = false, visible = true, focused = true,
 }: {
   chat: ChatState;
+  onPassageNavigate?: (passage: ReaderPassage) => void;
   onClose: () => void; embedded?: boolean; visible?: boolean; focused?: boolean;
 }) {
   const { t } = useTranslation();
@@ -94,7 +98,7 @@ export function ReaderChat({
   function userContent(message: ReaderChatMessageView) {
     return <>
       {message.passage && (
-        <ReaderChatQuote key={readerPassageKey(message.passage)} passage={message.passage} sourceId={message.id} />
+        <ReaderChatQuote key={readerPassageKey(message.passage)} passage={message.passage} sourceId={message.id} onReveal={onPassageNavigate} />
       )}
       {message.referenceId && (
         <button type="button" className="reader-chat-source-reference"
@@ -277,7 +281,7 @@ export function ReaderChat({
               )}
             {view.draftPassage && (
               <div className="reader-chat-draft-source" data-reader-chat-draft>
-                <ReaderChatQuote key={readerPassageKey(view.draftPassage)} passage={view.draftPassage} draft />
+                <ReaderChatQuote key={readerPassageKey(view.draftPassage)} passage={view.draftPassage} onReveal={onPassageNavigate} draft />
               </div>
             )}
           </div>
