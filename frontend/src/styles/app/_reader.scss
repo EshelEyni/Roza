@@ -1714,7 +1714,7 @@
 /* Desktop conversation workspace. Mobile retains its single visible conversation. */
 .reader-chat { position: relative; }
 .reader-chat-tabpanel { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-.reader-chat-tabbar, .reader-chat-all-label, .reader-chat-tab-notice, .reader-panel-resize { display: none; }
+.reader-chat-tabbar, .reader-chat-all-label, .reader-panel-resize { display: none; }
 .reader-chat-workspace-empty { margin: auto; padding: 30px 24px; text-align: center; line-height: 1.8; }
 .reader-chat-workspace-empty p { margin: 12px 0 20px; opacity: .8; }
 .reader-chat-history-overlay { position: absolute; inset: 0; z-index: 8; background: #0005; display: flex; justify-content: flex-start; }
@@ -1766,8 +1766,6 @@
   .reader-chat-tab-unread { font-size: 11px; }
   .reader-chat-tabs :focus-visible, .reader-chat-new-tab:focus-visible { outline: 2px solid #b18b55; outline-offset: -3px; }
   .reader-chat-tab-busy { animation: reader-chat-tab-spin 1.5s linear infinite; }
-  .reader-chat-tab-notice { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 18px; background: #a389611c; font-size: 12px; flex-shrink: 0; }
-  .reader-chat-tab-notice button { text-decoration: underline; color: inherit; min-height: 32px; }
   .reader-panel-resize { position: absolute; inset-block: 0; left: 0; width: 8px; z-index: 6; display: flex; align-items: center; justify-content: center; cursor: col-resize; touch-action: none; }
   .reader-panel-resize span { width: 3px; height: 38px; border-radius: 3px; background: #8e7e6555; }
   .reader-panel-resize:hover span, .reader-chat-resize:focus-visible span { background: #b18b55; }

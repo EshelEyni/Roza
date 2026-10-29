@@ -68,8 +68,6 @@ export function ReaderWorkspace({ chat, onClose, onPassageNavigate }: Props) {
           onClick={() => setAiSettings(value => !value)}><FiSettings /></button>
       </div>
     </header>
-    {chat.workspace.lastClosed && <div className="reader-chat-tab-notice" role="status"><span>{t("reader.chat.tabs.closed")}</span>
-      <button type="button" onClick={chat.reopenTab}>{t("reader.chat.tabs.undo")}</button></div>}
     {chat.workspace.storageWarning && <p className="reader-chat-status" role="status">{t("reader.chat.tabs.storageWarning")}</p>}
     <ReaderPanelResize width={panelWidth} onWidthChange={setPanelWidth} minimumWidth={split ? 720 : 440} />
     <div className="reader-group-grid" ref={grid} hidden={aiSettings}

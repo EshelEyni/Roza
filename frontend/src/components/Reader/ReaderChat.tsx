@@ -165,10 +165,6 @@ export function ReaderChat({
       <ReaderChatTabs chat={chat} />
       </>}
       {embedded && <div className="reader-chat-conversation-heading"><h3 title={chat.activeTab?.title}>{chat.activeTab?.title || t("reader.chat.new")}</h3></div>}
-      {!embedded && chat.workspace.lastClosed && <div className="reader-chat-tab-notice" role="status">
-        <span>{t("reader.chat.tabs.closed")}</span>
-        <button type="button" onClick={chat.reopenTab}>{t("reader.chat.tabs.undo")}</button>
-      </div>}
       {!embedded && chat.workspace.storageWarning && <p className="reader-chat-status" role="status">{t("reader.chat.tabs.storageWarning")}</p>}
       <div id={embedded ? "reader-chat-content-" + activeTabKey : "reader-chat-tabpanel"} className="reader-chat-tabpanel" role={embedded ? undefined : "tabpanel"}
         aria-labelledby={chat.activeTabKey}>
