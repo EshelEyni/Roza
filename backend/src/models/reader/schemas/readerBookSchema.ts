@@ -4,6 +4,7 @@ import { IReaderBook } from "../../../types/iTypes";
 const readerBookSchema = new Schema<IReaderBook>(
   {
     userId: { type: Schema.Types.ObjectId, required: true, index: true },
+    archived: { type: Boolean, default: false },
     title: { type: String, required: true },
     author: { type: String, default: "" },
     cover: { type: String, default: "" },

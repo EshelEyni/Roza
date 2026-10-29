@@ -103,7 +103,9 @@ export default {
   lookupWord: (id: string, selection: ReaderDictionaryLookup) =>
     request<ReaderLookupResult>("POST", "/" + id + "/dictionary", selection),
   getAccess: () => request<{ enabled: boolean }>("GET", "/access"),
-  query: () => request<ReaderBook[]>("GET"),
+  query: (archived = false) => request<ReaderBook[]>("GET", archived ? "?archived=true" : ""),
+  setArchived: (id: string, archived: boolean) =>
+    request<ReaderBook>("PATCH", "/" + id + "/archive", { archived }),
   getById: (id: string) => request<ReaderBook>("GET", "/" + id),
   updateState: (id: string, state: ReaderState) =>
     request<ReaderState>("PATCH", "/" + id + "/state", state),

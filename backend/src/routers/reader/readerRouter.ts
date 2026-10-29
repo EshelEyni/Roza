@@ -10,6 +10,7 @@ import {
   getReaderBook,
   getReaderFile,
   updateReaderState,
+  updateReaderBookArchive,
 } from "../../controllers/reader/readerController";
 
 import {
@@ -63,5 +64,6 @@ router.post("/:id/dictionary", lookupReaderDictionary);
 router.get("/:id/file", getReaderFile);
 router.get("/:id", getReaderBook);
 router.patch("/:id/state", updateReaderState);
+router.patch("/:id/archive", updateReaderBookArchive);
 
 export default router;

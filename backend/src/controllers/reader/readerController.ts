@@ -16,8 +16,8 @@ const getReaderAccess = asyncErrorCatcher(async (_req: Request, res: Response) =
   res.json({ status: "success", data: { enabled: isReaderEnabled(getLoggedInUserIdFromReq()) } });
 });
 
-const getReaderBooks = asyncErrorCatcher(async (_req: Request, res: Response) => {
-  const books = await ReaderBookModel.find({ userId: getLoggedInUserIdFromReq() }).sort({
+const getReaderBooks = asyncErrorCatcher(async (req: Request, res: Response) => {
+  const books = await ReaderBookModel.find({ userId: getLoggedInUserIdFromReq(), archived: req.query.archived === "true" ? true : { $ne: true } }).sort({
     updatedAt: -1,
   });
   res.setHeader("Cache-Control", "no-store");
@@ -79,6 +79,18 @@ async function findReaderBook(req: Request) {
   if (!book) throw new AppError("Book not found.", 404);
   return book;
 }
+
+const updateReaderBookArchive = asyncErrorCatcher(async (req: Request, res: Response) => {
+  if (typeof req.body.archived !== "boolean") throw new AppError("Invalid archive status.", 400);
+  const book = await findReaderBook(req);
+  const updated = await ReaderBookModel.findOneAndUpdate(
+    { _id: book._id, userId: getLoggedInUserIdFromReq() },
+    { $set: { archived: req.body.archived } },
+    { new: true, runValidators: true },
+  );
+  if (!updated) throw new AppError("Book not found.", 404);
+  res.json({ status: "success", data: updated });
+});
 
 const getReaderBook = asyncErrorCatcher(async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "no-store");
@@ -159,4 +171,5 @@ export {
   getReaderBook,
   getReaderFile,
   updateReaderState,
+  updateReaderBookArchive,
 };

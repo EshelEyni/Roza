@@ -126,6 +126,7 @@ export type ISlateCustomElement = SlateCustomElement & Document;
 export interface ISlateCustomText extends SlateCustomText, Document {}
 
 export interface IReaderBook extends Document {
+  archived: boolean;
   userId: mongoose.Types.ObjectId;
   title: string;
   author: string;

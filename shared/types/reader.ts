@@ -16,6 +16,7 @@ export type ReaderState = {
 };
 
 export type ReaderBook = {
+  archived?: boolean;
   id: string;
   title: string;
   author: string;

@@ -73,19 +73,45 @@ describe("Reader access and isolation", () => {
     (ReaderBookModel.find as jest.Mock).mockReturnValue({ sort: jest.fn().mockResolvedValue([]) });
     const response = await request(app).get("/api/reader").set("Authorization", "test");
     expect(response.status).toBe(200);
-    expect(ReaderBookModel.find).toHaveBeenCalledWith({ userId: mockUserId });
+    expect(ReaderBookModel.find).toHaveBeenCalledWith({ userId: mockUserId, archived: { $ne: true } });
     expect(response.headers["cache-control"]).toBe("no-store");
   });
 
-  it.each(["", "/file", "/state"])("never accesses another user's book on %s", async suffix => {
+  it("lists archived books separately for the current owner", async () => {
+    (ReaderBookModel.find as jest.Mock).mockReturnValue({ sort: jest.fn().mockResolvedValue([]) });
+    const response = await request(app).get("/api/reader?archived=true").set("Authorization", "test");
+    expect(response.status).toBe(200);
+    expect(ReaderBookModel.find).toHaveBeenCalledWith({ userId: mockUserId, archived: true });
+  });
+
+  it.each([true, false])("persists archive status %s without changing book content or reading state", async archived => {
+    (ReaderBookModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue({ _id: id }) });
+    (ReaderBookModel.findOneAndUpdate as jest.Mock).mockResolvedValue({ id, archived });
+    const response = await request(app).patch("/api/reader/" + id + "/archive")
+      .set("Authorization", "test").send({ archived, userId: "attacker", state: {} });
+    expect(response.status).toBe(200);
+    expect(response.body.data.archived).toBe(archived);
+    expect(ReaderBookModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: id, userId: mockUserId }, { $set: { archived } }, { new: true, runValidators: true },
+    );
+  });
+
+  it("rejects malformed archive status before writing", async () => {
+    const response = await request(app).patch("/api/reader/" + id + "/archive")
+      .set("Authorization", "test").send({ archived: "true" });
+    expect(response.status).toBe(400);
+    expect(ReaderBookModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
+  it.each(["", "/file", "/state", "/archive"])("never accesses another user's book on %s", async suffix => {
     (ReaderBookModel.findOne as jest.Mock).mockReturnValue({
       select: jest.fn().mockResolvedValue(null),
     });
     const operation =
-      suffix === "/state"
+      suffix === "/state" || suffix === "/archive"
         ? request(app)
             .patch("/api/reader/" + id + suffix)
-            .send({})
+            .send(suffix === "/archive" ? { archived: true } : {})
         : request(app).get("/api/reader/" + id + suffix);
     const response = await operation.set("Authorization", "test");
     expect(response.status).toBe(404);

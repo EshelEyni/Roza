@@ -1822,3 +1822,74 @@
 
 .reader-group-heading[data-drop-target="true"], .reader-group-view[data-drop-target="true"], .reader-group-empty[data-drop-target="true"] { outline: 2px solid #b18b55; outline-offset: -2px; }
 .reader-group-divider { user-select: none; }
+
+.reader-library-archive-toggle { margin-bottom: 24px; }
+.reader-book-item { position: relative; min-width: 0; display: flex; flex-direction: column; }
+.reader-book-item .reader-book-card { flex: 1; }
+.reader-book-item:has(.reader-book-menu-popover) { z-index: 2; }
+.reader-book-menu { position: absolute; top: 2px; right: 2px; z-index: 1; }
+.reader-book-menu-trigger,
+.reader-book-menu-trigger:hover {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  background: transparent;
+  color: #493a2d;
+  box-shadow: none;
+}
+.reader-book-menu-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 150px;
+  max-width: calc(100vw - 48px);
+  padding: 4px;
+  border: 1px solid #cfbba5;
+  border-radius: 8px;
+  background: #fffefa;
+  color: #493a2d;
+  box-shadow: 0 6px 20px #0003;
+}
+.reader-book-menu-popover button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 4px;
+  text-align: start;
+}
+.reader-book-menu-popover button:hover,
+.reader-book-menu-popover button:focus-visible { background: #e9d8c4; }
+
+.reader-archive-dialog {
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(420px, calc(100dvw - 32px));
+  max-height: calc(100dvh - 32px);
+  padding: 0;
+  overflow-y: auto;
+  border: 1px solid #cfbba5;
+  border-radius: 14px;
+  background: #fffefa;
+  color: #493a2d;
+  box-shadow: 0 20px 70px #24180f40;
+}
+.reader-archive-dialog::backdrop { background: #24180f66; backdrop-filter: blur(3px); }
+.reader-archive-dialog-content { padding: 28px; }
+.reader-archive-dialog-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 16px;
+  border-radius: 12px;
+  background: #f1e5d5;
+  color: #7e573b;
+  font-size: 22px;
+}
+.reader-archive-dialog h2 { margin: 0 0 10px; font-family: Georgia, serif; font-size: 25px; }
+.reader-archive-dialog p { margin: 0; line-height: 1.7; overflow-wrap: anywhere; }
+.reader-archive-dialog-actions { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
