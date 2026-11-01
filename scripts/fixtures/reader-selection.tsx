@@ -127,6 +127,7 @@ function Fixture() {
         book,
         rendition,
         setQuote,
+        setPanel: (panel: "chat" | null) => { runtime.current.panelRef.current = panel; },
         texts,
         get selected() {
           return latest.current.textSelection;

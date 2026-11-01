@@ -182,6 +182,8 @@ test(
                 return { x: frame.left + rect.left + 1, y: frame.top + rect.top + 8 };
               });
             });
+            for (const panel of [null, "chat"]) {
+            await page.evaluate(panel => window.selectionTest.setPanel(panel), panel);
             for (const [start, end] of [points, [...points].reverse()]) {
               await page.mouse.move(start.x, start.y);
               await page.mouse.down({ button: "right" });
@@ -196,6 +198,21 @@ test(
               }), false);
               await run(() => window.selectionTest.close());
             }
+            }
+            // A right-button drag can extend across pages while chat is open.
+            const edge = await page.locator('.reader-shell').evaluate(shell => shell.getBoundingClientRect().right - 5);
+            await page.mouse.move(points[0].x, points[0].y);
+            await page.mouse.down({ button: 'right' });
+            await page.mouse.move(edge, points[0].y + 25, { steps: 15 });
+            await page.waitForFunction(() => window.selectionTest.extending, null, { timeout: 5000 });
+            await page.mouse.up({ button: 'right' });
+            await page.waitForFunction(() => !window.selectionTest.busy);
+            assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), true);
+            assert.equal(await page.getByRole('dialog').count(), 0);
+            await run(async () => {
+              window.selectionTest.setPanel(null);
+              await window.selectionTest.display(0);
+            });
           }
           await run(() => window.selectionTest.select(0, 13));
           await page

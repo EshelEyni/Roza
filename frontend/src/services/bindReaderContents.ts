@@ -78,7 +78,7 @@ export function bindReaderContents(
   const schedule = () => {
     timer = setTimeout(async () => {
       timer = undefined;
-      if (!edge || !dragging || !enabled() || panelRef.current || !extend)
+      if (!edge || !dragging || !enabled() || (mobileRef.current && panelRef.current) || !extend)
         return;
       if (
         !contents.document.getSelection()?.toString().trim() &&
@@ -96,7 +96,7 @@ export function bindReaderContents(
   const onMouseDown = (event: MouseEvent) => {
     rightAnchor = undefined;
     dragging = event.button === 0;
-    if (event.button !== 2 || mobileRef.current || !enabled() || panelRef.current)
+    if (event.button !== 2 || mobileRef.current || !enabled())
       return;
     event.preventDefault();
     rightAnchor = caretAt(event) ?? undefined;
