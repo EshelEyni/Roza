@@ -87,7 +87,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
             undefined,
             "reader-selection-highlight",
             {
-              fill: "#719bd8",
+              fill: active.runtime.stateRef.current.preferences.selectionColor || "#719bd8",
               "fill-opacity": "0.3",
               "pointer-events": "none",
             },
@@ -242,6 +242,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
       selectionDocument.current = contents.document;
       const next = {
         text,
+        suppressTooltip: contents.document.documentElement.dataset.readerSelectionMode === "right",
         word,
         cfi,
         x: offset.left + rect.left,

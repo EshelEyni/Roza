@@ -15,7 +15,7 @@ export function applyPreferences(
   rendition.themes.default({
     body: {
       color: palette.color,
-      background: palette.background,
+      background: preferences.backgroundColor || palette.background,
     },
     "p, li, blockquote": {
       "line-height": preferences.lineHeight + " !important",
@@ -26,10 +26,14 @@ export function applyPreferences(
           ? "#d5b88d !important"
           : "#79552e !important",
     },
+    "::selection": {
+      background: (preferences.selectionColor || "#719bd8") + " !important",
+      color: (preferences.selectionTextColor || palette.color) + " !important",
+    },
     img: { "max-width": "100% !important", "object-fit": "contain" },
   });
   rendition.themes.override("color", palette.color, true);
-  rendition.themes.override("background", palette.background, true);
+  rendition.themes.override("background", preferences.backgroundColor || palette.background, true);
   rendition.themes.override("font-size", preferences.fontSize + "px", true);
   rendition.themes.override(
     "font-family",

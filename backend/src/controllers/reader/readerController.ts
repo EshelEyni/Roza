@@ -139,6 +139,9 @@ const updateReaderState = asyncErrorCatcher(async (req: Request, res: Response) 
     !["comfortable", "wide"].includes(preferences.width) ||
     !["light", "sepia", "dark"].includes(preferences.theme) ||
     !["paginated", "scrolled"].includes(preferences.flow) ||
+    ["backgroundColor", "selectionColor", "selectionTextColor", "passageColor", "translationColor"].some(key =>
+      preferences[key] !== undefined && (typeof preferences[key] !== "string" || !/^#[0-9a-fA-F]{6}$/.test(preferences[key]))
+    ) ||
     (preferences.pageNumbering !== undefined && !["screen", "publisher"].includes(preferences.pageNumbering))
   )
     throw new AppError("Invalid reader preferences.", 400);
@@ -149,6 +152,11 @@ const updateReaderState = asyncErrorCatcher(async (req: Request, res: Response) 
     width: preferences.width,
     theme: preferences.theme,
     flow: preferences.flow,
+    backgroundColor: preferences.backgroundColor,
+    selectionColor: preferences.selectionColor,
+    selectionTextColor: preferences.selectionTextColor,
+    passageColor: preferences.passageColor,
+    translationColor: preferences.translationColor,
     pageNumbering: preferences.pageNumbering ?? "screen",
   };
   // A delayed page-leave request must not overwrite a more recent position.

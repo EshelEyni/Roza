@@ -1,5 +1,5 @@
 // Browser fixture: production selection hooks and epub.js, without the API server.
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import ePub, { EpubCFI, type Contents, type Location } from "epubjs";
 import JSZip from "jszip";
@@ -10,6 +10,13 @@ import { useReaderSelection } from "../../frontend/src/hooks/reader/useReaderSel
 import type { EpubRuntime } from "../../frontend/src/hooks/reader/useEpubRuntime";
 import { bindReaderContents } from "../../frontend/src/services/bindReaderContents";
 import { readSelectionRange } from "../../frontend/src/services/readerSelectionRange";
+import { ReaderChatQuote } from "../../frontend/src/components/Reader/ReaderChatQuote";
+import { ReaderPassageMarks } from "../../frontend/src/components/Reader/ReaderPassageMarks";
+import { useReaderPassageMarker } from "../../frontend/src/hooks/reader/useReaderPassageMarker";
+import type { ReaderPassage } from "../../shared/types/readerChat";
+import { ReaderSettings } from "../../frontend/src/components/Reader/ReaderSettings";
+import { applyPreferences } from "../../frontend/src/services/readerPreferences";
+import type { ReaderPreferences } from "../../shared/types/reader";
 import { ReaderDictionary } from "../../frontend/src/components/Reader/ReaderDictionary";
 import "../../frontend/src/styles/app/_reader.scss";
 
@@ -55,6 +62,16 @@ function Fixture() {
     selectionRef: { current: null },
   } as unknown as EpubRuntime);
   runtime.current.selectionRef.current = selection.textSelection;
+  const [quote, setQuote] = useState<ReaderPassage | null>(null);
+  const [preferences, setPreferences] = useState<ReaderPreferences>({
+    fontSize: 20, fontFamily: "serif", lineHeight: 1.7, width: "comfortable", theme: "sepia", flow: "paginated",
+  });
+  runtime.current.stateRef.current.preferences = preferences;
+  const { passageMarks } = useReaderPassageMarker(runtime.current);
+  useEffect(() => {
+    const rendition = runtime.current.renditionRef.current;
+    if (rendition) applyPreferences(rendition, preferences);
+  }, [preferences]);
   useEffect(() => {
     const book = ePub();
     const cleanups: (() => void)[] = [];
@@ -109,6 +126,7 @@ function Fixture() {
       const api = {
         book,
         rendition,
+        setQuote,
         texts,
         get selected() {
           return latest.current.textSelection;
@@ -133,6 +151,7 @@ function Fixture() {
           const contents = (
             rendition.getContents() as unknown as Contents[]
           )[0];
+          contents.document.documentElement.dataset.readerSelectionMode = "left";
           const node = contents.document.querySelector("p")!.firstChild!;
           const range = contents.document.createRange();
           range.setStart(node, start);
@@ -177,9 +196,12 @@ function Fixture() {
     | Location
     | undefined;
   return (
+    <ReaderPassageMarks.Provider value={passageMarks}>
     <div className="reader-shell reader-theme-light">
       <div ref={host} style={{ width: "100%", height: 300 }} />
-      {selection.textSelection && (
+      <details><summary>Test reader settings</summary><ReaderSettings preferences={preferences} onChange={setPreferences} publisherPagesAvailable={false} /></details>
+      {quote && <ReaderChatQuote passage={quote} onReveal={() => {}} />}
+      {selection.textSelection && !selection.textSelection.suppressTooltip && (
         <ReaderDictionary
           key={selection.textSelection.cfi}
           selection={selection.textSelection}
@@ -199,6 +221,7 @@ function Fixture() {
         />
       )}
     </div>
+    </ReaderPassageMarks.Provider>
   );
 }
 createRoot(document.getElementById("root")!).render(<Fixture />);

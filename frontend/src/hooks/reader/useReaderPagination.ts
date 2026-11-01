@@ -34,6 +34,12 @@ export function useReaderPagination(
       state.preferences.flow,
     ],
   );
+  const visualPreferences = useMemo(() => ({
+    ...renderingPreferences,
+    backgroundColor: state.preferences.backgroundColor,
+    selectionColor: state.preferences.selectionColor,
+    selectionTextColor: state.preferences.selectionTextColor,
+  }), [renderingPreferences, state.preferences.backgroundColor, state.preferences.selectionColor, state.preferences.selectionTextColor]);
   const { screen: pageCount, publisherPages } = useReaderPageCount(
     host,
     paginationFile,
@@ -73,7 +79,7 @@ export function useReaderPagination(
     }
   }
   return {
-    renderingPreferences,
+    renderingPreferences: visualPreferences,
     pageLabel,
     showPublisherPages,
     togglePageNumbering,

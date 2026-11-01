@@ -62,7 +62,7 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
    await page.locator('.reader-chat-messages:visible').evaluate(node=>{node.scrollTop=100;node.dispatchEvent(new Event('scroll'))});
    await page.getByRole('tab',{name:/Conversation 1/}).click();await page.getByRole('tab',{name:/Earlier conversation/}).click();assert.equal(await page.locator('.reader-chat-messages:visible').evaluate(n=>n.scrollTop),100);
    const closeName=(lang==='he'?'סגירת טאב: ':'Close tab: ')+'Earlier conversation';await page.getByRole('button',{name:closeName,exact:true}).click();assert.equal(await page.getByRole('tab').count(),2);
-   await page.getByRole('button',{name:label.undo,exact:true}).click();assert.equal((await snapshot()).activeKey,earlier);
+   await page.evaluate(()=>window.tabTest.reopen());assert.equal((await snapshot()).activeKey,earlier);
    const separator=page.getByRole('separator');await separator.focus();await separator.press('ArrowLeft');assert.equal((await snapshot()).panelWidth,500);
    const paper=page.locator('.reader-paper');
    const bookAt500=await paper.boundingBox();

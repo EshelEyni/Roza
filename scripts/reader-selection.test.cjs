@@ -33,6 +33,7 @@ function setup(onBeforeSelection) {
   const selection = useReaderSelection(onBeforeSelection);
   let text = "word";
   const doc = new EventTarget();
+  doc.documentElement = { dataset: {} };
   doc.getSelection = () => ({
     toString: () => text,
     removeAllRanges: () => { text = ""; },

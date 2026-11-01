@@ -39,6 +39,7 @@ test(
       "jszip",
       "i18next",
       "react-i18next",
+      "react-icons",
     ].map((name) => ({
       find: name,
       replacement: path
@@ -95,6 +96,107 @@ test(
               );
             });
           const run = (fn) => page.evaluate(fn);
+          await page.getByText("Test reader settings", { exact: true }).click();
+          assert.equal(await page.locator('.reader-color-settings').evaluate(colors => {
+            const navigation = document.querySelector('select');
+            return !!(navigation.compareDocumentPosition(colors) & Node.DOCUMENT_POSITION_FOLLOWING);
+          }), true);
+          await page.getByLabel("Text selection color", { exact: true }).evaluate(input => {
+            window.colorInputClicks = 0;
+            input.addEventListener('click', () => window.colorInputClicks++);
+          });
+          await page.locator('#reader-color-selectionColor').click();
+          assert.equal(await run(() => window.colorInputClicks), 0);
+          const reset = await page.getByRole('button', { name: 'Reset colors' }).boundingBox();
+          const settings = await page.locator('.reader-settings').boundingBox();
+          assert.ok(reset.width < 150 && reset.height < 35);
+          assert.ok(Math.abs(reset.x - settings.x) < 5);
+          await page.getByLabel("Page background", { exact: true }).selectOption("#f3e8d5");
+          await page.getByLabel("Text selection color", { exact: true }).selectOption("#719bd8");
+          await page.waitForFunction(() => {
+            const doc = window.selectionTest.rendition.getContents()[0].document;
+            return doc.defaultView.getComputedStyle(doc.body).backgroundColor === "rgb(243, 232, 213)";
+          });
+          assert.equal(await run(() => {
+            const doc = window.selectionTest.rendition.getContents()[0].document;
+            return doc.defaultView.getComputedStyle(doc.querySelector("p"), "::selection").backgroundColor;
+          }), "rgb(113, 155, 216)");
+          await page.getByLabel("Selected text color", { exact: true }).selectOption("#ffffff");
+          await page.waitForFunction(() => {
+            const doc = window.selectionTest.rendition.getContents()[0].document;
+            return doc.defaultView.getComputedStyle(doc.querySelector("p"), "::selection").color === "rgb(255, 255, 255)";
+          });
+          assert.equal(await page.locator('input[type="color"]').count(), 0);
+          for (const menu of await page.locator('.reader-color-control select').all())
+            assert.equal(await menu.locator('option').count(), 8);
+          assert.equal(await page.getByLabel('Selected text color', { exact: true }).evaluate(menu =>
+            getComputedStyle(menu.previousElementSibling).backgroundColor), 'rgb(255, 255, 255)');
+          await page.getByRole("button", { name: "Reset colors" }).click();
+          assert.equal(await page.getByLabel('Selected text color', { exact: true }).inputValue(), '#392e24');
+          await page.getByText("Test reader settings", { exact: true }).click();
+          const quote = await run(() => {
+            const contents = window.selectionTest.rendition.getContents()[0];
+            const range = contents.document.createRange();
+            range.setStart(contents.document.querySelector('p').firstChild, 0);
+            range.setEnd(contents.document.querySelector('p').firstChild, 13);
+            return { text: range.toString(), cfi: contents.cfiFromRange(range) };
+          });
+          await page.evaluate(quote => window.selectionTest.setQuote(quote), quote);
+          await page.locator('[ref="reader-locator-yellow"]').waitFor();
+          await page.getByText("Test reader settings", { exact: true }).click();
+          await page.getByLabel("Passage marker color", { exact: true }).selectOption("#efc39e");
+          await page.waitForFunction(() => document.querySelector('[ref="reader-locator-yellow"]')?.getAttribute('fill') === '#efc39e');
+          await page.getByText("Test reader settings", { exact: true }).click();
+          await page.waitForTimeout(2200);
+          assert.equal(await page.locator('[ref="reader-locator-yellow"]').count(), 1);
+          const hide = page.getByRole('button', { name: 'Hide passage highlight' });
+          assert.equal(await hide.getAttribute('aria-pressed'), 'true');
+          assert.deepEqual(await hide.evaluate(button => {
+            const title = button.closest('.reader-chat-quote-heading').querySelector('.reader-chat-quote-label');
+            const icon = button.querySelector('svg').getBoundingClientRect();
+            const style = getComputedStyle(button);
+            return { size: icon.height <= parseFloat(getComputedStyle(title).fontSize) + 1,
+              background: style.backgroundColor, border: style.borderWidth };
+          }), { size: true, background: 'rgba(0, 0, 0, 0)', border: '0px' });
+          await hide.click();
+          assert.equal(await page.locator('[ref="reader-locator-yellow"]').count(), 0);
+          await page.getByRole('button', { name: 'Show passage highlight' }).click();
+          await page.locator('[ref="reader-locator-yellow"]').waitFor();
+          await run(() => window.selectionTest.setQuote(null));
+          // Closing chat content removes its passage mark.
+          await page.waitForFunction(() => !document.querySelector('[ref="reader-locator-yellow"]'));
+          await page.evaluate(quote => window.selectionTest.setQuote(quote), quote);
+          await page.getByRole('button', { name: 'Hide passage highlight' }).click();
+          await run(() => window.selectionTest.setQuote(null));
+          assert.equal(await page.locator('[ref="reader-locator-yellow"]').count(), 0);
+          if (!mobile) {
+            const points = await run(() => {
+              const contents = window.selectionTest.rendition.getContents()[0];
+              const doc = contents.document;
+              const frame = doc.defaultView.frameElement.getBoundingClientRect();
+              return [0, 10].map(offset => {
+                const range = doc.createRange();
+                range.setStart(doc.querySelector("p").firstChild, offset);
+                range.setEnd(doc.querySelector("p").firstChild, offset + 1);
+                const rect = range.getBoundingClientRect();
+                return { x: frame.left + rect.left + 1, y: frame.top + rect.top + 8 };
+              });
+            });
+            for (const [start, end] of [points, [...points].reverse()]) {
+              await page.mouse.move(start.x, start.y);
+              await page.mouse.down({ button: "right" });
+              await page.mouse.move(end.x, end.y, { steps: 10 });
+              await page.mouse.up({ button: "right" });
+              await page.waitForFunction(() => window.selectionTest.selected?.text === "chapter0wo");
+              assert.equal(await page.getByRole("dialog").count(), 0);
+              assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), true);
+              assert.equal(await run(() => {
+                const doc = window.selectionTest.rendition.getContents()[0].document;
+                return doc.dispatchEvent(new MouseEvent("contextmenu", { cancelable: true, button: 2 }));
+              }), false);
+              await run(() => window.selectionTest.close());
+            }
+          }
           await run(() => window.selectionTest.select(0, 13));
           await page
             .getByRole("button", { name: "Extend selection to the next page" })

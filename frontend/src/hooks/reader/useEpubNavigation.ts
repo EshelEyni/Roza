@@ -9,7 +9,6 @@ export function useEpubNavigation(
     closeLookup,
     closePanel,
     markPassage,
-    clearMarker,
     locationsReady,
     setError,
     setNotice,
@@ -37,7 +36,6 @@ export function useEpubNavigation(
     epubRef,
   } = runtime;
   async function navigateTo(target: string) {
-    clearMarker();
     closeLookup();
     if (target.startsWith("epubcfi(")) {
       const anchor = new EpubCFI(target);

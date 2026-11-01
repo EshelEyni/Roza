@@ -98,7 +98,7 @@ export function ReaderChat({
   function userContent(message: ReaderChatMessageView) {
     return <>
       {message.passage && (
-        <ReaderChatQuote key={readerPassageKey(message.passage)} passage={message.passage} sourceId={message.id} onReveal={onPassageNavigate} />
+        <ReaderChatQuote key={readerPassageKey(message.passage)} passage={message.passage} sourceId={message.id} markingActive={visible && focused} onReveal={onPassageNavigate} />
       )}
       {message.referenceId && (
         <button type="button" className="reader-chat-source-reference"
@@ -277,7 +277,7 @@ export function ReaderChat({
               )}
             {view.draftPassage && (
               <div className="reader-chat-draft-source" data-reader-chat-draft>
-                <ReaderChatQuote key={readerPassageKey(view.draftPassage)} passage={view.draftPassage} onReveal={onPassageNavigate} draft />
+                <ReaderChatQuote key={readerPassageKey(view.draftPassage)} passage={view.draftPassage} markingActive={visible && focused} onReveal={onPassageNavigate} draft />
               </div>
             )}
           </div>

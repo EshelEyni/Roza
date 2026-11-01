@@ -32,7 +32,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     panel,
     selection.textSelection,
   );
-  const { markPassage, clearMarker } = useReaderPassageMarker(runtime);
+  const { markPassage, clearMarker, passageMarks } = useReaderPassageMarker(runtime);
   clearLocator.current = clearMarker;
   const activeSelection = useRef(selection.textSelection);
   activeSelection.current = selection.textSelection;
@@ -113,6 +113,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     textSelection: selection.textSelection,
     closeLookup: selection.closeLookup,
     markTranslation,
+    passageMarks,
     extendSelection: (direction: "next" | "prev") =>
       selection.extend(runtime, direction),
     selectionExtending: selection.extending,

@@ -5,6 +5,11 @@ export type ReaderPreferences = {
   width: "comfortable" | "wide";
   theme: "light" | "sepia" | "dark";
   flow: "paginated" | "scrolled";
+  backgroundColor?: string;
+  selectionColor?: string;
+  selectionTextColor?: string;
+  passageColor?: string;
+  translationColor?: string;
   pageNumbering?: "screen" | "publisher";
 };
 

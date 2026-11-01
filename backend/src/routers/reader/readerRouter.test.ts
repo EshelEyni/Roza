@@ -158,6 +158,22 @@ describe("Reader access and isolation", () => {
     expect((ReaderBookModel.findOneAndUpdate as jest.Mock).mock.calls[0][1].$set.state.preferences.pageNumbering).toBe(pageNumbering || "screen");
   });
 
+  it.each(["backgroundColor", "selectionColor", "selectionTextColor", "passageColor", "translationColor"])("persists and validates %s", async key => {
+    (ReaderBookModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue({ _id: id }) });
+    (ReaderBookModel.findOneAndUpdate as jest.Mock).mockResolvedValue({ state: {} });
+    const state = { location: "", progress: 0, savedAt: Date.now(), preferences: { ...defaultReaderPreferences, [key]: "#12abEF" } };
+    const response = await request(app).patch("/api/reader/" + id + "/state").set("Authorization", "test").send(state);
+    expect(response.status).toBe(200);
+    expect((ReaderBookModel.findOneAndUpdate as jest.Mock).mock.calls[0][1].$set.state.preferences[key]).toBe("#12abEF");
+    (ReaderBookModel.findOneAndUpdate as jest.Mock).mockClear();
+    for (const invalid of ["red", "#fff", "url(bad)", 123, null]) {
+      const rejected = await request(app).patch("/api/reader/" + id + "/state").set("Authorization", "test")
+        .send({ ...state, preferences: { ...state.preferences, [key]: invalid } });
+      expect(rejected.status).toBe(400);
+    }
+    expect(ReaderBookModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   it("rejects unsupported page numbering", async () => {
     (ReaderBookModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue({ _id: id }) });
     const response = await request(app).patch("/api/reader/" + id + "/state")

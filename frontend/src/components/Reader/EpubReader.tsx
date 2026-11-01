@@ -1,3 +1,4 @@
+import { ReaderPassageMarks } from "./ReaderPassageMarks";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import type { ReaderBook } from "../../../../shared/types/reader";
 import { useEpubReader } from "../../hooks/reader/useEpubReader";
@@ -17,11 +18,13 @@ export function EpubReader({
 }) {
   const reader = useEpubReader(book, userId);
   return (
+    <ReaderPassageMarks.Provider value={reader.passageMarks}>
     <div
       className={"reader-shell reader-theme-" + reader.state.preferences.theme}
+      style={{ background: reader.state.preferences.backgroundColor }}
       ref={reader.shell}
     >
-      {reader.textSelection && (
+      {reader.textSelection && !reader.textSelection.suppressTooltip && (
         <ReaderDictionary
           key={reader.textSelection.cfi}
           selection={reader.textSelection}
@@ -101,5 +104,6 @@ export function EpubReader({
         retrySave={reader.retrySave}
       />
     </div>
+    </ReaderPassageMarks.Provider>
   );
 }

@@ -30,7 +30,8 @@ export function bindReaderContents(
   cleanups.push(() =>
     contents.document.removeEventListener("selectionchange", onSelectionChange),
   );
-  const onPointerDown = () => {
+  const onPointerDown = (event: PointerEvent) => {
+    contents.document.documentElement.dataset.readerSelectionMode = event.button === 2 ? "right" : "left";
     if (!mobileRef.current && !selection.isExtending?.())
       selection.closeLookup();
   };
@@ -38,6 +39,35 @@ export function bindReaderContents(
   const onCopy = (event: ClipboardEvent) => selection.copySelection?.(event);
   contents.document.addEventListener("copy", onCopy);
   let dragging = false;
+  let rightAnchor: Range | undefined;
+  const caretAt = (event: MouseEvent) => {
+    const doc = contents.document as Document & {
+      caretPositionFromPoint?: (x: number, y: number) =>
+        { offsetNode: Node; offset: number } | null;
+      caretRangeFromPoint?: (x: number, y: number) => Range | null;
+    };
+    const position = doc.caretPositionFromPoint?.(event.clientX, event.clientY);
+    if (position) {
+      const range = doc.createRange();
+      range.setStart(position.offsetNode, position.offset);
+      range.collapse(true);
+      return range;
+    }
+    return doc.caretRangeFromPoint?.(event.clientX, event.clientY) ?? null;
+  };
+  const updateRightSelection = (event: MouseEvent) => {
+    if (!rightAnchor || selection.isExtending?.()) return;
+    const focus = caretAt(event);
+    if (!focus || !rightAnchor.startContainer.isConnected) return;
+    contents.document.getSelection()?.setBaseAndExtent(
+      rightAnchor.startContainer, rightAnchor.startOffset,
+      focus.startContainer, focus.startOffset,
+    );
+  };
+  const onContextMenu = (event: MouseEvent) => {
+    if (!mobileRef.current) event.preventDefault();
+  };
+  contents.document.addEventListener("contextmenu", onContextMenu);
   let edge: "next" | "prev" | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const stopEdge = () => {
@@ -64,13 +94,29 @@ export function bindReaderContents(
     }, 750);
   };
   const onMouseDown = (event: MouseEvent) => {
+    rightAnchor = undefined;
     dragging = event.button === 0;
+    if (event.button !== 2 || mobileRef.current || !enabled() || panelRef.current)
+      return;
+    event.preventDefault();
+    rightAnchor = caretAt(event) ?? undefined;
+    dragging = !!rightAnchor;
+    if (rightAnchor) updateRightSelection(event);
   };
   const onMouseUp = () => {
     dragging = false;
+    rightAnchor = undefined;
     stopEdge();
   };
   const onMouseMove = (event: MouseEvent) => {
+    if (rightAnchor) {
+      if (!(event.buttons & 2)) {
+        onMouseUp();
+        return;
+      }
+      event.preventDefault();
+      updateRightSelection(event);
+    }
     if (
       !dragging ||
       mobileRef.current ||
@@ -98,6 +144,7 @@ export function bindReaderContents(
     contents.document.removeEventListener("keydown", onKey);
     contents.document.removeEventListener("pointerdown", onPointerDown);
     contents.document.removeEventListener("copy", onCopy);
+    contents.document.removeEventListener("contextmenu", onContextMenu);
     contents.document.removeEventListener("mousedown", onMouseDown);
     contents.document.removeEventListener("mousemove", onMouseMove);
     contents.document.removeEventListener("mouseup", onMouseUp);

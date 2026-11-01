@@ -1,10 +1,14 @@
 import type { Book } from "epubjs";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
 import en from "../../frontend/public/locales/en/translation.json";
 import he from "../../frontend/public/locales/he/translation.json";
+import { ReaderPassageMarks } from "../../frontend/src/components/Reader/ReaderPassageMarks";
+import { useReaderPassageMarker } from "../../frontend/src/hooks/reader/useReaderPassageMarker";
+import type { EpubRuntime } from "../../frontend/src/hooks/reader/useEpubRuntime";
+import type { ReaderPassage } from "../../shared/types/readerChat";
 import { ReaderPanels } from "../../frontend/src/components/Reader/ReaderPanels";
 import type { ReaderPanel } from "../../frontend/src/types/reader";
 import type { ReaderState } from "../../shared/types/reader";
@@ -25,11 +29,23 @@ function Fixture() {
   const [panel, setPanel] = useState<ReaderPanel>("chat");
   const [readerState, setReaderState] = useState<ReaderState>({ location: "current-reading-cfi", progress: .38, savedAt: 0,
     preferences: { fontSize: 20, fontFamily: "serif", lineHeight: 1.8, width: "comfortable", theme: "sepia", flow: "paginated" } });
+  const marked = useRef(new Set<string>());
+  const runtime = useRef({
+    stateRef: { current: readerState },
+    renditionRef: { current: { annotations: {
+      highlight: (cfi: string) => marked.current.add(cfi),
+      remove: (cfi: string) => marked.current.delete(cfi),
+    } } },
+  } as unknown as EpubRuntime);
+  runtime.current.stateRef.current = readerState;
+  const { passageMarks } = useReaderPassageMarker(runtime.current);
   const closePanel = useCallback(() => setOpened(false), []);
   useEffect(() => {
-    Object.assign(window, { tabTest: { snapshot: () => chat.workspace } });
+    Object.assign(window, { tabTest: { snapshot: () => chat.workspace, marked: () => [...marked.current], attach: (passage: ReaderPassage) => chat.attach(passage),
+      start: chat.start, select: chat.selectTab, close: chat.closeTab, reopen: chat.reopenTab,
+      split: chat.splitGroup, focus: chat.focusGroup, merge: chat.mergeGroups, move: chat.moveTab } });
   }, [chat.workspace]);
-  return <div className={"reader-shell reader-theme-" + (dark ? "dark" : "sepia")}>
+  return <ReaderPassageMarks.Provider value={passageMarks}><div className={"reader-shell reader-theme-" + (dark ? "dark" : "sepia")}>
     <header className="reader-toolbar"><div className="reader-toolbar-title"><h1>{rtl ? "בין השורות" : "Between the lines"}</h1><p>{rtl ? "פרק שלישי · סביבת בדיקה מקומית" : "Chapter three · Local test fixture"}</p></div>
       <button className="reader-button" onClick={() => setDark(value => !value)}>Theme</button>
       <button className="reader-button" onClick={() => setOpened(value => !value)}>Toggle chat</button>
@@ -48,6 +64,6 @@ function Fixture() {
         <p style={{ marginTop: 25 }}>{rtl ? "היא הביטה אל הרחוב, ופתאום נדמה היה לה שהבית אינו המקום שבו שמרה את הדברים, אלא המקום שבו הדברים שמרו עליה." : "She looked out at the street, and suddenly the house seemed less a place where she kept her things than a place where those things kept her safe."}</p>
       </div></article>
     </main>
-  </div>;
+  </div></ReaderPassageMarks.Provider>;
 }
 createRoot(document.getElementById("root")!).render(<React.StrictMode><Fixture /></React.StrictMode>);

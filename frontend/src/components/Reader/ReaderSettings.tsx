@@ -1,3 +1,4 @@
+import { ReaderColorSelect } from "./ReaderColorSelect";
 import { useTranslation } from "react-i18next";
 import { ReaderPreferences } from "../../../../shared/types/reader";
 
@@ -119,6 +120,21 @@ export function ReaderSettings({
               : "reader.noBookPages",
         )}
       </p>
+      <div className="reader-color-settings">
+      {(["backgroundColor", "selectionColor", "selectionTextColor", "passageColor", "translationColor"] as const).map(key => (
+        <div className="reader-color-row" key={key}>
+          <span id={"reader-color-" + key}>{t("reader." + key)}</span>
+          <ReaderColorSelect labelId={"reader-color-" + key} kind={key === "backgroundColor" ? "background" : key === "selectionTextColor" ? "text" : "highlight"} value={preferences[key] || ({
+            backgroundColor: { light: "#fffefa", sepia: "#f3e8d5", dark: "#242622" }[preferences.theme],
+            selectionColor: "#719bd8", selectionTextColor: { light: "#28231e", sepia: "#392e24", dark: "#ffffff" }[preferences.theme], passageColor: "#f2e66b", translationColor: "#a3c2ff",
+          }[key])} onChange={color => update({ [key]: color })} />
+        </div>
+      ))}
+      <button type="button" className="reader-colors-reset" onClick={() => update({
+        backgroundColor: undefined, selectionColor: undefined, selectionTextColor: undefined,
+        passageColor: undefined, translationColor: undefined,
+      })}>{t("reader.resetColors")}</button>
+      </div>
     </section>
   );
 }
