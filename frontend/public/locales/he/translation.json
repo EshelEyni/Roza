@@ -164,6 +164,9 @@
   "showLess": "הצג פחות",
   "words": "מילים",
   "reader": {
+    "destinationPage": "מעבר לעמוד {{page}}",
+    "destinationLoading": "מאתר עמוד…",
+    "goBackPage": "חזרה לעמוד {{page}}",
     "passageTextColor": "צבע טקסט הקטע",
     "translationTextColor": "צבע טקסט המילה המתורגמת",
     "selectedTextColors": "טקסט נבחר",

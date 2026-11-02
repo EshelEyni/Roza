@@ -1,3 +1,4 @@
+import {useTranslation} from "react-i18next";
 import { useCallback, useRef, useState } from "react";
 import type { ReaderBook } from "../../../../shared/types/reader";
 import { useReaderState } from "../useReaderState";
@@ -13,10 +14,12 @@ import { useEpubNavigation } from "./useEpubNavigation";
 import { useEpubBook } from "./useEpubBook";
 import { useEpubPreferences } from "./useEpubPreferences";
 import { useReaderFullscreen } from "./useReaderFullscreen";
+import { useReaderJumpHistory } from "./useReaderJumpHistory";
 import { useReaderPagination } from "./useReaderPagination";
 
 /** Compose reader concerns; DOM and EPUB lifecycle work live in dedicated hooks. */
 export function useEpubReader(book: ReaderBook, userId: string) {
+  const {t} = useTranslation();
   const mobile = useReaderMobile();
   const { state, updateState, saveStatus, retrySave } = useReaderState(
     book,
@@ -60,6 +63,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     updateState,
     setNotice,
   );
+  const {describeLocation} = pagination;
   useEpubPreferences(
     runtime,
     pagination.renderingPreferences,
@@ -75,6 +79,15 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     setError,
     setNotice,
   });
+  const jumpHistory = useReaderJumpHistory(runtime, engine.location, describeLocation, navigation.returnTo,
+    () => setNotice(t("reader.navigationError")));
+  const getProgressDestination = useCallback(async (progress: number) => {
+    const book = runtime.epubRef.current;
+    if (!book || !engine.locationsReady) return null;
+    const cfi = book.locations.cfiFromPercentage(Math.max(0,Math.min(1,progress)));
+    const destination = await describeLocation(cfi);
+    return destination?.label || null;
+  }, [runtime,engine.locationsReady,describeLocation]);
   const display = useReaderFullscreen(runtime, setNotice);
   const chat = useReaderChat(
     book.id,
@@ -112,6 +125,9 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     closeLookup: selection.closeLookup,
     markTranslation,
     passageMarks,
+    getProgressDestination,
+    returnPoint: jumpHistory.returnPoint,
+    goBack: jumpHistory.goBack,
     extendSelection: (direction: "next" | "prev") =>
       selection.extend(runtime, direction),
     selectionExtending: selection.extending,

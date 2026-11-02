@@ -242,6 +242,7 @@ export function bindReaderContents(
       /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(anchor.getAttribute("href") || "")
     )
       event.preventDefault();
+    else if (anchor && anchor.getAttribute("href")) runtime.linkObserver?.current?.();
   };
   contents.document.addEventListener("click", onClick, true);
   cleanups.push(() =>

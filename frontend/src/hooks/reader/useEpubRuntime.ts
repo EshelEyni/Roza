@@ -32,6 +32,7 @@ export function useEpubRuntime(
   const navigationVersion = useRef(0);
   const highlightedCfi = useRef("");
   const readingBoundary = useRef("");
+  const linkObserver = useRef<(() => void) | undefined>();
   return useMemo(
     () => ({
       host,
@@ -51,6 +52,7 @@ export function useEpubRuntime(
       navigationVersion,
       highlightedCfi,
       readingBoundary,
+      linkObserver,
     }),
     [],
   );

@@ -163,5 +163,5 @@ export function useEpubNavigation(
     }
   }
 
-  return { onNavigate, onSearchNavigate, onProgressNavigate, onPassageNavigate };
+  return { onNavigate, onSearchNavigate, onProgressNavigate, onPassageNavigate, returnTo: navigateTo };
 }

@@ -1915,3 +1915,9 @@
 .reader-mark-color-group { margin: 0; padding: 14px; min-width: 0; border: 1px solid #9b876744; border-radius: 8px; display: flex; flex-direction: column; gap: 12px; }
 .reader-mark-color-group legend { padding: 0 6px; font-size: 13px; font-weight: 600; }
 .reader-color-preview { margin: 0; padding: 8px 10px; border-radius: 4px; font: 14px/1.5 Georgia, serif; }
+
+.reader-progress-destination { white-space: nowrap; max-width: min(280px, 85vw); overflow: hidden; text-overflow: ellipsis; z-index: 10; }
+.reader-return-button { flex-shrink: 0; max-width: 190px; border: 0; border-radius: 5px; padding: 5px 8px; font: inherit; font-size: 11px; color: inherit; background: #a389611a; cursor: pointer; }
+.reader-return-button:hover { background: #a3896130; }
+.reader-return-button:focus-visible { outline: 2px solid #b18b55; outline-offset: 2px; }
+@media (max-width: 1024px) { .reader-return-button { max-width: 140px; font-size: 10px; } }

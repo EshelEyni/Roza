@@ -17,12 +17,13 @@ type Props = Pick<
   | "togglePageNumbering"
   | "saveStatus"
   | "retrySave"
->;
+> & { getProgressDestination?: (progress: number) => Promise<string | null>; returnPoint?: {label:string} | null; goBack?: () => Promise<void> };
 export function ReaderFooter({
   state,
   locationsReady,
   loading,
   onProgressNavigate,
+  getProgressDestination, returnPoint, goBack,
   move,
   atStart,
   atEnd,
@@ -42,6 +43,7 @@ export function ReaderFooter({
           progress={state.progress}
           ready={locationsReady && !loading}
           onNavigate={onProgressNavigate}
+          getDestination={getProgressDestination}
         />
         <span>{pageLabel}</span>
       </div>
@@ -54,12 +56,15 @@ export function ReaderFooter({
       >
         <FiArrowLeft />
       </button>
+      {returnPoint && goBack && <button type="button" className="reader-return-button" disabled={loading}
+        onClick={() => void goBack()}>{t("reader.goBackPage",{page:returnPoint.label})}</button>}
       <div className="reader-footer-center">
         <p>{chapter || t("reader.reading")}</p>
         <ReaderProgress
           progress={state.progress}
           ready={locationsReady && !loading}
           onNavigate={onProgressNavigate}
+          getDestination={getProgressDestination}
         />
         <div className="reader-footer-indicators">
           <button

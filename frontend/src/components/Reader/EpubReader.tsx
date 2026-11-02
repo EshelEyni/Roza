@@ -93,6 +93,9 @@ export function EpubReader({
         locationsReady={reader.locationsReady}
         loading={reader.loading}
         onProgressNavigate={reader.onProgressNavigate}
+        getProgressDestination={reader.getProgressDestination}
+        returnPoint={reader.returnPoint}
+        goBack={reader.goBack}
         move={reader.move}
         atStart={reader.atStart}
         atEnd={reader.atEnd}

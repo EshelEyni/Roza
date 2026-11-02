@@ -163,6 +163,9 @@
   "showLess": "Show Less",
   "words": "Words",
   "reader": {
+    "destinationPage": "Go to page {{page}}",
+    "destinationLoading": "Finding page…",
+    "goBackPage": "Go back to page {{page}}",
     "passageTextColor": "Passage text color",
     "translationTextColor": "Translated word text color",
     "selectedTextColors": "Selected text",

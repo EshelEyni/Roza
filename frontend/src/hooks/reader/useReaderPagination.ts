@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import type { Location } from "epubjs";
 import { useTranslation } from "react-i18next";
 import type { ReaderState } from "../../../../shared/types/reader";
@@ -40,7 +40,7 @@ export function useReaderPagination(
     selectionColor: state.preferences.selectionColor,
     selectionTextColor: state.preferences.selectionTextColor,
   }), [renderingPreferences, state.preferences.backgroundColor, state.preferences.selectionColor, state.preferences.selectionTextColor]);
-  const { screen: pageCount, publisherPages } = useReaderPageCount(
+  const { screen: pageCount, publisherPages, getPage } = useReaderPageCount(
     host,
     paginationFile,
     renderingPreferences,
@@ -53,6 +53,12 @@ export function useReaderPagination(
       ? (publisherPageAt(publisherPages, location.start.cfi)?.label ?? null)
       : null;
 
+  const describeLocation = useCallback(async (cfi: string) => {
+    const screen = await getPage(cfi);
+    if (!screen) return null;
+    const publisher = showPublisherPages && publisherPages?.length ? publisherPageAt(publisherPages, cfi)?.label : undefined;
+    return { page: screen.page, label: publisher || String(screen.page) };
+  }, [getPage, publisherPages, showPublisherPages]);
   const pageLabel =
     showPublisherPages && publisherPages?.length
       ? t("reader.bookPageOfTotal", {
@@ -80,6 +86,7 @@ export function useReaderPagination(
   }
   return {
     renderingPreferences: visualPreferences,
+    describeLocation,
     pageLabel,
     showPublisherPages,
     togglePageNumbering,

@@ -1,16 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 export function ReaderProgress({
   progress,
   ready,
   onNavigate,
+  getDestination,
 }: {
   progress: number;
   ready: boolean;
   onNavigate: (progress: number) => Promise<void>;
+  getDestination?: (progress: number) => Promise<string | null>;
 }) {
   const { t } = useTranslation();
+  const tooltipId = useId();
+  const [hover,setHover] = useState<number | null>(null);
+  const [destination,setDestination] = useState<string | null>(null);
+  const destinationGetter = useRef(getDestination);
+  destinationGetter.current = getDestination;
   const [preview, setPreview] = useState<number | null>(null);
   const [moving, setMoving] = useState(false);
   const pointerDown = useRef(false);
@@ -53,6 +60,16 @@ export function ReaderProgress({
     }
   }
 
+  const target = preview ?? hover;
+  useEffect(() => {
+    setDestination(null);
+    if (target === null || !ready || !destinationGetter.current) return;
+    let cancelled = false;
+    const timeout = setTimeout(() => {
+      void destinationGetter.current!(target).then(label => { if (!cancelled) setDestination(label); }).catch(() => {});
+    }, 100);
+    return () => { cancelled = true; clearTimeout(timeout); };
+  }, [target,ready,getDestination]);
   const value = preview ?? progress;
   return (
     <div
@@ -62,6 +79,15 @@ export function ReaderProgress({
       <input
         className="reader-progress-slider"
         type="range"
+        dir="ltr"
+        aria-describedby={ready && target !== null ? tooltipId : undefined}
+        onPointerMove={event => {
+          if (!ready) return;
+          const rect = event.currentTarget.getBoundingClientRect();
+          setHover(Math.max(0,Math.min(1,(event.clientX - rect.left - 7)/(rect.width - 14))));
+        }}
+        onPointerLeave={() => { if (!pointerDown.current) setHover(null); }}
+        onFocus={() => setHover(progress)}
         min={0}
         max={1000}
         step={1}
@@ -71,7 +97,7 @@ export function ReaderProgress({
         aria-valuetext={t("reader.percentRead", {
           percent: Math.round(value * 100),
         })}
-        title={ready ? t("reader.seek") : t("reader.preparingNavigation")}
+        title={!ready ? t("reader.preparingNavigation") : undefined}
         onPointerDown={event => {
           pointerDown.current = true;
           event.currentTarget.setPointerCapture(event.pointerId);
@@ -95,12 +121,13 @@ export function ReaderProgress({
         }}
         onKeyUp={() => void commit()}
         onBlur={() => {
+          setHover(null);
           if (!pointerDown.current) void commit();
         }}
       />
-      {preview !== null && (
-        <span className="reader-progress-preview">
-          {Math.round(value * 100)}%
+      {ready && target !== null && (
+        <span id={tooltipId} role="tooltip" className="reader-progress-preview reader-progress-destination" style={{left: Math.max(5,Math.min(95,target*100))+"%"}}>
+          {destination ? t("reader.destinationPage", {page:destination}) : destinationGetter.current ? t("reader.destinationLoading") : t("reader.percentRead", {percent: Math.round(target*100)})}
         </span>
       )}
     </div>

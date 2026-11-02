@@ -1,0 +1,13 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const fs=require('node:fs'),path=require('node:path'),ts=require('../frontend/node_modules/typescript');
+const exportsObject={};new Function('exports',ts.transpileModule(fs.readFileSync(path.join(__dirname,'../frontend/src/services/readerJumpHistory.ts'),'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2020}}).outputText)(exportsObject);
+const {ReaderJumpHistory}=exportsObject;
+const describe=async cfi=>({page:Number(cfi),label:cfi});
+test('a jump over five pages remembers its origin and returning clears the button',async()=>{let point;const history=new ReaderJumpHistory(value=>point=value);await history.visit('10',describe,0);await history.visit('16',describe,5000);assert.deepEqual(point,{cfi:'10',page:10,label:'10'});let target;await history.goBack(async cfi=>{target=cfi;await history.visit(cfi,describe,6000)});assert.equal(target,'10');assert.equal(point,null);});
+test('five pages is not a large jump',async()=>{let point;const history=new ReaderJumpHistory(value=>point=value);await history.visit('10',describe,0);await history.visit('15',describe,5000);assert.equal(point,undefined);});
+test('rapid sequential turns retain the first page of the sweep',async()=>{let point;const history=new ReaderJumpHistory(value=>point=value);for(let page=10;page<=16;page++)await history.visit(String(page),describe,(page-10)*750);assert.equal(point.cfi,'10');});
+test('normal reading does not accumulate a large-jump return point',async()=>{let point;const history=new ReaderJumpHistory(value=>point=value);for(let page=10;page<=18;page++)await history.visit(String(page),describe,(page-10)*5000);assert.equal(point,undefined);});
+test('an internal link to a different page creates a return point even for a short jump',async()=>{let point;const history=new ReaderJumpHistory(value=>point=value);await history.visit('10',describe,0);history.markLink('10',100);await history.visit('11',describe,200);assert.equal(point.cfi,'10');});
+test('a same-page link does not create a return point',async()=>{let point;const history=new ReaderJumpHistory(value=>point=value);const same=async()=>({page:10,label:'10'});await history.visit('a',same,0);history.markLink('a',100);await history.visit('b',same,200);assert.equal(point,undefined);});
+test('stale async resolutions cannot overwrite a newer jump',async()=>{let point;const history=new ReaderJumpHistory(value=>point=value);await history.visit('1',describe,0);let resume;const first=history.visit('20',cfi=>cfi==='1'?new Promise(done=>{resume=done}):describe(cfi),5000);await history.visit('40',describe,10000);resume({page:1,label:'1'});await first;assert.equal(point.cfi,'20');});
