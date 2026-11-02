@@ -1,3 +1,4 @@
+import axios from "axios";
 import { JsendResponse } from "../../../shared/types/system";
 import { Book } from "../../../shared/types/books";
 import httpService from "./httpService";
@@ -12,7 +13,7 @@ async function query({
   searchTerm = "",
 }: BookQueryParams): Promise<Book[]> {
   let url = `${baseUrl}?limit=${limit}&sort=${sort}`;
-  if (searchTerm) url += `&searchTerm=${searchTerm}`;
+  if (searchTerm) url += `&searchTerm=${encodeURIComponent(searchTerm)}`;
   const response = (await httpService.get(url)) as unknown as JsendResponse;
 
   return handleServerResponseData<Book[]>(response);
@@ -34,11 +35,24 @@ async function add(book: Book): Promise<Book> {
 }
 
 async function update(book: Book): Promise<Book> {
-  const response = (await httpService.patch(
-    `${baseUrl}/${book.id}`,
-    book,
-  )) as unknown as JsendResponse;
-  return handleServerResponseData<Book>(response);
+  try {
+    // Keep timeout scoped to manuscript writes; an uncertain response retains
+    // the recovery draft and the server version check makes retries safe.
+    const response = await axios.patch<JsendResponse>(
+      `/api/${baseUrl}/${book.id}`,
+      book,
+      { withCredentials: true, timeout: 20000 },
+    );
+    return handleServerResponseData<Book>(response.data);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      throw new Error(
+        error.response?.data?.message ||
+          "The save could not be confirmed. Check your connection and retry; your draft is kept locally when storage is available.",
+      );
+    }
+    throw error;
+  }
 }
 
 export default { query, getById, add, update };

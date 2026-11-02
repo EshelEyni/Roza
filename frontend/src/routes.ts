@@ -2,7 +2,6 @@ import { lazy } from "react";
 import { Route } from "./types/app";
 import { ProfileProvider } from "./contexts/ProfileContext";
 import { BookReviewsProvider } from "./contexts/BookReviewsContext";
-import { BooksProvider } from "./contexts/BooksContext";
 import { BookProvider } from "./contexts/BookContext";
 import { BookReviewProvider } from "./contexts/BookReviewContext";
 const HomePage = lazy(() => import("./pages/HomePage/HomePage"));
@@ -43,7 +42,6 @@ const routes: Route[] = [
     path: "/books",
     component: BooksPage,
     authRequired: true,
-    provider: BooksProvider,
   },
   {
     path: "/reviews",
@@ -61,7 +59,6 @@ const routes: Route[] = [
     path: "book-edit/:id/:dataItemType?/:dataItemId?",
     component: BookEdit,
     authRequired: true,
-    provider: BookProvider,
   },
   {
     path: "review/:id",
