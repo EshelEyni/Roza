@@ -53,6 +53,7 @@ function App() {
   const navigate = useNavigate();
   const location = useLocation();
   const isReaderOpen = !!useMatch("/reader/:id");
+  const isStudioOpen = location.pathname.startsWith("/book-edit/");
 
   useEffect(() => {
     if (loggedInUser && loggedInUser.language && isFetchedLoggedInUser) {
@@ -90,7 +91,7 @@ function App() {
 
   return (
     <div className="flex min-h-screen flex-col items-center overflow-y-scroll bg-app-100 text-gray-50">
-      {!isReaderOpen && <AppHeader />}
+      {!isReaderOpen && !isStudioOpen && <AppHeader />}
       <Suspense fallback={<Loader isPageLoader={true} />}>
         <Routes>
           <Route index element={<Navigate replace to="/home" />} />
