@@ -54,6 +54,19 @@ function App() {
   const location = useLocation();
   const isReaderOpen = !!useMatch("/reader/:id");
   const isStudioOpen = location.pathname.startsWith("/book-edit/");
+  const isWritingArea =
+    isStudioOpen ||
+    location.pathname === "/books" ||
+    location.pathname.startsWith("/book/");
+
+  useEffect(() => {
+    document.documentElement.classList.toggle(
+      "writing-studio-open",
+      isStudioOpen,
+    );
+    return () =>
+      document.documentElement.classList.remove("writing-studio-open");
+  }, [isStudioOpen]);
 
   useEffect(() => {
     if (loggedInUser && loggedInUser.language && isFetchedLoggedInUser) {
@@ -90,7 +103,13 @@ function App() {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-screen flex-col items-center overflow-y-scroll bg-app-100 text-gray-50">
+    <div
+      className={
+        isStudioOpen
+          ? "app-writing-shell bg-app-100 text-app-800"
+          : `flex min-h-screen flex-col items-center bg-app-100 text-gray-50 ${isWritingArea ? "" : "overflow-y-scroll"}`
+      }
+    >
       {!isReaderOpen && !isStudioOpen && <AppHeader />}
       <Suspense fallback={<Loader isPageLoader={true} />}>
         <Routes>

@@ -382,8 +382,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 remember("roza:studio:theme", event.target.value);
               }}
             >
-              <option value="light">Warm paper</option>
-              <option value="dark">Night writing</option>
+              <option value="light">Roza light</option>
+              <option value="dark">Roza dark</option>
             </select>
           </label>
           <label>

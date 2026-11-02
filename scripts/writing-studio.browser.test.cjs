@@ -80,6 +80,18 @@ test(
       root,
       cacheDir: path.join(root, ".studio-test-cache"),
       plugins: [react()],
+      publicDir: path.join(root, "frontend/public"),
+      css: {
+        postcss: {
+          plugins: [
+            require("../frontend/node_modules/tailwindcss")({
+              ...require("../frontend/tailwind.config.cjs"),
+              content: [path.join(root, "frontend/src/**/*.{ts,tsx}")],
+            }),
+            require("../frontend/node_modules/autoprefixer"),
+          ],
+        },
+      },
       resolve: {
         alias: deps.map((name) => ({
           find: name,
@@ -102,6 +114,10 @@ test(
     const books = [saved];
     server.middlewares.use("/api/", async (req, res) => {
       res.setHeader("Content-Type", "application/json");
+      if (req.url.startsWith("/reader"))
+        return res.end(
+          JSON.stringify({ status: "success", data: { enabled: false } }),
+        );
       if (req.url.startsWith("/auth"))
         return res.end(
           JSON.stringify({
@@ -156,7 +172,7 @@ test(
       res.end(
         await server.transformIndexHtml(
           req.url,
-          '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}*{box-sizing:border-box}</style></head><body><div id="root"></div><script type="module" src="/scripts/fixtures/writing-studio.tsx"></script></body></html>',
+          '<!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0}*{box-sizing:border-box}</style></head><body><div id="root"></div><script type="module" src="/scripts/fixtures/writing-studio.tsx"></script></body></html>',
         ),
       );
     });
@@ -182,7 +198,93 @@ test(
       await page.screenshot({
         path: path.join(screenshots, "library-desktop.png"),
       });
-      await page.getByRole("link", { name: "Continue writing" }).click();
+      await page
+        .getByRole("link", { name: "Details for The Shape of Quiet" })
+        .click();
+      await page
+        .getByRole("heading", { name: "The Shape of Quiet", exact: true })
+        .waitFor();
+      assert.equal(
+        await page.locator(".ws-book-stats dd").first().innerText(),
+        "63",
+      );
+      await page
+        .getByRole("button", { name: "Rename book", exact: true })
+        .click();
+      await page
+        .getByLabel("Book title", { exact: true })
+        .fill("The Shape of Quiet — revised");
+      fail = true;
+      await page
+        .getByRole("button", { name: "Save title", exact: true })
+        .click();
+      await page.getByRole("alert").filter({hasText:"Test network unavailable"}).waitFor();
+      assert.ok(await page.getByRole("heading", {name:"The Shape of Quiet",exact:true}).isVisible());
+      fail = false;
+      await page
+        .getByRole("button", { name: "Save title", exact: true })
+        .click();
+      await page
+        .getByRole("heading", {
+          name: "The Shape of Quiet — revised",
+          exact: true,
+        })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Characters 0", exact: true })
+        .click();
+      await page
+        .getByRole("heading", { name: "A place for your ideas.", exact: true })
+        .waitFor();
+      await page
+        .getByRole("button", { name: "Chapters 2", exact: true })
+        .click();
+      await page.getByLabel("Search book contents").fill("unopened");
+      assert.equal(await page.locator(".ws-content-list > li").count(), 1);
+      await page.getByLabel("Search book contents").fill("");
+      assert.equal(await page.evaluate(() => { window.scrollTo(0,100); return document.scrollingElement.scrollTop > 0; }), true);
+      await page.evaluate(()=>window.scrollTo(0,0));
+      await page.screenshot({path:path.join(screenshots,"book-overview-desktop.png")});
+      await page
+        .getByRole("link", { name: /The house by the sea When Mara/ })
+        .click();
+      await page
+        .getByRole("heading", { name: "The house by the sea", exact: true })
+        .waitFor();
+      assert.ok(
+        (await page.locator(".ws-preview").first().innerText()).includes(
+          "When Mara",
+        ),
+      );
+      const pdfEvent = page.waitForEvent("download");
+      await page
+        .getByRole("button", { name: "Download chapter PDF", exact: true })
+        .click();
+      assert.ok((await pdfEvent).suggestedFilename().includes("The house"));
+      await page
+        .getByRole("link", { name: "All chapters", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Read manuscript", exact: true })
+        .click();
+      assert.equal(await page.locator(".ws-reading-page").count(), 2);
+      await page
+        .getByRole("button", { name: "Back to overview", exact: true })
+        .click();
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+      );
+      await page.screenshot({
+        path: path.join(screenshots, "book-overview-mobile.png"),
+      });
+      await page
+        .getByRole("link", { name: "Continue writing →", exact: true })
+        .click();
+      await page.setViewportSize({ width: 1365, height: 900 });
       const editor = page.locator('[aria-label="Manuscript"]');
       await editor.waitFor();
       await page.screenshot({
@@ -322,6 +424,22 @@ test(
       await page.keyboard.press("Control+s");
       await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].text[0].children[0].text, longText);
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollHeight <= innerHeight + 1,
+        ),
+        true,
+      );
+      const scrollCheck = await page.evaluate(() => {
+        const writer = document.querySelector(".ws-writing");
+        writer.scrollTop = 600;
+        return {
+          inner: writer.scrollTop,
+          outer: document.scrollingElement.scrollTop,
+        };
+      });
+      assert.ok(scrollCheck.inner > 0);
+      assert.equal(scrollCheck.outer, 0);
       assert.equal(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,

@@ -1,5 +1,7 @@
 # Roza writing studio — review guide
 
+Follow-up: [the first review fixes](review-fixes.md) replace the original palette and legacy details page, fix double scrolling, and verify the real app shell. Screenshots now show that revision. The original implementation and verification record below describes the initial delivery.
+
 ## Isolation
 
 - Branch: `feature/writing-studio-overhaul`
