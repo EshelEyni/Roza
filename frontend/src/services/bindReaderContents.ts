@@ -6,7 +6,7 @@ export function bindReaderContents(
   contents: Contents,
   runtime: EpubRuntime,
   selection: Pick<ReaderSelection, "onSelectionChange" | "closeLookup"> &
-    Partial<Pick<ReaderSelection, "isExtending" | "copySelection">>,
+    Partial<Pick<ReaderSelection, "isExtending" | "copySelection" | "onSelectionKey">>,
   {
     onKey,
     enabled,
@@ -23,7 +23,11 @@ export function bindReaderContents(
 ) {
   const { mobileRef, stateRef, panelRef, selectionRef } = runtime;
   const cleanups: (() => void)[] = [];
-  contents.document.addEventListener("keydown", onKey);
+  const onKeyDown = (event: KeyboardEvent) => {
+    selection.onSelectionKey?.(event, dragging || !!contents.document.getSelection()?.toString().trim());
+    if (!event.defaultPrevented) onKey(event);
+  };
+  contents.document.addEventListener("keydown", onKeyDown);
   const onSelectionChange = () =>
     selection.onSelectionChange(contents.document);
   contents.document.addEventListener("selectionchange", onSelectionChange);
@@ -70,6 +74,7 @@ export function bindReaderContents(
   contents.document.addEventListener("contextmenu", onContextMenu);
   let edge: "next" | "prev" | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
+  let edgeConsumed = false;
   const stopEdge = () => {
     clearTimeout(timer);
     timer = undefined;
@@ -85,15 +90,18 @@ export function bindReaderContents(
         !selection.isExtending?.()
       )
         return;
+      // One turn per edge visit. Only moving back into the page rearms it.
+      edgeConsumed = true;
       await extend(edge);
       if (!contents.document.defaultView?.frameElement?.isConnected) {
         dragging = false;
         stopEdge();
       }
-      if (dragging && edge) schedule();
     }, 750);
   };
   const onMouseDown = (event: MouseEvent) => {
+    stopEdge();
+    edgeConsumed = false;
     rightAnchor = undefined;
     dragging = event.button === 0;
     if (event.button !== 2 || mobileRef.current || !enabled())
@@ -109,6 +117,10 @@ export function bindReaderContents(
     stopEdge();
   };
   const onMouseMove = (event: MouseEvent) => {
+    if (dragging && event.buttons === 0) {
+      onMouseUp();
+      return;
+    }
     if (rightAnchor) {
       if (!(event.buttons & 2)) {
         onMouseUp();
@@ -131,7 +143,12 @@ export function bindReaderContents(
     const x = frame.getBoundingClientRect().left + event.clientX;
     const nextEdge =
       x <= host.left + 28 ? "prev" : x >= host.right - 28 ? "next" : undefined;
-    if (nextEdge === edge) return;
+    if (!nextEdge) {
+      stopEdge();
+      edgeConsumed = false;
+      return;
+    }
+    if (edgeConsumed || nextEdge === edge) return;
     stopEdge();
     edge = nextEdge;
     if (edge) schedule();
@@ -139,15 +156,18 @@ export function bindReaderContents(
   contents.document.addEventListener("mousedown", onMouseDown);
   contents.document.addEventListener("mousemove", onMouseMove);
   contents.document.addEventListener("mouseup", onMouseUp);
+  const hostDocument = runtime.host.current?.ownerDocument;
+  hostDocument?.addEventListener("mouseup", onMouseUp);
   contents.document.defaultView?.addEventListener?.("blur", onMouseUp);
   cleanups.push(() => {
-    contents.document.removeEventListener("keydown", onKey);
+    contents.document.removeEventListener("keydown", onKeyDown);
     contents.document.removeEventListener("pointerdown", onPointerDown);
     contents.document.removeEventListener("copy", onCopy);
     contents.document.removeEventListener("contextmenu", onContextMenu);
     contents.document.removeEventListener("mousedown", onMouseDown);
     contents.document.removeEventListener("mousemove", onMouseMove);
     contents.document.removeEventListener("mouseup", onMouseUp);
+    hostDocument?.removeEventListener("mouseup", onMouseUp);
     contents.document.defaultView?.removeEventListener?.("blur", onMouseUp);
     stopEdge();
   });

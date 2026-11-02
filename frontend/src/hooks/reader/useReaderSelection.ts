@@ -19,6 +19,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
     null,
   );
   const current = useRef<ReaderTextSelection | null>(null);
+  const popupSuppressed = useRef(false);
   const selectionDocument = useRef<Document | null>(null);
   const session = useRef<{
     start: string;
@@ -40,6 +41,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
   }, []);
   const closeLookup = useCallback(() => {
     ++version.current;
+    popupSuppressed.current = false;
     // Preserve main's mobile dismissal fix: the backdrop cannot clear the iframe range.
     const doc = selectionDocument.current;
     selectionDocument.current = null;
@@ -63,6 +65,24 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
     setTextSelection(null);
   }, [clearHighlights]);
   useEffect(() => closeLookup, [closeLookup]);
+
+  const onSelectionKey = useCallback((event: KeyboardEvent, selecting = false) => {
+    const target = event.target as Element | null;
+    if (event.defaultPrevented || event.key !== " " || event.ctrlKey || event.metaKey || event.altKey ||
+      target?.closest?.("input, textarea, select, button, [contenteditable=true]") ||
+      (!selecting && !current.current)) return;
+    event.preventDefault();
+    // A single press latches until this selection is dismissed or a new one starts.
+    popupSuppressed.current = true;
+    if (current.current && !current.current.suppressTooltip) {
+      current.current = { ...current.current, suppressTooltip: true };
+      setTextSelection(current.current);
+    }
+  }, []);
+  useEffect(() => {
+    document.addEventListener("keydown", onSelectionKey);
+    return () => document.removeEventListener("keydown", onSelectionKey);
+  }, [onSelectionKey]);
 
   const publishRange = useCallback(
     async (focus: string) => {
@@ -96,6 +116,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
         }
         const next = {
           ...previous,
+          suppressTooltip: previous.suppressTooltip || popupSuppressed.current,
           text: result.text,
           cfi: result.cfi,
           endCfi: result.endCfi,
@@ -242,7 +263,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
       selectionDocument.current = contents.document;
       const next = {
         text,
-        suppressTooltip: contents.document.documentElement.dataset.readerSelectionMode === "right",
+        suppressTooltip: popupSuppressed.current || contents.document.documentElement.dataset.readerSelectionMode === "right",
         word,
         cfi,
         x: offset.left + rect.left,
@@ -258,6 +279,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
     closeLookup,
     clearLimitNotice,
     onSelectionChange,
+    onSelectionKey,
     select,
     limitNotice: limitNotice?.message || "",
     extend,

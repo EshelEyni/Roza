@@ -35,6 +35,7 @@ export function useEpubBook(
     closeLookup,
     clearLimitNotice,
     onSelectionChange,
+    onSelectionKey,
     select,
     isExtending,
     copySelection,
@@ -191,7 +192,7 @@ export function useEpubBook(
             bindReaderContents(
               contents,
               runtime,
-              { onSelectionChange, closeLookup, isExtending, copySelection },
+              { onSelectionChange, onSelectionKey, closeLookup, isExtending, copySelection },
               {
                 onKey,
                 enabled: () => ready && !cancelled && !changingLayout.current,
@@ -312,6 +313,7 @@ export function useEpubBook(
     closeLookup,
     clearLimitNotice,
     onSelectionChange,
+    onSelectionKey,
     select,
     isExtending,
     copySelection,

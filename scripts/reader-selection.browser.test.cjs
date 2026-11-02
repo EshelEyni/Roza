@@ -199,13 +199,72 @@ test(
               await run(() => window.selectionTest.close());
             }
             }
+            await run(() => window.selectionTest.setPanel(null));
+            // One Space press during a left drag suppresses this selection, even after keyup.
+            await page.mouse.move(points[0].x, points[0].y);
+            await page.mouse.down();
+            await page.keyboard.press('Space');
+            await page.mouse.move(points[1].x, points[1].y, { steps: 10 });
+            await page.mouse.up();
+            await page.waitForFunction(() => window.selectionTest.selected?.suppressTooltip);
+            assert.equal(await page.getByRole('dialog').count(), 0);
+            await page.getByRole('button', { name: 'Next page or section', exact: true }).click();
+            await page.waitForFunction(() => window.selectionTest.extending && !window.selectionTest.busy);
+            assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), true);
+            await run(() => window.selectionTest.display(0));
+            // A fresh left selection shows the popup, then Space hides the existing popup.
+            await page.mouse.move(points[0].x, points[0].y);
+            await page.mouse.down();
+            await page.mouse.move(points[1].x, points[1].y, { steps: 10 });
+            await page.mouse.up();
+            await page.getByRole('dialog').waitFor();
+            assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), false);
+            await page.keyboard.press('Space');
+            await page.waitForFunction(() => window.selectionTest.selected?.suppressTooltip);
+            assert.equal(await page.getByRole('dialog').count(), 0);
+            await run(() => window.selectionTest.close());
+            await run(() => window.selectionTest.setPanel('chat'));
+            // Navigation buttons extend a released right-button selection without a tooltip.
+            await page.mouse.move(points[0].x, points[0].y);
+            await page.mouse.down({ button: 'right' });
+            await page.mouse.move(points[1].x, points[1].y, { steps: 10 });
+            await page.mouse.up({ button: 'right' });
+            await page.waitForFunction(() => window.selectionTest.selected?.suppressTooltip);
+            await page.getByRole('button', { name: 'Next page or section', exact: true }).click();
+            await page.waitForFunction(() => window.selectionTest.extending && !window.selectionTest.busy);
+            assert.ok((await run(() => window.selectionTest.selected.text)).length > 10);
+            assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), true);
+            await page.getByRole('button', { name: 'Previous page or section', exact: true }).click();
+            await page.waitForFunction(() => !window.selectionTest.busy);
+            assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), true);
+            assert.equal(await page.getByRole('dialog').count(), 0);
+            await run(() => window.selectionTest.display(0));
             // A right-button drag can extend across pages while chat is open.
             const edge = await page.locator('.reader-shell').evaluate(shell => shell.getBoundingClientRect().right - 5);
             await page.mouse.move(points[0].x, points[0].y);
             await page.mouse.down({ button: 'right' });
             await page.mouse.move(edge, points[0].y + 25, { steps: 15 });
-            await page.waitForFunction(() => window.selectionTest.extending, null, { timeout: 5000 });
+            await page.waitForFunction(() => window.selectionTest.extending && !window.selectionTest.busy, null, { timeout: 5000 });
+            const firstEdgePage = await run(() => window.selectionTest.rendition.currentLocation().start.cfi);
+            await page.waitForTimeout(1900);
+            assert.equal(await run(() => window.selectionTest.rendition.currentLocation().start.cfi), firstEdgePage,
+              'Holding at the edge must not skip multiple pages');
+            await page.mouse.move(edge, points[0].y + 30, { steps: 3 });
+            await page.waitForTimeout(900);
+            assert.equal(await run(() => window.selectionTest.rendition.currentLocation().start.cfi), firstEdgePage);
+            await page.mouse.move(edge / 2, points[0].y + 25, { steps: 8 });
+            await page.mouse.move(edge, points[0].y + 25, { steps: 8 });
+            await page.waitForFunction(previous => !window.selectionTest.busy && window.selectionTest.rendition.currentLocation().start.cfi !== previous, firstEdgePage);
+            const secondEdgePage = await run(() => window.selectionTest.rendition.currentLocation().start.cfi);
+            await page.waitForTimeout(1600);
+            assert.equal(await run(() => window.selectionTest.rendition.currentLocation().start.cfi), secondEdgePage,
+              'Returning to the edge allows exactly one more page');
+            // Release outside the iframe, then return to the edge with no button held.
+            await page.mouse.move(edge / 2, 700);
             await page.mouse.up({ button: 'right' });
+            await page.mouse.move(edge, points[0].y + 25, { steps: 8 });
+            await page.waitForTimeout(900);
+            assert.equal(await run(() => window.selectionTest.rendition.currentLocation().start.cfi), secondEdgePage);
             await page.waitForFunction(() => !window.selectionTest.busy);
             assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), true);
             assert.equal(await page.getByRole('dialog').count(), 0);

@@ -17,6 +17,8 @@ import type { ReaderPassage } from "../../shared/types/readerChat";
 import { ReaderSettings } from "../../frontend/src/components/Reader/ReaderSettings";
 import { applyPreferences } from "../../frontend/src/services/readerPreferences";
 import type { ReaderPreferences } from "../../shared/types/reader";
+import { ReaderFooter } from "../../frontend/src/components/Reader/ReaderFooter";
+import { useEpubPageTurns } from "../../frontend/src/hooks/reader/useEpubPageTurns";
 import { ReaderDictionary } from "../../frontend/src/components/Reader/ReaderDictionary";
 import "../../frontend/src/styles/app/_reader.scss";
 
@@ -62,6 +64,9 @@ function Fixture() {
     selectionRef: { current: null },
   } as unknown as EpubRuntime);
   runtime.current.selectionRef.current = selection.textSelection;
+  const move = useEpubPageTurns(runtime.current, selection.closeLookup, () => {}, selection.extend);
+  const latestMove = useRef(move);
+  latestMove.current = move;
   const [quote, setQuote] = useState<ReaderPassage | null>(null);
   const [preferences, setPreferences] = useState<ReaderPreferences>({
     fontSize: 20, fontFamily: "serif", lineHeight: 1.7, width: "comfortable", theme: "sepia", flow: "paginated",
@@ -95,6 +100,7 @@ function Fixture() {
             runtime.current,
             {
               onSelectionChange: (doc) => latest.current.onSelectionChange(doc),
+              onSelectionKey: (event, selecting) => latest.current.onSelectionKey(event, selecting),
               closeLookup: () => latest.current.closeLookup(),
               isExtending: () => latest.current.isExtending(),
               copySelection: (event) => latest.current.copySelection(event),
@@ -102,10 +108,7 @@ function Fixture() {
             {
               onKey: () => {},
               enabled: () => true,
-              move: (direction) => {
-                latest.current.closeLookup();
-                void rendition[direction]();
-              },
+              move: direction => latestMove.current(direction),
               title: "Selection test",
               extend: (direction) =>
                 latest.current.extend(runtime.current, direction),
@@ -201,6 +204,10 @@ function Fixture() {
     <div className="reader-shell reader-theme-light">
       <div ref={host} style={{ width: "100%", height: 300 }} />
       <details><summary>Test reader settings</summary><ReaderSettings preferences={preferences} onChange={setPreferences} publisherPagesAvailable={false} /></details>
+      <ReaderFooter state={{ location: "", progress: 0, savedAt: 0, preferences }} locationsReady={false}
+        loading={false} onProgressNavigate={async () => {}} move={move} atStart={false} atEnd={false}
+        chapter="Test" showPublisherPages={false} pageLabel="Test page" togglePageNumbering={() => {}}
+        saveStatus="saved" retrySave={async () => {}} />
       {quote && <ReaderChatQuote passage={quote} onReveal={() => {}} />}
       {selection.textSelection && !selection.textSelection.suppressTooltip && (
         <ReaderDictionary

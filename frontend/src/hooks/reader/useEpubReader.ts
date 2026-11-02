@@ -43,7 +43,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const move = useEpubPageTurns(runtime, selection.closeLookup, setError);
+  const move = useEpubPageTurns(runtime, selection.closeLookup, setError, selection.extend);
   const engine = useEpubBook(
     book,
     state.preferences.flow,
