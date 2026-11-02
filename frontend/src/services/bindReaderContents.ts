@@ -1,4 +1,5 @@
 import type { Contents } from "epubjs";
+import { readerSelectionEdge } from "./readerSelectionEdge";
 import { bindReaderTouch } from "./readerTouch";
 import type { EpubRuntime } from "../hooks/reader/useEpubRuntime";
 import type { ReaderSelection } from "../hooks/reader/useReaderSelection";
@@ -87,6 +88,12 @@ export function bindReaderContents(
   };
   contents.document.addEventListener("contextmenu", onContextMenu);
   let edge: "next" | "prev" | undefined;
+  let dragPosition: { x: number; y: number } | undefined;
+  const currentEdge = () => {
+    const frame = contents.document.defaultView?.frameElement?.getBoundingClientRect();
+    const host = runtime.host.current?.getBoundingClientRect();
+    return frame && host && dragPosition ? readerSelectionEdge(contents.document, frame, host, dragPosition) : undefined;
+  };
   let timer: ReturnType<typeof setTimeout> | undefined;
   const stopEdge = () => {
     clearTimeout(timer);
@@ -98,6 +105,7 @@ export function bindReaderContents(
       timer = undefined;
       if (!edge || !dragging || !enabled() || (mobileRef.current && panelRef.current) || !extend)
         return;
+      if (currentEdge() !== edge) { stopEdge(); return; }
       if (
         !contents.document.getSelection()?.toString().trim() &&
         !selection.isExtending?.()
@@ -135,6 +143,7 @@ export function bindReaderContents(
   const onMouseUp = (event?: MouseEvent | FocusEvent) => {
     if (event && "buttons" in event && (event.buttons & dragButton)) return;
     dragging = false;
+    dragPosition = undefined;
     dragAnchor = undefined;
     stopEdge();
   };
@@ -173,9 +182,9 @@ export function bindReaderContents(
     // clientX is relative to the full chapter iframe, which can be many columns wide.
     const host = runtime.host.current?.getBoundingClientRect();
     if (!host) return;
-    const x = frame.getBoundingClientRect().left + event.clientX;
-    const nextEdge =
-      x <= host.left + 28 ? "prev" : x >= host.right - 28 ? "next" : undefined;
+    const offset = frame.getBoundingClientRect();
+    dragPosition = { x: offset.left + event.clientX, y: offset.top + event.clientY };
+    const nextEdge = readerSelectionEdge(contents.document, offset, host, dragPosition);
     if (!nextEdge) {
       stopEdge();
       return;

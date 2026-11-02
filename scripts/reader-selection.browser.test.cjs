@@ -221,10 +221,14 @@ test(
             await page.mouse.move(points[1].x, points[1].y, { steps: 10 });
             await page.getByRole('dialog').waitFor();
             const initial = await position();
+            await page.mouse.move(edge, points[0].y + 25, {steps:10});
+            await page.waitForTimeout(1700);
+            assert.equal(await position(), initial, 'The end of a middle text row must never turn pages');
+            await page.mouse.move(points[1].x, points[1].y, {steps:10});
             await page.mouse.down({ button: 'right' });
             await page.mouse.up({ button: 'right' });
             await page.waitForFunction(() => window.selectionTest.selected?.suppressTooltip);
-            await page.mouse.move(edge, points[0].y + 25, { steps: 15 });
+            await page.mouse.move(edge, await run(() => window.selectionTest.lastRowY()), { steps: 15 });
             await page.waitForTimeout(1800);
             assert.equal(await position(), initial, 'Hidden popup blocks every edge page turn');
             assert.equal(await page.getByRole('dialog').count(), 0);
@@ -270,14 +274,14 @@ test(
             await page.mouse.down({ button: 'right' });
             await page.mouse.up({ button: 'right' });
             await page.waitForFunction(() => !window.selectionTest.blocked());
-            await page.mouse.move(edge, points[0].y + 25, { steps: 8 });
+            await page.mouse.move(edge, await run(() => window.selectionTest.lastRowY()), { steps: 8 });
             await page.waitForFunction(previous => !window.selectionTest.busy && window.selectionTest.rendition.currentLocation().start.cfi !== previous, paused);
             // Releasing outside the iframe stops all further automatic turns.
             await page.mouse.move(edge / 2, 700);
             await page.mouse.up({ button: 'left' });
             await page.waitForFunction(() => !window.selectionTest.busy);
             const stopped = await position();
-            await page.mouse.move(edge, points[0].y + 25, { steps: 8 });
+            await page.mouse.move(edge, await run(() => window.selectionTest.lastRowY()), { steps: 8 });
             await page.waitForTimeout(1100);
             assert.equal(await position(), stopped);
             await run(() => window.selectionTest.display(0));
@@ -438,7 +442,7 @@ test(
             });
             await page.mouse.move(drag.x, drag.y);
             await page.mouse.down();
-            await page.mouse.move(drag.edge, drag.y + 25, { steps: 15 });
+            await page.mouse.move(drag.edge, await run(() => window.selectionTest.lastRowY()), { steps: 15 });
             await page.waitForFunction(
               () => window.selectionTest.extending,
               null,

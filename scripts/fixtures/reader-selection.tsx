@@ -127,6 +127,7 @@ function Fixture() {
           .some(contents => !!contents.document.getSelection()?.toString().trim());
         if (!latest.current.isExtending() && !nativeSelectionActive) latest.current.closeLookup();
       });
+      applyPreferences(rendition, runtime.current.stateRef.current.preferences);
       await rendition.display();
       await rendition.reportLocation();
       const api = {
@@ -134,6 +135,16 @@ function Fixture() {
         rendition,
         setQuote,
         blocked: () => latest.current.isPageTurnBlocked(),
+        lastRowY() {
+          const contents = (rendition.getContents() as unknown as Contents[])[0];
+          const range = contents.document.createRange();
+          range.selectNodeContents(contents.document.querySelector("p")!);
+          const frame = contents.document.defaultView!.frameElement!.getBoundingClientRect();
+          const hostRect = host.current!.getBoundingClientRect();
+          const rows = Array.from(range.getClientRects()).filter(rect => frame.left + rect.right > hostRect.left && frame.left + rect.left < hostRect.right && frame.top + rect.top < hostRect.bottom);
+          const last = rows.reduce((a,b) => a.top > b.top ? a : b);
+          return frame.top + (last.top + last.bottom) / 2;
+        },
         move: (direction: "next" | "prev") => latestMove.current(direction),
         async translate(start: number, end: number) {
           const contents = (rendition.getContents() as unknown as Contents[])[0];
