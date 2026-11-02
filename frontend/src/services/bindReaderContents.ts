@@ -6,7 +6,7 @@ export function bindReaderContents(
   contents: Contents,
   runtime: EpubRuntime,
   selection: Pick<ReaderSelection, "onSelectionChange" | "closeLookup"> &
-    Partial<Pick<ReaderSelection, "isExtending" | "copySelection" | "onSelectionKey">>,
+    Partial<Pick<ReaderSelection, "isExtending" | "copySelection" | "onSelectionKey" | "togglePopup" | "beginSelection" | "isPageTurnBlocked">>,
   {
     onKey,
     enabled,
@@ -23,8 +23,16 @@ export function bindReaderContents(
 ) {
   const { mobileRef, stateRef, panelRef, selectionRef } = runtime;
   const cleanups: (() => void)[] = [];
+  const resetLocalDrag = (wasExtending: boolean | undefined) => {
+    if (wasExtending && selection.isPageTurnBlocked?.()) {
+      dragAnchor = undefined;
+      restartLocalDrag = true;
+    }
+  };
   const onKeyDown = (event: KeyboardEvent) => {
+    const wasExtending = selection.isExtending?.();
     selection.onSelectionKey?.(event, dragging || !!contents.document.getSelection()?.toString().trim());
+    resetLocalDrag(wasExtending);
     if (!event.defaultPrevented) onKey(event);
   };
   contents.document.addEventListener("keydown", onKeyDown);
@@ -35,15 +43,21 @@ export function bindReaderContents(
     contents.document.removeEventListener("selectionchange", onSelectionChange),
   );
   const onPointerDown = (event: PointerEvent) => {
+    if (event.button === 2 && (event.buttons & 1) && dragging && dragButton === 1) {
+      return;
+    }
     contents.document.documentElement.dataset.readerSelectionMode = event.button === 2 ? "right" : "left";
     if (!mobileRef.current && !selection.isExtending?.())
       selection.closeLookup();
+    selection.beginSelection?.(event.button === 2);
   };
   contents.document.addEventListener("pointerdown", onPointerDown);
   const onCopy = (event: ClipboardEvent) => selection.copySelection?.(event);
   contents.document.addEventListener("copy", onCopy);
   let dragging = false;
-  let rightAnchor: Range | undefined;
+  let dragAnchor: Range | undefined;
+  let dragButton = 1;
+  let restartLocalDrag = false;
   const caretAt = (event: MouseEvent) => {
     const doc = contents.document as Document & {
       caretPositionFromPoint?: (x: number, y: number) =>
@@ -60,11 +74,11 @@ export function bindReaderContents(
     return doc.caretRangeFromPoint?.(event.clientX, event.clientY) ?? null;
   };
   const updateRightSelection = (event: MouseEvent) => {
-    if (!rightAnchor || selection.isExtending?.()) return;
+    if (!dragAnchor || selection.isExtending?.()) return;
     const focus = caretAt(event);
-    if (!focus || !rightAnchor.startContainer.isConnected) return;
+    if (!focus || !dragAnchor.startContainer.isConnected) return;
     contents.document.getSelection()?.setBaseAndExtent(
-      rightAnchor.startContainer, rightAnchor.startOffset,
+      dragAnchor.startContainer, dragAnchor.startOffset,
       focus.startContainer, focus.startOffset,
     );
   };
@@ -74,7 +88,6 @@ export function bindReaderContents(
   contents.document.addEventListener("contextmenu", onContextMenu);
   let edge: "next" | "prev" | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  let edgeConsumed = false;
   const stopEdge = () => {
     clearTimeout(timer);
     timer = undefined;
@@ -90,30 +103,39 @@ export function bindReaderContents(
         !selection.isExtending?.()
       )
         return;
-      // One turn per edge visit. Only moving back into the page rearms it.
-      edgeConsumed = true;
-      await extend(edge);
+      if (!selection.isPageTurnBlocked?.()) await extend(edge);
       if (!contents.document.defaultView?.frameElement?.isConnected) {
         dragging = false;
         stopEdge();
       }
+      if (dragging && edge) schedule();
     }, 750);
   };
   const onMouseDown = (event: MouseEvent) => {
+    // A right click during a left drag changes only the popup for this selection.
+    if (event.button === 2 && (event.buttons & 1) && dragging && dragButton === 1) {
+      event.preventDefault();
+      const wasExtending = selection.isExtending?.();
+      selection.togglePopup?.();
+      resetLocalDrag(wasExtending);
+      return;
+    }
     stopEdge();
-    edgeConsumed = false;
-    rightAnchor = undefined;
+    dragAnchor = undefined;
+    restartLocalDrag = false;
     dragging = event.button === 0;
+    dragButton = event.button === 2 ? 2 : 1;
     if (event.button !== 2 || mobileRef.current || !enabled())
       return;
     event.preventDefault();
-    rightAnchor = caretAt(event) ?? undefined;
-    dragging = !!rightAnchor;
-    if (rightAnchor) updateRightSelection(event);
+    dragAnchor = caretAt(event) ?? undefined;
+    dragging = !!dragAnchor;
+    if (dragAnchor) updateRightSelection(event);
   };
-  const onMouseUp = () => {
+  const onMouseUp = (event?: MouseEvent | FocusEvent) => {
+    if (event && "buttons" in event && (event.buttons & dragButton)) return;
     dragging = false;
-    rightAnchor = undefined;
+    dragAnchor = undefined;
     stopEdge();
   };
   const onMouseMove = (event: MouseEvent) => {
@@ -121,8 +143,19 @@ export function bindReaderContents(
       onMouseUp();
       return;
     }
-    if (rightAnchor) {
-      if (!(event.buttons & 2)) {
+    if (dragging && dragButton === 1 && !dragAnchor && (restartLocalDrag || selection.isPageTurnBlocked?.())) {
+      const native = contents.document.getSelection();
+      if (!restartLocalDrag && native?.anchorNode && native.anchorNode.isConnected) {
+        dragAnchor = contents.document.createRange();
+        dragAnchor.setStart(native.anchorNode, native.anchorOffset);
+        dragAnchor.collapse(true);
+      } else {
+        dragAnchor = caretAt(event) ?? undefined;
+      }
+      restartLocalDrag = false;
+    }
+    if (dragAnchor) {
+      if (!(event.buttons & dragButton)) {
         onMouseUp();
         return;
       }
@@ -145,10 +178,9 @@ export function bindReaderContents(
       x <= host.left + 28 ? "prev" : x >= host.right - 28 ? "next" : undefined;
     if (!nextEdge) {
       stopEdge();
-      edgeConsumed = false;
       return;
     }
-    if (edgeConsumed || nextEdge === edge) return;
+    if (nextEdge === edge) return;
     stopEdge();
     edge = nextEdge;
     if (edge) schedule();

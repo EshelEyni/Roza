@@ -22,8 +22,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     book,
     userId,
   );
-  const clearLocator = useRef<() => void>();
-  const selection = useReaderSelection(() => clearLocator.current?.());
+  const selection = useReaderSelection();
   const { panel, setPanel, closePanel } = useReaderPanels();
   const runtime = useEpubRuntime(
     state,
@@ -33,7 +32,6 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     selection.textSelection,
   );
   const { markPassage, clearMarker, passageMarks } = useReaderPassageMarker(runtime);
-  clearLocator.current = clearMarker;
   const activeSelection = useRef(selection.textSelection);
   activeSelection.current = selection.textSelection;
   const markTranslation = useCallback((passage: ReaderPassage) => {
@@ -43,7 +41,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const move = useEpubPageTurns(runtime, selection.closeLookup, setError, selection.extend);
+  const move = useEpubPageTurns(runtime, selection.closeLookup, setError, selection.extend, selection.isPageTurnBlocked);
   const engine = useEpubBook(
     book,
     state.preferences.flow,

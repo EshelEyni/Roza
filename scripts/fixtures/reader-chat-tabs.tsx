@@ -32,7 +32,7 @@ function Fixture() {
   const marked = useRef(new Set<string>());
   const runtime = useRef({
     stateRef: { current: readerState },
-    renditionRef: { current: { annotations: {
+    renditionRef: { current: { on: () => {}, off: () => {}, currentLocation: () => undefined, annotations: {
       highlight: (cfi: string) => marked.current.add(cfi),
       remove: (cfi: string) => marked.current.delete(cfi),
     } } },

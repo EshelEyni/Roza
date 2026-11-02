@@ -66,19 +66,58 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
   }, [clearHighlights]);
   useEffect(() => closeLookup, [closeLookup]);
 
+  const cancelCrossPage = useCallback(() => {
+    const active = session.current;
+    if (!active) return;
+    ++version.current;
+    session.current = null;
+    reading.current = false;
+    clearHighlights();
+    setExtending(false);
+    setBusy(false);
+    setLimitNotice(null);
+    current.current = null;
+    selectionDocument.current = null;
+    // Keep only an actual native fragment on the current page, never the old CFI span.
+    const contents = active.runtime.renditionRef.current?.getContents() as unknown as Contents[] | undefined;
+    for (const content of contents || []) {
+      const native = content.document.getSelection();
+      const frame = content.document.defaultView?.frameElement;
+      if (!native?.rangeCount || native.isCollapsed || !native.toString().trim() || !frame) continue;
+      const range = native.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      const offset = frame.getBoundingClientRect();
+      current.current = { text: native.toString().trim(), cfi: content.cfiFromRange(range),
+        suppressTooltip: true, x: offset.left + rect.left, y: offset.top + rect.bottom + 8 };
+      selectionDocument.current = content.document;
+      break;
+    }
+    setTextSelection(current.current);
+  }, [clearHighlights]);
+
+  const togglePopup = useCallback(() => {
+    popupSuppressed.current = !popupSuppressed.current;
+    if (popupSuppressed.current) cancelCrossPage();
+    if (current.current) {
+      current.current = { ...current.current, suppressTooltip: popupSuppressed.current };
+      setTextSelection(current.current);
+    }
+  }, [cancelCrossPage]);
+
+  const beginSelection = useCallback((suppressed: boolean) => {
+    popupSuppressed.current = suppressed;
+    if (suppressed) cancelCrossPage();
+  }, [cancelCrossPage]);
+  const isPageTurnBlocked = useCallback(() => popupSuppressed.current, []);
+
   const onSelectionKey = useCallback((event: KeyboardEvent, selecting = false) => {
     const target = event.target as Element | null;
     if (event.defaultPrevented || event.key !== " " || event.ctrlKey || event.metaKey || event.altKey ||
       target?.closest?.("input, textarea, select, button, [contenteditable=true]") ||
-      (!selecting && !current.current)) return;
+      (!selecting && !current.current && !popupSuppressed.current)) return;
     event.preventDefault();
-    // A single press latches until this selection is dismissed or a new one starts.
-    popupSuppressed.current = true;
-    if (current.current && !current.current.suppressTooltip) {
-      current.current = { ...current.current, suppressTooltip: true };
-      setTextSelection(current.current);
-    }
-  }, []);
+    if (!event.repeat) togglePopup();
+  }, [togglePopup]);
   useEffect(() => {
     document.addEventListener("keydown", onSelectionKey);
     return () => document.removeEventListener("keydown", onSelectionKey);
@@ -116,7 +155,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
         }
         const next = {
           ...previous,
-          suppressTooltip: previous.suppressTooltip || popupSuppressed.current,
+          suppressTooltip: popupSuppressed.current,
           text: result.text,
           cfi: result.cfi,
           endCfi: result.endCfi,
@@ -147,6 +186,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
       const selected = current.current;
       const rendition = runtime.renditionRef.current;
       if (
+        popupSuppressed.current ||
         !selected ||
         !rendition ||
         turning.current ||
@@ -263,7 +303,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
       selectionDocument.current = contents.document;
       const next = {
         text,
-        suppressTooltip: popupSuppressed.current || contents.document.documentElement.dataset.readerSelectionMode === "right",
+        suppressTooltip: popupSuppressed.current,
         word,
         cfi,
         x: offset.left + rect.left,
@@ -280,6 +320,9 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
     clearLimitNotice,
     onSelectionChange,
     onSelectionKey,
+    togglePopup,
+    beginSelection,
+    isPageTurnBlocked,
     select,
     limitNotice: limitNotice?.message || "",
     extend,

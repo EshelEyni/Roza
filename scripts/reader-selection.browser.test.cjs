@@ -134,6 +134,20 @@ test(
           await page.getByRole("button", { name: "Reset colors" }).click();
           assert.equal(await page.getByLabel('Selected text color', { exact: true }).inputValue(), '#392e24');
           await page.getByText("Test reader settings", { exact: true }).click();
+          // Translated words persist on the same page, including after another selection.
+          await run(() => window.selectionTest.translate(0, 7));
+          await run(() => window.selectionTest.translate(8, 13));
+          await page.waitForTimeout(2300);
+          assert.equal(await page.locator('[ref="reader-locator-blue"]').count(), 2);
+          await run(() => window.selectionTest.rendition.reportLocation());
+          assert.equal(await page.locator('[ref="reader-locator-blue"]').count(), 2);
+          await run(() => window.selectionTest.select(15, 20));
+          assert.equal(await page.locator('[ref="reader-locator-blue"]').count(), 2);
+          await run(() => window.selectionTest.close());
+          await page.getByRole('button', { name: 'Next page or section', exact: true }).click();
+          await page.waitForFunction(() => !document.querySelector('[ref="reader-locator-blue"]'));
+          await run(() => window.selectionTest.display(0));
+          assert.equal(await page.locator('[ref="reader-locator-blue"]').count(), 0);
           const quote = await run(() => {
             const contents = window.selectionTest.rendition.getContents()[0];
             const range = contents.document.createRange();
@@ -200,78 +214,102 @@ test(
             }
             }
             await run(() => window.selectionTest.setPanel(null));
-            // One Space press during a left drag suppresses this selection, even after keyup.
+            const edge = await page.locator('.reader-shell').evaluate(shell => shell.getBoundingClientRect().right - 5);
+            const position = () => run(() => window.selectionTest.rendition.currentLocation().start.cfi);
+            await page.mouse.move(points[0].x, points[0].y);
+            await page.mouse.down({ button: 'left' });
+            await page.mouse.move(points[1].x, points[1].y, { steps: 10 });
+            await page.getByRole('dialog').waitFor();
+            const initial = await position();
+            await page.mouse.down({ button: 'right' });
+            await page.mouse.up({ button: 'right' });
+            await page.waitForFunction(() => window.selectionTest.selected?.suppressTooltip);
+            await page.mouse.move(edge, points[0].y + 25, { steps: 15 });
+            await page.waitForTimeout(1800);
+            assert.equal(await position(), initial, 'Hidden popup blocks every edge page turn');
+            assert.equal(await page.getByRole('dialog').count(), 0);
+            // Space clears the same flag, restoring the popup and repeated edge turns.
+            await page.keyboard.press('Space');
+            await page.waitForFunction(() => !window.selectionTest.selected?.suppressTooltip);
+            await page.getByRole('dialog').waitFor();
+            await page.waitForFunction(previous => !window.selectionTest.busy && window.selectionTest.rendition.currentLocation().start.cfi !== previous, initial);
+            const first = await position();
+            await page.waitForFunction(previous => !window.selectionTest.busy && window.selectionTest.rendition.currentLocation().start.cfi !== previous, first);
+            // Another right click while left remains held locks page turns again.
+            await page.mouse.down({ button: 'right' });
+            await page.mouse.up({ button: 'right' });
+            await page.waitForFunction(() => window.selectionTest.blocked() && !window.selectionTest.busy);
+            assert.equal(await run(() => window.selectionTest.extending), false);
+            assert.equal(await page.locator(".reader-selection-highlight").count(), 0, "Popup-off clears all cross-page annotations");
+            const paused = await position();
+            await run(() => window.selectionTest.move("next"));
+            assert.equal(await position(), paused, "Page lock still applies after clearing the cross-page range");
+            await page.waitForTimeout(1800);
+            assert.equal(await position(), paused);
+            const localPoints = await run(() => {
+              const contents = window.selectionTest.rendition.getContents()[0];
+              const current = window.selectionTest.rendition.currentLocation();
+              const range = contents.range(current.start.cfi);
+              const node = range.startContainer;
+              const start = range.startOffset;
+              const frame = contents.document.defaultView.frameElement.getBoundingClientRect();
+              return [start, start + 5].map(offset => {
+                const char = contents.document.createRange();
+                char.setStart(node, offset);
+                char.setEnd(node, offset + 1);
+                const rect = char.getBoundingClientRect();
+                return { x: frame.left + rect.left + 1, y: frame.top + rect.top + 8 };
+              });
+            });
+            await page.mouse.move(localPoints[0].x, localPoints[0].y);
+            await page.mouse.move(localPoints[1].x, localPoints[1].y, {steps:5});
+            await page.waitForFunction(() => !!window.selectionTest.selected?.text);
+            assert.ok((await run(() => window.selectionTest.selected.text)).length < 100);
+            assert.equal(await run(() => window.selectionTest.selected.endCfi), undefined);
+            assert.equal(await run(() => window.selectionTest.extending), false);
+            await page.mouse.down({ button: 'right' });
+            await page.mouse.up({ button: 'right' });
+            await page.waitForFunction(() => !window.selectionTest.blocked());
+            await page.mouse.move(edge, points[0].y + 25, { steps: 8 });
+            await page.waitForFunction(previous => !window.selectionTest.busy && window.selectionTest.rendition.currentLocation().start.cfi !== previous, paused);
+            // Releasing outside the iframe stops all further automatic turns.
+            await page.mouse.move(edge / 2, 700);
+            await page.mouse.up({ button: 'left' });
+            await page.waitForFunction(() => !window.selectionTest.busy);
+            const stopped = await position();
+            await page.mouse.move(edge, points[0].y + 25, { steps: 8 });
+            await page.waitForTimeout(1100);
+            assert.equal(await position(), stopped);
+            await run(() => window.selectionTest.display(0));
+            // A fresh marking starts with the flag down. Space toggles both ways.
             await page.mouse.move(points[0].x, points[0].y);
             await page.mouse.down();
             await page.keyboard.press('Space');
             await page.mouse.move(points[1].x, points[1].y, { steps: 10 });
             await page.mouse.up();
             await page.waitForFunction(() => window.selectionTest.selected?.suppressTooltip);
-            assert.equal(await page.getByRole('dialog').count(), 0);
+            const locked = await position();
             await page.getByRole('button', { name: 'Next page or section', exact: true }).click();
-            await page.waitForFunction(() => window.selectionTest.extending && !window.selectionTest.busy);
-            assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), true);
-            await run(() => window.selectionTest.display(0));
-            // A fresh left selection shows the popup, then Space hides the existing popup.
-            await page.mouse.move(points[0].x, points[0].y);
-            await page.mouse.down();
-            await page.mouse.move(points[1].x, points[1].y, { steps: 10 });
-            await page.mouse.up();
+            await page.waitForTimeout(900);
+            assert.equal(await position(), locked, 'Navigation buttons cannot turn pages while flagged');
+            await page.keyboard.press('Tab');
+            await page.evaluate(() => window.selectionTest.rendition.getContents()[0].document.body.focus());
+            // Dispatch to the reading document, independent of which navigation control has focus.
+            await run(() => window.selectionTest.rendition.getContents()[0].document.dispatchEvent(new KeyboardEvent('keydown', {key:' ', bubbles:true, cancelable:true})));
             await page.getByRole('dialog').waitFor();
             assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), false);
-            await page.keyboard.press('Space');
-            await page.waitForFunction(() => window.selectionTest.selected?.suppressTooltip);
-            assert.equal(await page.getByRole('dialog').count(), 0);
-            await run(() => window.selectionTest.close());
-            await run(() => window.selectionTest.setPanel('chat'));
-            // Navigation buttons extend a released right-button selection without a tooltip.
-            await page.mouse.move(points[0].x, points[0].y);
-            await page.mouse.down({ button: 'right' });
-            await page.mouse.move(points[1].x, points[1].y, { steps: 10 });
-            await page.mouse.up({ button: 'right' });
-            await page.waitForFunction(() => window.selectionTest.selected?.suppressTooltip);
-            await page.getByRole('button', { name: 'Next page or section', exact: true }).click();
-            await page.waitForFunction(() => window.selectionTest.extending && !window.selectionTest.busy);
-            assert.ok((await run(() => window.selectionTest.selected.text)).length > 10);
-            assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), true);
-            await page.getByRole('button', { name: 'Previous page or section', exact: true }).click();
-            await page.waitForFunction(() => !window.selectionTest.busy);
-            assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), true);
-            assert.equal(await page.getByRole('dialog').count(), 0);
             await run(() => window.selectionTest.display(0));
-            // A right-button drag can extend across pages while chat is open.
-            const edge = await page.locator('.reader-shell').evaluate(shell => shell.getBoundingClientRect().right - 5);
+            // Right-only selection defaults to hidden and is also page-locked.
             await page.mouse.move(points[0].x, points[0].y);
-            await page.mouse.down({ button: 'right' });
-            await page.mouse.move(edge, points[0].y + 25, { steps: 15 });
-            await page.waitForFunction(() => window.selectionTest.extending && !window.selectionTest.busy, null, { timeout: 5000 });
-            const firstEdgePage = await run(() => window.selectionTest.rendition.currentLocation().start.cfi);
-            await page.waitForTimeout(1900);
-            assert.equal(await run(() => window.selectionTest.rendition.currentLocation().start.cfi), firstEdgePage,
-              'Holding at the edge must not skip multiple pages');
-            await page.mouse.move(edge, points[0].y + 30, { steps: 3 });
+            await page.mouse.down({button:'right'});
+            await page.mouse.move(points[1].x, points[1].y, {steps:10});
+            await page.mouse.up({button:'right'});
+            await page.waitForFunction(() => window.selectionTest.selected?.suppressTooltip);
+            const rightLocked = await position();
+            await page.getByRole('button', {name:'Next page or section',exact:true}).click();
             await page.waitForTimeout(900);
-            assert.equal(await run(() => window.selectionTest.rendition.currentLocation().start.cfi), firstEdgePage);
-            await page.mouse.move(edge / 2, points[0].y + 25, { steps: 8 });
-            await page.mouse.move(edge, points[0].y + 25, { steps: 8 });
-            await page.waitForFunction(previous => !window.selectionTest.busy && window.selectionTest.rendition.currentLocation().start.cfi !== previous, firstEdgePage);
-            const secondEdgePage = await run(() => window.selectionTest.rendition.currentLocation().start.cfi);
-            await page.waitForTimeout(1600);
-            assert.equal(await run(() => window.selectionTest.rendition.currentLocation().start.cfi), secondEdgePage,
-              'Returning to the edge allows exactly one more page');
-            // Release outside the iframe, then return to the edge with no button held.
-            await page.mouse.move(edge / 2, 700);
-            await page.mouse.up({ button: 'right' });
-            await page.mouse.move(edge, points[0].y + 25, { steps: 8 });
-            await page.waitForTimeout(900);
-            assert.equal(await run(() => window.selectionTest.rendition.currentLocation().start.cfi), secondEdgePage);
-            await page.waitForFunction(() => !window.selectionTest.busy);
-            assert.equal(await run(() => window.selectionTest.selected.suppressTooltip), true);
-            assert.equal(await page.getByRole('dialog').count(), 0);
-            await run(async () => {
-              window.selectionTest.setPanel(null);
-              await window.selectionTest.display(0);
-            });
+            assert.equal(await position(), rightLocked);
+            await run(() => window.selectionTest.display(0));
           }
           await run(() => window.selectionTest.select(0, 13));
           await page

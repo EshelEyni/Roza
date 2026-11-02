@@ -22,19 +22,18 @@ function setup(colors) {
 }
 const passage = { cfi: 'exact-word-range', text: 'countenanced' };
 const range = async p => [p.cfi];
-test('translation dismissal marks the exact word pastel blue and expires after two seconds', async () => {
+test('translation dismissal marks the exact word without a time-based expiry', async () => {
   const host = setup();
   await host.marker.show(passage, 'blue', range);
   assert.equal(host.added[0][0], passage.cfi);
   assert.equal(host.added[0][4].fill, '#a3c2ff');
   assert.equal(host.added[0][4]['fill-opacity'], '0.4');
   assert.equal(host.added[0][4]['pointer-events'], 'none');
-  const timer = [...host.timers.values()][0];
-  assert.equal(timer.delay, 2000);
-  timer.callback();
+  assert.equal(host.timers.size, 0);
+  host.marker.clear();
   assert.deepEqual(host.removed, [[passage.cfi, 'highlight']]);
 });
-test('a clicked chat passage cancels translation expiry and stays until cleared', async () => {
+test('a replacement passage clears the previous word mark and stays until cleared', async () => {
   const host = setup();
   await host.marker.show(passage, 'blue', range);
   await host.marker.show({ cfi: 'quote', text: 'passage' }, 'yellow', range);

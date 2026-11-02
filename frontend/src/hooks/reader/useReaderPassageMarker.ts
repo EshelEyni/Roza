@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Location } from "epubjs";
 import type { ReaderPassage } from "../../../../shared/types/readerChat";
 import { ReaderPassageMarker } from "../../services/readerPassageMarker";
 import { readerPassageKey } from "../../services/readerChatPresentation";
@@ -6,7 +7,7 @@ import { readSelectionRange } from "../../services/readerSelectionRange";
 import type { EpubRuntime } from "./useEpubRuntime";
 
 export function useReaderPassageMarker(runtime: EpubRuntime) {
-  const translated = useRef<ReaderPassageMarker>();
+  const translated = useRef(new Map<string, { passage: ReaderPassage; marker: ReaderPassageMarker }>());
   const passages = useRef(new Map<string, { passage: ReaderPassage; marker: ReaderPassageMarker; count: number }>());
   const disabled = useRef(new Set<string>());
   const [revision, setRevision] = useState(0);
@@ -14,7 +15,10 @@ export function useReaderPassageMarker(runtime: EpubRuntime) {
     () => runtime.renditionRef.current,
     color => color === "blue" ? runtime.stateRef.current.preferences.translationColor : runtime.stateRef.current.preferences.passageColor,
   ), [runtime]);
-  if (!translated.current) translated.current = createMarker();
+  const clearMarker = useCallback(() => {
+    for (const entry of translated.current.values()) entry.marker.clear();
+    translated.current.clear();
+  }, []);
   const ranges = useCallback(async (selected: ReaderPassage) => {
     if (!selected.endCfi) return [selected.cfi];
     const book = runtime.epubRef.current;
@@ -32,11 +36,16 @@ export function useReaderPassageMarker(runtime: EpubRuntime) {
     return entry;
   }, [createMarker]);
   const markPassage = useCallback(async (passage: ReaderPassage, color: "blue" | "yellow") => {
-    if (color === "blue") return translated.current!.show(passage, color, ranges);
+    if (color === "blue") {
+      const key = readerPassageKey(passage);
+      let entry = translated.current.get(key);
+      if (!entry) { entry = { passage, marker: createMarker() }; translated.current.set(key, entry); }
+      return entry.marker.show(passage, color, ranges);
+    }
     const entry = passages.current.get(readerPassageKey(passage));
     if (entry?.count && !disabled.current.has(readerPassageKey(passage)))
       await entry.marker.show(passage, color, ranges);
-  }, [ranges]);
+  }, [ranges, createMarker]);
   const register = useCallback((passage: ReaderPassage) => {
     const key = readerPassageKey(passage);
     const entry = entryFor(passage);
@@ -62,6 +71,20 @@ export function useReaderPassageMarker(runtime: EpubRuntime) {
     setRevision(value => value + 1);
   }, [entryFor, markPassage]);
   const rendition = runtime.renditionRef.current;
+  useEffect(() => {
+    if (!rendition) return;
+    const pageKey = (location: Location | undefined) => location?.start && location.end
+      ? location.start.cfi + "|" + location.end.cfi : "";
+    // The renderer manager may not exist yet. Cached location is safe during startup.
+    let page = pageKey(rendition.location as Location | undefined);
+    const onRelocated = (location: Location) => {
+      const next = pageKey(location);
+      if (page && next && next !== page) clearMarker();
+      if (next) page = next;
+    };
+    rendition.on("relocated", onRelocated);
+    return () => { rendition.off("relocated", onRelocated); clearMarker(); };
+  }, [rendition, clearMarker]);
   const passageColor = runtime.stateRef.current.preferences.passageColor;
   useEffect(() => {
     for (const entry of passages.current.values())
@@ -69,10 +92,10 @@ export function useReaderPassageMarker(runtime: EpubRuntime) {
         void entry.marker.show(entry.passage, "yellow", ranges).catch(() => undefined);
   }, [passageColor, ranges, rendition]);
   useEffect(() => () => {
-    translated.current?.clear();
+    clearMarker();
     for (const entry of passages.current.values()) entry.marker.clear();
     passages.current.clear();
-  }, []);
+  }, [clearMarker]);
   const passageMarks = useMemo(() => {
     const hidden = new Set(disabled.current);
     return { register, toggle,
@@ -80,5 +103,5 @@ export function useReaderPassageMarker(runtime: EpubRuntime) {
       revision,
     };
   }, [register, toggle, revision]);
-  return { markPassage, clearMarker: translated.current.clear, passageMarks };
+  return { markPassage, clearMarker, passageMarks };
 }

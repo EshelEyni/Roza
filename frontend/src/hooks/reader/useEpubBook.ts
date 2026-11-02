@@ -36,6 +36,9 @@ export function useEpubBook(
     clearLimitNotice,
     onSelectionChange,
     onSelectionKey,
+    togglePopup,
+    beginSelection,
+    isPageTurnBlocked,
     select,
     isExtending,
     copySelection,
@@ -82,6 +85,11 @@ export function useEpubBook(
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") closeLookup();
       const target = event.target as HTMLElement | null;
+      if (isPageTurnBlocked() && ["ArrowRight", "ArrowLeft", "PageDown", "PageUp"].includes(event.key) &&
+        !target?.closest("input, textarea, select, button, [contenteditable=true]")) {
+        event.preventDefault();
+        return;
+      }
       if (
         event.shiftKey &&
         !event.defaultPrevented &&
@@ -192,7 +200,7 @@ export function useEpubBook(
             bindReaderContents(
               contents,
               runtime,
-              { onSelectionChange, onSelectionKey, closeLookup, isExtending, copySelection },
+              { onSelectionChange, onSelectionKey, togglePopup, beginSelection, isPageTurnBlocked, closeLookup, isExtending, copySelection },
               {
                 onKey,
                 enabled: () => ready && !cancelled && !changingLayout.current,
@@ -314,6 +322,9 @@ export function useEpubBook(
     clearLimitNotice,
     onSelectionChange,
     onSelectionKey,
+    togglePopup,
+    beginSelection,
+    isPageTurnBlocked,
     select,
     isExtending,
     copySelection,

@@ -8,15 +8,12 @@ const layers = new WeakMap<Rendition, Map<string, { owner: ReaderPassageMarker; 
 export class ReaderPassageMarker {
   private marks: { cfi: string; rendition: Rendition }[] = [];
   private version = 0;
-  private timer: ReturnType<typeof setTimeout> | undefined;
   constructor(
     private currentRendition: () => Rendition | null | undefined,
     private markerColor?: (color: "blue" | "yellow") => string | undefined,
   ) {}
   clear = () => {
     ++this.version;
-    clearTimeout(this.timer);
-    this.timer = undefined;
     for (const { cfi, rendition } of this.marks) {
       const byRange = layers.get(rendition);
       const stack = byRange?.get(cfi);
@@ -66,6 +63,5 @@ export class ReaderPassageMarker {
       draw();
       this.marks.push({ cfi, rendition });
     }
-    if (color === "blue") this.timer = setTimeout(this.clear, 2000);
   }
 }

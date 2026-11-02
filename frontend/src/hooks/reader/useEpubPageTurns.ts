@@ -6,13 +6,15 @@ export function useEpubPageTurns(
   closeLookup: () => void,
   setError: (message: string) => void,
   extendSelection?: (runtime: EpubRuntime, direction: "next" | "prev") => Promise<void>,
+  isPageTurnBlocked?: () => boolean,
 ) {
   const { t } = useTranslation();
   const { changingLayout, renditionRef, selectionRef } = runtime;
   const move = useCallback(
     (direction: "next" | "prev") => {
       if (changingLayout.current) return;
-      if (selectionRef.current?.suppressTooltip && extendSelection) {
+      if (selectionRef.current?.suppressTooltip || isPageTurnBlocked?.()) return;
+      if (selectionRef.current && extendSelection) {
         void extendSelection(runtime, direction).catch(() =>
           setError(t("reader.navigationError")),
         );
@@ -25,7 +27,7 @@ export function useEpubPageTurns(
           setError(t("reader.navigationError")),
         );
     },
-    [t, runtime, changingLayout, renditionRef, selectionRef, closeLookup, setError, extendSelection],
+    [t, runtime, changingLayout, renditionRef, selectionRef, closeLookup, setError, extendSelection, isPageTurnBlocked],
   );
 
   return move;

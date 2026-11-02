@@ -64,7 +64,7 @@ function Fixture() {
     selectionRef: { current: null },
   } as unknown as EpubRuntime);
   runtime.current.selectionRef.current = selection.textSelection;
-  const move = useEpubPageTurns(runtime.current, selection.closeLookup, () => {}, selection.extend);
+  const move = useEpubPageTurns(runtime.current, selection.closeLookup, () => {}, selection.extend, selection.isPageTurnBlocked);
   const latestMove = useRef(move);
   latestMove.current = move;
   const [quote, setQuote] = useState<ReaderPassage | null>(null);
@@ -72,7 +72,7 @@ function Fixture() {
     fontSize: 20, fontFamily: "serif", lineHeight: 1.7, width: "comfortable", theme: "sepia", flow: "paginated",
   });
   runtime.current.stateRef.current.preferences = preferences;
-  const { passageMarks } = useReaderPassageMarker(runtime.current);
+  const { passageMarks, markPassage } = useReaderPassageMarker(runtime.current);
   useEffect(() => {
     const rendition = runtime.current.renditionRef.current;
     if (rendition) applyPreferences(rendition, preferences);
@@ -101,6 +101,9 @@ function Fixture() {
             {
               onSelectionChange: (doc) => latest.current.onSelectionChange(doc),
               onSelectionKey: (event, selecting) => latest.current.onSelectionKey(event, selecting),
+              togglePopup: () => latest.current.togglePopup(),
+              beginSelection: suppressed => latest.current.beginSelection(suppressed),
+              isPageTurnBlocked: () => latest.current.isPageTurnBlocked(),
               closeLookup: () => latest.current.closeLookup(),
               isExtending: () => latest.current.isExtending(),
               copySelection: (event) => latest.current.copySelection(event),
@@ -130,6 +133,15 @@ function Fixture() {
         book,
         rendition,
         setQuote,
+        blocked: () => latest.current.isPageTurnBlocked(),
+        move: (direction: "next" | "prev") => latestMove.current(direction),
+        async translate(start: number, end: number) {
+          const contents = (rendition.getContents() as unknown as Contents[])[0];
+          const node = contents.document.querySelector("p")!.firstChild!;
+          const range = contents.document.createRange();
+          range.setStart(node, start); range.setEnd(node, end);
+          await markPassage({ text: range.toString(), cfi: contents.cfiFromRange(range) }, "blue");
+        },
         setPanel: (panel: "chat" | null) => { runtime.current.panelRef.current = panel; },
         texts,
         get selected() {
@@ -156,6 +168,7 @@ function Fixture() {
             rendition.getContents() as unknown as Contents[]
           )[0];
           contents.document.documentElement.dataset.readerSelectionMode = "left";
+          latest.current.beginSelection(false);
           const node = contents.document.querySelector("p")!.firstChild!;
           const range = contents.document.createRange();
           range.setStart(node, start);
