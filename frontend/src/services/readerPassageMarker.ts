@@ -1,8 +1,9 @@
+import { bindNativeHighlight } from "./readerNativeHighlight";
 import type { Rendition } from "epubjs";
 import type { ReaderPassage } from "../../../shared/types/readerChat";
 
 // epub.js keys highlights by CFI, so overlapping owners must share one annotation.
-const layers = new WeakMap<Rendition, Map<string, { owner: ReaderPassageMarker; draw: () => void }[]>>();
+const layers = new WeakMap<Rendition, Map<string, { owner: ReaderPassageMarker; draw: () => void; cleanup: () => void }[]>>();
 
 /** Own passage and translation marks without leaving duplicate SVG annotations. */
 export class ReaderPassageMarker {
@@ -11,6 +12,7 @@ export class ReaderPassageMarker {
   constructor(
     private currentRendition: () => Rendition | null | undefined,
     private markerColor?: (color: "blue" | "yellow") => string | undefined,
+    private markerTextColor?: (color: "blue" | "yellow") => string | undefined,
   ) {}
   clear = () => {
     ++this.version;
@@ -18,6 +20,7 @@ export class ReaderPassageMarker {
       const byRange = layers.get(rendition);
       const stack = byRange?.get(cfi);
       if (!stack) continue;
+      stack.filter(layer => layer.owner === this).forEach(layer => layer.cleanup());
       const wasVisible = stack[stack.length - 1]?.owner === this;
       const remaining = stack.filter(layer => layer.owner !== this);
       if (remaining.length) byRange!.set(cfi, remaining);
@@ -42,23 +45,29 @@ export class ReaderPassageMarker {
     if (version !== this.version || this.currentRendition() !== rendition)
       return;
     for (const cfi of pieces) {
-      const draw = () => rendition.annotations.highlight(
+      let cleanup = () => {};
+      const draw = () => {
+        cleanup();
+        const background = this.markerColor?.(color) || (color === "blue" ? "#a3c2ff" : "#f2e66b");
+        const annotation = rendition.annotations.highlight(
         cfi,
         {},
         undefined,
         "reader-locator-" + color,
         {
-          fill: this.markerColor?.(color) || (color === "blue" ? "#a3c2ff" : "#f2e66b"),
-          "fill-opacity": "0.4",
+          fill: background,
+          "fill-opacity": "1",
           "mix-blend-mode": "multiply",
           "pointer-events": "none",
         },
       );
+        cleanup = bindNativeHighlight(annotation, background, this.markerTextColor?.(color) || "#28231e");
+      };
       let byRange = layers.get(rendition);
       if (!byRange) { byRange = new Map(); layers.set(rendition, byRange); }
       const stack = byRange.get(cfi) || [];
-      if (stack.length) rendition.annotations.remove(cfi, "highlight");
-      stack.push({ owner: this, draw });
+      if (stack.length) { stack[stack.length - 1].cleanup(); rendition.annotations.remove(cfi, "highlight"); }
+      stack.push({ owner: this, draw, cleanup: () => cleanup() });
       byRange.set(cfi, stack);
       draw();
       this.marks.push({ cfi, rendition });

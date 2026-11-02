@@ -14,6 +14,7 @@ export function useReaderPassageMarker(runtime: EpubRuntime) {
   const createMarker = useCallback(() => new ReaderPassageMarker(
     () => runtime.renditionRef.current,
     color => color === "blue" ? runtime.stateRef.current.preferences.translationColor : runtime.stateRef.current.preferences.passageColor,
+    color => color === "blue" ? runtime.stateRef.current.preferences.translationTextColor : runtime.stateRef.current.preferences.passageTextColor,
   ), [runtime]);
   const clearMarker = useCallback(() => {
     for (const entry of translated.current.values()) entry.marker.clear();
@@ -85,12 +86,14 @@ export function useReaderPassageMarker(runtime: EpubRuntime) {
     rendition.on("relocated", onRelocated);
     return () => { rendition.off("relocated", onRelocated); clearMarker(); };
   }, [rendition, clearMarker]);
-  const passageColor = runtime.stateRef.current.preferences.passageColor;
+  const {passageColor, passageTextColor, translationColor, translationTextColor} = runtime.stateRef.current.preferences;
   useEffect(() => {
     for (const entry of passages.current.values())
       if (!disabled.current.has(readerPassageKey(entry.passage)))
         void entry.marker.show(entry.passage, "yellow", ranges).catch(() => undefined);
-  }, [passageColor, ranges, rendition]);
+    for (const entry of translated.current.values())
+      void entry.marker.show(entry.passage, "blue", ranges).catch(() => undefined);
+  }, [passageColor, passageTextColor, translationColor, translationTextColor, ranges, rendition]);
   useEffect(() => () => {
     clearMarker();
     for (const entry of passages.current.values()) entry.marker.clear();

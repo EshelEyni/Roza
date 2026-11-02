@@ -9,7 +9,9 @@ export type ReaderPreferences = {
   selectionColor?: string;
   selectionTextColor?: string;
   passageColor?: string;
+  passageTextColor?: string;
   translationColor?: string;
+  translationTextColor?: string;
   pageNumbering?: "screen" | "publisher";
 };
 

@@ -17,6 +17,20 @@ export function ReaderSettings({
   function update(changes: Partial<ReaderPreferences>) {
     onChange({ ...preferences, ...changes });
   }
+  const defaults = {
+    backgroundColor: { light: "#fffefa", sepia: "#f3e8d5", dark: "#242622" }[preferences.theme],
+    selectionColor: "#719bd8", selectionTextColor: { light: "#28231e", sepia: "#392e24", dark: "#ffffff" }[preferences.theme],
+    passageColor: "#f2e66b", passageTextColor: "#28231e",
+    translationColor: "#a3c2ff", translationTextColor: "#28231e",
+  };
+  function colorRow(key: keyof typeof defaults) {
+    return <div className="reader-color-row" key={key}>
+      <span id={"reader-color-" + key}>{t("reader." + key)}</span>
+      <ReaderColorSelect labelId={"reader-color-" + key}
+        kind={key === "backgroundColor" ? "background" : key.endsWith("TextColor") ? "text" : "highlight"}
+        value={preferences[key] || defaults[key]} onChange={color => update({ [key]: color })} />
+    </div>;
+  }
   return (
     <section className="reader-settings" aria-label={t("reader.settings")}>
       <h2>{t("reader.settings")}</h2>
@@ -121,18 +135,20 @@ export function ReaderSettings({
         )}
       </p>
       <div className="reader-color-settings">
-      {(["backgroundColor", "selectionColor", "selectionTextColor", "passageColor", "translationColor"] as const).map(key => (
-        <div className="reader-color-row" key={key}>
-          <span id={"reader-color-" + key}>{t("reader." + key)}</span>
-          <ReaderColorSelect labelId={"reader-color-" + key} kind={key === "backgroundColor" ? "background" : key === "selectionTextColor" ? "text" : "highlight"} value={preferences[key] || ({
-            backgroundColor: { light: "#fffefa", sepia: "#f3e8d5", dark: "#242622" }[preferences.theme],
-            selectionColor: "#719bd8", selectionTextColor: { light: "#28231e", sepia: "#392e24", dark: "#ffffff" }[preferences.theme], passageColor: "#f2e66b", translationColor: "#a3c2ff",
-          }[key])} onChange={color => update({ [key]: color })} />
-        </div>
-      ))}
+        {colorRow("backgroundColor")}
+        {([
+          ["selectedTextColors", "selectionColor", "selectionTextColor"],
+          ["passageColors", "passageColor", "passageTextColor"],
+          ["translationColors", "translationColor", "translationTextColor"],
+        ] as const).map(([title, background, text]) => <fieldset className="reader-mark-color-group" key={title}>
+          <legend>{t("reader." + title)}</legend>
+          {colorRow(background)}
+          {colorRow(text)}
+          <p className="reader-color-preview" style={{background: preferences[background] || defaults[background], color: preferences[text] || defaults[text]}}>{t("reader.colorPreview")}</p>
+        </fieldset>)}
       <button type="button" className="reader-colors-reset" onClick={() => update({
         backgroundColor: undefined, selectionColor: undefined, selectionTextColor: undefined,
-        passageColor: undefined, translationColor: undefined,
+        passageColor: undefined, passageTextColor: undefined, translationColor: undefined, translationTextColor: undefined,
       })}>{t("reader.resetColors")}</button>
       </div>
     </section>

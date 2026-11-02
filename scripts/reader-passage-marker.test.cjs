@@ -10,7 +10,9 @@ function setup(colors) {
   const source = ts.transpileModule(fs.readFileSync(path.join(__dirname, '../frontend/src/services/readerPassageMarker.ts'), 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS },
   }).outputText;
-  new Function('exports', 'setTimeout', 'clearTimeout', source)(exports,
+  const nativeExports = {};
+  new Function('exports', ts.transpileModule(fs.readFileSync(path.join(__dirname, '../frontend/src/services/readerNativeHighlight.ts'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 } }).outputText)(nativeExports);
+  new Function('require', 'exports', 'setTimeout', 'clearTimeout', source)(() => nativeExports, exports,
     (callback, delay) => { const id = ++sequence; timers.set(id, { callback, delay }); return id; },
     id => timers.delete(id));
   const added = [], removed = [];
@@ -27,7 +29,7 @@ test('translation dismissal marks the exact word without a time-based expiry', a
   await host.marker.show(passage, 'blue', range);
   assert.equal(host.added[0][0], passage.cfi);
   assert.equal(host.added[0][4].fill, '#a3c2ff');
-  assert.equal(host.added[0][4]['fill-opacity'], '0.4');
+  assert.equal(host.added[0][4]['fill-opacity'], '1');
   assert.equal(host.added[0][4]['pointer-events'], 'none');
   assert.equal(host.timers.size, 0);
   host.marker.clear();

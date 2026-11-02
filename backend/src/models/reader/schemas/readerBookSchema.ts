@@ -26,6 +26,8 @@ const readerBookSchema = new Schema<IReaderBook>(
         backgroundColor: { type: String, match: /^#[0-9a-fA-F]{6}$/ },
         selectionTextColor: { type: String, match: /^#[0-9a-fA-F]{6}$/ },
         selectionColor: { type: String, match: /^#[0-9a-fA-F]{6}$/ },
+        passageTextColor: { type: String, match: /^#[0-9a-fA-F]{6}$/ },
+        translationTextColor: { type: String, match: /^#[0-9a-fA-F]{6}$/ },
         passageColor: { type: String, match: /^#[0-9a-fA-F]{6}$/ },
         translationColor: { type: String, match: /^#[0-9a-fA-F]{6}$/ },
         pageNumbering: { type: String, enum: ["screen", "publisher"], default: "screen" },

@@ -158,7 +158,7 @@ describe("Reader access and isolation", () => {
     expect((ReaderBookModel.findOneAndUpdate as jest.Mock).mock.calls[0][1].$set.state.preferences.pageNumbering).toBe(pageNumbering || "screen");
   });
 
-  it.each(["backgroundColor", "selectionColor", "selectionTextColor", "passageColor", "translationColor"])("persists and validates %s", async key => {
+  it.each(["backgroundColor", "selectionColor", "selectionTextColor", "passageColor", "passageTextColor", "translationColor", "translationTextColor"])("persists and validates %s", async key => {
     (ReaderBookModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue({ _id: id }) });
     (ReaderBookModel.findOneAndUpdate as jest.Mock).mockResolvedValue({ state: {} });
     const state = { location: "", progress: 0, savedAt: Date.now(), preferences: { ...defaultReaderPreferences, [key]: "#12abEF" } };

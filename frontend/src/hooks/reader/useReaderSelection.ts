@@ -1,3 +1,4 @@
+import { bindNativeHighlight } from "../../services/readerNativeHighlight";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Contents, Location } from "epubjs";
@@ -27,16 +28,17 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
     direction: "next" | "prev";
     runtime: EpubRuntime;
   } | null>(null);
-  const highlights = useRef<{ cfi: string; runtime: EpubRuntime }[]>([]);
+  const highlights = useRef<{ cfi: string; runtime: EpubRuntime; cleanup?: () => void }[]>([]);
   const version = useRef(0);
   const turning = useRef(false);
   const reading = useRef(false);
   const [extending, setExtending] = useState(false);
   const [busy, setBusy] = useState(false);
   const clearHighlights = useCallback(() => {
-    highlights.current.forEach(({ cfi, runtime }) =>
-      runtime.renditionRef.current?.annotations.remove(cfi, "highlight"),
-    );
+    highlights.current.forEach(({ cfi, runtime, cleanup }) => {
+      cleanup?.();
+      runtime.renditionRef.current?.annotations.remove(cfi, "highlight");
+    });
     highlights.current = [];
   }, []);
   const closeLookup = useCallback(() => {
@@ -140,18 +142,20 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
         const rendition = active.runtime.renditionRef.current;
         for (const piece of result.pieces) {
           if (!piece.text) continue;
-          rendition?.annotations.highlight(
+          const annotation = rendition?.annotations.highlight(
             piece.cfi,
             {},
             undefined,
             "reader-selection-highlight",
             {
               fill: active.runtime.stateRef.current.preferences.selectionColor || "#719bd8",
-              "fill-opacity": "0.3",
+              "fill-opacity": "1",
+              "mix-blend-mode": "multiply",
               "pointer-events": "none",
             },
           );
-          highlights.current.push({ cfi: piece.cfi, runtime: active.runtime });
+          highlights.current.push({ cfi: piece.cfi, runtime: active.runtime,
+            cleanup: bindNativeHighlight(annotation, active.runtime.stateRef.current.preferences.selectionColor || "#719bd8", active.runtime.stateRef.current.preferences.selectionTextColor || "#28231e") });
         }
         const next = {
           ...previous,

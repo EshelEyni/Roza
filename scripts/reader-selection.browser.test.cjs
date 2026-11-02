@@ -128,7 +128,7 @@ test(
           });
           assert.equal(await page.locator('input[type="color"]').count(), 0);
           for (const menu of await page.locator('.reader-color-control select').all())
-            assert.equal(await menu.locator('option').count(), 8);
+            assert.equal(await menu.locator('option').count(), 12);
           assert.equal(await page.getByLabel('Selected text color', { exact: true }).evaluate(menu =>
             getComputedStyle(menu.previousElementSibling).backgroundColor), 'rgb(255, 255, 255)');
           await page.getByRole("button", { name: "Reset colors" }).click();
@@ -137,6 +137,20 @@ test(
           // Translated words persist on the same page, including after another selection.
           await run(() => window.selectionTest.translate(0, 7));
           await run(() => window.selectionTest.translate(8, 13));
+          assert.deepEqual(await run(() => {
+            const element = document.querySelector('[ref="reader-locator-blue"]');
+            const doc = window.selectionTest.rendition.getContents()[0].document;
+            const css = doc.defaultView.getComputedStyle(doc.querySelector('p'), '::highlight(' + element.dataset.readerNativeHighlight + ')');
+            return { background: css.backgroundColor, color: css.color, opacity: element.getAttribute('fill-opacity') };
+          }), {background:'rgb(163, 194, 255)',color:'rgb(40, 35, 30)',opacity:'1'});
+          await page.getByText('Test reader settings',{exact:true}).click();
+          await page.getByLabel('Translated word text color',{exact:true}).selectOption('#6b4f3a');
+          await page.waitForFunction(() => {
+            const element = document.querySelector('[ref="reader-locator-blue"]');
+            const doc = window.selectionTest.rendition.getContents()[0].document;
+            return element && doc.defaultView.getComputedStyle(doc.querySelector('p'), '::highlight(' + element.dataset.readerNativeHighlight + ')').color === 'rgb(107, 79, 58)';
+          });
+          await page.getByText('Test reader settings',{exact:true}).click();
           await page.waitForTimeout(2300);
           assert.equal(await page.locator('[ref="reader-locator-blue"]').count(), 2);
           await run(() => window.selectionTest.rendition.reportLocation());
@@ -159,7 +173,14 @@ test(
           await page.locator('[ref="reader-locator-yellow"]').waitFor();
           await page.getByText("Test reader settings", { exact: true }).click();
           await page.getByLabel("Passage marker color", { exact: true }).selectOption("#efc39e");
+          await page.getByLabel("Passage text color", { exact: true }).selectOption("#6b4f3a");
           await page.waitForFunction(() => document.querySelector('[ref="reader-locator-yellow"]')?.getAttribute('fill') === '#efc39e');
+          await page.waitForFunction(() => {
+            const element = document.querySelector('[ref="reader-locator-yellow"]');
+            const doc = window.selectionTest.rendition.getContents()[0].document;
+            return element && doc.defaultView.getComputedStyle(doc.querySelector('p'), '::highlight(' + element.dataset.readerNativeHighlight + ')').color === 'rgb(107, 79, 58)';
+          });
+          assert.equal(await page.locator('[ref="reader-locator-yellow"]').getAttribute('fill-opacity'), '1');
           await page.getByText("Test reader settings", { exact: true }).click();
           await page.waitForTimeout(2200);
           assert.equal(await page.locator('[ref="reader-locator-yellow"]').count(), 1);

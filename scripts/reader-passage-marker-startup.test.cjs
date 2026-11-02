@@ -19,7 +19,7 @@ test('translation page tracking mounts before the EPUB manager exists and clears
     off: event => listeners.delete(event),
     annotations: {highlight: (...args) => added.push(args), remove: (...args) => removed.push(args)},
   };
-  const { ReaderPassageMarker } = load('services/readerPassageMarker.ts');
+  const { ReaderPassageMarker } = load('services/readerPassageMarker.ts', {'./readerNativeHighlight':load('services/readerNativeHighlight.ts')});
   const { useReaderPassageMarker } = load('hooks/reader/useReaderPassageMarker.ts',{
     react: {useCallback:fn=>fn,useRef:initial=>({current:initial}),useState:initial=>[initial,()=>{}],
       useMemo:fn=>fn(),useEffect:fn=>effects.push(fn)},

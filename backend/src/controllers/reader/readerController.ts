@@ -139,7 +139,7 @@ const updateReaderState = asyncErrorCatcher(async (req: Request, res: Response) 
     !["comfortable", "wide"].includes(preferences.width) ||
     !["light", "sepia", "dark"].includes(preferences.theme) ||
     !["paginated", "scrolled"].includes(preferences.flow) ||
-    ["backgroundColor", "selectionColor", "selectionTextColor", "passageColor", "translationColor"].some(key =>
+    ["backgroundColor", "selectionColor", "selectionTextColor", "passageColor", "passageTextColor", "translationColor", "translationTextColor"].some(key =>
       preferences[key] !== undefined && (typeof preferences[key] !== "string" || !/^#[0-9a-fA-F]{6}$/.test(preferences[key]))
     ) ||
     (preferences.pageNumbering !== undefined && !["screen", "publisher"].includes(preferences.pageNumbering))
@@ -156,7 +156,9 @@ const updateReaderState = asyncErrorCatcher(async (req: Request, res: Response) 
     selectionColor: preferences.selectionColor,
     selectionTextColor: preferences.selectionTextColor,
     passageColor: preferences.passageColor,
+    passageTextColor: preferences.passageTextColor,
     translationColor: preferences.translationColor,
+    translationTextColor: preferences.translationTextColor,
     pageNumbering: preferences.pageNumbering ?? "screen",
   };
   // A delayed page-leave request must not overwrite a more recent position.
