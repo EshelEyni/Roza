@@ -38,15 +38,48 @@ function SummaryTooltip({
   text: string;
   children: React.ReactElement<{ "aria-describedby"?: string }>;
 }) {
+
   const id = useId();
+
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
+
   useEffect(() => () => clearTimeout(hideTimer.current), []);
+
   const ref = useRef<HTMLDivElement>(null);
+
   const [position, setPosition] = useState<{
     left: number;
     top: number;
     maxHeight: number;
   } | null>(null);
+
+  const showTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    return () => {
+      clearTimeout(showTimer.current);
+      clearTimeout(hideTimer.current);
+    };
+  }, []);
+
+  function scheduleShow() {
+    clearTimeout(showTimer.current);
+    clearTimeout(hideTimer.current);
+
+    if (disabled || !text.trim()) return;
+
+    showTimer.current = setTimeout(show, 500);
+  }
+
+  function scheduleHide() {
+    clearTimeout(showTimer.current);
+
+    hideTimer.current = setTimeout(() => {
+      setPosition(null);
+    }, 150);
+  }
+
+
   function show() {
     clearTimeout(hideTimer.current);
     if (disabled || !text.trim() || !ref.current) return;
@@ -65,6 +98,8 @@ function SummaryTooltip({
       maxHeight: below >= 160 ? below : Math.max(100, rect.top - 18),
     });
   }
+
+
   useEffect(() => {
     if (!position) return;
     const close = () => setPosition(null);
@@ -84,18 +119,20 @@ function SummaryTooltip({
       window.removeEventListener("keydown", escape);
     };
   }, [position]);
+
+
   return (
     <div
       ref={ref}
       className="ws-summary-hover"
-      onMouseEnter={show}
-      onMouseLeave={() => {
-        hideTimer.current = setTimeout(() => setPosition(null), 150);
-      }}
+      onMouseEnter={scheduleShow}
+      onMouseLeave={scheduleHide}
       onFocus={show}
       onBlur={event => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+          clearTimeout(showTimer.current);
           setPosition(null);
+        }
       }}
     >
       <div onClick={() => setPosition(null)}>
