@@ -1,3 +1,4 @@
+import { ItemMenu } from "./ItemMenu";
 import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
@@ -224,38 +225,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     setSearch("");
     select(entry.id);
   }
-  function duplicate() {
-    if (!item) return;
-    const copy = {
-      ...structuredClone(item),
-      id: newId(),
-      createdAt: new Date().toISOString(),
-    };
-    // Mongo's serialized subdocument _id must not survive duplication.
-    delete (copy as unknown as Record<string, unknown>)._id;
-    if ("name" in copy) copy.name += " — copy";
-    store.edit((current) => ({
-      ...current,
-      [category]: [...current[category], copy],
-    }));
-    select(copy.id);
-  }
-  function move(offset: number) {
-    const index = items.findIndex((entry) => entry.id === selected);
-    if (index + offset < 0 || index + offset >= items.length) return;
-    const ordered = [...items];
-    [ordered[index], ordered[index + offset]] = [
-      ordered[index + offset],
-      ordered[index],
-    ];
-    store.edit((current) => ({
-      ...current,
-      [category]: [
-        ...ordered,
-        ...current[category].filter((entry) => entry.isArchived),
-      ],
-    }));
-  }
   function archive() {
     if (
       !item ||
@@ -479,8 +448,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             {category === "chapters" && (
               <button
                 aria-label="Open chapter overview"
+                className="ws-overview-toggle"
+                aria-pressed={overview}
                 onClick={() => {
-                  setOverview(true);
+                  setOverview(value => !value);
                   setDrawer(false);
                   setFocus(false);
                 }}
@@ -579,7 +550,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             book={book}
             store={store}
             selected={selected}
-            onEdit={select}
+            onChapterEdited={chapterId => { if (chapterId === selected) setRestoreKey(n => n + 1); }}
             onClose={() => setOverview(false)}
           />
         )}
@@ -611,42 +582,17 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       Chapter summary
                     </button>
                   )}
-                  <details
-                    className="ws-item-menu"
-                    onBlur={event => {
-                      if (!event.currentTarget.contains(event.relatedTarget as Node | null))
-                        event.currentTarget.removeAttribute("open");
-                    }}
-                    onClick={(event) => {
-                      if ((event.target as HTMLElement).closest("button"))
-                        event.currentTarget.removeAttribute("open");
-                    }}
-                  >
+                  <ItemMenu>
                     <summary>More</summary>
                     <div>
                       <button onClick={() => setTasks(true)}>
                         {t("writingTasks")}
                       </button>
-                      <button
-                        disabled={!!store.recovery}
-                        onClick={() => move(-1)}
-                      >
-                        Move up
-                      </button>
-                      <button
-                        disabled={!!store.recovery}
-                        onClick={() => move(1)}
-                      >
-                        Move down
-                      </button>
-                      <button disabled={!!store.recovery} onClick={duplicate}>
-                        Duplicate
-                      </button>
                       <button disabled={!!store.recovery} onClick={archive}>
                         Archive page
                       </button>
                     </div>
-                  </details>
+                  </ItemMenu>
                 </div>
               </div>
               <article className="ws-page">

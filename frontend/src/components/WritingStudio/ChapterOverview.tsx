@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ItemMenu } from "./ItemMenu";
+import {
+  cloneElement,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   DndContext,
   closestCenter,
@@ -6,12 +14,13 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDndContext,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   useSortable,
   sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
+  rectSortingStrategy,
   arrayMove,
 } from "@dnd-kit/sortable";
 import { Book, Chapter } from "../../../../shared/types/books";
@@ -20,31 +29,114 @@ import { newId, plainText, richTextHtml, words } from "./manuscript";
 import { ManuscriptEditor } from "./ManuscriptEditor";
 import { getDefaultBookDataItem } from "../../services/bookUtilService";
 
+function SummaryTooltip({
+  text,
+  children,
+  disabled = false,
+}: {
+  disabled?: boolean;
+  text: string;
+  children: React.ReactElement<{ "aria-describedby"?: string }>;
+}) {
+  const id = useId();
+  const hideTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(hideTimer.current), []);
+  const ref = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{
+    left: number;
+    top: number;
+    maxHeight: number;
+  } | null>(null);
+  function show() {
+    clearTimeout(hideTimer.current);
+    if (disabled || !text.trim() || !ref.current) return;
+    const rect = ref.current.getBoundingClientRect();
+    const top = rect.bottom + 6;
+    const below = window.innerHeight - top - 12;
+    setPosition({
+      left: Math.max(
+        12,
+        Math.min(
+          rect.left,
+          window.innerWidth - Math.min(420, window.innerWidth - 24) - 12,
+        ),
+      ),
+      top: below >= 160 ? top : 12,
+      maxHeight: below >= 160 ? below : Math.max(100, rect.top - 18),
+    });
+  }
+  useEffect(() => {
+    if (!position) return;
+    const close = () => setPosition(null);
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") close();
+    };
+    const scroll = (event: Event) => {
+      if (!(event.target as HTMLElement)?.closest?.('[role="tooltip"]'))
+        close();
+    };
+    window.addEventListener("scroll", scroll, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("keydown", escape);
+    return () => {
+      window.removeEventListener("scroll", scroll, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("keydown", escape);
+    };
+  }, [position]);
+  return (
+    <div
+      ref={ref}
+      className="ws-summary-hover"
+      onMouseEnter={show}
+      onMouseLeave={() => {
+        hideTimer.current = setTimeout(() => setPosition(null), 150);
+      }}
+      onFocus={show}
+      onBlur={event => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+          setPosition(null);
+      }}
+    >
+      <div onClick={() => setPosition(null)}>
+        {cloneElement(children, {
+          "aria-describedby": position ? id : undefined,
+        })}
+      </div>
+      {position && !disabled && (
+        <div
+          id={id}
+          role="tooltip"
+          className="ws-summary-tooltip"
+          dir="auto"
+          style={position}
+        >
+          {text}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Card({
   chapter,
   index,
-  count,
   selected,
   locked,
   onPreview,
   onEdit,
   onSummary,
-  onMove,
   onRename,
-  onDuplicate,
   onDelete,
 }: {
   chapter: Chapter;
   index: number;
-  count: number;
   selected: boolean;
   locked: boolean;
   onPreview: () => void;
   onEdit: () => void;
   onSummary: () => void;
-  onMove: (offset: number) => void;
   onRename: () => void;
-  onDuplicate: () => void;
   onDelete: () => void;
 }) {
   const {
@@ -56,6 +148,7 @@ function Card({
     isDragging,
     isOver,
   } = useSortable({ id: chapter.id, disabled: locked });
+  const { active } = useDndContext();
   const summary = useMemo(
     () => plainText(chapter.description),
     [chapter.description],
@@ -86,52 +179,36 @@ function Card({
           ⠿
         </button>
       </div>
-      <button
-        className="ws-card-preview"
-        onClick={onPreview}
-        aria-label={`Preview ${chapter.name || "Untitled chapter"}`}
-      >
-        <h2 dir="auto">{chapter.name || "Untitled chapter"}</h2>
-        <p dir="auto">
-          {summary ||
-            "No summary yet. Give this chapter a place in your story."}
-        </p>
-      </button>
+      <SummaryTooltip text={summary} disabled={!!active}>
+        <button
+          className="ws-card-preview"
+          onClick={onPreview}
+          aria-label={`Preview ${chapter.name || "Untitled chapter"}`}
+        >
+          <h2 dir="auto">{chapter.name || "Untitled chapter"}</h2>
+          <p dir="auto">
+            {summary ||
+              "No summary yet. Give this chapter a place in your story."}
+          </p>
+        </button>
+      </SummaryTooltip>
       <div className="ws-card-bottom">
         <small>{countWords.toLocaleString()} words</small>
         <button disabled={locked} onClick={onSummary}>
           {summary ? "Edit summary" : "Add summary"}
         </button>
         <button onClick={onEdit}>Edit chapter</button>
-        <details
-          className="ws-item-menu"
-          onClick={event => {
-            if ((event.target as HTMLElement).closest("button"))
-              event.currentTarget.removeAttribute("open");
-          }}
-        >
+        <ItemMenu>
           <summary aria-label={`Actions for ${chapter.name}`}>More</summary>
           <div>
-            <button disabled={locked || index === 0} onClick={() => onMove(-1)}>
-              Move up
-            </button>
-            <button
-              disabled={locked || index === count - 1}
-              onClick={() => onMove(1)}
-            >
-              Move down
-            </button>
             <button disabled={locked} onClick={onRename}>
               Rename
-            </button>
-            <button disabled={locked} onClick={onDuplicate}>
-              Duplicate
             </button>
             <button disabled={locked} onClick={onDelete}>
               Delete chapter
             </button>
           </div>
-        </details>
+        </ItemMenu>
       </div>
     </article>
   );
@@ -141,19 +218,21 @@ export function ChapterOverview({
   book,
   store,
   selected,
-  onEdit,
+  onChapterEdited,
   onClose,
 }: {
   book: Book;
   store: DraftStore;
   selected: string;
-  onEdit: (id: string) => void;
+  onChapterEdited: (id: string) => void;
   onClose: () => void;
 }) {
   const chapters = useMemo(
     () => book.chapters.filter(c => !c.isArchived),
     [book.chapters],
   );
+  const [editId, setEditId] = useState<string | null>(null);
+  const edited = useRef(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [summaryId, setSummaryId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
@@ -161,7 +240,8 @@ export function ChapterOverview({
   const origin = useRef<HTMLElement | null>(null);
   const preview = chapters.find(c => c.id === previewId);
   const summary = chapters.find(c => c.id === summaryId);
-  const current = preview || summary;
+  const editing = chapters.find(c => c.id === editId);
+  const current = editing || preview || summary;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(KeyboardSensor, {
@@ -185,7 +265,19 @@ export function ChapterOverview({
       origin.current?.focus();
     }
   }, [current]);
+  useEffect(() => {
+    if (!editId) return;
+    const frame = requestAnimationFrame(() =>
+      dialog.current
+        ?.querySelector<HTMLElement>('[aria-label="Chapter manuscript"]')
+        ?.focus(),
+    );
+    return () => cancelAnimationFrame(frame);
+  }, [editId]);
   function closePanel() {
+    if (editId && edited.current) onChapterEdited(editId);
+    edited.current = false;
+    setEditId(null);
     setPreviewId(null);
     setSummaryId(null);
   }
@@ -238,8 +330,8 @@ export function ChapterOverview({
         </div>
       </header>
       <p className="ws-muted">
-        Arrange your manuscript with the handles, or use Move up / down in each
-        chapter’s menu.
+        Drag the handles to arrange your manuscript. For keyboard reordering,
+        focus a handle, press Space, use the arrow keys, then press Space again.
       </p>
       <div role="status" className="ws-sr-only">
         {announcement}
@@ -257,7 +349,7 @@ export function ChapterOverview({
       >
         <SortableContext
           items={chapters.map(c => c.id)}
-          strategy={verticalListSortingStrategy}
+          strategy={rectSortingStrategy}
         >
           <div className="ws-board">
             {chapters.map((chapter, index) => (
@@ -265,33 +357,14 @@ export function ChapterOverview({
                 key={chapter.id}
                 chapter={chapter}
                 index={index}
-                count={chapters.length}
                 selected={chapter.id === selected}
                 locked={!!store.recovery}
                 onPreview={() => setPreviewId(chapter.id)}
-                onEdit={() => onEdit(chapter.id)}
+                onEdit={() => setEditId(chapter.id)}
                 onSummary={() => setSummaryId(chapter.id)}
-                onMove={offset => reorder(index, index + offset)}
                 onRename={() => {
                   const name = window.prompt("Chapter title", chapter.name);
                   if (name?.trim()) update(chapter.id, { name: name.trim() });
-                }}
-                onDuplicate={() => {
-                  const copy = {
-                    ...structuredClone(chapter),
-                    id: newId(),
-                    name: `${chapter.name} — copy`,
-                    createdAt: new Date().toISOString(),
-                  };
-                  delete (copy as unknown as Record<string, unknown>)._id;
-                  store.edit(b => ({
-                    ...b,
-                    chapters: [
-                      ...b.chapters.slice(0, b.chapters.indexOf(chapter) + 1),
-                      copy,
-                      ...b.chapters.slice(b.chapters.indexOf(chapter) + 1),
-                    ],
-                  }));
                 }}
                 onDelete={() => {
                   if (
@@ -318,7 +391,11 @@ export function ChapterOverview({
         ref={dialog}
         className="ws-chapter-dialog"
         aria-label={
-          summary ? "Edit chapter summary" : "Chapter reading preview"
+          editing
+            ? "Edit chapter"
+            : summary
+              ? "Edit chapter summary"
+              : "Chapter reading preview"
         }
         onCancel={event => {
           event.preventDefault();
@@ -333,9 +410,11 @@ export function ChapterOverview({
             <header>
               <div>
                 <span className="ws-eyebrow">
-                  {summary
-                    ? "CHAPTER SUMMARY"
-                    : `CHAPTER ${chapters.indexOf(current) + 1} · READING PREVIEW`}
+                  {editing
+                    ? "EDIT CHAPTER"
+                    : summary
+                      ? "CHAPTER SUMMARY"
+                      : `CHAPTER ${chapters.indexOf(current) + 1} · READING PREVIEW`}
                 </span>
                 <h2 dir="auto">{current.name || "Untitled chapter"}</h2>
               </div>
@@ -344,7 +423,21 @@ export function ChapterOverview({
               </button>
             </header>
             <div className="ws-chapter-reading" key={current.id}>
-              {summary ? (
+              {editing ? (
+                <>
+                  <p className="ws-muted">Changes save automatically.</p>
+                  <ManuscriptEditor
+                    key={`${editing.id}:manuscript`}
+                    value={editing.text}
+                    label="Chapter manuscript"
+                    readOnly={!!store.recovery}
+                    onChange={text => {
+                      edited.current = true;
+                      update(editing.id, { text });
+                    }}
+                  />
+                </>
+              ) : summary ? (
                 <>
                   <p className="ws-muted">
                     What does this chapter contribute to your story? Changes
@@ -380,7 +473,7 @@ export function ChapterOverview({
               )}
             </div>
             <footer>
-              {preview && (
+              {!editing && preview && (
                 <>
                   <button
                     disabled={chapters.indexOf(preview) === 0}
@@ -400,15 +493,18 @@ export function ChapterOverview({
                   </button>
                 </>
               )}
-              <button
-                className="ws-primary"
-                onClick={() => {
-                  closePanel();
-                  onEdit(current.id);
-                }}
-              >
-                Edit chapter
-              </button>
+              {!editing && (
+                <button
+                  className="ws-primary"
+                  onClick={() => {
+                    setPreviewId(null);
+                    setSummaryId(null);
+                    setEditId(current.id);
+                  }}
+                >
+                  Edit chapter
+                </button>
+              )}
               <button onClick={closePanel}>Done</button>
             </footer>
           </>

@@ -300,6 +300,39 @@ test(
       const board = page.getByRole("region", { name: "Chapter overview" });
       await board.waitFor();
       assert.equal(await board.locator(".ws-board-card").count(), 2);
+      const firstCard = board.locator('.ws-board-card').first();
+      await firstCard.locator('.ws-card-preview').hover();
+      await page.getByRole('tooltip').waitFor();
+      assert.equal(await page.getByRole('tooltip').innerText(), initial.chapters[0].description[0].children[0].text);
+      assert.equal(await firstCard.locator('.ws-card-preview').evaluate(node => getComputedStyle(node).backgroundColor), 'rgba(0, 0, 0, 0)');
+      await page.screenshot({ path: path.join(screenshots, 'chapter-summary-tooltip.png') });
+      await page.keyboard.press('Escape');
+      await page.getByRole('tooltip').waitFor({ state: 'detached' });
+      await firstCard.getByRole('button', { name: 'Edit chapter', exact: true }).click();
+      const chapterModal = page.getByRole('dialog', { name: 'Edit chapter', exact: true });
+      await chapterModal.waitFor();
+      await chapterModal.getByRole('textbox', { name: 'Chapter manuscript', exact: true }).fill('Modal chapter revision.');
+      await page.screenshot({ path: path.join(screenshots, 'chapter-edit-modal.png') });
+      await chapterModal.getByRole('button', { name: 'Done', exact: true }).click();
+      await page.getByRole('button', { name: '✓ All changes saved' }).waitFor();
+      assert.equal(saved.chapters[0].text[0].children[0].text, 'Modal chapter revision.');
+      assert.equal(await editor.innerText(), 'Modal chapter revision.');
+      assert.equal(await board.isVisible(), true);
+      await firstCard.getByRole('button', { name: 'Edit chapter', exact: true }).click();
+      await chapterModal.getByRole('textbox', { name: 'Chapter manuscript', exact: true }).fill('Unsaved overview context.');
+      await chapterModal.getByRole('button', { name: 'Done', exact: true }).click();
+      const overviewToggle = page.getByRole('button', { name: 'Open chapter overview' });
+      assert.equal(await overviewToggle.getAttribute('aria-pressed'), 'true');
+      const cards = await board.locator('.ws-board-card').evaluateAll(nodes => nodes.map(node => {
+        const rect = node.getBoundingClientRect(); return { x: rect.x, y: rect.y, width: rect.width };
+      }));
+      assert.ok(cards[0].width >= 280 && cards[0].width <= 400);
+      assert.equal(cards[0].y, cards[1].y);
+      assert.ok(cards[1].x > cards[0].x);
+      await overviewToggle.click();
+      assert.equal(await overviewToggle.getAttribute('aria-pressed'), 'false');
+      assert.equal(await editor.innerText(), 'Unsaved overview context.');
+      await overviewToggle.click();
       await board
         .getByRole("button", { name: "Preview The house by the sea" })
         .click();
@@ -331,7 +364,7 @@ test(
       await page.waitForFunction(
         () => !!document.querySelector(".is-dragging"),
       );
-      await page.keyboard.press("ArrowUp");
+      await page.keyboard.press("ArrowLeft");
       await page.waitForTimeout(300);
       await page.keyboard.press("Space");
       await page.waitForFunction(
@@ -358,24 +391,37 @@ test(
         await board.locator(".ws-board-card").first().innerText(),
         /The letter changes everything/,
       );
+      const chapterMenu = board.locator('.ws-item-menu').first();
+      await chapterMenu.locator('summary').click();
+      assert.equal(await chapterMenu.getByRole('button', { name: /^(Move up|Move down|Duplicate)$/ }).count(), 0);
+      await board.getByRole('button', { name: '← Back to writing', exact: true }).focus();
+      assert.equal(await chapterMenu.getAttribute('open'), null);
+      await chapterMenu.locator('summary').click();
+      await board.getByRole('heading', { name: 'Chapter overview', exact: true }).click();
+      assert.equal(await chapterMenu.getAttribute('open'), null);
+      await chapterMenu.locator('summary').click();
+      await page.keyboard.press('Escape');
+      assert.equal(await chapterMenu.getAttribute('open'), null);
       // A failed reorder stays visible and recoverable until explicit retry.
       fail = true;
-      await board.locator(".ws-board-card").first().locator("summary").click();
-      await board
-        .getByRole("button", { name: "Move down", exact: true })
-        .first()
-        .click();
+      await board.locator(".ws-drag-handle").first().focus();
+      await page.keyboard.press("Space");
+      await page.waitForFunction(() => !!document.querySelector(".is-dragging"));
+      await page.keyboard.press("ArrowRight");
+      await page.waitForTimeout(300);
+      await page.keyboard.press("Space");
       await page.getByRole("button", { name: "Save failed · retry" }).waitFor();
       assert.equal(saved.chapters[0].name, "An unopened letter");
       fail = false;
       await page.getByRole("button", { name: "Save failed · retry" }).click();
       await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].name, "The house by the sea");
-      await board.locator(".ws-board-card").first().locator("summary").click();
-      await board
-        .getByRole("button", { name: "Move down", exact: true })
-        .first()
-        .click();
+      await board.locator(".ws-drag-handle").first().focus();
+      await page.keyboard.press("Space");
+      await page.waitForFunction(() => !!document.querySelector(".is-dragging"));
+      await page.keyboard.press("ArrowRight");
+      await page.waitForTimeout(300);
+      await page.keyboard.press("Space");
       await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
       // Pointer dragging restores the original sequence and persists it.
       await page.waitForTimeout(300);
@@ -383,14 +429,20 @@ test(
         name: "Reorder The house by the sea",
         exact: true,
       });
+      await secondHandle.scrollIntoViewIfNeeded();
       const from = await secondHandle.boundingBox();
       const to = await handle.boundingBox();
       await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
       await page.mouse.down();
+      await page.mouse.move(from.x + from.width / 2 - 12, from.y + from.height / 2);
+      await page.waitForFunction(() => !!document.querySelector(".is-dragging"));
       await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, {
         steps: 20,
       });
+      await page.waitForTimeout(300);
+      await board.locator(".ws-board-card.is-over").waitFor();
       await page.mouse.up();
+      await page.waitForFunction(() => document.querySelector(".ws-board-card h2")?.textContent === "The house by the sea");
       await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].name, "The house by the sea");
       await board
@@ -467,26 +519,32 @@ test(
         .getByRole("textbox", { name: "Chapter or page title" })
         .fill("New chapter");
       await editor.fill("A fresh start.");
-      await page.getByText("More", { exact: true }).click();
-      await page.getByRole("button", { name: "Move up", exact: true }).click();
-      await page.getByText("More", { exact: true }).click();
-      await page
-        .getByRole("button", { name: "Duplicate", exact: true })
-        .click();
-      await page.getByText("More", { exact: true }).click();
-      await page
-        .getByRole("button", { name: "Archive page", exact: true })
-        .click();
-      await page
-        .getByRole("button", { name: "Undo archive", exact: true })
-        .click();
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
-      assert.ok(
-        saved.chapters.some(
-          (c) => c.name === "New chapter — copy" && !c.isArchived,
-        ),
-      );
-      assert.equal(saved.chapters[1].name, "New chapter");
+      await page.getByRole('button', { name: 'Open chapter overview' }).click();
+      await page.setViewportSize({ width: 1100, height: 900 });
+      const wrappedCards = await board.locator('.ws-board-card').evaluateAll(nodes => nodes.map(node => {
+        const rect = node.getBoundingClientRect(); return { x: rect.x, y: rect.y, width: rect.width };
+      }));
+      assert.equal(wrappedCards.length, 3);
+      assert.equal(wrappedCards[0].y, wrappedCards[1].y);
+      assert.ok(wrappedCards[2].y > wrappedCards[0].y);
+      assert.equal(wrappedCards[2].x, wrappedCards[0].x);
+      assert.equal(await board.locator('.ws-board').evaluate(node => node.scrollWidth <= node.clientWidth), true);
+      await page.screenshot({ path: path.join(screenshots, 'chapter-overview-grid.png') });
+      await page.getByRole('button', { name: 'Open chapter overview' }).click();
+      await page.setViewportSize({ width: 1365, height: 900 });
+      const writingMenu = page.locator('.ws-writing .ws-item-menu');
+      await writingMenu.locator('summary').click();
+      assert.equal(await writingMenu.getByRole('button', { name: /^(Move up|Move down|Duplicate)$/ }).count(), 0);
+      await page.getByRole('button', { name: 'Read', exact: true }).focus();
+      assert.equal(await writingMenu.getAttribute('open'), null);
+      await writingMenu.locator('summary').click();
+      await page.locator('.ws-eyebrow').first().click();
+      assert.equal(await writingMenu.getAttribute('open'), null);
+      await writingMenu.locator('summary').click();
+      await page.getByRole('button', { name: 'Archive page', exact: true }).click();
+      await page.getByRole('button', { name: 'Undo archive', exact: true }).click();
+      await page.getByRole('button', { name: '✓ All changes saved' }).waitFor();
+      assert.ok(saved.chapters.some(c => c.name === 'New chapter' && !c.isArchived));
       await page.getByRole("button", { name: "Options", exact: true }).click();
       const downloadEvent = page.waitForEvent("download");
       await page
