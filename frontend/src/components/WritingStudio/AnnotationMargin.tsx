@@ -1,7 +1,7 @@
+import { ConfirmDialog } from "../Modals/ConfirmDialog";
 import {
   ReactNode,
   useCallback,
-  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -37,15 +37,6 @@ export function AnnotationMargin({
 }) {
   const editor = useSlate();
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
-  const deleteDialog = useRef<HTMLDialogElement>(null);
-  const cancelDelete = useRef<HTMLButtonElement>(null);
-  const dialogTitle = useId();
-  useLayoutEffect(() => {
-    if (pendingDelete) {
-      deleteDialog.current?.showModal();
-      cancelDelete.current?.focus();
-    } else deleteDialog.current?.close();
-  }, [pendingDelete]);
   const root = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [positions, setPositions] = useState<{ id: string; top: number }[]>([]);
@@ -259,39 +250,19 @@ export function AnnotationMargin({
           : undefined,
       }}
     >
-      <dialog
-        ref={deleteDialog}
-        className="ws-delete-note-dialog"
-        aria-labelledby={dialogTitle}
-        onCancel={() => setPendingDelete(null)}
-        onClose={() => setPendingDelete(null)}
-      >
-        <h2 id={dialogTitle}>Delete this note?</h2>
-        <p>
-          This will permanently remove the note. Your manuscript text will stay
-          unchanged.
-        </p>
-        <div className="ws-delete-note-actions">
-          <button
-            ref={cancelDelete}
-            type="button"
-            onClick={() => setPendingDelete(null)}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            className="ws-delete-note-confirm"
-            onClick={() => {
-              onChange(notes.filter(note => note.id !== pendingDelete));
-              setPendingDelete(null);
-              setActive(null);
-            }}
-          >
-            Delete note
-          </button>
-        </div>
-      </dialog>
+      {pendingDelete && (
+        <ConfirmDialog
+          title="Delete this note?"
+          message="This will permanently remove the note. Your manuscript text will stay unchanged."
+          confirmLabel="Delete note"
+          onCancel={() => setPendingDelete(null)}
+          onConfirm={() => {
+            onChange(notes.filter(note => note.id !== pendingDelete));
+            setPendingDelete(null);
+            setActive(null);
+          }}
+        />
+      )}
       <div className="ws-line-gutter" aria-label="Paragraph numbers and notes">
         {lines.map(line => {
           const attached = notesByLine.get(line.number) || [];
@@ -386,7 +357,15 @@ export function AnnotationMargin({
                     )}
                     <span aria-hidden="true">{expanded ? "−" : "+"}</span>
                   </button>
-                  {expanded && !readOnly && <button type="button" className="ws-note-delete" onClick={() => setPendingDelete(note.id)}>Delete</button>}
+                  {expanded && !readOnly && (
+                    <button
+                      type="button"
+                      className="ws-note-delete"
+                      onClick={() => setPendingDelete(note.id)}
+                    >
+                      Delete
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="ws-note-drag"

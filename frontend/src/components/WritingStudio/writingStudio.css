@@ -607,10 +607,6 @@
 .ws-focus .ws-page {
   max-width: 850px;
   margin-top: 40px;
-  background: transparent;
-}
-.ws-focus .ws-header {
-  background: var(--ws-bg);
 }
 @media (min-width: 1500px) {
   .ws-page {
@@ -1503,3 +1499,10 @@ html.writing-studio-open #root {
 
 .ws-page.ws-summary-mode { max-width: 1180px; width: 100%; }
 .ws-summary-mode .ws-chapter-summary { --ws-editor-min-height: 42vh; margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
+
+.ws-category-select { position: relative; flex-shrink: 0; }
+.ws .ws-category-select > button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 10px 12px; border: 1px solid var(--ws-line); background: var(--ws-paper); color: var(--ws-ink); font-weight: 600; text-align: start; }
+.ws-category-options { position: absolute; z-index: 30; inset-inline: 0; top: calc(100% + 4px); padding: 4px; border: 1px solid var(--ws-line); border-radius: 6px; background: var(--ws-paper); color: var(--ws-ink); box-shadow: 0 5px 15px #0001; }
+.ws-category-options [role="option"] { display: flex; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: 3px; cursor: pointer; }
+.ws-category-options [role="option"].is-active { background: var(--ws-soft); }
+.ws-category-options [aria-selected="true"] { color: var(--ws-accent); font-weight: 600; }

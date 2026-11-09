@@ -1,3 +1,4 @@
+import { ConfirmDialog } from "../Modals/ConfirmDialog";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FiPlus, FiSearch, FiTrash2, FiX, FiColumns } from "react-icons/fi";
@@ -51,6 +52,9 @@ export function ReaderChatHistory({ chat, onOpenBeside }: { chat: Chat;
       <label className="reader-chat-history-search"><FiSearch aria-hidden="true" /><input value={search}
         aria-label={t("reader.chat.tabs.search")} placeholder={t("reader.chat.tabs.search")}
         onChange={event => setSearch(event.target.value)} /></label>
+      {deleteId && <ConfirmDialog title={t("reader.chat.delete")} message={t("reader.chat.deleteConfirm")}
+        confirmLabel={t("reader.chat.delete")} cancelLabel={t("reader.chat.cancel")}
+        onCancel={() => setDeleteId("")} onConfirm={() => { void chat.remove(deleteId); setDeleteId(""); }} />}
       <div className="reader-chat-history">
         {chat.workspace.historyError && <div role="alert" className="reader-chat-error">{chat.workspace.historyError}
           <button type="button" className="reader-button" onClick={() => void chat.loadHistory()}>{t("reader.retry")}</button></div>}
@@ -66,12 +70,9 @@ export function ReaderChatHistory({ chat, onOpenBeside }: { chat: Chat;
                   {item.tab?.draft && <span> · {t("reader.chat.tabs.draft")}</span>}</span></button>
               {onOpenBeside && <button type="button" className="reader-icon-button" title={t("reader.groups.openBeside")}
                 aria-label={t("reader.groups.openBesideTitle", { title: item.title })} onClick={() => onOpenBeside(item.id)}><FiColumns /></button>}
-              {deleteId === item.id ? <div className="reader-chat-delete-confirm"><span>{t("reader.chat.deleteConfirm")}</span>
-                <button className="reader-button" disabled={chat.workspace.removing.includes(item.id)}
-                  onClick={() => { void chat.remove(item.id); setDeleteId(""); }}>{t("reader.chat.delete")}</button>
-                <button className="reader-button" onClick={() => setDeleteId("")}>{t("reader.chat.cancel")}</button></div>
-                : <button type="button" className="reader-icon-button" disabled={item.tab?.sending || chat.workspace.removing.includes(item.id)}
-                  aria-label={t("reader.chat.delete") + ": " + item.title} onClick={() => setDeleteId(item.id)}><FiTrash2 /></button>}
+              <button type="button" className="reader-icon-button" disabled={item.tab?.sending || chat.workspace.removing.includes(item.id)}
+                aria-label={t("reader.chat.delete") + ": " + item.title} onClick={() => setDeleteId(item.id)}><FiTrash2 /></button>
+
             </div>)}
           </div> : null;
         })}

@@ -1,3 +1,5 @@
+import { CategorySelect } from "./CategorySelect";
+import { useConfirmation } from "../Modals/useConfirmation";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -43,7 +45,8 @@ function remember(key: string, value: string) {
   }
 }
 const itemName = (item: BookDataItem, index: number) =>
-  item.name?.trim() || (item.type === "notes"
+  item.name?.trim() ||
+  (item.type === "notes"
     ? plainText(item.text).slice(0, 45) || `Note ${index + 1}`
     : `Untitled ${index + 1}`);
 
@@ -70,6 +73,7 @@ export default function WritingStudio() {
 }
 
 export function Workspace({ initialBook }: { initialBook: Book }) {
+  const { confirm, confirmationDialog } = useConfirmation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const params = useParams();
@@ -123,7 +127,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   );
   const total = useMemo(() => manuscriptWords(book), [book]);
   const text = item ? ("text" in item ? item.text : item.description) : [];
-  const visibleText = summary && item?.type === "chapters" ? item.description : text;
+  const visibleText =
+    summary && item?.type === "chapters" ? item.description : text;
 
   useEffect(() => store.subscribe(render), [store]);
   useEffect(() => {
@@ -217,60 +222,34 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     setSearch("");
     select(entry.id);
   }
-  function duplicate() {
-    if (!item) return;
-    const copy = {
-      ...structuredClone(item),
-      id: newId(),
-      createdAt: new Date().toISOString(),
-    };
-    // Mongo's serialized subdocument _id must not survive duplication.
-    delete (copy as unknown as Record<string, unknown>)._id;
-    if ("name" in copy) copy.name += " — copy";
-    store.edit(current => ({
-      ...current,
-      [category]: [...current[category], copy],
-    }));
-    select(copy.id);
-  }
-  function move(offset: number) {
-    const index = items.findIndex(entry => entry.id === selected);
-    if (index + offset < 0 || index + offset >= items.length) return;
-    const ordered = [...items];
-    [ordered[index], ordered[index + offset]] = [
-      ordered[index + offset],
-      ordered[index],
-    ];
-    store.edit(current => ({
-      ...current,
-      [category]: [
-        ...ordered,
-        ...current[category].filter(entry => entry.isArchived),
-      ],
-    }));
-  }
-  function archive() {
+  async function archive() {
     if (
       !item ||
-      !window.confirm(
-        `Archive “${itemName(item, items.indexOf(item))}”? You can undo this here before leaving the studio.`,
-      )
+      !(await confirm({
+        title: "Archive this page?",
+        message: `Archive “${itemName(item, items.indexOf(item))}”? You can undo this here before leaving the studio.`,
+        confirmLabel: "Archive",
+      }))
     )
       return;
     setArchived(current => [...current, item]);
     updateItem({ isArchived: true });
     select(items.find(entry => entry.id !== item.id)?.id || "");
   }
-  async function leave() {
+  async function leave(destination = "/books") {
     await store.flush();
     if (
       store.dirty &&
-      !window.confirm(
-        "Your edits are not saved online. A local recovery draft will remain if browser storage is available. Leave the studio?",
-      )
+      !(await confirm({
+        title: "Leave with unsaved edits?",
+        message:
+          "Your edits are not saved online. A local recovery draft will remain if browser storage is available. Leave the studio?",
+        confirmLabel: "Leave studio",
+        cancelLabel: "Keep writing",
+      }))
     )
       return;
-    navigate("/books");
+    navigate(destination);
   }
 
   return (
@@ -278,6 +257,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       className={`ws ws-studio ${dark ? "ws-dark" : ""} ${focus ? "ws-focus" : ""}`}
       style={{ "--ws-font-size": `${size}px` } as React.CSSProperties}
     >
+      {confirmationDialog}
       <header className="ws-header">
         <button
           className="ws-back"
@@ -363,11 +343,14 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             Download recovery draft
           </button>
           <button
-            onClick={() => {
+            onClick={async () => {
               if (
-                window.confirm(
-                  "Discard the local recovery draft and keep the server version?",
-                )
+                await confirm({
+                  title: "Discard recovery draft?",
+                  message:
+                    "Discard the local recovery draft and keep the server version?",
+                  confirmLabel: "Discard draft",
+                })
               )
                 store.discardRecovery();
             }}
@@ -463,25 +446,11 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               ×
             </button>
           </div>
-          <select
-            aria-label="Manuscript category"
-            value={category}
-            onChange={event => {
-              const type = event.target.value as BooKDataItemType;
+          <CategorySelect value={category} options={categories} onChange={type => {
               setCategory(type);
-              setSelected(
-                book[type].find(entry => !entry.isArchived)?.id || "",
-              );
-              setSearch("");
-              setNotes(true);
-            }}
-          >
-            {categories.map(type => (
-              <option key={type} value={type}>
-                {type[0].toUpperCase() + type.slice(1)}
-              </option>
-            ))}
-          </select>
+              setSelected(book[type].find(entry => !entry.isArchived)?.id || "");
+              setSearch(""); setNotes(true);
+            }} />
           <input
             type="search"
             aria-label="Search manuscript"
@@ -557,13 +526,21 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     {preview ? "Edit" : "Read"}
                   </button>
                   {category === "chapters" && (
-                    <button type="button" onClick={() => setSummary(value => !value)} aria-expanded={summary} aria-controls="ws-chapter-summary">
-                      Summary
+                    <button
+                      type="button"
+                      onClick={() => setSummary(value => !value)}
+                      aria-expanded={summary}
+                      aria-controls="ws-chapter-summary"
+                    >
+                      {summary ? "Text" : "Summary"}
                     </button>
                   )}
                   {category === "chapters" && (
                     <button
-                      onClick={() => { setNotes(summary ? true : !notes); setSummary(false); }}
+                      onClick={() => {
+                        setNotes(summary ? true : !notes);
+                        setSummary(false);
+                      }}
                       aria-pressed={notes}
                     >
                       Chapter notes
@@ -578,20 +555,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   >
                     <summary>More</summary>
                     <div>
-                      <button
-                        disabled={!!store.recovery}
-                        onClick={() => move(-1)}
-                      >
-                        Move up
-                      </button>
-                      <button
-                        disabled={!!store.recovery}
-                        onClick={() => move(1)}
-                      >
-                        Move down
-                      </button>
-                      <button disabled={!!store.recovery} onClick={duplicate}>
-                        Duplicate
+                      <button type="button" onClick={() => void leave(`/book/${book.id}`)}>
+                        Go to details
                       </button>
                       <button disabled={!!store.recovery} onClick={archive}>
                         Archive page
@@ -600,22 +565,40 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   </details>
                 </div>
               </div>
-              <article className={`ws-page ${summary && item.type === "chapters" ? "ws-summary-mode" : ""}`}>
+              <article
+                className={`ws-page ${summary && item.type === "chapters" ? "ws-summary-mode" : ""}`}
+              >
                 <input
-                    dir="auto"
-                    className="ws-chapter-title"
-                    aria-label={category === "notes" ? "Note title" : "Chapter or page title"}
-                    value={item.name || ""}
-                    readOnly={preview || !!store.recovery}
-                    placeholder={category === "notes" ? "Untitled note" : "Untitled"}
-                    onChange={event => updateItem({ name: event.target.value })}
-                  />
+                  dir="auto"
+                  className="ws-chapter-title"
+                  aria-label={
+                    category === "notes"
+                      ? "Note title"
+                      : "Chapter or page title"
+                  }
+                  value={item.name || ""}
+                  readOnly={preview || !!store.recovery}
+                  placeholder={
+                    category === "notes" ? "Untitled note" : "Untitled"
+                  }
+                  onChange={event => updateItem({ name: event.target.value })}
+                />
 
                 {summary && item.type === "chapters" ? (
-                  <section id="ws-chapter-summary" className="ws-chapter-summary" aria-label="Chapter summary">
+                  <section
+                    id="ws-chapter-summary"
+                    className="ws-chapter-summary"
+                    aria-label="Chapter summary"
+                  >
                     <header>
                       <h2>Chapter summary</h2>
-                      <button type="button" onClick={() => setSummary(false)} aria-label="Close chapter summary">Close</button>
+                      <button
+                        type="button"
+                        onClick={() => setSummary(false)}
+                        aria-label="Close chapter summary"
+                      >
+                        Close
+                      </button>
                     </header>
                     <ManuscriptEditor
                       key={`${item.id}:summary:${restoreKey}`}
@@ -627,27 +610,27 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     />
                   </section>
                 ) : (
-                <ManuscriptEditor
-                  key={`${item.id}:${restoreKey}`}
-                  value={text}
-                  readOnly={preview || !!store.recovery}
-                  annotations={
-                    item.type === "chapters"
-                      ? item.annotations || []
-                      : undefined
-                  }
-                  showAnnotations={notes}
-                  onRevealAnnotations={() => setNotes(true)}
-                  onChange={(value, annotations) =>
-                    updateItem(
+                  <ManuscriptEditor
+                    key={`${item.id}:${restoreKey}`}
+                    value={text}
+                    readOnly={preview || !!store.recovery}
+                    annotations={
                       item.type === "chapters"
-                        ? { text: value, annotations }
-                        : "text" in item
-                          ? { text: value }
-                          : { description: value },
-                    )
-                  }
-                />
+                        ? item.annotations || []
+                        : undefined
+                    }
+                    showAnnotations={notes}
+                    onRevealAnnotations={() => setNotes(true)}
+                    onChange={(value, annotations) =>
+                      updateItem(
+                        item.type === "chapters"
+                          ? { text: value, annotations }
+                          : "text" in item
+                            ? { text: value }
+                            : { description: value },
+                      )
+                    }
+                  />
                 )}
                 <footer className="ws-page-footer">
                   <span>

@@ -153,6 +153,7 @@ test(
       );
     });
     server.middlewares.use(async (req, res) => {
+      if (req.url.split("?")[0].endsWith(".json")) { res.statusCode = 404; res.setHeader("Content-Type", "application/json"); res.end("{}"); return; }
       res.setHeader("Content-Type", "text/html");
       res.end(
         await server.transformIndexHtml(
@@ -193,6 +194,18 @@ test(
       });
       await page.getByRole("link", { name: "Continue writing" }).click();
       const editor = page.locator('[aria-label="Manuscript"]');
+      await editor.waitFor();
+      const categoryMenu = page.getByRole('combobox', {name:'Manuscript category'});
+      await categoryMenu.click();
+      const categoryOptions = page.getByRole('listbox', {name:'Manuscript categories'});
+      assert.equal(await categoryOptions.evaluate(node => getComputedStyle(node).backgroundColor), await categoryMenu.evaluate(node => getComputedStyle(node).backgroundColor));
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+      assert.ok((await categoryMenu.innerText()).includes('Characters'));
+      await categoryMenu.click();
+      await page.keyboard.press('Home');
+      await page.keyboard.press('Enter');
+      assert.ok((await categoryMenu.innerText()).includes('Chapters'));
       await editor.waitFor();
       // Empty Slate placeholders must not collapse the writing area or move its footer.
       await page.getByRole("button", { name: /An unopened letter/ }).click();
@@ -306,7 +319,12 @@ test(
         saved.chapters[0].annotations[0].anchor.anchor.path,
         [2, 0],
       );
-      const summaryButton = page.getByRole('button', {name:'Summary',exact:true});
+      const summaryButton = page.locator('button[aria-controls="ws-chapter-summary"]');
+      assert.equal(await summaryButton.innerText(), 'Summary');
+      await summaryButton.click();
+      assert.equal(await summaryButton.innerText(), 'Text');
+      await summaryButton.click();
+      assert.equal(await summaryButton.innerText(), 'Summary');
       await summaryButton.click();
       const summaryEditor = page.getByRole('textbox',{name:'Chapter summary',exact:true});
       assert.ok((await summaryEditor.innerText()).includes('A homecoming.'));
@@ -334,7 +352,7 @@ test(
       await page.getByRole('button',{name:/An unopened letter/}).click();
       await summaryEditor.waitFor({state:'detached'});
       await summaryButton.click();
-      assert.equal((await summaryEditor.innerText()).trim(),'');
+      assert.equal(await summaryEditor.locator("[data-slate-string]").count(), 0);
       await page.getByRole('button',{name:/The house by the sea/}).click();
       await summaryEditor.waitFor({state:'detached'});
       await page.screenshot({
