@@ -4,7 +4,7 @@ Implemented in `codex/book-task-board`, in the `roza-task-board` worktree. No me
 
 ## Using the board
 
-Open a book in the Writing Studio and choose **More → Tasks / משימות**. A Tasks shortcut is also available when the manuscript has no pages. **Return to manuscript** restores the mounted writing view, selected chapter, editor state, and scroll position.
+Open a book in the Writing Studio and choose **More → Tasks / משימות**. **Return to manuscript** restores the mounted writing view, selected chapter, editor state, and scroll position.
 
 New boards start with To Do, In Progress, and Done. List titles are editable inline. Add arbitrary lists and quick-create cards by entering a title and pressing Enter. Drag using the dedicated grips; ordinary card clicks open details. Pointer dragging activates after 8 pixels; touch grips use a short hold and preserve normal scrolling elsewhere. Keyboard grips use Space to pick up/drop and arrow keys to move. List arrows and card detail move controls provide alternatives.
 

@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { useEffect, useMemo, useReducer, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -72,6 +73,7 @@ export default function WritingStudio() {
 }
 
 export function Workspace({ initialBook }: { initialBook: Book }) {
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const params = useParams();
@@ -273,7 +275,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
 
   return (
     <main
-      className={`ws ws-studio ${dark ? "ws-dark" : ""} ${focus ? "ws-focus" : ""}`}
+      className={`ws ws-studio ${tasks ? "ws-tasks-open" : ""} ${dark ? "ws-dark" : ""} ${focus ? "ws-focus" : ""}`}
       style={{ "--ws-font-size": `${size}px` } as React.CSSProperties}
     >
       <header className="ws-header">
@@ -437,12 +439,11 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           </p>
         </section>
       )}
-      <button
-        className="ws-task-entry"
-        onClick={() => setTasks((value) => !value)}
-      >
-        {tasks ? "← Return to manuscript" : "Tasks / משימות"}
-      </button>
+      {tasks && (
+        <button className="ws-task-entry" onClick={() => setTasks(false)}>
+          ← Return to manuscript
+        </button>
+      )}
       <div className="ws-task-surface" hidden={!tasks}>
         {tasks && <TaskBoardView store={store} />}
       </div>
@@ -579,6 +580,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   )}
                   <details
                     className="ws-item-menu"
+                    onBlur={event => {
+                      if (!event.currentTarget.contains(event.relatedTarget as Node | null))
+                        event.currentTarget.removeAttribute("open");
+                    }}
                     onClick={(event) => {
                       if ((event.target as HTMLElement).closest("button"))
                         event.currentTarget.removeAttribute("open");
@@ -587,7 +592,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     <summary>More</summary>
                     <div>
                       <button onClick={() => setTasks(true)}>
-                        Tasks / משימות
+                        {t("writingTasks")}
                       </button>
                       <button
                         disabled={!!store.recovery}

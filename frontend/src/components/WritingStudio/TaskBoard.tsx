@@ -1,3 +1,5 @@
+import { ConfirmDialog } from "../Reader/ReaderArchiveDialog";
+import { FiTrash2 } from "react-icons/fi";
 import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
@@ -56,6 +58,32 @@ function Sortable({
   return (
     <div
       ref={setNodeRef}
+      {...attributes}
+      aria-label={kind === "list" ? "Reorder list" : "Reorder task"}
+      onPointerDown={(event) => {
+        if (event.pointerType === "touch") return;
+        const target = event.target as HTMLElement;
+        if (target.closest(".tb-sortable") !== event.currentTarget) return;
+        if (
+          kind === "list" &&
+          target.closest("input, textarea, select, button, a")
+        )
+          return;
+        listeners?.onPointerDown?.(event);
+      }}
+      onTouchStart={(event) => {
+        const target = event.target as HTMLElement;
+        if (target.closest(".tb-sortable") !== event.currentTarget) return;
+        if (
+          kind === "list" &&
+          target.closest("input, textarea, select, button, a")
+        )
+          return;
+        listeners?.onTouchStart?.(event);
+      }}
+      onKeyDown={(event) => {
+        if (event.target === event.currentTarget) listeners?.onKeyDown?.(event);
+      }}
       className={`tb-sortable tb-${kind} ${isDragging ? "tb-dragging" : ""}`}
       style={{
         transform: transform
@@ -64,21 +92,18 @@ function Sortable({
         transition,
       }}
     >
-      <button
-        className="tb-grip"
-        aria-label={`Drag ${kind}`}
-        {...attributes}
-        {...listeners}
-      >
-        ⠿
-      </button>
       {children}
     </div>
   );
 }
 export function TaskBoardView({ store }: { store: DraftStore }) {
+  const [confirmation, setConfirmation] = useState<{
+    message: string;
+    action: () => void;
+  } | null>(null);
   const [initial] = useState(emptyBoard);
   const board = store.book.taskBoard || initial;
+  const [creatingIn, setCreatingIn] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -139,7 +164,7 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
               items={board.lists.map((l) => l.id)}
               strategy={horizontalListSortingStrategy}
             >
-              {board.lists.map((l, index) => (
+              {board.lists.map((l) => (
                 <Sortable key={l.id} id={l.id} kind="list">
                   <header>
                     <input
@@ -153,42 +178,23 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                         }))
                       }
                     />
-                    <span>{l.cards.length}</span>
-                  </header>
-                  <div className="tb-list-actions">
                     <button
-                      aria-label="Move list left"
-                      disabled={!index}
-                      onClick={() =>
-                        change(moveTask(board, l.id, board.lists[index - 1].id))
-                      }
-                    >
-                      ←
-                    </button>
-                    <button
-                      aria-label="Move list right"
-                      disabled={index === board.lists.length - 1}
-                      onClick={() =>
-                        change(moveTask(board, l.id, board.lists[index + 1].id))
-                      }
-                    >
-                      →
-                    </button>
-                    <button
+                      className="tb-delete-list"
+                      aria-label={`Delete list ${l.title}`}
+                      title="Delete list"
                       onClick={() => {
-                        if (
-                          confirm(
-                            `Delete “${l.title}” and its ${l.cards.length} tasks? This cannot be undone.`,
-                          )
-                        )
-                          change({
-                            lists: board.lists.filter((x) => x.id !== l.id),
-                          });
+                        setConfirmation({
+                          message: `Delete “${l.title}” and its ${l.cards.length} tasks? This cannot be undone.`,
+                          action: () =>
+                            change({
+                              lists: board.lists.filter((x) => x.id !== l.id),
+                            }),
+                        });
                       }}
                     >
-                      Delete list
+                      <FiTrash2 aria-hidden="true" size={16} />
                     </button>
-                  </div>
+                  </header>
                   <SortableContext
                     items={l.cards.map((c) => c.id)}
                     strategy={verticalListSortingStrategy}
@@ -235,43 +241,68 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                       )}
                     </div>
                   </SortableContext>
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const form = e.currentTarget;
-                      const title = String(
-                        new FormData(form).get("title") || "",
-                      ).trim();
-                      if (!title) return;
-                      const now = new Date().toISOString();
-                      editList(l.id, (x) => ({
-                        ...x,
-                        cards: [
-                          ...x.cards,
-                          {
-                            id: uid(),
-                            title,
-                            description: "",
-                            dueDate: "",
-                            checklist: [],
-                            labels: [],
-                            createdAt: now,
-                            updatedAt: now,
-                          },
-                        ],
-                      }));
-                      form.reset();
-                    }}
-                  >
-                    <input
-                      name="title"
-                      aria-label={`New task in ${l.title}`}
-                      placeholder="What needs doing?"
-                      required
-                      maxLength={500}
-                    />
-                    <button type="submit">＋ Add Card</button>
-                  </form>
+                  {creatingIn === l.id ? (
+                    <form
+                      onBlur={(event) => {
+                        if (
+                          !event.currentTarget.contains(
+                            event.relatedTarget as Node | null,
+                          )
+                        )
+                          setCreatingIn(null);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === "Escape") {
+                          event.stopPropagation();
+                          setCreatingIn(null);
+                        }
+                      }}
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const form = e.currentTarget;
+                        const title = String(
+                          new FormData(form).get("title") || "",
+                        ).trim();
+                        if (!title) return;
+                        const now = new Date().toISOString();
+                        editList(l.id, (x) => ({
+                          ...x,
+                          cards: [
+                            ...x.cards,
+                            {
+                              id: uid(),
+                              title,
+                              description: "",
+                              dueDate: "",
+                              checklist: [],
+                              labels: [],
+                              createdAt: now,
+                              updatedAt: now,
+                            },
+                          ],
+                        }));
+                        form.reset();
+                        setCreatingIn(null);
+                      }}
+                    >
+                      <input
+                        autoFocus
+                        name="title"
+                        aria-label={`New task in ${l.title}`}
+                        placeholder="What needs doing?"
+                        required
+                        maxLength={500}
+                      />
+                      <button type="submit">Add card</button>
+                    </form>
+                  ) : (
+                    <button
+                      className="tb-add-card"
+                      onClick={() => setCreatingIn(l.id)}
+                    >
+                      ＋ Add Card
+                    </button>
+                  )}
                 </Sortable>
               ))}
             </SortableContext>
@@ -295,20 +326,34 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
         <CardDialog
           card={card}
           list={list}
-          board={board}
           update={updateCard}
           close={() => setSelected(null)}
-          move={(id) => change(moveTask(board, card.id, id))}
           remove={() => {
-            if (confirm(`Delete “${card.title}”? This cannot be undone.`)) {
-              editList(list.id, (l) => ({
-                ...l,
-                cards: l.cards.filter((c) => c.id !== card.id),
-              }));
-              setSelected(null);
-            }
+            setConfirmation({
+              message: `Delete “${card.title}”? This cannot be undone.`,
+              action: () => {
+                editList(list.id, (l) => ({
+                  ...l,
+                  cards: l.cards.filter((c) => c.id !== card.id),
+                }));
+                setSelected(null);
+              },
+            });
           }}
           disabled={!!store.recovery}
+        />
+      )}
+      {confirmation && (
+        <ConfirmDialog
+          heading="Delete permanently?"
+          message={confirmation.message}
+          confirmLabel="Delete"
+          icon={<FiTrash2 aria-hidden="true" />}
+          onCancel={() => setConfirmation(null)}
+          onConfirm={() => {
+            confirmation.action();
+            setConfirmation(null);
+          }}
         />
       )}
     </section>
@@ -317,19 +362,15 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
 function CardDialog({
   card,
   list,
-  board,
   update,
   close,
-  move,
   remove,
   disabled,
 }: {
   card: TaskCard;
   list: TaskList;
-  board: TaskBoard;
   update: (patch: Partial<TaskCard>) => void;
   close: () => void;
-  move: (id: string) => void;
   remove: () => void;
   disabled: boolean;
 }) {
@@ -374,172 +415,19 @@ function CardDialog({
             onChange={(e) => update({ description: e.target.value })}
           />
         </label>
-        <label>
-          Due date
-          <input
-            type="date"
-            value={card.dueDate}
-            onChange={(e) => update({ dueDate: e.target.value })}
-          />
-        </label>
-        <label>
-          Move to list
-          <select
-            aria-label="Move to list"
-            value={list.id}
-            onChange={(e) => move(e.target.value)}
-          >
-            {board.lists.map((l) => (
-              <option key={l.id} value={l.id}>
-                {l.title}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="tb-position">
-          <button
-            disabled={list.cards[0]?.id === card.id}
-            onClick={() =>
-              move(
-                list.cards[list.cards.findIndex((c) => c.id === card.id) - 1]
-                  .id,
-              )
-            }
-          >
-            Move up
-          </button>
-          <button
-            disabled={list.cards.at(-1)?.id === card.id}
-            onClick={() => {
-              const i = list.cards.findIndex((c) => c.id === card.id);
-              move(list.cards[i + 1].id);
-            }}
-          >
-            Move down
-          </button>
-        </div>
-        <h2>
-          Checklist{" "}
-          <small>
-            {card.checklist.filter((i) => i.done).length}/
-            {card.checklist.length}
-          </small>
-        </h2>
-        <progress
-          max={card.checklist.length || 1}
-          value={card.checklist.filter((i) => i.done).length}
-        />
-        {card.checklist.map((item) => (
-          <div className="tb-check" key={item.id}>
-            <input
-              type="checkbox"
-              aria-label={`Complete ${item.title}`}
-              checked={item.done}
-              onChange={(e) =>
-                update({
-                  checklist: card.checklist.map((i) =>
-                    i.id === item.id ? { ...i, done: e.target.checked } : i,
-                  ),
-                })
-              }
-            />
-            <input
-              aria-label="Checklist item"
-              maxLength={500}
-              value={item.title}
-              onChange={(e) =>
-                update({
-                  checklist: card.checklist.map((i) =>
-                    i.id === item.id
-                      ? { ...i, title: e.target.value || "Untitled" }
-                      : i,
-                  ),
-                })
-              }
-            />
-            <button
-              aria-label="Remove checklist item"
-              onClick={() =>
-                update({
-                  checklist: card.checklist.filter((i) => i.id !== item.id),
-                })
-              }
-            >
-              ×
-            </button>
-          </div>
-        ))}
-        <button
-          onClick={() =>
-            update({
-              checklist: [
-                ...card.checklist,
-                { id: uid(), title: "New subtask", done: false },
-              ],
-            })
-          }
-        >
-          ＋ Add subtask
-        </button>
-        <h2>Labels</h2>
-        {card.labels.map((tag) => (
-          <div className="tb-check" key={tag.id}>
-            <input
-              type="color"
-              aria-label="Label color"
-              value={tag.color}
-              onChange={(e) =>
-                update({
-                  labels: card.labels.map((t) =>
-                    t.id === tag.id ? { ...t, color: e.target.value } : t,
-                  ),
-                })
-              }
-            />
-            <input
-              aria-label="Label name"
-              maxLength={500}
-              value={tag.title}
-              onChange={(e) =>
-                update({
-                  labels: card.labels.map((t) =>
-                    t.id === tag.id
-                      ? { ...t, title: e.target.value || "Label" }
-                      : t,
-                  ),
-                })
-              }
-            />
-            <button
-              aria-label="Remove label"
-              onClick={() =>
-                update({ labels: card.labels.filter((t) => t.id !== tag.id) })
-              }
-            >
-              ×
-            </button>
-          </div>
-        ))}
-        <button
-          onClick={() =>
-            update({
-              labels: [
-                ...card.labels,
-                { id: uid(), title: "Label", color: "#9f6a70" },
-              ],
-            })
-          }
-        >
-          ＋ Add label
-        </button>
         <footer>
           <small>
             Created {new Date(card.createdAt).toLocaleString()}
             <br />
             Updated {new Date(card.updatedAt).toLocaleString()}
           </small>
-          <button className="tb-delete" onClick={remove}>
-            Delete task
+          <button
+            className="tb-delete"
+            onClick={remove}
+            aria-label="Delete task"
+            title="Delete task"
+          >
+            <FiTrash2 size={18} aria-hidden="true" />
           </button>
         </footer>
       </fieldset>

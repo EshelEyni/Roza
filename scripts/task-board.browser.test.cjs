@@ -199,7 +199,7 @@ test(
       await page.getByText("More", { exact: true }).click();
       await page
         .locator(".ws-item-menu")
-        .getByRole("button", { name: "Tasks / משימות" })
+        .getByRole("button", { name: "Tasks" })
         .click();
       assert.deepEqual(
         await page
@@ -207,13 +207,31 @@ test(
           .evaluateAll((nodes) => nodes.map((n) => n.value)),
         ["To Do", "In Progress", "Done"],
       );
+      assert.equal(await page.getByPlaceholder("What needs doing?").count(), 0);
+      const addCard = page
+        .locator(".tb-list")
+        .first()
+        .getByRole("button", { name: "＋ Add Card", exact: true });
+      await addCard.click();
+      await page.getByPlaceholder("What needs doing?").blur();
+      assert.equal(await page.getByPlaceholder("What needs doing?").count(), 0);
+      await addCard.click();
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Close new card", exact: true })
+          .count(),
+        0,
+      );
+      await page.getByPlaceholder("What needs doing?").press("Escape");
+      assert.equal(await page.getByPlaceholder("What needs doing?").count(), 0);
+      await addCard.click();
       await page
         .getByRole("textbox", { name: "New task in To Do", exact: true })
         .fill("Research the setting");
       await page
         .locator(".tb-list")
         .first()
-        .getByRole("button", { name: "＋ Add Card", exact: true })
+        .getByRole("button", { name: "Add card", exact: true })
         .click();
       await page
         .getByRole("button", { name: "Research the setting", exact: true })
@@ -221,21 +239,25 @@ test(
       await page
         .getByLabel("Description", { exact: true })
         .fill("Read the historical archives");
-      await page.getByLabel("Due date", { exact: true }).fill("2026-12-01");
-      await page
-        .getByRole("button", { name: "＋ Add subtask", exact: true })
-        .click();
-      await page
-        .getByLabel("Checklist item", { exact: true })
-        .fill("Visit library");
-      await page.getByRole("checkbox").check();
-      await page
-        .getByRole("button", { name: "＋ Add label", exact: true })
-        .click();
-      await page.getByLabel("Label name", { exact: true }).fill("Research");
-      await page
-        .locator(".tb-dialog select")
-        .selectOption({ label: "In Progress" });
+      assert.equal(
+        await page
+          .locator(
+            '.tb-dialog input[type="date"], .tb-dialog select, .tb-dialog progress, .tb-dialog input[type="checkbox"]',
+          )
+          .count(),
+        0,
+      );
+      assert.equal(
+        await page
+          .locator(".tb-dialog textarea")
+          .evaluate((el) => getComputedStyle(el).backgroundColor),
+        await page
+          .locator(".tb-dialog input")
+          .evaluate((el) => getComputedStyle(el).backgroundColor),
+      );
+      await page.screenshot({
+        path: path.join(screenshots, "task-details.png"),
+      });
       await page
         .getByRole("dialog")
         .getByRole("button", { name: "Done", exact: true })
@@ -244,18 +266,23 @@ test(
         .getByRole("button", { name: "✓ All changes saved", exact: true })
         .waitFor();
       assert.equal(
-        saved.taskBoard.lists[1].cards[0].description,
+        saved.taskBoard.lists[0].cards[0].description,
         "Read the historical archives",
       );
-      assert.equal(saved.taskBoard.lists[1].cards[0].checklist[0].done, true);
+
       assert.equal(saved.chapters[0].name, initial.chapters[0].name);
       await page.reload();
-      await page.locator(".ws-task-entry").click();
+      assert.equal(await page.locator(".ws-task-entry").count(), 0);
+      await page.getByText("More", { exact: true }).click();
+      await page
+        .locator(".ws-item-menu")
+        .getByRole("button", { name: "Tasks" })
+        .click();
       await page
         .getByRole("button", { name: /Research the setting/ })
         .waitFor();
       const handles = page.getByRole("button", {
-        name: "Drag list",
+        name: "Reorder list",
         exact: true,
       });
       await handles.first().focus();
@@ -270,15 +297,39 @@ test(
         .waitFor();
       assert.equal(saved.taskBoard.lists[1].title, "To Do");
       for (const target of [2, 0]) {
-        const grip = await page.getByRole("button", {name:"Drag card",exact:true}).boundingBox();
-        const dest = await page.locator(".tb-list").nth(target).locator("header").boundingBox();
-        await page.mouse.move(grip.x+grip.width/2,grip.y+grip.height/2);
+        const grip = await page
+          .getByRole("button", { name: "Reorder task", exact: true })
+          .boundingBox();
+        const dest = await page
+          .locator(".tb-list")
+          .nth(target)
+          .locator("header")
+          .boundingBox();
+        await page.mouse.move(
+          grip.x + grip.width / 2,
+          grip.y + grip.height / 2,
+        );
         await page.mouse.down();
-        await page.mouse.move(dest.x+dest.width/2,dest.y+dest.height/2,{steps:20});
+        await page.mouse.move(
+          dest.x + dest.width / 2,
+          dest.y + dest.height / 2,
+          { steps: 20 },
+        );
         await page.mouse.up();
-        await page.waitForFunction(i=>!!document.querySelectorAll(".tb-list")[i].querySelector(".tb-card"),target);
-        await page.getByRole("button", {name:"✓ All changes saved",exact:true}).waitFor();
-        assert.equal(saved.taskBoard.lists[target].cards[0].title,"Research the setting");
+        await page.waitForFunction(
+          (i) =>
+            !!document
+              .querySelectorAll(".tb-list")
+              [i].querySelector(".tb-card"),
+          target,
+        );
+        await page
+          .getByRole("button", { name: "✓ All changes saved", exact: true })
+          .waitFor();
+        assert.equal(
+          saved.taskBoard.lists[target].cards[0].title,
+          "Research the setting",
+        );
       }
 
       await page
@@ -313,6 +364,19 @@ test(
         .getByRole("dialog")
         .getByRole("button", { name: "Delete task", exact: true })
         .click();
+      await page
+        .getByRole("dialog", { name: "Delete permanently?" })
+        .getByRole("button", { name: "Cancel", exact: true })
+        .click();
+      assert.equal(saved.taskBoard.lists.flatMap((l) => l.cards).length, 1);
+      await page
+        .getByRole("button", { name: "Delete task", exact: true })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Delete permanently?" })
+        .getByRole("button", { name: "Delete", exact: true })
+        .click();
+
       await page
         .getByRole("button", { name: "✓ All changes saved", exact: true })
         .waitFor();
