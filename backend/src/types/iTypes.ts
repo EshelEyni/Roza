@@ -78,6 +78,7 @@ export interface IPlotline extends IBasicBookDataItem {
 }
 
 export interface INote extends IBasicBookDataItem {
+  name?: string;
   text: ISlateCustomElement[];
   type: "notes";
 }

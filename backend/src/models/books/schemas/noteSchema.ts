@@ -9,6 +9,10 @@ const noteSchema = new Schema<INote>(
       type: Schema.Types.ObjectId,
       required: [true, "Please provide a book id"],
     },
+    name: {
+      type: String,
+      default: "",
+    },
     text: {
       type: [SlateCustomElementSchema],
       default: getDefaultSlateElement(),

@@ -81,6 +81,7 @@ export interface Plotline extends BasicBookDataItem {
 }
 
 export interface Note extends BasicBookDataItem {
+  name?: string;
   text: SlateCustomElement[];
   type: "notes";
 }

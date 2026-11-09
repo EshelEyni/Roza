@@ -43,9 +43,9 @@ function remember(key: string, value: string) {
   }
 }
 const itemName = (item: BookDataItem, index: number) =>
-  "name" in item
-    ? item.name || `Untitled ${index + 1}`
-    : plainText(item.text).slice(0, 45) || `Note ${index + 1}`;
+  item.name?.trim() || (item.type === "notes"
+    ? plainText(item.text).slice(0, 45) || `Note ${index + 1}`
+    : `Untitled ${index + 1}`);
 
 export default function WritingStudio() {
   const { id } = useParams();
@@ -591,19 +591,16 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 </div>
               </div>
               <article className="ws-page">
-                {"name" in item ? (
-                  <input
+                <input
                     dir="auto"
                     className="ws-chapter-title"
-                    aria-label="Chapter or page title"
-                    value={item.name}
+                    aria-label={category === "notes" ? "Note title" : "Chapter or page title"}
+                    value={item.name || ""}
                     readOnly={preview || !!store.recovery}
-                    placeholder="Untitled"
+                    placeholder={category === "notes" ? "Untitled note" : "Untitled"}
                     onChange={event => updateItem({ name: event.target.value })}
                   />
-                ) : (
-                  <h1 className="ws-note-title">Notes</h1>
-                )}
+
                 {notes && "description" in item && (
                   <div className="ws-notes">
                     <h2>Chapter notes</h2>

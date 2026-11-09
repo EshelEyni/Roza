@@ -101,6 +101,7 @@ function getDefaultPlotline(bookId: string): Plotline {
 
 function getDefaultNote(bookId: string): Note {
   return {
+    name: "",
     ...getDefaultBasicBookDataItem(bookId),
     text: getDefaultSlateElement(),
     type: "notes",
