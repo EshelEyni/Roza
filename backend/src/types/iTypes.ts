@@ -53,6 +53,7 @@ export interface IBasicBookDataItem extends Document {
 }
 
 export interface IChapter extends IBasicBookDataItem {
+  annotations?: import("../../../shared/types/books").ChapterAnnotation[];
   name: string;
   description: ISlateCustomElement[];
   text: ISlateCustomElement[];

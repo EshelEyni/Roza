@@ -101,7 +101,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const [drawer, setDrawer] = useState(false);
   const [focus, setFocus] = useState(false);
   const [preview, setPreview] = useState(false);
-  const [notes, setNotes] = useState(false);
+  const [notes, setNotes] = useState(true);
+  const [summary, setSummary] = useState(false);
   const [search, setSearch] = useState("");
   const [dark, setDark] = useState(
     () => preference("roza:studio:theme", "light") === "dark",
@@ -122,6 +123,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   );
   const total = useMemo(() => manuscriptWords(book), [book]);
   const text = item ? ("text" in item ? item.text : item.description) : [];
+  const visibleText = summary && item?.type === "chapters" ? item.description : text;
 
   useEffect(() => store.subscribe(render), [store]);
   useEffect(() => {
@@ -177,10 +179,13 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     return () => window.removeEventListener("keydown", keydown);
   }, [store]);
 
+  useEffect(() => setSummary(false), [selected, category]);
+
   function select(id: string) {
+    setSummary(false);
     setSelected(id);
     setDrawer(false);
-    setNotes(false);
+    setNotes(true);
     if (category === "chapters") remember(`${scope}:chapter`, id);
   }
   function updateItem(
@@ -468,7 +473,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 book[type].find(entry => !entry.isArchived)?.id || "",
               );
               setSearch("");
-              setNotes(false);
+              setNotes(true);
             }}
           >
             {categories.map(type => (
@@ -552,8 +557,13 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     {preview ? "Edit" : "Read"}
                   </button>
                   {category === "chapters" && (
+                    <button type="button" onClick={() => setSummary(value => !value)} aria-expanded={summary} aria-controls="ws-chapter-summary">
+                      Summary
+                    </button>
+                  )}
+                  {category === "chapters" && (
                     <button
-                      onClick={() => setNotes(!notes)}
+                      onClick={() => { setNotes(summary ? true : !notes); setSummary(false); }}
                       aria-pressed={notes}
                     >
                       Chapter notes
@@ -590,7 +600,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   </details>
                 </div>
               </div>
-              <article className="ws-page">
+              <article className={`ws-page ${summary && item.type === "chapters" ? "ws-summary-mode" : ""}`}>
                 <input
                     dir="auto"
                     className="ws-chapter-title"
@@ -601,32 +611,48 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     onChange={event => updateItem({ name: event.target.value })}
                   />
 
-                {notes && "description" in item && (
-                  <div className="ws-notes">
-                    <h2>Chapter notes</h2>
+                {summary && item.type === "chapters" ? (
+                  <section id="ws-chapter-summary" className="ws-chapter-summary" aria-label="Chapter summary">
+                    <header>
+                      <h2>Chapter summary</h2>
+                      <button type="button" onClick={() => setSummary(false)} aria-label="Close chapter summary">Close</button>
+                    </header>
                     <ManuscriptEditor
-                      key={`${item.id}:notes:${restoreKey}`}
+                      key={`${item.id}:summary:${restoreKey}`}
                       value={item.description}
+                      label="Chapter summary"
+                      placeholder="Summarize what happens in this chapter…"
                       readOnly={preview || !!store.recovery}
-                      label="Chapter notes"
                       onChange={description => updateItem({ description })}
                     />
-                  </div>
-                )}
+                  </section>
+                ) : (
                 <ManuscriptEditor
                   key={`${item.id}:${restoreKey}`}
                   value={text}
                   readOnly={preview || !!store.recovery}
-                  onChange={value =>
+                  annotations={
+                    item.type === "chapters"
+                      ? item.annotations || []
+                      : undefined
+                  }
+                  showAnnotations={notes}
+                  onRevealAnnotations={() => setNotes(true)}
+                  onChange={(value, annotations) =>
                     updateItem(
-                      "text" in item ? { text: value } : { description: value },
+                      item.type === "chapters"
+                        ? { text: value, annotations }
+                        : "text" in item
+                          ? { text: value }
+                          : { description: value },
                     )
                   }
                 />
+                )}
                 <footer className="ws-page-footer">
                   <span>
-                    {words(text).toLocaleString()} words ·{" "}
-                    {Math.max(1, Math.ceil(words(text) / 200))} min read
+                    {words(visibleText).toLocaleString()} words ·{" "}
+                    {Math.max(1, Math.ceil(words(visibleText) / 200))} min read
                   </span>
                   <span>
                     {preview

@@ -1,6 +1,9 @@
-import { useMemo } from "react";
-import { createEditor } from "slate";
-import { Editable, Slate, useSlate, withReact } from "slate-react";
+import { ReactNode, useMemo, useRef, useState } from "react";
+import { createEditor, Editor, Range, Text } from "slate";
+import { ChapterAnnotation } from "../../../../shared/types/books";
+import { AnnotationMargin } from "./AnnotationMargin";
+import { transformAnnotations, validAnchor } from "./annotations";
+import { Editable, ReactEditor, Slate, useSlate, withReact } from "slate-react";
 import { HistoryEditor, withHistory } from "slate-history";
 import { SlateCustomElement } from "../../../../shared/types/books";
 import { TextEditorElement } from "../SlateTextEditor/TextEditorElement";
@@ -11,7 +14,7 @@ import {
   onFormatText,
 } from "../SlateTextEditor/textEditorService";
 
-function Toolbar() {
+function Toolbar({ onAddNote }: { onAddNote?: () => void }) {
   const editor = useSlate() as ReturnType<typeof useSlate> & HistoryEditor;
   return (
     <div className="ws-toolbar" role="toolbar" aria-label="Text formatting">
@@ -70,6 +73,17 @@ function Toolbar() {
       >
         ↷
       </button>
+      {onAddNote && (
+        <button
+          type="button"
+          className="ws-add-selection-note"
+          onMouseDown={event => event.preventDefault()}
+          onClick={onAddNote}
+          title="Add note to selected text or current paragraph"
+        >
+          + Note
+        </button>
+      )}
     </div>
   );
 }
@@ -78,13 +92,68 @@ export function ManuscriptEditor({
   onChange,
   readOnly = false,
   label = "Manuscript",
+  placeholder = "Begin here. The next sentence is yours.",
+  annotations,
+  showAnnotations = true,
+  legacyNotes,
+  onRevealAnnotations,
 }: {
   value: SlateCustomElement[];
-  onChange: (value: SlateCustomElement[]) => void;
+  onChange: (
+    value: SlateCustomElement[],
+    annotations?: ChapterAnnotation[],
+  ) => void;
+  annotations?: ChapterAnnotation[];
+  showAnnotations?: boolean;
+  legacyNotes?: ReactNode;
+  onRevealAnnotations?: () => void;
   readOnly?: boolean;
   label?: string;
+  placeholder?: string;
 }) {
-  const editor = useMemo(() => withHistory(withReact(createEditor())), []);
+  const [activeNote, setActiveNote] = useState<string | null>(null);
+  const [hoveredPath, setHoveredPath] = useState<string | null>(null);
+  const activeAnchor = annotations?.find(
+    note => note.id === activeNote,
+  )?.anchor;
+  const notes = useRef(annotations || []);
+  const receivedNotes = useRef(annotations);
+  if (receivedNotes.current !== annotations) {
+    notes.current = annotations || [];
+    receivedNotes.current = annotations;
+  }
+  const editor = useMemo(() => {
+    const instance = withHistory(withReact(createEditor()));
+    const apply = instance.apply;
+    instance.apply = operation => {
+      notes.current = transformAnnotations(notes.current, operation);
+      apply(operation);
+    };
+    return instance;
+  }, []);
+  const persistNotes = (next: ChapterAnnotation[]) => {
+    notes.current = next;
+    onChange(editor.children as SlateCustomElement[], next);
+  };
+  const addSelectionNote = () => {
+    const selection = editor.selection;
+    const anchor =
+      selection && Range.isExpanded(selection)
+        ? selection
+        : Editor.range(
+            editor,
+            selection ? selection.anchor.path.slice(0, -1) : [0],
+          );
+    const note: ChapterAnnotation = {
+      id: crypto.randomUUID(),
+      content: "",
+      anchor,
+      quote: Editor.string(editor, anchor).slice(0, 500),
+    };
+    persistNotes([...notes.current, note]);
+    setActiveNote(note.id);
+    onRevealAnnotations?.();
+  };
   return (
     <Slate
       editor={editor}
@@ -99,30 +168,106 @@ export function ManuscriptEditor({
             operation => operation.type !== "set_selection",
           )
         )
-          onChange(next as SlateCustomElement[]);
+          onChange(
+            next as SlateCustomElement[],
+            annotations === undefined
+              ? undefined
+              : notes.current.map(note => ({
+                  ...note,
+                  anchor: validAnchor(editor, note.anchor) ? note.anchor : null,
+                })),
+          );
       }}
     >
-      {!readOnly && <Toolbar />}
-      <Editable
-        className="ws-prose"
-        aria-label={label}
-        dir="auto"
-        readOnly={readOnly}
-        spellCheck
-        placeholder="Begin here. The next sentence is yours."
-        renderElement={props => <TextEditorElement {...props} />}
-        renderLeaf={props => <Leaf {...props} />}
-        onKeyDown={event => {
-          if (!(event.ctrlKey || event.metaKey)) return;
-          const button = btns
-            .slice(0, 3)
-            .find(button => button.keyboardSequence.key === event.code);
-          if (button && !event.shiftKey && !event.altKey) {
-            event.preventDefault();
-            onFormatText({ editor, button });
-          }
-        }}
-      />
+      {!readOnly && (
+        <Toolbar
+          onAddNote={annotations !== undefined ? addSelectionNote : undefined}
+        />
+      )}
+      <div
+        className={
+          annotations !== undefined ? "ws-annotated-editor" : undefined
+        }
+      >
+        <Editable
+          className="ws-prose"
+          // Override Slate's measured placeholder height with the writing-area height.
+          style={{ minHeight: "var(--ws-editor-min-height, 42vh)" }}
+          aria-label={label}
+          dir="auto"
+          readOnly={readOnly}
+          spellCheck
+          placeholder={placeholder}
+          onMouseMove={event => {
+            const element = (event.target as HTMLElement).closest(
+              '[data-slate-node="element"]',
+            );
+            if (!element || annotations === undefined) return;
+            try {
+              setHoveredPath(
+                ReactEditor.findPath(
+                  editor,
+                  ReactEditor.toSlateNode(editor, element),
+                ).join("."),
+              );
+            } catch {
+              /* pending DOM commit */
+            }
+          }}
+          onMouseLeave={() => setHoveredPath(null)}
+          renderElement={props => <TextEditorElement {...props} />}
+          decorate={([node, path]) => {
+            if (
+              !Text.isText(node) ||
+              !activeAnchor ||
+              !validAnchor(editor, activeAnchor)
+            )
+              return [];
+            const intersection = Range.intersection(
+              Editor.range(editor, path),
+              activeAnchor,
+            );
+            return intersection
+              ? [{ ...intersection, annotationActive: true }]
+              : [];
+          }}
+          renderLeaf={props => (
+            <Leaf {...props}>
+              {(props.leaf as { annotationActive?: boolean })
+                .annotationActive ? (
+                <mark className="ws-annotation-highlight">
+                  {props.children}
+                </mark>
+              ) : (
+                props.children
+              )}
+            </Leaf>
+          )}
+          onKeyDown={event => {
+            if (!(event.ctrlKey || event.metaKey)) return;
+            const button = btns
+              .slice(0, 3)
+              .find(button => button.keyboardSequence.key === event.code);
+            if (button && !event.shiftKey && !event.altKey) {
+              event.preventDefault();
+              onFormatText({ editor, button });
+            }
+          }}
+        />
+        {annotations !== undefined && (
+          <AnnotationMargin
+            notes={annotations}
+            active={activeNote}
+            hoveredPath={hoveredPath}
+            onActive={setActiveNote}
+            onReveal={onRevealAnnotations}
+            visible={showAnnotations}
+            readOnly={readOnly}
+            onChange={persistNotes}
+            legacyNotes={legacyNotes}
+          />
+        )}
+      </div>
     </Slate>
   );
 }

@@ -36,10 +36,6 @@
   color: inherit;
   transition: background 0.15s;
 }
-.ws button:hover,
-.ws summary:hover {
-  background: var(--ws-soft);
-}
 .ws button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -492,7 +488,7 @@
   white-space: pre-wrap;
 }
 .ws-prose p {
-  margin: 0 0 1.1em;
+  margin: 0;
 }
 .ws-prose h1,
 .ws-prose h2 {
@@ -1161,3 +1157,349 @@ html.writing-studio-open #root {
 .ws-progress progress::-moz-progress-bar {
   background: var(--ws-accent);
 }
+
+/* Contextual annotations share the manuscript scrolling surface. */
+.ws-page:has(.ws-annotated-editor) {
+  max-width: 1180px;
+  width: 100%;
+}
+.ws-annotated-editor {
+  display: grid;
+  position: relative;
+  isolation: isolate;
+}
+.ws-annotated-editor > .ws-prose {
+  grid-area: 1 / 1;
+  margin-right: 292px;
+  min-width: 0;
+}
+.ws-annotation-layer {
+  grid-area: 1 / 1;
+  position: relative;
+  pointer-events: none;
+}
+.ws-line-gutter {
+  position: absolute;
+  left: -46px;
+  top: 0;
+  width: 42px;
+}
+.ws-line-marker {
+  position: absolute;
+  width: 42px;
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  pointer-events: auto;
+}
+.ws-line-marker button {
+  padding: 2px !important;
+  min-width: 19px;
+  min-height: 28px;
+  font: 11px/1.3 system-ui;
+  color: var(--ws-muted);
+}
+.ws-line-marker .ws-add-annotation {
+  opacity: 0;
+  color: var(--ws-accent);
+  background: transparent;
+  font-size: 17px;
+}
+.ws-line-marker:hover .ws-add-annotation,
+.ws-line-marker:focus-within .ws-add-annotation {
+  opacity: 1;
+}
+.ws-line-marker.has-notes .ws-line-number {
+  color: var(--ws-accent);
+  font-weight: 600;
+}
+.ws-annotation-rail {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 260px;
+  pointer-events: auto;
+  font: 13px/1.5 system-ui;
+}
+.ws-annotation-hint {
+  color: var(--ws-muted);
+  font-size: 12px;
+  margin: 0;
+  padding: 5px 0 0 14px;
+  border-left: 1px solid var(--ws-line);
+}
+.ws-annotation-card {
+  position: absolute;
+  width: 260px;
+  max-width: calc(100vw - 16px);
+  border: 1px solid var(--ws-line);
+  border-radius: 8px;
+  background: var(--ws-paper);
+  color: var(--ws-ink);
+}
+
+.ws-annotation-card.is-active {
+  border-color: var(--ws-accent);
+  box-shadow: 0 3px 12px #0000000a;
+}
+
+.ws-annotation-card.is-dragging {
+  box-shadow: 0 6px 20px #0002;
+  user-select: none;
+}
+.ws-annotation-card header {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+}
+.ws-annotation-card .ws-note-select {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-width: 0;
+  flex: 1;
+  padding: 10px;
+  font-size: 11px;
+  text-align: left;
+}
+.ws-note-select > span:first-child {
+  flex-shrink: 0;
+  color: var(--ws-accent);
+}
+.ws-note-select > span:last-child {
+  margin-left: auto;
+}
+.ws-note-preview {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ws-muted);
+}
+.ws-annotation-card .ws-note-drag {
+  cursor: grab;
+  touch-action: none;
+  padding: 8px;
+  font-size: 18px;
+  color: var(--ws-muted);
+}
+.ws-annotation-card.is-dragging .ws-note-drag {
+  cursor: grabbing;
+}
+.ws-note-body {
+  padding: 0 12px 12px;
+}
+.ws-note-body blockquote {
+  font:
+    italic 12px/1.5 Georgia,
+    serif;
+  color: var(--ws-muted);
+  border-left: 2px solid var(--ws-line);
+  padding-left: 8px;
+  margin: 0 0 10px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow-wrap: anywhere;
+}
+.ws-note-body textarea {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  max-height: 40vh;
+  resize: vertical;
+  border: 0;
+  padding: 4px 0;
+  background: transparent;
+  color: var(--ws-ink);
+  font: 13px/1.6 system-ui;
+}
+.ws-note-body footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+}
+.ws-note-body footer button {
+  font-size: 11px;
+  padding: 4px 7px;
+}
+.ws-note-body footer span {
+  display: block;
+  width: 100%;
+  font-size: 10px;
+  color: var(--ws-muted);
+  margin-top: 4px;
+}
+.ws-previous-notes {
+  position: absolute;
+  width: 100%;
+  padding: 12px;
+  background: var(--ws-soft);
+  border-radius: 8px;
+}
+.ws-legacy-note summary {
+  cursor: pointer;
+  font-size: 12px;
+}
+.ws-legacy-note .ws-prose {
+  font-size: 14px;
+  min-height: 100px;
+  margin: 0;
+}
+.ws-legacy-note .ws-toolbar {
+  margin: 12px 0;
+  padding: 3px 0;
+}
+.ws-legacy-note .ws-toolbar button {
+  width: 25px;
+  height: 25px;
+  padding: 4px;
+}
+@media (hover: none) {
+  .ws-line-marker .ws-add-annotation {
+    opacity: 1;
+  }
+}
+@media (max-width: 1050px) and (min-width: 761px) {
+  .ws-annotated-editor > .ws-prose {
+    margin-right: 222px;
+  }
+  .ws-annotation-rail,
+  .ws-annotation-card {
+    width: 200px;
+  }
+}
+@media (max-width: 760px) {
+  .ws-page:has(.ws-annotated-editor) {
+    padding-left: 46px;
+    padding-right: 18px;
+  }
+  .ws-annotated-editor {
+    display: block;
+  }
+  .ws-annotated-editor > .ws-prose {
+    margin-right: 0;
+  }
+  .ws-annotation-layer {
+    position: static;
+    min-height: 0 !important;
+  }
+  .ws-line-gutter {
+    left: -40px;
+  }
+  .ws-line-marker .ws-add-annotation {
+    opacity: 1;
+  }
+  .ws-annotation-rail {
+    position: relative;
+    width: 100%;
+    margin-top: 24px;
+  }
+  .ws-annotation-card:not(.is-floating) {
+    position: relative;
+    top: auto !important;
+    width: 100%;
+    margin: 8px 0;
+  }
+
+  .ws-previous-notes {
+    position: relative;
+    top: auto !important;
+    margin-top: 12px;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ws-annotation-card {
+    transition:
+      border-color 120ms,
+      box-shadow 120ms;
+  }
+}
+.ws-annotation-highlight {
+  background: var(--ws-soft);
+  color: inherit;
+  border-bottom: 1px solid var(--ws-accent);
+}
+@media (max-width: 760px) {
+  .ws-annotation-card.is-active:not(.is-floating) {
+    position: fixed;
+    top: auto !important;
+    bottom: 12px;
+    left: 12px;
+    width: calc(100vw - 24px);
+    max-height: 50vh;
+    overflow: auto;
+    z-index: 40 !important;
+  }
+}
+.ws-toolbar .ws-add-selection-note {
+  width: auto;
+  margin-left: auto;
+  color: var(--ws-accent);
+  font-size: 12px;
+}
+.ws-line-marker.is-hovered .ws-add-annotation {
+  opacity: 1;
+}
+
+.ws-legacy-note, .ws-notes { --ws-editor-min-height: 100px; }
+
+.ws-note-body textarea {
+  padding: 2px;
+}
+.ws-delete-note-dialog {
+  pointer-events: auto;
+  position: fixed;
+  inset: 0;
+  margin: auto;
+  width: min(400px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid var(--ws-line);
+  border-radius: 12px;
+  background: var(--ws-paper);
+  color: var(--ws-ink);
+  font: 14px/1.6 system-ui;
+  box-shadow: 0 12px 48px #0002;
+}
+.ws-delete-note-dialog::backdrop {
+  background: #0005;
+}
+.ws-delete-note-dialog h2 {
+  font:
+    24px/1.3 Georgia,
+    serif;
+  margin: 0 0 12px;
+}
+.ws-delete-note-dialog p {
+  color: var(--ws-muted);
+  margin-bottom: 24px;
+}
+.ws-delete-note-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+.ws-delete-note-actions button {
+  padding: 8px 14px;
+}
+.ws-delete-note-actions .ws-delete-note-confirm {
+  background: var(--ws-accent);
+  color: var(--ws-paper);
+}
+
+.ws-chapter-summary { --ws-editor-min-height: 140px; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--ws-line); }
+.ws-chapter-summary > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
+.ws-chapter-summary h2 { color: var(--ws-muted); font: 500 13px/1.5 system-ui; }
+.ws-chapter-summary > header button { color: var(--ws-muted); font-size: 12px; }
+.ws-chapter-summary .ws-prose { min-height: 140px; }
+.ws-chapter-summary .ws-toolbar { margin-bottom: 16px; }
+
+.ws .ws-note-body textarea,
+.ws .ws-note-body textarea:focus,
+.ws .ws-note-body textarea:focus-visible { border: 0; outline: none; box-shadow: none; }
+.ws-annotation-card .ws-note-delete { flex-shrink: 0; padding: 6px; font-size: 11px; color: var(--ws-muted); }
+
+.ws-page.ws-summary-mode { max-width: 1180px; width: 100%; }
+.ws-summary-mode .ws-chapter-summary { --ws-editor-min-height: 42vh; margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
