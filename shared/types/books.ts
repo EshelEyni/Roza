@@ -29,7 +29,26 @@ export interface Reference {
   createdAt: Date | string;
 }
 
+export interface TaskCard {
+  id: string;
+  title: string;
+  description: string;
+  dueDate: string;
+  checklist: { id: string; title: string; done: boolean }[];
+  labels: { id: string; title: string; color: string }[];
+  createdAt: string;
+  updatedAt: string;
+}
+export interface TaskList {
+  id: string;
+  title: string;
+  cards: TaskCard[];
+}
+export interface TaskBoard {
+  lists: TaskList[];
+}
 export interface Book {
+  taskBoard?: TaskBoard;
   id: string;
   userId: string;
   name: string;

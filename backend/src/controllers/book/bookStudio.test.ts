@@ -94,3 +94,14 @@ test("requires a base version for manuscript array replacements", async () => {
   expect(response.status).toBe(409);
   expect(write).not.toHaveBeenCalled();
 });
+
+test("task boards require a version and preserve owner scoping and manuscript contents", async () => {
+  const taskBoard = { lists: [{ id: "list", title: "Research", cards: [] }] };
+  expect((await request(app).patch(`/${id}`).send({ taskBoard })).status).toBe(409);
+  expect(write).not.toHaveBeenCalled();
+  const response = await request(app).patch(`/${id}`).send({ taskBoard, updatedAt: date.toISOString(), userId: "attacker" });
+  expect(response.status).toBe(200);
+  expect(write.mock.calls[0][0].userId).toBe("111111111111111111111111");
+  expect(write.mock.calls[0][1].$set.taskBoard).toEqual(taskBoard);
+  expect(write.mock.calls[0][1].$set.chapters).toBeUndefined();
+});
