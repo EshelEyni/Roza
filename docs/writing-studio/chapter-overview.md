@@ -31,3 +31,9 @@ The existing book API loads/saves the complete book. The board adds no chapter f
 Browser fixture uses `PLAYWRIGHT_MODULE` to locate the installed Playwright runtime, as described in `implementation.md`. Windows Edge requires running that fixture outside the sandbox. No production service is used by the fixture. Physical touchscreen behavior and live production persistence were not tested.
 
 Screenshots: `screenshots/chapter-overview-desktop.png`, `screenshots/chapter-overview-mobile.png`, `screenshots/chapter-preview-mobile.png`.
+
+## Main synchronization
+
+Merged `origin/main` at `3b78b80` into the feature branch. Retained the current Roza palette, studio scrolling fixes, book details and task board. Chapter cards, dialog, selection indicators, borders and drag effects now use the same application palette tokens in light and dark mode. Renamed the board header class to avoid colliding with the existing book-overview header. Regenerated chapter-overview and studio screenshots with the actual Tailwind palette loaded.
+
+Post-merge verification: TypeScript/Vite build, frontend lint (seven existing warnings, no errors), studio browser suite, task-board browser suite, save-store tests, task-board unit tests and the shared renderer/palette tests. The palette test rejects fixed color literals in studio CSS. Main was merged into the feature; the feature was not merged into main or deployed.

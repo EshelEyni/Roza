@@ -69,12 +69,13 @@ const updateBook = asyncErrorCatcher(async (req: Request, res: Response, next: N
     );
   if (
     !expected &&
-    ["chapters", "characters", "themes", "plotlines", "notes"].some(field =>
-      Array.isArray(req.body[field]),
+    ["chapters", "characters", "themes", "plotlines", "notes", "taskBoard"].some(field =>
+      field === "taskBoard" ? req.body[field] !== undefined : Array.isArray(req.body[field]),
     )
   )
     throw new AppError("Reload the manuscript before saving its contents.", 409);
   const fields = [
+    "taskBoard",
     "name",
     "chapters",
     "characters",

@@ -206,7 +206,7 @@ export function ChapterOverview({
   }
   return (
     <section className="ws-overview" aria-label="Chapter overview">
-      <header className="ws-overview-heading">
+      <header className="ws-board-heading">
         <div>
           <span className="ws-eyebrow">THE SHAPE OF YOUR STORY</span>
           <h1>Chapter overview</h1>

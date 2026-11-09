@@ -1,3 +1,4 @@
+import { taskBoardSchema } from "./taskBoardSchema";
 import { Document, Query, Schema } from "mongoose";
 import { chapterSchema } from "./chapterScehma";
 import { IBook, IChapter, ICharacter, INote, IPlotline, ITheme } from "../../../types/iTypes";
@@ -17,6 +18,7 @@ const bookSchema = new Schema<IBook>(
       required: [true, "Please provide a name"],
       trim: true,
     },
+    taskBoard: { type: taskBoardSchema, default: undefined },
     chapters: [chapterSchema],
     characters: [characterSchema],
     themes: [themeSchema],

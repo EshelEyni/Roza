@@ -31,6 +31,7 @@ export interface IUser extends Document {
 }
 
 export interface IBook extends Document {
+ taskBoard?: import("../../../shared/types/books").TaskBoard;
   userId: mongoose.Types.ObjectId;
   name: string;
   chapters: IChapter[];
@@ -78,6 +79,7 @@ export interface IPlotline extends IBasicBookDataItem {
 }
 
 export interface INote extends IBasicBookDataItem {
+  name?: string;
   text: ISlateCustomElement[];
   type: "notes";
 }

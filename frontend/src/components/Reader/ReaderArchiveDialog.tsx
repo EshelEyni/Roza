@@ -3,12 +3,18 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { FiArchive } from "react-icons/fi";
 
-export function ReaderArchiveDialog({
-  title,
+export function ConfirmDialog({
+  heading,
+  message,
+  confirmLabel,
+  icon,
   onCancel,
   onConfirm,
 }: {
-  title: string;
+  heading: string;
+  message: string;
+  confirmLabel: string;
+  icon: React.ReactNode;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -44,11 +50,9 @@ export function ReaderArchiveDialog({
       }}
     >
       <div className="reader-archive-dialog-content">
-        <div className="reader-archive-dialog-icon">
-          <FiArchive aria-hidden="true" />
-        </div>
-        <h2 id={headingId}>{t("reader.archiveDialogTitle")}</h2>
-        <p id={descriptionId}>{t("reader.confirmArchiveBook", { title })}</p>
+        <div className="reader-archive-dialog-icon">{icon}</div>
+        <h2 id={headingId}>{heading}</h2>
+        <p id={descriptionId}>{message}</p>
         <div className="reader-archive-dialog-actions">
           <button
             type="button"
@@ -64,11 +68,33 @@ export function ReaderArchiveDialog({
             onClick={onConfirm}
           >
             <FiArchive aria-hidden="true" />
-            {t("reader.archiveBook")}
+            {confirmLabel}
           </button>
         </div>
       </div>
     </dialog>,
     document.body,
+  );
+}
+
+export function ReaderArchiveDialog({
+  title,
+  onCancel,
+  onConfirm,
+}: {
+  title: string;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <ConfirmDialog
+      heading={t("reader.archiveDialogTitle")}
+      message={t("reader.confirmArchiveBook", { title })}
+      confirmLabel={t("reader.archiveBook")}
+      icon={<FiArchive aria-hidden="true" />}
+      onCancel={onCancel}
+      onConfirm={onConfirm}
+    />
   );
 }

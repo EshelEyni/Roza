@@ -14,6 +14,11 @@ export function useReaderJumpHistory(runtime: EpubRuntime, location: Location | 
     runtime.linkObserver.current = () => tracker.current!.markLink(location?.start.cfi);
     return () => { runtime.linkObserver.current = undefined; };
   }, [runtime,location]);
+  useEffect(() => {
+    if (!returnPoint) return;
+    const timeout = setTimeout(() => tracker.current?.dismiss(), 8000);
+    return () => clearTimeout(timeout);
+  }, [returnPoint]);
   useEffect(() => () => tracker.current?.cancel(), []);
   const goBack = useCallback(async () => {
     try { await tracker.current!.goBack(navigate); } catch { onError(); }

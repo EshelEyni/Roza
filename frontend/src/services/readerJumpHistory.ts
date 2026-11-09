@@ -34,5 +34,6 @@ export class ReaderJumpHistory {
       this.point = null; this.changed(null);
     } finally { this.returning = false; }
   }
+  dismiss() { this.point = null; this.changed(null); }
   cancel() { ++this.version; }
 }
