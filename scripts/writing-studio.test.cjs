@@ -191,3 +191,14 @@ test("a late save acknowledgement does not erase a newer recovery draft from ano
   assert.equal(mem.getItem(store.key), newer);
   store.dispose();
 });
+
+test("preview renderer preserves formatting and escapes manuscript HTML", () => {
+  const { richTextHtml } = require("../frontend/src/components/WritingStudio/manuscript.ts");
+  const html = richTextHtml([
+    { type: "heading-one", align: "center", children: [{ text: "A <new> beginning", bold: true }] },
+    { type: "block-quote", children: [{ text: "<script>alert(1)</script>", italic: true, underline: true }] },
+  ]);
+  assert.match(html, /<h2 style="text-align:center"><strong>A &lt;new&gt; beginning<\/strong><\/h2>/);
+  assert.match(html, /<blockquote><u><em>&lt;script&gt;/);
+  assert.ok(!html.includes("<script>"));
+});

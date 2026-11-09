@@ -69,6 +69,8 @@ test(
       "slate",
       "slate-react",
       "slate-history",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
       "react-icons",
       "i18next",
       "react-i18next",
@@ -152,6 +154,7 @@ test(
       );
     });
     server.middlewares.use(async (req, res) => {
+      if (req.url.startsWith("/.well-known/")) { res.statusCode = 404; return res.end(); }
       res.setHeader("Content-Type", "text/html");
       res.end(
         await server.transformIndexHtml(
@@ -188,6 +191,132 @@ test(
       await page.screenshot({
         path: path.join(screenshots, "studio-desktop.png"),
       });
+
+      // The overview keeps the current editor instance and uses the same save queue.
+      await editor.fill("Unsaved overview context.");
+      await page.getByRole("button", { name: "Open chapter overview" }).click();
+      const board = page.getByRole("region", { name: "Chapter overview" });
+      await board.waitFor();
+      assert.equal(await board.locator(".ws-board-card").count(), 2);
+      await board
+        .getByRole("button", { name: "Preview The house by the sea" })
+        .click();
+      await page.getByRole("dialog").waitFor();
+      assert.match(
+        await page.locator(".ws-chapter-reading").innerText(),
+        /Unsaved overview context/,
+      );
+      await page.getByRole("button", { name: "Next →", exact: true }).click();
+      assert.match(
+        await page.locator(".ws-chapter-reading").innerText(),
+        /twenty years/,
+      );
+      await page.keyboard.press("Escape");
+      await board
+        .getByRole("button", { name: "Add summary", exact: true })
+        .click();
+      await page
+        .getByRole("textbox", { name: "Chapter summary", exact: true })
+        .fill("The letter changes everything.");
+      await page.getByRole("button", { name: "Done", exact: true }).click();
+      // Keyboard drag is available from each handle.
+      const handle = board.getByRole("button", {
+        name: "Reorder An unopened letter",
+        exact: true,
+      });
+      await handle.focus();
+      await page.keyboard.press("Space");
+      await page.waitForFunction(
+        () => !!document.querySelector(".is-dragging"),
+      );
+      await page.keyboard.press("ArrowUp");
+      await page.waitForTimeout(300);
+      await page.keyboard.press("Space");
+      await page.waitForFunction(
+        () =>
+          document.querySelector(".ws-board-card h2")?.textContent ===
+          "An unopened letter",
+      );
+      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      assert.equal(saved.chapters[0].name, "An unopened letter");
+      assert.equal(
+        saved.chapters[0].description[0].children[0].text,
+        "The letter changes everything.",
+      );
+      await page.screenshot({
+        path: path.join(screenshots, "chapter-overview-desktop.png"),
+      });
+      await page.reload();
+      await page.getByRole("button", { name: "Open chapter overview" }).click();
+      assert.match(
+        await board.locator(".ws-board-card").first().innerText(),
+        /An unopened letter/,
+      );
+      assert.match(
+        await board.locator(".ws-board-card").first().innerText(),
+        /The letter changes everything/,
+      );
+      // A failed reorder stays visible and recoverable until explicit retry.
+      fail = true;
+      await board.locator(".ws-board-card").first().locator("summary").click();
+      await board
+        .getByRole("button", { name: "Move down", exact: true })
+        .first()
+        .click();
+      await page.getByRole("button", { name: "Save failed · retry" }).waitFor();
+      assert.equal(saved.chapters[0].name, "An unopened letter");
+      fail = false;
+      await page.getByRole("button", { name: "Save failed · retry" }).click();
+      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      assert.equal(saved.chapters[0].name, "The house by the sea");
+      await board.locator(".ws-board-card").first().locator("summary").click();
+      await board
+        .getByRole("button", { name: "Move down", exact: true })
+        .first()
+        .click();
+      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      // Pointer dragging restores the original sequence and persists it.
+      await page.waitForTimeout(300);
+      const secondHandle = board.getByRole("button", {
+        name: "Reorder The house by the sea",
+        exact: true,
+      });
+      const from = await secondHandle.boundingBox();
+      const to = await handle.boundingBox();
+      await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, {
+        steps: 20,
+      });
+      await page.mouse.up();
+      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      assert.equal(saved.chapters[0].name, "The house by the sea");
+      await board
+        .getByRole("button", { name: "← Back to writing", exact: true })
+        .click();
+      assert.equal(await editor.innerText(), "Unsaved overview context.");
+      await page.getByRole("button", { name: "Open chapter overview" }).click();
+      await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+        true,
+      );
+      await page.screenshot({
+        path: path.join(screenshots, "chapter-overview-mobile.png"),
+      });
+      await board
+        .getByRole("button", { name: "Preview An unopened letter" })
+        .click();
+      await page.screenshot({
+        path: path.join(screenshots, "chapter-preview-mobile.png"),
+      });
+      await page.keyboard.press("Escape");
+      await board
+        .getByRole("button", { name: "← Back to writing", exact: true })
+        .click();
+      await page.setViewportSize({ width: 1365, height: 900 });
       await editor.fill("First chapter revised.");
       await page.getByRole("button", { name: /An unopened letter/ }).click();
       await editor.fill("Second chapter revised.");

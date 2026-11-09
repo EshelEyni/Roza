@@ -50,6 +50,9 @@ function htmlNode(node: SlateCustomElement | SlateCustomText): string {
     : "";
   return `<${tag}${align}>${node.children.map(htmlNode).join("")}</${tag}>`;
 }
+export const richTextHtml = (nodes: SlateCustomElement[]) =>
+  nodes.map(htmlNode).join("");
+
 export function manuscriptHtml(book: Book) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escape(book.name)}</title><style>body{max-width:42rem;margin:4rem auto;padding:0 1.5rem;font:19px/1.8 Georgia,serif;color:#292721}h1,h2{line-height:1.2}section{break-before:page;margin-top:4rem}blockquote{border-inline-start:3px solid #aaa;padding-inline-start:1.5rem}@media print{body{margin:0;max-width:none}}</style></head><body dir="auto"><h1>${escape(book.name)}</h1>${book.chapters
     .filter(c => !c.isArchived)

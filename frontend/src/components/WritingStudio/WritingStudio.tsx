@@ -19,6 +19,7 @@ import {
   words,
 } from "./manuscript";
 import { ManuscriptEditor } from "./ManuscriptEditor";
+import { ChapterOverview } from "./ChapterOverview";
 import "./writingStudio.css";
 
 const categories: BooKDataItemType[] = [
@@ -98,6 +99,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       ? candidate
       : available[0]?.id || "";
   });
+  const [overview, setOverview] = useState(false);
   const [drawer, setDrawer] = useState(false);
   const [focus, setFocus] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -124,6 +126,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const text = item ? ("text" in item ? item.text : item.description) : [];
 
   useEffect(() => store.subscribe(render), [store]);
+  useEffect(() => {
+    if (category === "chapters" && selected)
+      remember(`${scope}:chapter`, selected);
+  }, [category, scope, selected]);
   useEffect(() => {
     const unload = (event: BeforeUnloadEvent) => {
       if (store.dirty || store.recovery) {
@@ -179,6 +185,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
 
   function select(id: string) {
     setSelected(id);
+    setOverview(false);
     setDrawer(false);
     setNotes(false);
     if (category === "chapters") remember(`${scope}:chapter`, id);
@@ -288,7 +295,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             value={book.name}
             disabled={!!store.recovery}
             onChange={event =>
-              store.edit(current => ({ ...current, name: event.target.value }))
+              store.edit(current => ({
+                ...current,
+                name: event.target.value,
+              }))
             }
             onBlur={() => {
               if (!book.name.trim())
@@ -450,6 +460,18 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         >
           <div className="ws-sidebar-top">
             <span className="ws-eyebrow">YOUR MANUSCRIPT</span>
+            {category === "chapters" && (
+              <button
+                aria-label="Open chapter overview"
+                onClick={() => {
+                  setOverview(true);
+                  setDrawer(false);
+                  setFocus(false);
+                }}
+              >
+                ▦ Overview
+              </button>
+            )}
             <button
               className="ws-drawer-close"
               onClick={() => setDrawer(false)}
@@ -464,6 +486,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             onChange={event => {
               const type = event.target.value as BooKDataItemType;
               setCategory(type);
+              setOverview(false);
               setSelected(
                 book[type].find(entry => !entry.isArchived)?.id || "",
               );
@@ -535,7 +558,20 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             </small>
           </div>
         </aside>
-        <section className="ws-writing" aria-label="Writing workspace">
+        {overview && (
+          <ChapterOverview
+            book={book}
+            store={store}
+            selected={selected}
+            onEdit={select}
+            onClose={() => setOverview(false)}
+          />
+        )}
+        <section
+          className="ws-writing"
+          aria-label="Writing workspace"
+          style={overview ? { display: "none" } : undefined}
+        >
           {item ? (
             <>
               <div className="ws-document-actions">
@@ -556,7 +592,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       onClick={() => setNotes(!notes)}
                       aria-pressed={notes}
                     >
-                      Chapter notes
+                      Chapter summary
                     </button>
                   )}
                   <details
@@ -606,12 +642,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 )}
                 {notes && "description" in item && (
                   <div className="ws-notes">
-                    <h2>Chapter notes</h2>
+                    <h2>Chapter summary</h2>
                     <ManuscriptEditor
-                      key={`${item.id}:notes:${restoreKey}`}
+                      key={`${item.id}:notes:${restoreKey}:${overview}`}
                       value={item.description}
                       readOnly={preview || !!store.recovery}
-                      label="Chapter notes"
+                      label="Chapter summary"
                       onChange={description => updateItem({ description })}
                     />
                   </div>
