@@ -1,3 +1,4 @@
+import { useConfirmation } from "../../components/Modals/useConfirmation";
 import { FormEvent, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -71,6 +72,7 @@ export default function BookDetails() {
 }
 
 function BookOverview({ book }: { book: Book }) {
+  const { confirm, confirmationDialog } = useConfirmation();
   const { dataItemType, dataItemId } = useParams();
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -137,12 +139,14 @@ function BookOverview({ book }: { book: Book }) {
     event.preventDefault();
     if (name.trim()) mutation.mutate({ next: { ...book, name: name.trim() } });
   }
-  function archive() {
+  async function archive() {
     const label = item ? titleOf(item, itemIndex) : book.name;
     if (
-      !window.confirm(
-        `Archive “${label}”? The content will be kept in storage but hidden from your library. Restoring it later currently requires support.`,
-      )
+      !(await confirm({
+        title: item ? "Archive this page?" : "Archive this book?",
+        message: `Archive “${label}”? The content will be kept in storage but hidden from your library. Restoring it later currently requires support.`,
+        confirmLabel: "Archive",
+      }))
     )
       return;
     mutation.mutate({
@@ -173,6 +177,7 @@ function BookOverview({ book }: { book: Book }) {
 
   return (
     <main className="ws ws-details">
+      {confirmationDialog}
       <div className="ws-details-inner">
         <nav className="ws-breadcrumb" aria-label="Book navigation">
           <Link to="/books">← Library</Link>

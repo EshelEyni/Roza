@@ -79,6 +79,7 @@ test(
     const server = await createServer({
       configFile: false,
       appType: "custom",
+      publicDir: path.join(root, "frontend/public"),
       root,
       cacheDir: path.join(root, ".studio-test-cache"),
       plugins: [react()],
@@ -192,7 +193,11 @@ test(
       });
       const errors = [];
       page.on("pageerror", (error) => errors.push(error.message));
-      page.on("dialog", (dialog) => dialog.accept());
+      page.on("dialog", (dialog) => {
+        if (dialog.type() === "beforeunload") { void dialog.accept(); return; }
+        errors.push("Unexpected native confirmation");
+        void dialog.dismiss();
+      });
       const base = server.resolvedUrls.local[0];
       await page.goto(base + "books");
       await page
@@ -221,8 +226,15 @@ test(
       await page
         .getByRole("button", { name: "Save title", exact: true })
         .click();
-      await page.getByRole("alert").filter({hasText:"Test network unavailable"}).waitFor();
-      assert.ok(await page.getByRole("heading", {name:"The Shape of Quiet",exact:true}).isVisible());
+      await page
+        .getByRole("alert")
+        .filter({ hasText: "Test network unavailable" })
+        .waitFor();
+      assert.ok(
+        await page
+          .getByRole("heading", { name: "The Shape of Quiet", exact: true })
+          .isVisible(),
+      );
       fail = false;
       await page
         .getByRole("button", { name: "Save title", exact: true })
@@ -245,9 +257,17 @@ test(
       await page.getByLabel("Search book contents").fill("unopened");
       assert.equal(await page.locator(".ws-content-list > li").count(), 1);
       await page.getByLabel("Search book contents").fill("");
-      assert.equal(await page.evaluate(() => { window.scrollTo(0,100); return document.scrollingElement.scrollTop > 0; }), true);
-      await page.evaluate(()=>window.scrollTo(0,0));
-      await page.screenshot({path:path.join(screenshots,"book-overview-desktop.png")});
+      assert.equal(
+        await page.evaluate(() => {
+          window.scrollTo(0, 100);
+          return document.scrollingElement.scrollTop > 0;
+        }),
+        true,
+      );
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({
+        path: path.join(screenshots, "book-overview-desktop.png"),
+      });
       await page
         .getByRole("link", { name: /The house by the sea When Mara/ })
         .click();
@@ -496,6 +516,10 @@ test(
       fail = true;
       await editor.fill("Recover after interruption");
       await page.getByRole("button", { name: "Save failed · retry" }).waitFor();
+      await page.getByRole('button',{name:'Back to library',exact:true}).click();
+      const leaveDialog = page.getByRole('dialog',{name:'Leave with unsaved edits?'});
+      await leaveDialog.getByRole('button',{name:'Keep writing',exact:true}).click();
+      assert.equal(await editor.innerText(),'Recover after interruption');
       await page.reload();
       await page
         .getByRole("button", { name: "Restore draft", exact: true })
@@ -542,9 +566,31 @@ test(
       assert.equal(await writingMenu.getAttribute('open'), null);
       await writingMenu.locator('summary').click();
       await page.getByRole('button', { name: 'Archive page', exact: true }).click();
-      await page.getByRole('button', { name: 'Undo archive', exact: true }).click();
-      await page.getByRole('button', { name: '✓ All changes saved' }).waitFor();
-      assert.ok(saved.chapters.some(c => c.name === 'New chapter' && !c.isArchived));
+      const archivePageDialog = page.getByRole("dialog", {
+        name: "Archive this page?",
+      });
+      await archivePageDialog
+        .getByRole("button", { name: "Cancel", exact: true })
+        .click();
+      assert.ok(
+        !saved.chapters.find((c) => c.name === "New chapter")
+          ?.isArchived,
+      );
+      await page.getByText("More", { exact: true }).click();
+      await page
+        .getByRole("button", { name: "Archive page", exact: true })
+        .click();
+      await archivePageDialog
+        .getByRole("button", { name: "Archive", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Undo archive", exact: true })
+        .click();
+      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      assert.ok(
+        saved.chapters.some((c) => c.name === "New chapter" && !c.isArchived),
+      );
+      assert.equal(saved.chapters.at(-1).name, "New chapter");
       await page.getByRole("button", { name: "Options", exact: true }).click();
       const downloadEvent = page.waitForEvent("download");
       await page
@@ -660,6 +706,17 @@ test(
       await page
         .getByRole("button", { name: "Keep server version", exact: true })
         .click();
+      await page
+        .getByRole("dialog", { name: "Discard recovery draft?" })
+        .getByRole("button", { name: "Cancel", exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Keep server version", exact: true })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Discard recovery draft?" })
+        .getByRole("button", { name: "Discard draft", exact: true })
+        .click();
       assert.ok(
         !(await editor.innerText()).includes("Conflicting local draft"),
       );
@@ -668,6 +725,10 @@ test(
         .click();
       await page
         .getByRole("button", { name: "Archive A new beginning", exact: true })
+        .click();
+      await page
+        .getByRole("dialog", { name: "Archive this book?" })
+        .getByRole("button", { name: "Archive", exact: true })
         .click();
       await page
         .getByRole("link", { name: "Write A new beginning", exact: true })

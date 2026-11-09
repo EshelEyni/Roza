@@ -74,7 +74,19 @@ export interface BasicBookDataItem {
 
 export type BookDataItem = Chapter | Character | Theme | Plotline | Note;
 
+export interface ChapterAnnotation {
+  id: string;
+  content: string;
+  /** Slate range transformed with document operations; null means deleted text. */
+  anchor: {
+    anchor: { path: number[]; offset: number };
+    focus: { path: number[]; offset: number };
+  } | null;
+  quote: string;
+}
+
 export interface Chapter extends BasicBookDataItem {
+  annotations?: ChapterAnnotation[];
   name: string;
   description: SlateCustomElement[];
   text: SlateCustomElement[];

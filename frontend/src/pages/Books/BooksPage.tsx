@@ -1,3 +1,4 @@
+import { useConfirmation } from "../../components/Modals/useConfirmation";
 import { Book } from "../../../../shared/types/books";
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
@@ -10,6 +11,7 @@ import { manuscriptWords } from "../../components/WritingStudio/manuscript";
 import "../../components/WritingStudio/writingStudio.css";
 
 export default function BooksPage() {
+  const { confirm, confirmationDialog } = useConfirmation();
   useDocumentTitle("Roza / Writing studio");
   const { loggedInUser } = useLoginWithToken();
   const navigate = useNavigate();
@@ -54,6 +56,7 @@ export default function BooksPage() {
   }
   return (
     <main className="ws ws-library">
+      {confirmationDialog}
       <div className="ws-library-inner">
         <header className="ws-library-heading">
           <div>
@@ -205,11 +208,13 @@ export default function BooksPage() {
                 <button
                   disabled={archive.isPending}
                   aria-label={`Archive ${book.name}`}
-                  onClick={() => {
+                  onClick={async () => {
                     if (
-                      window.confirm(
-                        `Archive “${book.name}”? It will be removed from your library. Its data is retained, but restoring a whole book currently requires support.`,
-                      )
+                      await confirm({
+                        title: "Archive this book?",
+                        message: `Archive “${book.name}”? It will be removed from your library. Its data is retained, but restoring a whole book currently requires support.`,
+                        confirmLabel: "Archive",
+                      })
                     )
                       archive.mutate(book);
                   }}
