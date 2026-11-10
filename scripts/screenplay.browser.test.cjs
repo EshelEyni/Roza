@@ -320,17 +320,30 @@ test(
         .selectOption("ELIJAH");
       await page.keyboard.press("Enter");
       await page.keyboard.type("Good morning.");
-      await page.getByLabel("Tab cycles elements (Escape to release)").check();
-      await editor.click();
-      await page.keyboard.press("Control+End");
-      await page.keyboard.press("Tab");
-      await page.keyboard.press("Escape");
       assert.equal(
         await page
           .getByLabel("Tab cycles elements (Escape to release)")
-          .isChecked(),
+          .count(),
+        0,
+      );
+      await editor.click();
+      await page.keyboard.press("Control+End");
+      const typeBeforeTab = await page
+        .getByLabel("Screenplay element", { exact: true })
+        .inputValue();
+      await page.keyboard.press("Tab");
+      assert.equal(
+        await editor.evaluate((el) => el.contains(document.activeElement)),
         false,
       );
+      assert.equal(
+        await page
+          .getByLabel("Screenplay element", { exact: true })
+          .inputValue(),
+        typeBeforeTab,
+      );
+      await editor.click();
+      await page.keyboard.press("Control+End");
       await editor.evaluate((el) => {
         const data = new DataTransfer();
         data.setData(
@@ -345,7 +358,29 @@ test(
           }),
         );
       });
+      await editor.locator(".sp-scene_heading").nth(1).waitFor();
       assert.ok((await editor.locator(".sp-scene_heading").count()) >= 2);
+      const sceneDropdown = page.getByLabel("Scene navigation", {
+        exact: true,
+      });
+      await sceneDropdown.selectOption({ label: "1. INT. ROOM - DAY" });
+      await page.waitForFunction(
+        () =>
+          window
+            .getSelection()
+            ?.anchorNode?.parentElement?.closest(
+              '[data-screenplay="scene_heading"]',
+            )?.textContent === "INT. ROOM - DAY",
+      );
+      await sceneDropdown.selectOption({ label: "2. INT. HALL - NIGHT" });
+      await page.waitForFunction(
+        () =>
+          window
+            .getSelection()
+            ?.anchorNode?.parentElement?.closest(
+              '[data-screenplay="scene_heading"]',
+            )?.textContent === "INT. HALL - NIGHT",
+      );
       await page.waitForTimeout(2200);
       assert.ok(saved.characters.some((c) => c.name === "ELIJAH"));
       await page.screenshot({
@@ -360,18 +395,23 @@ test(
       await page.screenshot({
         path: path.join(screenshots, "screenplay-mobile.png"),
       });
-      await page.setViewportSize({width:1365,height:900});
-      const textBeforeProse=await editor.innerText();
-      formatDialog=await openFormat();
-      await formatDialog.getByRole('radio',{name:/Prose/}).check();
-      await formatDialog.getByRole('button',{name:'Apply format',exact:true}).click();
-      assert.equal(await editor.locator('.sp-block').count(),0);
-      assert.equal(await editor.innerText(),textBeforeProse);
+      await page.setViewportSize({ width: 1365, height: 900 });
+      const textBeforeProse = await editor.innerText();
+      formatDialog = await openFormat();
+      await formatDialog.getByRole("radio", { name: /Prose/ }).check();
+      await formatDialog
+        .getByRole("button", { name: "Apply format", exact: true })
+        .click();
+      assert.equal(await editor.locator(".sp-block").count(), 0);
+      assert.equal(await editor.innerText(), textBeforeProse);
       await page.waitForTimeout(2200);
-      assert.equal(saved.chapters[0].format,'prose');
-      assert.ok(saved.chapters[0].text.every(block=>block.type === 'paragraph'));
-      await page.reload();await editor.waitFor();
-      assert.equal(await editor.locator('[data-screenplay]').count(),0);
+      assert.equal(saved.chapters[0].format, "prose");
+      assert.ok(
+        saved.chapters[0].text.every((block) => block.type === "paragraph"),
+      );
+      await page.reload();
+      await editor.waitFor();
+      assert.equal(await editor.locator("[data-screenplay]").count(), 0);
       assert.deepEqual(errors, []);
     } finally {
       await browser?.close();

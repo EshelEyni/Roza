@@ -124,7 +124,6 @@ export function ManuscriptEditor({
   label?: string;
   placeholder?: string;
 }) {
-  const [tabCycles, setTabCycles] = useState(false);
   const [activeNote, setActiveNote] = useState<string | null>(null);
   const [hoveredPath, setHoveredPath] = useState<string | null>(null);
   const activeAnchor = annotations?.find(
@@ -150,7 +149,8 @@ export function ManuscriptEditor({
         /[\r\n]/.test(text)
       ) {
         const blocks = parseScreenplay(text);
-        if (blocks.length) Transforms.insertNodes(instance, blocks, { select: true });
+        if (blocks.length)
+          Transforms.insertNodes(instance, blocks, { select: true });
       } else insertData(data);
     };
     const apply = instance.apply;
@@ -212,8 +212,6 @@ export function ManuscriptEditor({
         <ScreenplayToolbar
           characters={characters}
           onCreateCharacter={onCreateCharacter}
-          tabCycles={tabCycles}
-          onTabCycles={setTabCycles}
         />
       )}
       {!readOnly && (
@@ -241,22 +239,16 @@ export function ManuscriptEditor({
               }
             }
             if (format !== "screenplay") return;
-            if (event.key === "Escape") {
-              setTabCycles(false);
-              return;
-            }
             if (event.key === "Enter" && event.shiftKey) {
               event.preventDefault();
               Transforms.insertText(editor, "\n");
               return;
             }
-            if (
-              (event.key === "Enter" && (event.ctrlKey || event.metaKey)) ||
-              (event.key === "Tab" && tabCycles && !event.shiftKey)
-            ) {
+            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
               const index = editor.selection?.anchor.path[0] ?? 0;
               const block = editor.children[index];
-              if (!("children" in block) || !block.children.every(Text.isText)) return;
+              if (!("children" in block) || !block.children.every(Text.isText))
+                return;
               event.preventDefault();
               const type = "type" in block ? String(block.type) : "action";
               Transforms.setNodes(

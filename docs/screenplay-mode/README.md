@@ -11,9 +11,9 @@ Chapters have an optional format (prose or screenplay); Mongoose defaults missin
 
 Six semantic block types are added to the shared Slate union: scene_heading, action, character, dialogue, parenthetical, transition. Dialogue attribution follows the preceding character cue in document order. No indentation spaces are inserted in stored text. Styles and semantic rendering are shared by editor, previews, and HTML export.
 
-Enter follows scene/action, character/dialogue, parenthetical/dialogue, dialogue/character, and transition/scene conventions. Shift+Enter inserts a line break. Ctrl/Cmd+Enter cycles elements. Tab normally moves focus; an explicit checkbox enables Tab cycling, with Escape releasing it and Shift+Tab retaining normal backward navigation. Composition events are left to the browser.
+Enter follows scene/action, character/dialogue, parenthetical/dialogue, dialogue/character, and transition/scene conventions. Shift+Enter inserts a line break. Ctrl/Cmd+Enter cycles elements. Tab and Shift+Tab retain normal browser focus navigation; the editor does not intercept them. Composition events are left to the browser.
 
-Character cues filter a library selector by the current text and accept free names. An explicit button creates a library profile through the existing book autosave. Scene headings provide an outline, counts, and jump buttons. Plain-text multiline paste recognizes common screenplay patterns; internal Slate clipboard data keeps its existing structure. Paste remains undoable and uses Slate operations to transform annotation ranges.
+Character cues filter a library selector by the current text and accept free names. An explicit button creates a library profile through the existing book autosave. Scene headings populate a scene-navigation dropdown with a scene count. Plain-text multiline paste recognizes common screenplay patterns; internal Slate clipboard data keeps its existing structure. Paste remains undoable and uses Slate operations to transform annotation ranges.
 
 ## Exports and AI contract
 
@@ -25,7 +25,7 @@ The planned AI integration can consume the exact structured block tree. validate
 
 - 23 Node tests: screenplay transitions/history, scene recognition, paste parsing, Fountain/HTML safety, schema defaults and semantic round trip, PDF dimensions/font/pagination; existing autosave/recovery and annotation suites.
 - Existing full studio Edge browser regression suite passed, including chapter drag-and-drop (one timing-sensitive drag run needed a rerun).
-- Edge screenplay browser test: actual studio controls, semantic typing, undo/redo, autosave and reload, character-library creation, opt-in Tab/Escape, structured paste, 390px mobile overflow. Desktop/mobile screenshots are in docs/writing-studio/screenshots/screenplay-*.png.
+- Edge screenplay browser test: actual studio controls, semantic typing, undo/redo, autosave and reload, character-library creation, native Tab navigation and the scene dropdown, structured paste, 390px mobile overflow. Desktop/mobile screenshots are in docs/writing-studio/screenshots/screenplay-*.png.
 - Frontend production build and TypeScript check; backend build and no-emit TypeScript check.
 - ESLint on changed frontend components and helpers.
 

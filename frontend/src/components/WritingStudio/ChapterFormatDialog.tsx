@@ -89,13 +89,6 @@ export function ChapterFormatDialog({
             <dd>Insert a line break.</dd>
             <dt>Ctrl/Cmd+Enter</dt>
             <dd>Cycle the element type.</dd>
-            <dt>Tab</dt>
-            <dd>
-              Move focus, or cycle elements when “Tab cycles elements” is
-              enabled.
-            </dd>
-            <dt>Escape</dt>
-            <dd>Turn off Tab cycling.</dd>
           </dl>
         </section>
       )}

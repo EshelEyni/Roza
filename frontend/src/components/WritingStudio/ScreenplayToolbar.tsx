@@ -4,12 +4,8 @@ import { screenplayTypes, isScreenplay } from "./screenplay";
 export function ScreenplayToolbar({
   characters = [],
   onCreateCharacter,
-  tabCycles,
-  onTabCycles,
 }: {
   characters?: string[];
-  tabCycles?: boolean;
-  onTabCycles?: (value: boolean) => void;
   onCreateCharacter?: (name: string) => void;
 }) {
   const editor = useSlate();
@@ -20,13 +16,21 @@ export function ScreenplayToolbar({
       ? String(block.type)
       : "action";
   const text = Node.string(block);
+  const scenes = editor.children.flatMap((node, i) =>
+    "type" in node && node.type === "scene_heading"
+      ? [{ index: i, title: Node.string(node) || "Untitled scene" }]
+      : [],
+  );
+  const currentScene = scenes.filter((scene) => scene.index <= index).at(-1);
   return (
     <div className="sp-tools">
       <label>
         Element{" "}
         <select
           aria-label="Screenplay element"
-          disabled={!("children" in block) || !block.children.every(Text.isText)}
+          disabled={
+            !("children" in block) || !block.children.every(Text.isText)
+          }
           title="Existing lists retain their structure; choose a text paragraph to change its element."
           value={type}
           onChange={(e) => {
@@ -75,38 +79,30 @@ export function ScreenplayToolbar({
             Add {text} to Character Library
           </button>
         )}
-      <details>
-        <summary>
-          Scenes (
-          {
-            editor.children.filter(
-              (n) => "type" in n && n.type === "scene_heading",
-            ).length
-          }
-          )
-        </summary>
-        {editor.children.map((n, i) =>
-          "type" in n && n.type === "scene_heading" ? (
-            <button
-              key={i}
-              type="button"
-              onClick={() => {
-                Transforms.select(editor, Editor.start(editor, [i]));
-                ReactEditor.focus(editor);
-              }}
-            >
-              {Node.string(n) || "Untitled scene"}
-            </button>
-          ) : null,
-        )}
-      </details>
       <label>
-        <input
-          type="checkbox"
-          checked={tabCycles || false}
-          onChange={(e) => onTabCycles?.(e.target.checked)}
-        />
-        Tab cycles elements (Escape to release)
+        Scenes ({scenes.length}){" "}
+        <select
+          aria-label="Scene navigation"
+          disabled={!scenes.length}
+          value={currentScene?.index ?? ""}
+          onChange={(event) => {
+            const scene = scenes.find(
+              (entry) => String(entry.index) === event.target.value,
+            );
+            if (!scene) return;
+            Transforms.select(editor, Editor.start(editor, [scene.index]));
+            ReactEditor.focus(editor);
+          }}
+        >
+          <option value="" disabled>
+            {scenes.length ? "Choose a scene" : "No scenes yet"}
+          </option>
+          {scenes.map((scene, i) => (
+            <option key={scene.index} value={scene.index}>
+              {i + 1}. {scene.title}
+            </option>
+          ))}
+        </select>
       </label>
     </div>
   );
