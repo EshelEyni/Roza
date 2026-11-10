@@ -1,5 +1,13 @@
-import { useState } from "react";
-import { FiPlus, FiSearch, FiTrash2, FiChevronDown } from "react-icons/fi";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { ConfirmDialog } from "../Reader/ReaderArchiveDialog";
+import {
+  FiPlus,
+  FiSearch,
+  FiTrash2,
+  FiChevronDown,
+  FiLink,
+} from "react-icons/fi";
 import {
   Chapter,
   StoryKind,
@@ -27,6 +35,10 @@ export function ChapterElements({
 }) {
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
+  const [linking, setLinking] = useState(false);
+  const [removing, setRemoving] = useState<{ id: string; name: string } | null>(
+    null,
+  );
   const [opened, setOpened] = useState<string | null>(null);
   const book = store.book;
   const singular =
@@ -39,9 +51,7 @@ export function ChapterElements({
   const linked = book[kind].filter(
     e => !e.isArchived && associations.some(a => a.entityId === e.id),
   );
-  const available = book[kind].filter(
-    e => !e.isArchived && !associations.some(a => a.entityId === e.id),
-  );
+  const entities = book[kind].filter(e => !e.isArchived);
   const matches = linked.filter(e =>
     `${e.name} ${plainText(e.description)} ${associations.find(a => a.entityId === e.id)?.note || ""}`
       .toLocaleLowerCase()
@@ -76,26 +86,9 @@ export function ChapterElements({
         >
           <FiPlus aria-hidden="true" /> Add new {singular}
         </button>
-        {!!available.length && (
-          <select
-            aria-label={`Associate ${kind} with chapter`}
-            value=""
-            onChange={e => {
-              if (e.target.value) {
-                link(kind, e.target.value);
-                setOpened(e.target.value);
-                setSearch("");
-              }
-            }}
-          >
-            <option value="">Link existing {singular}…</option>
-            {available.map(e => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-        )}
+        <button className="cp-link-existing" onClick={() => setLinking(true)}>
+          <FiLink aria-hidden="true" /> Link existing {singular}
+        </button>
       </header>
       {creating && (
         <form
@@ -174,7 +167,9 @@ export function ChapterElements({
                   className="cp-element-delete"
                   aria-label={`Remove ${entity.name} from chapter`}
                   title="Remove from this chapter"
-                  onClick={() => link(kind, entity.id, true)}
+                  onClick={() =>
+                    setRemoving({ id: entity.id, name: entity.name })
+                  }
                 >
                   <FiTrash2 aria-hidden="true" size={16} />
                 </button>
@@ -256,9 +251,127 @@ export function ChapterElements({
             : `No ${kind} linked yet. Add a new ${singular} or link one from your book.`}
         </p>
       )}
-      <p className="cp-elements-hint">
-        Removing a {singular} here only unlinks it from this chapter.
-      </p>
+      {linking && (
+        <LinkEntitiesDialog
+          kind={kind}
+          entities={entities}
+          linkedIds={associations.map(a => a.entityId)}
+          disabled={!!store.recovery}
+          onClose={() => setLinking(false)}
+          onCheck={(id, checked) => {
+            if (checked) {
+              link(kind, id);
+              setSearch("");
+            } else {
+              const entity = entities.find(e => e.id === id);
+              if (entity) setRemoving({ id, name: entity.name });
+            }
+          }}
+        />
+      )}
+      {removing && (
+        <ConfirmDialog
+          heading={`Remove ${singular} from chapter?`}
+          message={`Remove “${removing.name}” from this chapter? This only unlinks the ${singular}; it remains in your book and other chapters.`}
+          confirmLabel="Remove from chapter"
+          icon={<FiTrash2 aria-hidden="true" />}
+          onCancel={() => setRemoving(null)}
+          onConfirm={() => {
+            link(kind, removing.id, true);
+            setRemoving(null);
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function LinkEntitiesDialog({
+  kind,
+  entities,
+  linkedIds,
+  disabled,
+  onClose,
+  onCheck,
+}: {
+  kind: StoryKind;
+  entities: { id: string; name: string }[];
+  linkedIds: string[];
+  disabled: boolean;
+  onClose: () => void;
+  onCheck: (id: string, checked: boolean) => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const [search, setSearch] = useState("");
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const element = dialog.current!;
+    const overflow = document.body.style.overflow;
+    element.showModal();
+    document.body.style.overflow = "hidden";
+    return () => {
+      element.close();
+      document.body.style.overflow = overflow;
+      previous?.focus();
+    };
+  }, []);
+  const matches = entities.filter(e =>
+    e.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
+  );
+  return createPortal(
+    <dialog
+      ref={dialog}
+      className="ws cp-link-dialog"
+      aria-label={`Link existing ${kind}`}
+      onCancel={e => {
+        e.preventDefault();
+        onClose();
+      }}
+      onKeyDown={e => e.stopPropagation()}
+      onClick={e => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <header>
+        <h2>Link existing {kind}</h2>
+        <button aria-label="Close entity picker" onClick={onClose}>
+          ×
+        </button>
+      </header>
+      <input
+        type="search"
+        autoFocus
+        aria-label={`Search book ${kind}`}
+        placeholder={`Search ${kind}…`}
+        value={search}
+        onChange={e => setSearch(e.target.value)}
+      />
+      <fieldset disabled={disabled} className="cp-link-options">
+        {matches.map(entity => (
+          <label key={entity.id}>
+            <input
+              type="checkbox"
+              checked={linkedIds.includes(entity.id)}
+              onChange={e => onCheck(entity.id, e.target.checked)}
+            />
+            <span dir="auto">{entity.name}</span>
+          </label>
+        ))}
+        {!matches.length && (
+          <p className="ws-muted">
+            {search
+              ? "No matching entries."
+              : `No ${kind} in this book yet. Create one from the chapter toolbar.`}
+          </p>
+        )}
+      </fieldset>
+      <footer>
+        <span>{linkedIds.length} linked to this chapter</span>
+        <button className="ws-primary" onClick={onClose}>
+          Done
+        </button>
+      </footer>
+    </dialog>,
+    document.body,
   );
 }
