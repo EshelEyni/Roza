@@ -1,12 +1,5 @@
 import { ItemMenu } from "./ItemMenu";
-import {
-  cloneElement,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
@@ -14,7 +7,6 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
-  useDndContext,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -29,144 +21,14 @@ import { newId, plainText, richTextHtml, words } from "./manuscript";
 import { ManuscriptEditor } from "./ManuscriptEditor";
 import { getDefaultBookDataItem } from "../../services/bookUtilService";
 
-function SummaryTooltip({
-  text,
-  children,
-  disabled = false,
-}: {
-  disabled?: boolean;
-  text: string;
-  children: React.ReactElement<{ "aria-describedby"?: string }>;
-}) {
-  const id = useId();
-
-  const hideTimer = useRef<ReturnType<typeof setTimeout>>();
-
-  useEffect(() => () => clearTimeout(hideTimer.current), []);
-
-  const ref = useRef<HTMLDivElement>(null);
-
-  const [position, setPosition] = useState<{
-    left: number;
-    top: number;
-    maxHeight: number;
-  } | null>(null);
-
-  const showTimer = useRef<ReturnType<typeof setTimeout>>();
-
-  useEffect(() => {
-    return () => {
-      clearTimeout(showTimer.current);
-      clearTimeout(hideTimer.current);
-    };
-  }, []);
-
-  function scheduleShow() {
-    clearTimeout(showTimer.current);
-    clearTimeout(hideTimer.current);
-
-    if (disabled || !text.trim()) return;
-
-    showTimer.current = setTimeout(show, 500);
-  }
-
-  function scheduleHide() {
-    clearTimeout(showTimer.current);
-
-    hideTimer.current = setTimeout(() => {
-      setPosition(null);
-    }, 150);
-  }
-
-  function show() {
-    clearTimeout(hideTimer.current);
-    if (disabled || !text.trim() || !ref.current) return;
-    const rect = ref.current.getBoundingClientRect();
-    const top = rect.bottom + 6;
-    const below = window.innerHeight - top - 12;
-    setPosition({
-      left: Math.max(
-        12,
-        Math.min(
-          rect.left,
-          window.innerWidth - Math.min(420, window.innerWidth - 24) - 12,
-        ),
-      ),
-      top: below >= 160 ? top : 12,
-      maxHeight: below >= 160 ? below : Math.max(100, rect.top - 18),
-    });
-  }
-
-  useEffect(() => {
-    if (!position) return;
-    const close = () => setPosition(null);
-    const escape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") close();
-    };
-    const scroll = (event: Event) => {
-      if (!(event.target as HTMLElement)?.closest?.('[role="tooltip"]'))
-        close();
-    };
-    window.addEventListener("scroll", scroll, true);
-    window.addEventListener("resize", close);
-    window.addEventListener("keydown", escape);
-    return () => {
-      window.removeEventListener("scroll", scroll, true);
-      window.removeEventListener("resize", close);
-      window.removeEventListener("keydown", escape);
-    };
-  }, [position]);
-
-  return (
-    <div
-      ref={ref}
-      className="ws-summary-hover"
-      onMouseEnter={scheduleShow}
-      onMouseLeave={scheduleHide}
-      onFocus={show}
-      onBlur={(event) => {
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-          clearTimeout(showTimer.current);
-          setPosition(null);
-        }
-      }}
-    >
-      <div onClick={() => setPosition(null)}>
-        {cloneElement(children, {
-          "aria-describedby": position ? id : undefined,
-        })}
-      </div>
-      {position && !disabled && (
-        <div
-          id={id}
-          role="tooltip"
-          className="ws-summary-tooltip"
-          dir="auto"
-          style={position}
-        >
-          {text}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function PreviewSummary({
   chapter,
   store,
-  onChange,
-  editing,
 }: {
   chapter: Chapter;
   store: DraftStore;
-  onChange: (value: Chapter["description"]) => void;
-  editing: boolean;
 }) {
   const [expanded, setExpanded] = useState(true);
-  useEffect(() => {
-    if (editing) setExpanded(true);
-  }, [editing]);
-  const text = plainText(chapter.description);
   return (
     <section className="ws-preview-summary" aria-label="Chapter summary">
       <div className="ws-preview-summary-heading">
@@ -188,25 +50,7 @@ function PreviewSummary({
         )}
       </div>
       {expanded &&
-        (editing ? (
-          <textarea
-            autoFocus
-            aria-label="Chapter summary"
-            dir="auto"
-            rows={4}
-            disabled={!!store.recovery}
-            value={text}
-            onBlur={() => void store.flush()}
-            onChange={(event) =>
-              onChange(
-                event.target.value.split("\n").map((line) => ({
-                  type: "paragraph",
-                  children: [{ text: line }],
-                })),
-              )
-            }
-          />
-        ) : text.trim() ? (
+        (plainText(chapter.description).trim() ? (
           <div
             dir="auto"
             dangerouslySetInnerHTML={{
@@ -250,7 +94,6 @@ function Card({
     isDragging,
     isOver,
   } = useSortable({ id: chapter.id, disabled: locked });
-  const { active } = useDndContext();
   const summary = useMemo(
     () => plainText(chapter.description),
     [chapter.description],
@@ -281,19 +124,22 @@ function Card({
           ⠿
         </button>
       </div>
-      <SummaryTooltip text={summary} disabled={!!active}>
-        <button
-          className="ws-card-preview"
-          onClick={onPreview}
-          aria-label={`Preview ${chapter.name || "Untitled chapter"}`}
-        >
-          <h2 dir="auto">{chapter.name || "Untitled chapter"}</h2>
-          <p dir="auto">
-            {summary ||
-              "No summary yet. Give this chapter a place in your story."}
-          </p>
-        </button>
-      </SummaryTooltip>
+      <button
+        className="ws-card-preview"
+        onClick={onPreview}
+        aria-label={`Preview ${chapter.name || "Untitled chapter"}`}
+      >
+        <h2 dir="auto">{chapter.name || "Untitled chapter"}</h2>
+      </button>
+      <div
+        className="ws-card-summary"
+        role="region"
+        aria-label={`Summary for ${chapter.name || "Untitled chapter"}`}
+        tabIndex={0}
+        dir="auto"
+      >
+        {summary || "No summary yet. Give this chapter a place in your story."}
+      </div>
       <div className="ws-card-bottom">
         <small>{countWords.toLocaleString()} words</small>
         <button disabled={locked} onClick={onSummary}>
@@ -335,7 +181,6 @@ export function ChapterOverview({
   );
   const [editId, setEditId] = useState<string | null>(null);
   const edited = useRef(false);
-  const [summaryEditingId, setSummaryEditingId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [summaryId, setSummaryId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
@@ -382,14 +227,12 @@ export function ChapterOverview({
       dialog.current
         ?.querySelector<HTMLElement>('[aria-label="Close chapter panel"]')
         ?.focus();
-    setSummaryEditingId(null);
   }, [previewId]);
   function closePanel() {
     void store.flush();
     if (editId && edited.current) onChapterEdited(editId);
     edited.current = false;
     setEditId(null);
-    setSummaryEditingId(null);
     setPreviewId(null);
     setSummaryId(null);
   }
@@ -553,6 +396,25 @@ export function ChapterOverview({
           <>
             <header>
               <div>
+                {(editing || summary) && (
+                  <button
+                    className="ws-back-to-preview"
+                    onClick={() => {
+                      void store.flush();
+                      if (editId && edited.current) onChapterEdited(editId);
+                      edited.current = false;
+                      setEditId(null);
+                      setSummaryId(null);
+                      setPreviewId(current.id);
+                      dialog.current
+                        ?.querySelector(".ws-chapter-reading")
+                        ?.scrollTo({ top: 0 });
+                    }}
+                  >
+                    ← Back to preview
+                  </button>
+                )}
+
                 <span className="ws-eyebrow">
                   {editing
                     ? "EDIT CHAPTER"
@@ -601,12 +463,8 @@ export function ChapterOverview({
                 <>
                   <PreviewSummary
                     key={current.id}
-                    editing={summaryEditingId === current.id}
                     chapter={current}
                     store={store}
-                    onChange={(description) =>
-                      update(current.id, { description })
-                    }
                   />
                   <div
                     className="ws-prose"
@@ -646,20 +504,17 @@ export function ChapterOverview({
                   className="ws-primary"
                   disabled={!!store.recovery}
                   onClick={() => {
-                    setSummaryEditingId(
-                      summaryEditingId === current.id ? null : current.id,
-                    );
+                    setPreviewId(null);
+                    setSummaryId(current.id);
                     void store.flush();
                     dialog.current
                       ?.querySelector(".ws-chapter-reading")
                       ?.scrollTo({ top: 0 });
                   }}
                 >
-                  {summaryEditingId === current.id
-                    ? "Done editing"
-                    : plainText(current.description).trim()
-                      ? "Edit Summary"
-                      : "Add Summary"}
+                  {plainText(current.description).trim()
+                    ? "Edit Summary"
+                    : "Add Summary"}
                 </button>
               )}
               {!editing && (
@@ -688,7 +543,9 @@ export function ChapterOverview({
                   Open in Chapters
                 </a>
               )}
-              <button className="ws-preview-done" onClick={closePanel}>Done</button>
+              <button className="ws-preview-done" onClick={closePanel}>
+                Done
+              </button>
             </footer>
           </>
         )}

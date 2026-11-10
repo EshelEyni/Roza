@@ -55,6 +55,7 @@ const initial = {
     },
   ],
 };
+if (process.env.CARD_SCROLL_ONLY === '1') initial.chapters[0].description = paragraph('A complete chapter summary with selectable text. '.repeat(100));
 test(
   "writing studio real components: library, editing, saves, recovery, organization, export and responsive layouts",
   { timeout: 180000 },
@@ -358,13 +359,47 @@ test(
       await board.waitFor();
       assert.equal(await board.locator(".ws-board-card").count(), 2);
       const firstCard = board.locator('.ws-board-card').first();
-      await firstCard.locator('.ws-card-preview').hover();
-      await page.getByRole('tooltip').waitFor();
-      assert.equal(await page.getByRole('tooltip').innerText(), initial.chapters[0].description[0].children[0].text);
-      assert.equal(await firstCard.locator('.ws-card-preview').evaluate(node => getComputedStyle(node).backgroundColor), 'rgba(0, 0, 0, 0)');
-      await page.screenshot({ path: path.join(screenshots, 'chapter-summary-tooltip.png') });
-      await page.keyboard.press('Escape');
-      await page.getByRole('tooltip').waitFor({ state: 'detached' });
+      await firstCard.locator('.ws-card-summary').hover();
+      await page.waitForTimeout(650);
+      assert.equal(await page.getByRole('tooltip').count(), 0);
+      assert.equal(await firstCard.locator('.ws-card-summary').innerText(), initial.chapters[0].description[0].children[0].text);
+      if (process.env.CARD_SCROLL_ONLY === '1') {
+        const summaryArea = firstCard.locator('.ws-card-summary');
+        const before = await firstCard.boundingBox();
+        const titleBefore = await firstCard.locator('.ws-card-preview').boundingBox();
+        const actionsBefore = await firstCard.locator('.ws-card-bottom').boundingBox();
+        assert.equal(await summaryArea.evaluate(node => node.scrollHeight > node.clientHeight), true);
+        assert.equal(await board.locator('.ws-board-card').nth(1).locator('.ws-card-summary').evaluate(node => node.scrollHeight <= node.clientHeight), true);
+        await summaryArea.hover();
+        await page.mouse.wheel(0, 450);
+        await page.waitForTimeout(200);
+        assert.ok(await summaryArea.evaluate(node => node.scrollTop) > 0);
+        assert.deepEqual(await firstCard.boundingBox(), before);
+        assert.deepEqual(await firstCard.locator('.ws-card-preview').boundingBox(), titleBefore);
+        assert.deepEqual(await firstCard.locator('.ws-card-bottom').boundingBox(), actionsBefore);
+        assert.equal(await board.locator('.is-dragging').count(), 0);
+        assert.equal(await summaryArea.evaluate(node => node.scrollWidth <= node.clientWidth), true);
+        await summaryArea.evaluate(node => { const range = document.createRange(); range.selectNodeContents(node); const selection = window.getSelection(); selection.removeAllRanges(); selection.addRange(range); });
+        assert.match(await page.evaluate(() => window.getSelection().toString()), /complete chapter summary/);
+        const heights = await board.locator('.ws-board-card').evaluateAll(nodes => nodes.map(node => node.getBoundingClientRect().height));
+        assert.equal(heights[0], heights[1]);
+        const handle = board.getByRole('button', { name: 'Reorder An unopened letter', exact: true });
+        await handle.focus();
+        await page.keyboard.press('Space');
+        await page.waitForFunction(() => !!document.querySelector('.is-dragging'));
+        await page.keyboard.press('ArrowLeft');
+        await page.waitForTimeout(300);
+        await page.keyboard.press('Space');
+        await page.waitForFunction(() => document.querySelector('.ws-board-card h2')?.textContent === 'An unopened letter');
+        await page.setViewportSize({ width: 390, height: 844 });
+        const mobileSummary = board.locator('.ws-card-summary').nth(1);
+        await mobileSummary.scrollIntoViewIfNeeded();
+        await mobileSummary.evaluate(node => { node.scrollTop = 100; });
+        assert.ok(await mobileSummary.evaluate(node => node.scrollTop) > 0);
+        assert.equal(await mobileSummary.evaluate(node => getComputedStyle(node).touchAction), 'pan-y');
+        assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+        return;
+      }
       await firstCard.getByRole('button', { name: 'Edit chapter', exact: true }).click();
       const chapterModal = page.getByRole('dialog', { name: 'Edit chapter', exact: true });
       await chapterModal.waitFor();
@@ -407,6 +442,7 @@ test(
       await inlineSummary.press('ArrowRight');
       await inlineSummary.press('Escape');
       assert.equal(await previewDialog.isVisible(), true);
+      await previewDialog.getByRole('button', { name: 'Back to preview' }).click();
       await previewDialog.getByText('Chapter 1 of 2 · Reading preview').waitFor();
       await previewDialog.getByRole('button', { name: 'Next →', exact: true }).click();
       await previewDialog.getByText('Chapter 2 of 2 · Reading preview').waitFor();
