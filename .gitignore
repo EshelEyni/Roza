@@ -30,3 +30,5 @@ backend/data
 backend/coverage
 coverage
 .studio-test-cache/
+
+.planning-test-cache/

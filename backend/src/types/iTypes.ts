@@ -31,7 +31,7 @@ export interface IUser extends Document {
 }
 
 export interface IBook extends Document {
- taskBoard?: import("../../../shared/types/books").TaskBoard;
+  taskBoard?: import("../../../shared/types/books").TaskBoard;
   userId: mongoose.Types.ObjectId;
   name: string;
   chapters: IChapter[];

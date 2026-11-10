@@ -99,9 +99,74 @@ test("task boards require a version and preserve owner scoping and manuscript co
   const taskBoard = { lists: [{ id: "list", title: "Research", cards: [] }] };
   expect((await request(app).patch(`/${id}`).send({ taskBoard })).status).toBe(409);
   expect(write).not.toHaveBeenCalled();
-  const response = await request(app).patch(`/${id}`).send({ taskBoard, updatedAt: date.toISOString(), userId: "attacker" });
+  const response = await request(app)
+    .patch(`/${id}`)
+    .send({ taskBoard, updatedAt: date.toISOString(), userId: "attacker" });
   expect(response.status).toBe(200);
   expect(write.mock.calls[0][0].userId).toBe("111111111111111111111111");
   expect(write.mock.calls[0][1].$set.taskBoard).toEqual(taskBoard);
   expect(write.mock.calls[0][1].$set.chapters).toBeUndefined();
+});
+
+test("rejects cross-book planning and task references before writing", async () => {
+  for (const change of [
+    {
+      chapters: [
+        {
+          id: "444444444444444444444444",
+          planning: { themes: [{ entityId: "555555555555555555555555" }] },
+        },
+      ],
+    },
+    {
+      taskBoard: {
+        lists: [
+          {
+            id: "list",
+            title: "Work",
+            cards: [{ id: "task", chapterId: "555555555555555555555555" }],
+          },
+        ],
+      },
+    },
+    { characters: [{ id: "444444444444444444444444", bookId: "555555555555555555555555" }] },
+  ]) {
+    const response = await request(app)
+      .patch(`/${id}`)
+      .send({ updatedAt: date.toISOString(), ...change });
+    expect(response.status).toBe(400);
+  }
+  expect(write).not.toHaveBeenCalled();
+});
+
+test("preserves hidden archived story elements referenced by chapter plans", async () => {
+  read.mockResolvedValueOnce({
+    _id: new Types.ObjectId(id),
+    updatedAt: date,
+    characters: [
+      {
+        _id: new Types.ObjectId("555555555555555555555555"),
+        bookId: new Types.ObjectId(id),
+        isArchived: true,
+      },
+    ],
+  });
+  const response = await request(app)
+    .patch(`/${id}`)
+    .send({
+      updatedAt: date.toISOString(),
+      characters: [],
+      chapters: [
+        {
+          id: "444444444444444444444444",
+          bookId: id,
+          planning: {
+            characters: [{ entityId: "555555555555555555555555", note: "Keep recovery" }],
+          },
+        },
+      ],
+    });
+  expect(response.status).toBe(200);
+  expect(write.mock.calls[0][1].$set.characters).toHaveLength(1);
+  expect(write.mock.calls[0][1].$set.chapters[0].planning.characters[0].note).toBe("Keep recovery");
 });

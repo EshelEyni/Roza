@@ -249,7 +249,7 @@ test(
       assert.equal(
         await page
           .locator(
-            '.tb-dialog input[type="date"], .tb-dialog select, .tb-dialog progress, .tb-dialog input[type="checkbox"]',
+            '.tb-dialog input[type="date"], .tb-dialog progress',
           )
           .count(),
         0,
@@ -259,7 +259,7 @@ test(
           .locator(".tb-dialog textarea")
           .evaluate((el) => getComputedStyle(el).backgroundColor),
         await page
-          .locator(".tb-dialog input")
+          .getByRole("textbox", { name: "Title", exact: true })
           .evaluate((el) => getComputedStyle(el).backgroundColor),
       );
       await page.screenshot({

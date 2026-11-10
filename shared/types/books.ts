@@ -88,8 +88,15 @@ export interface ChapterAnnotation {
 }
 
 export type StoryKind = "themes" | "plotlines" | "characters";
-export interface ChapterLink { entityId: string; note?: string }
-export interface ChapterPlanning { themes: ChapterLink[]; plotlines: ChapterLink[]; characters: ChapterLink[] }
+export interface ChapterLink {
+  entityId: string;
+  note?: string;
+}
+export interface ChapterPlanning {
+  themes: ChapterLink[];
+  plotlines: ChapterLink[];
+  characters: ChapterLink[];
+}
 
 export interface Chapter extends BasicBookDataItem {
   planning?: ChapterPlanning;

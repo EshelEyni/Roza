@@ -1,4 +1,10 @@
-import { ChapterPlanning, PlanningBadges, PlanningFilter, matchesPlanning, PlanningNavigation } from "./ChapterPlanning";
+import { matchesPlanning } from "./planningModel";
+import {
+  ChapterPlanning,
+  PlanningBadges,
+  PlanningFilter,
+  PlanningNavigation,
+} from "./ChapterPlanning";
 import { ItemMenu } from "./ItemMenu";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -70,6 +76,7 @@ function Card({
   index,
   selected,
   locked,
+  reorderLocked,
   onPreview,
   onEdit,
   onSummary,
@@ -82,6 +89,7 @@ function Card({
   index: number;
   selected: boolean;
   locked: boolean;
+  reorderLocked: boolean;
   onPreview: () => void;
   onEdit: () => void;
   onSummary: () => void;
@@ -96,7 +104,7 @@ function Card({
     transition,
     isDragging,
     isOver,
-  } = useSortable({ id: chapter.id, disabled: locked });
+  } = useSortable({ id: chapter.id, disabled: locked || reorderLocked });
   const summary = useMemo(
     () => plainText(chapter.description),
     [chapter.description],
@@ -122,7 +130,7 @@ function Card({
         </span>
         <button
           className="ws-drag-handle"
-          disabled={locked}
+          disabled={locked || reorderLocked}
           aria-label={`Reorder ${chapter.name}`}
           {...attributes}
           {...listeners}
@@ -190,7 +198,7 @@ export function ChapterOverview({
   onOpenChapter: (id: string) => void;
 }) {
   const chapters = useMemo(
-    () => book.chapters.filter((c) => !c.isArchived),
+    () => book.chapters.filter(c => !c.isArchived),
     [book.chapters],
   );
   const [planningFilter, setPlanningFilter] = useState("");
@@ -201,9 +209,9 @@ export function ChapterOverview({
   const [announcement, setAnnouncement] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
   const origin = useRef<HTMLElement | null>(null);
-  const preview = chapters.find((c) => c.id === previewId);
-  const summary = chapters.find((c) => c.id === summaryId);
-  const editing = chapters.find((c) => c.id === editId);
+  const preview = chapters.find(c => c.id === previewId);
+  const summary = chapters.find(c => c.id === summaryId);
+  const editing = chapters.find(c => c.id === editId);
   const current = editing || preview || summary;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -214,7 +222,7 @@ export function ChapterOverview({
   const stats = useMemo(
     () => ({
       words: chapters.reduce((n, c) => n + words(c.text), 0),
-      missing: chapters.filter((c) => !plainText(c.description).trim()).length,
+      missing: chapters.filter(c => !plainText(c.description).trim()).length,
     }),
     [chapters],
   );
@@ -252,17 +260,17 @@ export function ChapterOverview({
     setSummaryId(null);
   }
   function update(id: string, change: Partial<Chapter>) {
-    store.edit((b) => ({
+    store.edit(b => ({
       ...b,
-      chapters: b.chapters.map((c) => (c.id === id ? { ...c, ...change } : c)),
+      chapters: b.chapters.map(c => (c.id === id ? { ...c, ...change } : c)),
     }));
   }
   function reorder(from: number, to: number) {
     if (from < 0 || to < 0 || to >= chapters.length || from === to) return;
     const ordered = arrayMove(chapters, from, to);
-    store.edit((b) => ({
+    store.edit(b => ({
       ...b,
-      chapters: [...ordered, ...b.chapters.filter((c) => c.isArchived)],
+      chapters: [...ordered, ...b.chapters.filter(c => c.isArchived)],
     }));
     setAnnouncement(`${chapters[from].name} moved to chapter ${to + 1}.`);
   }
@@ -290,7 +298,7 @@ export function ChapterOverview({
                 id: newId(),
                 name: `Chapter ${chapters.length + 1}`,
               } as Chapter;
-              store.edit((b) => ({ ...b, chapters: [...b.chapters, chapter] }));
+              store.edit(b => ({ ...b, chapters: [...b.chapters, chapter] }));
               setSummaryId(chapter.id);
             }}
           >
@@ -305,50 +313,57 @@ export function ChapterOverview({
       <div role="status" className="ws-sr-only">
         {announcement}
       </div>
-      <PlanningFilter book={book} value={planningFilter} onChange={setPlanningFilter} />
+      <PlanningFilter
+        book={book}
+        value={planningFilter}
+        onChange={setPlanningFilter}
+      />
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
         onDragEnd={({ active, over }) => {
           if (over)
             reorder(
-              chapters.findIndex((c) => c.id === active.id),
-              chapters.findIndex((c) => c.id === over.id),
+              chapters.findIndex(c => c.id === active.id),
+              chapters.findIndex(c => c.id === over.id),
             );
         }}
       >
         <SortableContext
-          items={chapters.map((c) => c.id)}
+          items={chapters.map(c => c.id)}
           strategy={rectSortingStrategy}
         >
           <div className="ws-board">
-            {chapters.filter(c => matchesPlanning(book, c, planningFilter)).map((chapter) => (
-              <Card
-                key={chapter.id}
-                chapter={chapter}
-                book={book}
-                index={chapters.indexOf(chapter)}
-                selected={chapter.id === selected}
-                locked={!!store.recovery || !!planningFilter}
-                onPreview={() => setPreviewId(chapter.id)}
-                onEdit={() => setEditId(chapter.id)}
-                onSummary={() => setSummaryId(chapter.id)}
-                onRename={() => {
-                  const name = window.prompt("Chapter title", chapter.name);
-                  if (name?.trim()) update(chapter.id, { name: name.trim() });
-                }}
-                onDelete={() => {
-                  if (
-                    window.confirm(
-                      `Delete “${chapter.name}” from the manuscript? It will be archived with its content intact.`,
-                    )
-                  ) {
-                    update(chapter.id, { isArchived: true });
-                    setAnnouncement(`${chapter.name} archived.`);
-                  }
-                }}
-              />
-            ))}
+            {chapters
+              .filter(c => matchesPlanning(book, c, planningFilter))
+              .map(chapter => (
+                <Card
+                  key={chapter.id}
+                  chapter={chapter}
+                  book={book}
+                  index={chapters.indexOf(chapter)}
+                  selected={chapter.id === selected}
+                  locked={!!store.recovery}
+                  reorderLocked={!!planningFilter}
+                  onPreview={() => setPreviewId(chapter.id)}
+                  onEdit={() => setEditId(chapter.id)}
+                  onSummary={() => setSummaryId(chapter.id)}
+                  onRename={() => {
+                    const name = window.prompt("Chapter title", chapter.name);
+                    if (name?.trim()) update(chapter.id, { name: name.trim() });
+                  }}
+                  onDelete={() => {
+                    if (
+                      window.confirm(
+                        `Delete “${chapter.name}” from the manuscript? It will be archived with its content intact.`,
+                      )
+                    ) {
+                      update(chapter.id, { isArchived: true });
+                      setAnnouncement(`${chapter.name} archived.`);
+                    }
+                  }}
+                />
+              ))}
           </div>
         </SortableContext>
       </DndContext>
@@ -368,7 +383,7 @@ export function ChapterOverview({
               ? "Edit chapter summary"
               : "Chapter reading preview"
         }
-        onKeyDown={(event) => {
+        onKeyDown={event => {
           const target = event.target as HTMLElement;
           if (
             target.closest(
@@ -401,11 +416,11 @@ export function ChapterOverview({
             }
           }
         }}
-        onCancel={(event) => {
+        onCancel={event => {
           event.preventDefault();
           closePanel();
         }}
-        onClick={(event) => {
+        onClick={event => {
           if (event.target === event.currentTarget) closePanel();
         }}
       >
@@ -446,7 +461,26 @@ export function ChapterOverview({
               </button>
             </header>
             <div className="ws-chapter-reading" key={current.id}>
-              <ChapterPlanning key={`planning:${current.id}`} store={store} chapter={current} onChapter={id => { void store.flush(); setEditId(null); setSummaryId(null); setPreviewId(id); }} onEntity={(kind, id) => { closePanel(); planningNavigation.onEntity(kind, id); }} onTask={id => { closePanel(); planningNavigation.onTask(id); }} />
+              <ChapterPlanning
+                key={`planning:${current.id}`}
+                store={store}
+                chapter={current}
+                summaryElsewhere={!!summary}
+                onChapter={id => {
+                  void store.flush();
+                  setEditId(null);
+                  setSummaryId(null);
+                  setPreviewId(id);
+                }}
+                onEntity={(kind, id) => {
+                  closePanel();
+                  planningNavigation.onEntity(kind, id);
+                }}
+                onTask={id => {
+                  closePanel();
+                  planningNavigation.onTask(id);
+                }}
+              />
               {editing ? (
                 <>
                   <p className="ws-muted">Changes save automatically.</p>
@@ -455,7 +489,7 @@ export function ChapterOverview({
                     value={editing.text}
                     label="Chapter manuscript"
                     readOnly={!!store.recovery}
-                    onChange={(text) => {
+                    onChange={text => {
                       edited.current = true;
                       update(editing.id, { text });
                     }}
@@ -472,7 +506,7 @@ export function ChapterOverview({
                     value={summary.description}
                     label="Chapter summary"
                     readOnly={!!store.recovery}
-                    onChange={(description) =>
+                    onChange={description =>
                       update(summary.id, { description })
                     }
                   />
@@ -551,7 +585,7 @@ export function ChapterOverview({
                 <a
                   className="ws-primary ws-preview-open-chapter"
                   href="?workspace=chapters"
-                  onClick={(event) => {
+                  onClick={event => {
                     event.preventDefault();
                     const id = current.id;
                     closePanel();

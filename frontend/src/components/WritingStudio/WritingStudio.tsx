@@ -87,12 +87,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const [store] = useState(
     () =>
       new DraftStore(initialBook, bookApi.update, {
-        getItem: (key) => localStorage.getItem(key),
+        getItem: key => localStorage.getItem(key),
         setItem: (key, value) => localStorage.setItem(key, value),
-        removeItem: (key) => localStorage.removeItem(key),
+        removeItem: key => localStorage.removeItem(key),
       }),
   );
-  const [, render] = useReducer((n) => n + 1, 0);
+  const [, render] = useReducer(n => n + 1, 0);
   const book = store.book;
   const scope = `roza:studio:${book.userId}:${book.id}`;
   const [searchParams, setSearchParams] = useSearchParams();
@@ -106,12 +106,27 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const overview = section === "overview";
   const tasks = section === "tasks";
   const bible = section === "bible";
-  const [bibleTarget, setBibleTarget] = useState<{kind: import("../../../../shared/types/books").StoryKind; id: string}>({kind: "characters", id: ""});
+  const [bibleTarget, setBibleTarget] = useState<{
+    kind: import("../../../../shared/types/books").StoryKind;
+    id: string;
+  }>({ kind: "characters", id: "" });
   const [taskTarget, setTaskTarget] = useState("");
   const planningNavigation = {
-    onChapter: (id: string) => { setSelection(current => ({...current, chapters: id})); changeSection("chapters"); },
-    onEntity: (kind: import("../../../../shared/types/books").StoryKind, id: string) => { setBibleTarget({kind, id}); changeSection("bible"); },
-    onTask: (id: string) => { setTaskTarget(id); changeSection("tasks"); },
+    onChapter: (id: string) => {
+      setSelection(current => ({ ...current, chapters: id }));
+      changeSection("chapters");
+    },
+    onEntity: (
+      kind: import("../../../../shared/types/books").StoryKind,
+      id: string,
+    ) => {
+      setBibleTarget({ kind, id });
+      changeSection("bible");
+    },
+    onTask: (id: string) => {
+      setTaskTarget(id);
+      changeSection("tasks");
+    },
   };
   const category: BooKDataItemType =
     overview || tasks || bible ? "chapters" : (section as BooKDataItemType);
@@ -126,31 +141,31 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         "themes",
         "notes",
       ] as BooKDataItemType[]
-    ).map((type) => {
+    ).map(type => {
       const candidate =
         params.dataItemType === type
           ? params.dataItemId
           : type === "chapters"
             ? preference(`${scope}:chapter`, "")
             : "";
-      const pages = book[type].filter((entry) => !entry.isArchived);
+      const pages = book[type].filter(entry => !entry.isArchived);
       return [
         type,
-        pages.find((entry) => entry.id === candidate)?.id || pages[0]?.id || "",
+        pages.find(entry => entry.id === candidate)?.id || pages[0]?.id || "",
       ];
     });
     return Object.fromEntries(entries);
   });
-  const available = book[category].filter((entry) => !entry.isArchived);
-  const selected = available.some((entry) => entry.id === selection[category])
+  const available = book[category].filter(entry => !entry.isArchived);
+  const selected = available.some(entry => entry.id === selection[category])
     ? selection[category]!
     : available[0]?.id || "";
   function setSelected(id: string) {
-    setSelection((current) => ({ ...current, [category]: id }));
+    setSelection(current => ({ ...current, [category]: id }));
   }
   function changeSection(next: StudioSection) {
     if (next !== section)
-      setSearchParams((current) => {
+      setSearchParams(current => {
         const nextParams = new URLSearchParams(current);
         nextParams.set("workspace", next);
         return nextParams;
@@ -177,8 +192,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const [settings, setSettings] = useState(false);
   const [restoreKey, setRestoreKey] = useState(0);
   const [archived, setArchived] = useState<BookDataItem[]>([]);
-  const items = book[category].filter((item) => !item.isArchived);
-  const item = items.find((item) => item.id === selected);
+  const items = book[category].filter(item => !item.isArchived);
+  const item = items.find(item => item.id === selected);
   const filtered = items.filter((item, index) =>
     `${itemName(item, index)} ${plainText("text" in item ? item.text : item.description)}`
       .toLocaleLowerCase()
@@ -235,7 +250,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         event.key.toLowerCase() === "f"
       ) {
         event.preventDefault();
-        setFocus((value) => !value);
+        setFocus(value => !value);
       }
       if (event.key === "Escape") {
         setFocus(false);
@@ -264,9 +279,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       | { description: SlateCustomElement[] },
   ) {
     if (!item) return;
-    store.edit((current) => ({
+    store.edit(current => ({
       ...current,
-      [category]: current[category].map((entry) =>
+      [category]: current[category].map(entry =>
         entry.id === item.id ? { ...entry, ...change } : entry,
       ),
     }));
@@ -279,7 +294,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     if ("name" in entry)
       entry.name =
         category === "chapters" ? `Chapter ${items.length + 1}` : "Untitled";
-    store.edit((current) => ({
+    store.edit(current => ({
       ...current,
       [category]: [...current[category], entry],
     }));
@@ -296,9 +311,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       }))
     )
       return;
-    setArchived((current) => [...current, item]);
+    setArchived(current => [...current, item]);
     updateItem({ isArchived: true });
-    select(items.find((entry) => entry.id !== item.id)?.id || "");
+    select(items.find(entry => entry.id !== item.id)?.id || "");
   }
   async function leave(destination = "/books") {
     await store.flush();
@@ -336,15 +351,15 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             aria-label="Book title"
             value={book.name}
             disabled={!!store.recovery}
-            onChange={(event) =>
-              store.edit((current) => ({
+            onChange={event =>
+              store.edit(current => ({
                 ...current,
                 name: event.target.value,
               }))
             }
             onBlur={() => {
               if (!book.name.trim())
-                store.edit((current) => ({
+                store.edit(current => ({
                   ...current,
                   name: "Untitled manuscript",
                 }));
@@ -400,7 +415,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             <button
               onClick={() => {
                 store.restore();
-                setRestoreKey((n) => n + 1);
+                setRestoreKey(n => n + 1);
               }}
             >
               Restore draft
@@ -432,7 +447,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             Appearance{" "}
             <select
               value={dark ? "dark" : "light"}
-              onChange={(event) => {
+              onChange={event => {
                 setDark(event.target.value === "dark");
                 remember("roza:studio:theme", event.target.value);
               }}
@@ -445,7 +460,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             Text size{" "}
             <select
               value={size}
-              onChange={(event) => {
+              onChange={event => {
                 setSize(event.target.value);
                 remember("roza:studio:font", event.target.value);
               }}
@@ -462,7 +477,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               min="1"
               max="10000000"
               value={goal}
-              onChange={(event) => {
+              onChange={event => {
                 const value = Math.max(1, Number(event.target.value));
                 setGoal(value);
                 remember(`${scope}:goal`, String(value));
@@ -527,10 +542,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 aria-label="Search manuscript"
                 placeholder="Search titles and text…"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={event => setSearch(event.target.value)}
               />
               <nav className="ws-chapters">
-                {filtered.map((entry) => (
+                {filtered.map(entry => (
                   <button
                     key={entry.id}
                     aria-current={entry.id === selected ? "page" : undefined}
@@ -588,12 +603,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             store={store}
             planningNavigation={planningNavigation}
             selected={selected}
-            onOpenChapter={(chapterId) => {
-              setSelection((current) => ({ ...current, chapters: chapterId }));
+            onOpenChapter={chapterId => {
+              setSelection(current => ({ ...current, chapters: chapterId }));
               changeSection("chapters");
             }}
-            onChapterEdited={(chapterId) => {
-              if (chapterId === selected) setRestoreKey((n) => n + 1);
+            onChapterEdited={chapterId => {
+              if (chapterId === selected) setRestoreKey(n => n + 1);
             }}
           />
         )}
@@ -602,7 +617,15 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             <TaskBoardView store={store} initialTaskId={taskTarget} />
           </div>
         )}
-        {bible && <StoryBible key={`${bibleTarget.kind}:${bibleTarget.id}`} store={store} onChapter={planningNavigation.onChapter} selectedKind={bibleTarget.kind} selectedId={bibleTarget.id} />}
+        {bible && (
+          <StoryBible
+            key={`${bibleTarget.kind}:${bibleTarget.id}`}
+            store={store}
+            onChapter={planningNavigation.onChapter}
+            selectedKind={bibleTarget.kind}
+            selectedId={bibleTarget.id}
+          />
+        )}
         <section
           className="ws-writing"
           aria-label="Writing workspace"
@@ -626,7 +649,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   {category === "chapters" && (
                     <button
                       type="button"
-                      onClick={() => setSummary((value) => !value)}
+                      onClick={() => setSummary(value => !value)}
                       aria-expanded={summary}
                       aria-controls="ws-chapter-summary"
                     >
@@ -676,10 +699,18 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   placeholder={
                     category === "notes" ? "Untitled note" : "Untitled"
                   }
-                  onChange={(event) => updateItem({ name: event.target.value })}
+                  onChange={event => updateItem({ name: event.target.value })}
                 />
 
-                {item.type === "chapters" && <ChapterPlanning key={`planning:${item.id}`} store={store} chapter={item} {...planningNavigation} />}
+                {item.type === "chapters" && (
+                  <ChapterPlanning
+                    key={`planning:${item.id}`}
+                    store={store}
+                    chapter={item}
+                    summaryElsewhere={summary}
+                    {...planningNavigation}
+                  />
+                )}
                 {summary && item.type === "chapters" ? (
                   <section
                     id="ws-chapter-summary"
@@ -702,7 +733,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       label="Chapter summary"
                       placeholder="Summarize what happens in this chapter…"
                       readOnly={preview || !!store.recovery}
-                      onChange={(description) => updateItem({ description })}
+                      onChange={description => updateItem({ description })}
                     />
                   </section>
                 ) : (
@@ -770,18 +801,18 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               <button
                 onClick={() => {
                   const entry = archived[archived.length - 1];
-                  store.edit((current) => ({
+                  store.edit(current => ({
                     ...current,
-                    [entry.type]: current[entry.type].map((i) =>
+                    [entry.type]: current[entry.type].map(i =>
                       i.id === entry.id ? { ...i, isArchived: false } : i,
                     ),
                   }));
-                  setSelection((current) => ({
+                  setSelection(current => ({
                     ...current,
                     [entry.type]: entry.id,
                   }));
                   changeSection(entry.type);
-                  setArchived((current) => current.slice(0, -1));
+                  setArchived(current => current.slice(0, -1));
                 }}
               >
                 Undo archive

@@ -97,7 +97,13 @@ function Sortable({
     </div>
   );
 }
-export function TaskBoardView({ store, initialTaskId = "" }: { store: DraftStore; initialTaskId?: string }) {
+export function TaskBoardView({
+  store,
+  initialTaskId = "",
+}: {
+  store: DraftStore;
+  initialTaskId?: string;
+}) {
   const [chapterFilter, setChapterFilter] = useState("");
   const [confirmation, setConfirmation] = useState<{
     message: string;
@@ -106,7 +112,9 @@ export function TaskBoardView({ store, initialTaskId = "" }: { store: DraftStore
   const [initial] = useState(emptyBoard);
   const board = store.book.taskBoard || initial;
   const [creatingIn, setCreatingIn] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | null>(initialTaskId || null);
+  const [selected, setSelected] = useState<string | null>(
+    initialTaskId || null,
+  );
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
@@ -146,7 +154,23 @@ export function TaskBoardView({ store, initialTaskId = "" }: { store: DraftStore
         </div>
         <span>{board.lists.reduce((n, l) => n + l.cards.length, 0)} tasks</span>
       </div>
-      <label className="cp-filter">Chapter <select aria-label="Filter tasks by chapter" value={chapterFilter} onChange={e => setChapterFilter(e.target.value)}><option value="">All chapters</option>{store.book.chapters.filter(c => !c.isArchived).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
+      <label className="cp-filter">
+        Chapter{" "}
+        <select
+          aria-label="Filter tasks by chapter"
+          value={chapterFilter}
+          onChange={e => setChapterFilter(e.target.value)}
+        >
+          <option value="">All chapters</option>
+          {store.book.chapters
+            .filter(c => !c.isArchived)
+            .map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+        </select>
+      </label>
       <fieldset disabled={!!store.recovery}>
         <DndContext
           sensors={sensors}
@@ -203,44 +227,56 @@ export function TaskBoardView({ store, initialTaskId = "" }: { store: DraftStore
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="tb-cards">
-                      {l.cards.filter(c => !chapterFilter || c.chapterId === chapterFilter).map(c => (
-                        <Sortable key={c.id} id={c.id} kind="card">
-                          <button
-                            className="tb-card-open"
-                            onClick={() => setSelected(c.id)}
-                          >
-                            <div className="tb-tags">
-                              {c.labels.map(tag => (
-                                <span
-                                  key={tag.id}
-                                  style={{ borderColor: tag.color }}
-                                >
-                                  {tag.title}
-                                </span>
-                              ))}
-                            </div>
-                            <span className="tb-card-title" dir="auto">
-                              {c.title}
-                            </span>
-                            <div className="tb-meta">
-                              {c.completed && <span>✓ Completed</span>}
-                              {c.chapterId && <span dir="auto">{store.book.chapters.find(ch => ch.id === c.chapterId)?.name || "Archived chapter"}</span>}
-                              {c.dueDate && (
-                                <time dateTime={c.dueDate}>◷ {c.dueDate}</time>
-                              )}
-                              {!!c.checklist.length && (
-                                <span>
-                                  ☑ {c.checklist.filter(i => i.done).length}/
-                                  {c.checklist.length}
-                                </span>
-                              )}
-                              {c.description && (
-                                <span aria-label="Has description">≡</span>
-                              )}
-                            </div>
-                          </button>
-                        </Sortable>
-                      ))}
+                      {l.cards
+                        .filter(
+                          c => !chapterFilter || c.chapterId === chapterFilter,
+                        )
+                        .map(c => (
+                          <Sortable key={c.id} id={c.id} kind="card">
+                            <button
+                              className="tb-card-open"
+                              onClick={() => setSelected(c.id)}
+                            >
+                              <div className="tb-tags">
+                                {c.labels.map(tag => (
+                                  <span
+                                    key={tag.id}
+                                    style={{ borderColor: tag.color }}
+                                  >
+                                    {tag.title}
+                                  </span>
+                                ))}
+                              </div>
+                              <span className="tb-card-title" dir="auto">
+                                {c.title}
+                              </span>
+                              <div className="tb-meta">
+                                {c.completed && <span>✓ Completed</span>}
+                                {c.chapterId && (
+                                  <span dir="auto">
+                                    {store.book.chapters.find(
+                                      ch => ch.id === c.chapterId,
+                                    )?.name || "Archived chapter"}
+                                  </span>
+                                )}
+                                {c.dueDate && (
+                                  <time dateTime={c.dueDate}>
+                                    ◷ {c.dueDate}
+                                  </time>
+                                )}
+                                {!!c.checklist.length && (
+                                  <span>
+                                    ☑ {c.checklist.filter(i => i.done).length}/
+                                    {c.checklist.length}
+                                  </span>
+                                )}
+                                {c.description && (
+                                  <span aria-label="Has description">≡</span>
+                                )}
+                              </div>
+                            </button>
+                          </Sortable>
+                        ))}
                       {!l.cards.length && (
                         <p className="tb-empty">
                           A little room for your next idea.
@@ -422,8 +458,30 @@ function CardDialog({
             }}
           />
         </label>
-        <label>Chapter<select aria-label="Task chapter" value={card.chapterId || ""} onChange={e => update({chapterId: e.target.value})}><option value="">Book-wide task</option>{chapters.map(c => <option key={c.id} value={c.id}>{c.name}{c.isArchived ? " (archived)" : ""}</option>)}</select></label>
-        <label><input type="checkbox" checked={!!card.completed} onChange={e => update({completed: e.target.checked})} /> Completed</label>
+        <label>
+          Chapter
+          <select
+            aria-label="Task chapter"
+            value={card.chapterId || ""}
+            onChange={e => update({ chapterId: e.target.value })}
+          >
+            <option value="">Book-wide task</option>
+            {chapters.map(c => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+                {c.isArchived ? " (archived)" : ""}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <input
+            type="checkbox"
+            checked={!!card.completed}
+            onChange={e => update({ completed: e.target.checked })}
+          />{" "}
+          Completed
+        </label>
         <label>
           Description
           <textarea

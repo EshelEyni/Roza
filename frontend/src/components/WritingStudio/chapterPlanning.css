@@ -1,29 +1,179 @@
-.cp-inspector { margin: 0 0 1.25rem; border-block: 1px solid var(--ws-line, #e4ddd3); font-size: 14px; }
-.cp-inspector > summary { padding: .8rem .25rem; cursor: pointer; }
-.cp-inspector summary small { float: inline-end; color: var(--ws-muted, #887968); }
-.cp-content { padding: 0 .5rem 1rem; }
-.cp-content fieldset, .cp-bible fieldset { border: 0; padding: 0; min-width: 0; }
-.cp-content details { padding: .65rem 0; }
-.cp-content details > summary { cursor: pointer; margin-bottom: .5rem; text-transform: capitalize; }
-.cp-content label, .cp-profile label { display: block; margin-block: .75rem; }
-.cp-content input:not([type=checkbox]), .cp-content select, .cp-content textarea, .cp-profile input:not([type=color]), .cp-profile textarea { width: 100%; min-width: 0; background: transparent; color: inherit; padding: .5rem; border: 1px solid var(--ws-line, #e4ddd3); border-radius: 5px; }
-.cp-content textarea, .cp-profile textarea { min-height: 65px; resize: vertical; }
-.cp-create, .cp-task, .cp-link-heading, .cp-bible-nav { display: flex; gap: .5rem; align-items: center; margin-block: .6rem; }
-.cp-create input, .cp-task input:not([type=checkbox]) { flex: 1; }
-.cp-create button, .cp-task button { flex-shrink: 0; }
-.cp-link { padding: .5rem 0; }
-.cp-link-heading { justify-content: space-between; }
-.cp-related, .cp-badges { display: flex; flex-wrap: wrap; gap: .35rem; }
-.cp-related button { font-size: 12px; }
-.cp-badges { font-size: 11px; margin-block: .6rem; }
-.cp-badges span { border: 1px solid var(--ws-line, #e4ddd3); border-radius: 20px; padding: .2rem .5rem; }
-.cp-filter { display: flex; gap: .75rem; align-items: center; margin-block: 1rem; font-size: 13px; }
-.cp-filter select { max-width: 65%; }
-.cp-bible { padding: clamp(1rem, 4vw, 3rem); overflow-y: auto; min-width: 0; width: 100%; }
-.cp-bible h1 { font-family: Georgia, serif; font-size: 2rem; font-weight: 400; }
-.cp-bible h2 { font-size: 16px; font-weight: 400; margin-block: 1.5rem .5rem; }
-.cp-profile { max-width: 800px; }
-.cp-timeline { border-inline-start: 1px solid var(--ws-line, #e4ddd3); padding-inline-start: 1.25rem; list-style: none; }
-.cp-timeline li { margin-block: 1rem; }
-.cp-timeline p { font-size: 14px; white-space: pre-wrap; }
-@media(max-width: 600px) { .cp-task { flex-wrap: wrap; } .cp-task input:not([type=checkbox]) { flex-basis: 75%; } .cp-bible-nav { flex-wrap: wrap; } .cp-create { flex-wrap: wrap; } }
+.cp-inspector {
+  margin: 0 0 1.25rem;
+  border-block: 1px solid var(--ws-line);
+  font-size: 14px;
+}
+.cp-inspector > summary {
+  padding: 0.8rem 0.25rem;
+  cursor: pointer;
+}
+.cp-inspector summary small {
+  float: inline-end;
+  color: var(--ws-muted);
+}
+.cp-content {
+  padding: 0 0.5rem 1rem;
+}
+.cp-content fieldset,
+.cp-bible fieldset {
+  border: 0;
+  padding: 0;
+  min-width: 0;
+}
+.cp-content details {
+  padding: 0.65rem 0;
+}
+.cp-content details > summary {
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+  text-transform: capitalize;
+}
+.cp-content label,
+.cp-profile label {
+  display: block;
+  margin-block: 0.75rem;
+}
+.cp-content input:not([type="checkbox"]),
+.cp-content select,
+.cp-content textarea,
+.cp-profile input:not([type="color"]),
+.cp-profile textarea {
+  width: 100%;
+  min-width: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0.5rem;
+  border: 1px solid var(--ws-line);
+  border-radius: 5px;
+}
+.cp-content textarea,
+.cp-profile textarea {
+  min-height: 65px;
+  resize: vertical;
+}
+.cp-create,
+.cp-task,
+.cp-link-heading,
+.cp-bible-nav {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-block: 0.6rem;
+}
+.cp-create input,
+.cp-task input:not([type="checkbox"]) {
+  flex: 1;
+}
+.cp-create button,
+.cp-task button {
+  flex-shrink: 0;
+}
+.cp-link {
+  padding: 0.5rem 0;
+}
+.cp-link-heading {
+  justify-content: space-between;
+}
+.cp-related,
+.cp-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.cp-related button {
+  font-size: 12px;
+}
+.cp-badges {
+  font-size: 11px;
+  margin-block: 0.6rem;
+}
+.cp-badges span {
+  border: 1px solid var(--ws-line);
+  border-radius: 20px;
+  padding: 0.2rem 0.5rem;
+}
+.cp-filter {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-block: 1rem;
+  font-size: 13px;
+}
+.cp-filter select {
+  max-width: 65%;
+}
+.cp-bible {
+  padding: clamp(1rem, 4vw, 3rem);
+  overflow-y: auto;
+  min-width: 0;
+  width: 100%;
+}
+.cp-bible h1 {
+  font-family: Georgia, serif;
+  font-size: 2rem;
+  font-weight: 400;
+}
+.cp-bible h2 {
+  font-size: 16px;
+  font-weight: 400;
+  margin-block: 1.5rem 0.5rem;
+}
+.cp-profile {
+  max-width: 800px;
+}
+.cp-timeline {
+  border-inline-start: 1px solid var(--ws-line);
+  padding-inline-start: 1.25rem;
+  list-style: none;
+}
+.cp-timeline li {
+  margin-block: 1rem;
+}
+.cp-timeline p {
+  font-size: 14px;
+  white-space: pre-wrap;
+}
+@media (max-width: 600px) {
+  .cp-task {
+    flex-wrap: wrap;
+  }
+  .cp-task input:not([type="checkbox"]) {
+    flex-basis: 75%;
+  }
+  .cp-bible-nav {
+    flex-wrap: wrap;
+  }
+  .cp-create {
+    flex-wrap: wrap;
+  }
+}
+
+.cp-theme .cp-link-heading > button:first-child {
+  border: 1px solid var(--ws-line);
+  border-radius: 20px;
+  padding: 0.2rem 0.65rem;
+  font-size: 12px;
+}
+.cp-bible {
+  flex: 1;
+}
+.cp-content {
+  max-height: min(65vh, 640px);
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+.cp-profile,
+.cp-content {
+  --ws-editor-min-height: 110px;
+}
+.cp-content {
+  max-height: min(55vh, 480px);
+}
+.cp-bible-nav button[aria-pressed="true"] {
+  background: var(--ws-soft);
+}
+.cp-profile > label > select {
+  display: block;
+  width: 100%;
+  margin-top: 0.4rem;
+}

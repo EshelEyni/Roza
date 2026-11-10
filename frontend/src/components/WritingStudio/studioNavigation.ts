@@ -12,6 +12,8 @@ export const studioSections: StudioSection[] = [
   "tasks",
 ];
 export const sectionLabel = (value: StudioSection) =>
-  value === "bible" ? "Story Bible" : value === "overview"
-    ? "Chapter Overview"
-    : value[0].toUpperCase() + value.slice(1);
+  value === "bible"
+    ? "Story Bible"
+    : value === "overview"
+      ? "Chapter Overview"
+      : value[0].toUpperCase() + value.slice(1);
