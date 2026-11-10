@@ -175,12 +175,14 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     setSearch("");
     setNotes(true);
     setSummary(false);
+    setChapterBible(false);
   }
   const [drawer, setDrawer] = useState(false);
   const [focus, setFocus] = useState(false);
   const [preview, setPreview] = useState(false);
   const [notes, setNotes] = useState(true);
   const [summary, setSummary] = useState(false);
+  const [chapterBible, setChapterBible] = useState(false);
   const [search, setSearch] = useState("");
   const [dark, setDark] = useState(
     () => preference("roza:studio:theme", "light") === "dark",
@@ -262,7 +264,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     return () => window.removeEventListener("keydown", keydown);
   }, [store]);
 
-  useEffect(() => setSummary(false), [selected, category]);
+  useEffect(() => {
+    setSummary(false);
+    setChapterBible(false);
+  }, [selected, category]);
 
   function select(id: string) {
     setSummary(false);
@@ -641,7 +646,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 </span>
                 <div>
                   <button
-                    onClick={() => setPreview(!preview)}
+                    onClick={() => {
+                      setChapterBible(false);
+                      setPreview(!preview);
+                    }}
                     aria-pressed={preview}
                   >
                     {preview ? "Edit" : "Read"}
@@ -649,7 +657,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   {category === "chapters" && (
                     <button
                       type="button"
-                      onClick={() => setSummary(value => !value)}
+                      onClick={() => {
+                        setChapterBible(false);
+                        setSummary(value => !value);
+                      }}
                       aria-expanded={summary}
                       aria-controls="ws-chapter-summary"
                     >
@@ -659,6 +670,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   {category === "chapters" && (
                     <button
                       onClick={() => {
+                        setChapterBible(false);
                         setNotes(summary ? true : !notes);
                         setSummary(false);
                       }}
@@ -681,6 +693,18 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       </button>
                     </div>
                   </ItemMenu>
+                  {item.type === "chapters" && (
+                    <button
+                      aria-pressed={chapterBible}
+                      aria-controls="ws-chapter-bible"
+                      onClick={() => {
+                        setChapterBible(value => !value);
+                        setSummary(false);
+                      }}
+                    >
+                      Chapter Bible
+                    </button>
+                  )}
                 </div>
               </div>
               <article
@@ -702,74 +726,80 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   onChange={event => updateItem({ name: event.target.value })}
                 />
 
-                {item.type === "chapters" && (
-                  <ChapterPlanning
-                    key={`planning:${item.id}`}
-                    store={store}
-                    chapter={item}
-                    summaryElsewhere={summary}
-                    {...planningNavigation}
-                  />
-                )}
-                {summary && item.type === "chapters" ? (
-                  <section
-                    id="ws-chapter-summary"
-                    className="ws-chapter-summary"
-                    aria-label="Chapter summary"
-                  >
-                    <header>
-                      <h2>Chapter summary</h2>
-                      <button
-                        type="button"
-                        onClick={() => setSummary(false)}
-                        aria-label="Close chapter summary"
-                      >
-                        Close
-                      </button>
-                    </header>
-                    <ManuscriptEditor
-                      key={`${item.id}:summary:${restoreKey}`}
-                      value={item.description}
-                      label="Chapter summary"
-                      placeholder="Summarize what happens in this chapter…"
-                      readOnly={preview || !!store.recovery}
-                      onChange={description => updateItem({ description })}
+                {chapterBible && item.type === "chapters" ? (
+                  <div id="ws-chapter-bible">
+                    <ChapterPlanning
+                      key={`bible:${item.id}`}
+                      page
+                      store={store}
+                      chapter={item}
+                      {...planningNavigation}
                     />
-                  </section>
+                  </div>
                 ) : (
-                  <ManuscriptEditor
-                    key={`${item.id}:${restoreKey}`}
-                    value={text}
-                    readOnly={preview || !!store.recovery}
-                    annotations={
-                      item.type === "chapters"
-                        ? item.annotations || []
-                        : undefined
-                    }
-                    showAnnotations={notes}
-                    onRevealAnnotations={() => setNotes(true)}
-                    onChange={(value, annotations) =>
-                      updateItem(
-                        item.type === "chapters"
-                          ? { text: value, annotations }
-                          : "text" in item
-                            ? { text: value }
-                            : { description: value },
-                      )
-                    }
-                  />
+                  <>
+                    {summary && item.type === "chapters" ? (
+                      <section
+                        id="ws-chapter-summary"
+                        className="ws-chapter-summary"
+                        aria-label="Chapter summary"
+                      >
+                        <header>
+                          <h2>Chapter summary</h2>
+                          <button
+                            type="button"
+                            onClick={() => setSummary(false)}
+                            aria-label="Close chapter summary"
+                          >
+                            Close
+                          </button>
+                        </header>
+                        <ManuscriptEditor
+                          key={`${item.id}:summary:${restoreKey}`}
+                          value={item.description}
+                          label="Chapter summary"
+                          placeholder="Summarize what happens in this chapter…"
+                          readOnly={preview || !!store.recovery}
+                          onChange={description => updateItem({ description })}
+                        />
+                      </section>
+                    ) : (
+                      <ManuscriptEditor
+                        key={`${item.id}:${restoreKey}`}
+                        value={text}
+                        readOnly={preview || !!store.recovery}
+                        annotations={
+                          item.type === "chapters"
+                            ? item.annotations || []
+                            : undefined
+                        }
+                        showAnnotations={notes}
+                        onRevealAnnotations={() => setNotes(true)}
+                        onChange={(value, annotations) =>
+                          updateItem(
+                            item.type === "chapters"
+                              ? { text: value, annotations }
+                              : "text" in item
+                                ? { text: value }
+                                : { description: value },
+                          )
+                        }
+                      />
+                    )}
+                    <footer className="ws-page-footer">
+                      <span>
+                        {words(visibleText).toLocaleString()} words ·{" "}
+                        {Math.max(1, Math.ceil(words(visibleText) / 200))} min
+                        read
+                      </span>
+                      <span>
+                        {preview
+                          ? "Reading preview"
+                          : "Make room for your next idea."}
+                      </span>
+                    </footer>
+                  </>
                 )}
-                <footer className="ws-page-footer">
-                  <span>
-                    {words(visibleText).toLocaleString()} words ·{" "}
-                    {Math.max(1, Math.ceil(words(visibleText) / 200))} min read
-                  </span>
-                  <span>
-                    {preview
-                      ? "Reading preview"
-                      : "Make room for your next idea."}
-                  </span>
-                </footer>
               </article>
             </>
           ) : (

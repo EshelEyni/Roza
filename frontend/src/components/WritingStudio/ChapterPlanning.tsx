@@ -5,7 +5,7 @@ import {
   StoryKind,
   TaskCard,
 } from "../../../../shared/types/books";
-import { useState } from "react";
+import { ReactNode, useState } from "react";
 import { DraftStore } from "./draftStore";
 import { ManuscriptEditor } from "./ManuscriptEditor";
 import { getDefaultBookDataItem } from "../../services/bookUtilService";
@@ -61,6 +61,37 @@ export type PlanningNavigation = {
   onEntity: (kind: StoryKind, id: string) => void;
   onTask: (id: string) => void;
 };
+function PlanningGroup({
+  page,
+  visible,
+  title,
+  children,
+  onToggle,
+}: {
+  page: boolean;
+  visible: boolean;
+  title: ReactNode;
+  children: ReactNode;
+  onToggle?: (open: boolean) => void;
+}) {
+  if (page)
+    return visible ? (
+      <section className="cp-bible-section">
+        <h2>{title}</h2>
+        {children}
+      </section>
+    ) : null;
+  return (
+    <details
+      onToggle={e => {
+        if (e.target === e.currentTarget) onToggle?.(e.currentTarget.open);
+      }}
+    >
+      <summary>{title}</summary>
+      {children}
+    </details>
+  );
+}
 export function ChapterPlanning({
   store,
   chapter,
@@ -68,11 +99,17 @@ export function ChapterPlanning({
   onEntity,
   onTask,
   summaryElsewhere = false,
+  page = false,
 }: {
   store: DraftStore;
   chapter: Chapter;
   summaryElsewhere?: boolean;
+  page?: boolean;
 } & PlanningNavigation) {
+  const [active, setActive] = useState<StoryKind | "tasks" | "summary">(
+    "characters",
+  );
+  const Container = page ? "section" : "details";
   const [expanded, setExpanded] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const book = store.book;
@@ -119,21 +156,46 @@ export function ChapterPlanning({
     }));
   }
   return (
-    <details
-      className="cp-inspector"
+    <Container
+      aria-label={page ? "Chapter Bible" : undefined}
+      className={page ? "cp-chapter-bible" : "cp-inspector"}
       onToggle={e => {
-        if (e.target === e.currentTarget) setExpanded(e.currentTarget.open);
+        if (
+          e.target === e.currentTarget &&
+          e.currentTarget instanceof HTMLDetailsElement
+        )
+          setExpanded(e.currentTarget.open);
       }}
     >
-      <summary>
-        Chapter Planning{" "}
-        <small>
-          {tasks.length
-            ? `${tasks.filter(t => t.completed).length}/${tasks.length} completed`
-            : ""}
-        </small>
-      </summary>
-      {expanded && (
+      {page ? (
+        <>
+          <span className="ws-eyebrow">THE SHAPE OF THIS CHAPTER</span>
+          <h1>Chapter Bible</h1>
+          <nav className="cp-bible-nav" aria-label="Chapter Bible sections">
+            {(
+              ["characters", "themes", "plotlines", "tasks", "summary"] as const
+            ).map(tab => (
+              <button
+                key={tab}
+                aria-pressed={active === tab}
+                onClick={() => setActive(tab)}
+              >
+                {tab[0].toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </nav>
+        </>
+      ) : (
+        <summary>
+          Chapter Planning{" "}
+          <small>
+            {tasks.length
+              ? `${tasks.filter(t => t.completed).length}/${tasks.length} completed`
+              : ""}
+          </small>
+        </summary>
+      )}
+      {(page || expanded) && (
         <div className="cp-content">
           <p className="ws-muted" role="status">
             {store.state === "error"
@@ -143,17 +205,16 @@ export function ChapterPlanning({
                 : "Saving…"}
           </p>
           <fieldset disabled={!!store.recovery}>
-            <details
-              onToggle={e => {
-                if (e.target === e.currentTarget)
-                  setSummaryOpen(e.currentTarget.open);
-              }}
+            <PlanningGroup
+              page={page}
+              visible={active === "summary"}
+              title="Summary"
+              onToggle={setSummaryOpen}
             >
-              <summary>Summary</summary>
               {summaryElsewhere ? (
                 <p className="ws-muted">Edit the summary below.</p>
               ) : (
-                summaryOpen && (
+                (page || summaryOpen) && (
                   <ManuscriptEditor
                     key={chapter.id}
                     value={chapter.description}
@@ -169,12 +230,17 @@ export function ChapterPlanning({
                   />
                 )
               )}
-            </details>
-            <details>
-              <summary>
-                Tasks · {tasks.filter(t => t.completed).length}/{tasks.length}{" "}
-                completed
-              </summary>
+            </PlanningGroup>
+            <PlanningGroup
+              page={page}
+              visible={active === "tasks"}
+              title={
+                <>
+                  Tasks · {tasks.filter(t => t.completed).length}/{tasks.length}{" "}
+                  completed
+                </>
+              }
+            >
               {tasks.map(task => (
                 <div className="cp-task" key={task.id}>
                   <input
@@ -280,13 +346,19 @@ export function ChapterPlanning({
                     ))}
                 </select>
               </label>
-            </details>
+            </PlanningGroup>
             {storyKinds.map(kind => (
-              <details key={kind}>
-                <summary>
-                  {kind[0].toUpperCase() + kind.slice(1)} ·{" "}
-                  {chapter.planning?.[kind].length || 0}
-                </summary>
+              <PlanningGroup
+                key={kind}
+                page={page}
+                visible={active === kind}
+                title={
+                  <>
+                    {kind[0].toUpperCase() + kind.slice(1)} ·{" "}
+                    {chapter.planning?.[kind].length || 0}
+                  </>
+                }
+              >
                 {(chapter.planning?.[kind] || []).map(association => {
                   const entity = book[kind].find(
                     v => v.id === association.entityId && !v.isArchived,
@@ -411,12 +483,12 @@ export function ChapterPlanning({
                   />
                   <button>Create & link</button>
                 </form>
-              </details>
+              </PlanningGroup>
             ))}
           </fieldset>
         </div>
       )}
-    </details>
+    </Container>
   );
 }
 export function PlanningFilter({
