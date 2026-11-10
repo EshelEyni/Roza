@@ -214,7 +214,7 @@ export function ChapterPlanning({
             <PlanningGroup
               page={page}
               visible={active === "summary"}
-              title="Summary"
+              title={page ? null : "Summary"}
               onToggle={setSummaryOpen}
             >
               {summaryElsewhere ? (
