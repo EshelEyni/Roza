@@ -195,40 +195,6 @@ export function TaskBoardView({
           </select>
         </label>
       )}
-      {chapterId && (
-        <label className="tb-chapter-link">
-          Link a task from the book
-          <select
-            aria-label="Link existing chapter task"
-            disabled={!!store.recovery}
-            value=""
-            onChange={e => {
-              const id = e.target.value;
-              if (!id) return;
-              change({
-                lists: board.lists.map(l => ({
-                  ...l,
-                  cards: l.cards.map(c =>
-                    c.id === id
-                      ? { ...c, chapterId, updatedAt: new Date().toISOString() }
-                      : c,
-                  ),
-                })),
-              });
-            }}
-          >
-            <option value="">Choose a task…</option>
-            {board.lists
-              .flatMap(l => l.cards)
-              .filter(c => c.chapterId !== chapterId)
-              .map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.title}
-                </option>
-              ))}
-          </select>
-        </label>
-      )}
       <fieldset disabled={!!store.recovery}>
         <DndContext
           sensors={sensors}

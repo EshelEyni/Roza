@@ -241,10 +241,12 @@ export function ChapterPlanning({
               page={page}
               visible={active === "tasks"}
               title={
-                <>
-                  Tasks · {tasks.filter(t => t.completed).length}/{tasks.length}{" "}
-                  completed
-                </>
+                page ? null : (
+                  <>
+                    Tasks · {tasks.filter(t => t.completed).length}/
+                    {tasks.length} completed
+                  </>
+                )
               }
             >
               {page ? (
