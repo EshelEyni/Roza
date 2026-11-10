@@ -108,8 +108,6 @@ export interface Chapter extends BasicBookDataItem {
 }
 
 export interface Character extends BasicBookDataItem {
-  role?: string;
-  notes?: string;
   name: string;
   description: SlateCustomElement[];
   type: "characters";

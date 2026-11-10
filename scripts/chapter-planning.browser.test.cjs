@@ -227,6 +227,8 @@ test(
         await planning.getByLabel('New '+kind.toLowerCase()+' name',{exact:true}).press('Enter');
       }
       await create('Characters','character','Mara');
+      assert.equal(await page.getByRole('dialog',{name:'Edit character',exact:true}).getByLabel('Role',{exact:true}).count(),0);
+      assert.equal(await page.getByRole('dialog',{name:'Edit character',exact:true}).getByLabel('General notes',{exact:true}).count(),0);
       await page.getByRole('dialog',{name:'Edit character',exact:true}).getByRole('textbox',{name:'Mara description',exact:true}).fill('A returning daughter.');
       await page.getByRole('dialog',{name:'Edit character',exact:true}).getByLabel('Mara chapter contribution').fill('Returns to her childhood home.');
       await page.getByRole('dialog',{name:'Edit character',exact:true}).getByRole('button',{name:'Done',exact:true}).click();

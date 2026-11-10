@@ -59,8 +59,6 @@ export function ChapterElements({
     patch: {
       name?: string;
       description?: SlateCustomElement[];
-      role?: string;
-      notes?: string;
     },
   ) {
     store.edit(b => ({
@@ -363,8 +361,6 @@ function EntityDetailsDialog({
     id: string;
     name: string;
     description: SlateCustomElement[];
-    role?: string;
-    notes?: string;
   };
   kind: StoryKind;
   editing: boolean;
@@ -374,8 +370,6 @@ function EntityDetailsDialog({
   onUpdate: (patch: {
     name?: string;
     description?: SlateCustomElement[];
-    role?: string;
-    notes?: string;
   }) => void;
   onNote: (note: string) => void;
   onProfile: () => void;
@@ -444,17 +438,6 @@ function EntityDetailsDialog({
               }}
             />
           </label>
-          {kind === "characters" && (
-            <label>
-              Role
-              <input
-                dir="auto"
-                value={entity.role || ""}
-                maxLength={500}
-                onChange={e => onUpdate({ role: e.target.value })}
-              />
-            </label>
-          )}
           <p className="ws-muted">
             {kind === "characters" ? "Biography" : "Description"} · shared
             across the book
@@ -466,17 +449,6 @@ function EntityDetailsDialog({
             readOnly={disabled}
             onChange={description => onUpdate({ description })}
           />
-          {kind === "characters" && (
-            <label>
-              General notes
-              <textarea
-                dir="auto"
-                value={entity.notes || ""}
-                maxLength={50000}
-                onChange={e => onUpdate({ notes: e.target.value })}
-              />
-            </label>
-          )}
           {kind !== "themes" && (
             <label>
               In this chapter
@@ -492,11 +464,6 @@ function EntityDetailsDialog({
         </fieldset>
       ) : (
         <div className="cp-entity-reading">
-          {entity.role && (
-            <p className="ws-muted" dir="auto">
-              {entity.role}
-            </p>
-          )}
           <h3>{kind === "characters" ? "Biography" : "Description"}</h3>
           {plainText(entity.description).trim() ? (
             <div
@@ -508,12 +475,6 @@ function EntityDetailsDialog({
             />
           ) : (
             <p className="ws-muted">No description yet.</p>
-          )}
-          {entity.notes && (
-            <>
-              <h3>General notes</h3>
-              <p dir="auto">{entity.notes}</p>
-            </>
           )}
           {kind !== "themes" && (
             <>

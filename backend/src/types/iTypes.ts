@@ -63,8 +63,6 @@ export interface IChapter extends IBasicBookDataItem {
 }
 
 export interface ICharacter extends IBasicBookDataItem {
-  role?: string;
-  notes?: string;
   name: string;
   description: ISlateCustomElement[];
   type: "characters";
