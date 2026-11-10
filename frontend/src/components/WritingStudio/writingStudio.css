@@ -2033,3 +2033,16 @@ padding: 6px 10px;
 
 .ws-preview-summary { font-size: 18px; line-height: 1.7; }
 .ws .ws-back-to-preview { padding: 3px; }
+
+/* Semantic screenplay blocks: indentation is never stored as spaces. */
+.sp-page {font-family:"Courier Prime","Courier New",monospace!important;font-size:12pt!important;line-height:1.2!important;max-width:6in;margin-inline:auto;}
+.ws-prose .sp-block{font-family:"Courier Prime","Courier New",monospace;white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 1em;line-height:1.2;text-align:left;}
+.ws-prose .sp-character{margin-left:36%;margin-bottom:0;text-transform:uppercase;break-after:avoid;}
+.ws-prose .sp-dialogue{margin-left:17%;margin-right:25%;}
+.ws-prose .sp-parenthetical{margin-left:27%;margin-right:33%;margin-bottom:0;break-after:avoid;}
+.ws-prose .sp-scene_heading{margin-top:2em;text-transform:uppercase;break-after:avoid;}
+.ws-prose .sp-transition{text-align:right;text-transform:uppercase;}
+.sp-tools{display:flex;flex-wrap:wrap;gap:.75rem;padding:.75rem 0;align-items:center;}
+.sp-tools select{max-width:100%;padding:.35rem;}
+.sp-tools details button{display:block;padding:.4rem;}
+@media(max-width:600px){.sp-page{width:100%;font-size:14px!important;}.ws-prose .sp-dialogue{margin-left:10%;margin-right:10%;}.ws-prose .sp-parenthetical{margin-left:18%;margin-right:15%;}.ws-prose .sp-character{margin-left:25%;}}

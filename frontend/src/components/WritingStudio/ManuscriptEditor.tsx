@@ -1,5 +1,7 @@
+import { ScreenplayToolbar } from "./ScreenplayToolbar";
+import { isScreenplay, nextElement, scenePattern, screenplayTypes } from "./screenplay";
 import { ReactNode, useMemo, useRef, useState } from "react";
-import { createEditor, Editor, Range, Text } from "slate";
+import { createEditor, Editor, Range, Text, Transforms, Node } from "slate";
 import { ChapterAnnotation } from "../../../../shared/types/books";
 import { AnnotationMargin } from "./AnnotationMargin";
 import { transformAnnotations, validAnchor } from "./annotations";
@@ -89,6 +91,8 @@ function Toolbar({ onAddNote }: { onAddNote?: () => void }) {
 }
 export function ManuscriptEditor({
   value,
+  format = "prose",
+  characters,
   onChange,
   readOnly = false,
   label = "Manuscript",
@@ -99,6 +103,8 @@ export function ManuscriptEditor({
   onRevealAnnotations,
 }: {
   value: SlateCustomElement[];
+  format?: "prose" | "screenplay";
+  characters?: string[];
   onChange: (
     value: SlateCustomElement[],
     annotations?: ChapterAnnotation[],
@@ -124,6 +130,24 @@ export function ManuscriptEditor({
   }
   const editor = useMemo(() => {
     const instance = withHistory(withReact(createEditor()));
+    if (format === "screenplay") {
+      const insertBreak = instance.insertBreak;
+      instance.insertBreak = () => {
+        const index = instance.selection?.anchor.path[0];
+        const current = index === undefined ? undefined : instance.children[index];
+        const type = current && "type" in current && isScreenplay(String(current.type)) ? String(current.type) : "action";
+        insertBreak();
+        Transforms.setNodes(instance, {type:nextElement(type)} as never, {match:n=>Editor.isBlock(instance,n as never)});
+      };
+      const insertText = instance.insertText;
+      instance.insertText = text => {
+        const index = instance.selection?.anchor.path[0];
+        const current = index === undefined ? undefined : instance.children[index];
+        const type = current && "type" in current ? String(current.type) : "action";
+        insertText(["scene_heading","character","transition"].includes(type) ? text.toUpperCase() : text);
+        if (type === "action" && current && scenePattern.test(Node.string(instance.children[index!]))) Transforms.setNodes(instance, {type:"scene_heading"} as never);
+      };
+    }
     const apply = instance.apply;
     instance.apply = operation => {
       notes.current = transformAnnotations(notes.current, operation);
@@ -179,6 +203,7 @@ export function ManuscriptEditor({
           );
       }}
     >
+      {!readOnly && format === "screenplay" && <ScreenplayToolbar characters={characters} />}
       {!readOnly && (
         <Toolbar
           onAddNote={annotations !== undefined ? addSelectionNote : undefined}
@@ -190,7 +215,23 @@ export function ManuscriptEditor({
         }
       >
         <Editable
-          className="ws-prose"
+          className={`ws-prose ${format === "screenplay" ? "sp-page" : ""}`}
+          onKeyDown={event => {
+            if (readOnly || event.nativeEvent.isComposing) return;
+            if (event.ctrlKey || event.metaKey) {
+              const button = btns.slice(0,3).find(button => button.keyboardSequence.key === event.code);
+              if (button && !event.shiftKey && !event.altKey) {event.preventDefault();onFormatText({editor,button});return;}
+            }
+            if (format !== "screenplay") return;
+            if (event.key === "Enter" && event.shiftKey) {event.preventDefault();Transforms.insertText(editor,"\n");return;}
+            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+              event.preventDefault();
+              const index = editor.selection?.anchor.path[0] ?? 0;
+              const block = editor.children[index];
+              const type = "type" in block ? String(block.type) : "action";
+              Transforms.setNodes(editor, {type: screenplayTypes[(screenplayTypes.indexOf(isScreenplay(type) ? type : "action") + 1) % screenplayTypes.length]} as never, {at:[index]});
+            }
+          }}
           // Override Slate's measured placeholder height with the writing-area height.
           style={{ minHeight: "var(--ws-editor-min-height, 42vh)" }}
           aria-label={label}
@@ -243,16 +284,7 @@ export function ManuscriptEditor({
               )}
             </Leaf>
           )}
-          onKeyDown={event => {
-            if (!(event.ctrlKey || event.metaKey)) return;
-            const button = btns
-              .slice(0, 3)
-              .find(button => button.keyboardSequence.key === event.code);
-            if (button && !event.shiftKey && !event.altKey) {
-              event.preventDefault();
-              onFormatText({ editor, button });
-            }
-          }}
+
         />
         {annotations !== undefined && (
           <AnnotationMargin

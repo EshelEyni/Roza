@@ -132,7 +132,7 @@ function Card({
         onClick={onPreview}
         aria-label={`Preview ${chapter.name || "Untitled chapter"}`}
       >
-        <h2 dir="auto">{chapter.name || "Untitled chapter"}</h2>
+        <h2 dir="auto">{chapter.name || "Untitled chapter"}</h2>{chapter.format === "screenplay" && <small>Screenplay</small>}
       </button>
       <div
         className={`ws-card-summary${scrolling ? " is-scrolling" : ""}`}
@@ -443,6 +443,7 @@ export function ChapterOverview({
                   <ManuscriptEditor
                     key={`${editing.id}:manuscript`}
                     value={editing.text}
+                    format={editing.format}
                     label="Chapter manuscript"
                     readOnly={!!store.recovery}
                     onChange={(text) => {
@@ -475,7 +476,7 @@ export function ChapterOverview({
                     store={store}
                   />
                   <div
-                    className="ws-prose"
+                    className={`ws-prose ${current.format === "screenplay" ? "sp-page" : ""}`}
                     dir="auto"
                     dangerouslySetInnerHTML={{
                       __html: richTextHtml(current.text),

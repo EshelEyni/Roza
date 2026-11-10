@@ -41,7 +41,8 @@ const chapterSchema = new Schema<IChapter>(
       type: Schema.Types.ObjectId,
       required: [true, "Please provide a book id"],
     },
-    name: {
+    format: { type: String, enum: ["prose", "screenplay"], default: "prose" },
+ name: {
       type: String,
       default: "פרק חדש",
       trim: true,

@@ -16,6 +16,7 @@ function renderNode(
     return <span key={key}>{content}</span>;
   }
   const children = node.children.map(renderNode);
+  if (["scene_heading", "action", "character", "dialogue", "parenthetical", "transition"].includes(node.type)) return <p key={key} className={`sp-block sp-${node.type}`}>{children}</p>;
   const props = { style: { textAlign: node.align } };
   switch (node.type) {
     case "heading-one":
