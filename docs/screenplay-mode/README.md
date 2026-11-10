@@ -7,7 +7,7 @@ Worktree: C:/Users/אריק/Documents/ChatGPT/book reader/roza-screenplay-mode.
 
 The existing Slate/React editor, slate-history, annotation operation transforms, DraftStore debounce, conflict detection, recovery, and chapter storage are reused. No separate editor or AI service was added.
 
-Chapters have an optional format (prose or screenplay); Mongoose defaults missing values to prose. Existing text, summaries, annotations, marks, and planning metadata are retained. A book can mix formats. Changing format changes the writing environment without converting the document. Existing blocks remain intact; authors explicitly change individual blocks with the element selector. Format switching retains the mounted editor and its undo stack.
+Chapters have an optional format (prose or screenplay); Mongoose defaults missing values to prose. Existing text, summaries, annotations, marks, and planning metadata are retained. A book can mix formats. Changing to Prose converts all screenplay blocks to normal paragraphs and removes screenplay alignment, preserving text leaves, inline marks, summaries, annotations and their paths. The editor reloads the converted tree. Changing to Screenplay keeps existing content and enables script tools; authors assign individual element types. The Chapter Format modal explains the conversion before applying it.
 
 Six semantic block types are added to the shared Slate union: scene_heading, action, character, dialogue, parenthetical, transition. Dialogue attribution follows the preceding character cue in document order. No indentation spaces are inserted in stored text. Styles and semantic rendering are shared by editor, previews, and HTML export.
 
@@ -34,7 +34,7 @@ The planned AI integration can consume the exact structured block tree. validate
 - PDF uses jsPDF's built-in Courier font, which does not support every writing system. Use HTML/browser print for scripts needing Unicode fonts.
 - Pagination is heuristic, without production-layout CONT'D/MORE handling or a live page-boundary view. Very long cue/parenthetical blocks can still span pages.
 - Scene reordering and Final Draft FDX are deferred.
-- No automatic bulk prose conversion is performed. Plain-text paste uses recognizable screenplay conventions, so ambiguous all-caps action may need an element-selector correction.
+- Prose conversion removes screenplay structure; returning to Screenplay requires assigning element types again. Plain-text paste uses recognizable screenplay conventions, so ambiguous all-caps action may need an element-selector correction.
 - AI protection is a contract/helper for the planned editor, not an active AI workflow.
 - Browser API persistence is verified with the existing local mock server; schema round-trip tests cover Mongoose casting, not a production database.
 

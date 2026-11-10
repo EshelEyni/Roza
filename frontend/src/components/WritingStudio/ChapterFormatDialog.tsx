@@ -69,11 +69,10 @@ export function ChapterFormatDialog({
         </label>
       </fieldset>
       <p>
-        Switching changes the writing tools and layout. Your existing text,
-        formatting, summaries and annotations are kept. Existing blocks keep
-        their types; switching does not automatically convert prose into a
-        script or script elements into prose paragraphs. You can change
-        individual elements while editing.
+        Switching to Prose converts screenplay elements into normal paragraphs
+        and removes their script indentation and alignment. Your text, inline
+        formatting, summaries and annotations are kept. Switching to Screenplay
+        enables script tools and layout; you can assign elements while editing.
       </p>
       <div className="app-confirm-actions">
         <button type="button" onClick={onClose}>

@@ -126,3 +126,12 @@ test('PDF uses Letter pages, Courier 12pt and paginates long scripts',()=>{
  assert.equal(pdf.internal.pageSize.getWidth(),612);assert.equal(pdf.internal.pageSize.getHeight(),792);
  assert.equal(pdf.getFont().fontName,'courier');assert.equal(pdf.getFontSize(),12);assert.ok(pdf.getNumberOfPages()>1);assert.ok(pdf.output().startsWith('%PDF-'));
 });
+
+test('switching to prose removes every screenplay type and alignment without changing text or marks',()=>{
+ const {proseBlocks,screenplayTypes}=require('../frontend/src/components/WritingStudio/screenplay.ts');
+ const before=screenplayTypes.map(type=>({type,align:'right',children:[{text:'Words',bold:true}]}));
+ const result=proseBlocks(before);
+ assert.ok(result.every(node=>node.type==='paragraph' && !('align' in node)));
+ assert.deepEqual(result.map(node=>node.children),before.map(node=>node.children));
+ assert.ok(before.every(node=>node.align==='right'));
+});

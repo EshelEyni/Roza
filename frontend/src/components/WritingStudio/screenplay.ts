@@ -13,6 +13,20 @@ export const screenplayTypes: ScreenplayType[] = [
 ];
 export const isScreenplay = (type: string): type is ScreenplayType =>
   screenplayTypes.includes(type as ScreenplayType);
+
+/** Change block metadata only, preserving text leaves and annotation paths. */
+export function proseBlocks(nodes: SlateCustomElement[]): SlateCustomElement[] {
+  return nodes.map(node => {
+    if (node.type === "scene_heading" || node.type === "action" ||
+        node.type === "character" || node.type === "dialogue" ||
+        node.type === "parenthetical" || node.type === "transition") {
+      const paragraph = { ...node, type: "paragraph" as const };
+      delete paragraph.align;
+      return paragraph;
+    }
+    return node;
+  });
+}
 export const scenePattern = /^(INT\.\/EXT\.|INT\/EXT\.|INT\.|EXT\.|I\/E\.)\s/i;
 export const nextElement = (type: string): ScreenplayType =>
   (

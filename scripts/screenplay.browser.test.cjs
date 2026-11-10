@@ -360,6 +360,18 @@ test(
       await page.screenshot({
         path: path.join(screenshots, "screenplay-mobile.png"),
       });
+      await page.setViewportSize({width:1365,height:900});
+      const textBeforeProse=await editor.innerText();
+      formatDialog=await openFormat();
+      await formatDialog.getByRole('radio',{name:/Prose/}).check();
+      await formatDialog.getByRole('button',{name:'Apply format',exact:true}).click();
+      assert.equal(await editor.locator('.sp-block').count(),0);
+      assert.equal(await editor.innerText(),textBeforeProse);
+      await page.waitForTimeout(2200);
+      assert.equal(saved.chapters[0].format,'prose');
+      assert.ok(saved.chapters[0].text.every(block=>block.type === 'paragraph'));
+      await page.reload();await editor.waitFor();
+      assert.equal(await editor.locator('[data-screenplay]').count(),0);
       assert.deepEqual(errors, []);
     } finally {
       await browser?.close();
