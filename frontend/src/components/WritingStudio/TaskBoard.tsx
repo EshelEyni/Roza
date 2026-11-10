@@ -30,9 +30,9 @@ const boardKeyboardCoordinates: KeyboardCoordinateGetter = (event, args) => {
   event.preventDefault();
   const containers = args.context.droppableContainers
     .getEnabled()
-    .filter((c) => c.data.current?.kind === "list");
+    .filter(c => c.data.current?.kind === "list");
   const current = containers.findIndex(
-    (c) => c.id === (args.context.over?.id || args.context.active?.id),
+    c => c.id === (args.context.over?.id || args.context.active?.id),
   );
   const target = containers[current + (event.code === "ArrowRight" ? 1 : -1)];
   const rect = target && args.context.droppableRects.get(target.id);
@@ -54,13 +54,14 @@ function Sortable({
     transform,
     transition,
     isDragging,
+    isOver,
   } = useSortable({ id, data: { kind } });
   return (
     <div
       ref={setNodeRef}
       {...attributes}
       aria-label={kind === "list" ? "Reorder list" : "Reorder task"}
-      onPointerDown={(event) => {
+      onPointerDown={event => {
         if (event.pointerType === "touch") return;
         const target = event.target as HTMLElement;
         if (target.closest(".tb-sortable") !== event.currentTarget) return;
@@ -71,7 +72,7 @@ function Sortable({
           return;
         listeners?.onPointerDown?.(event);
       }}
-      onTouchStart={(event) => {
+      onTouchStart={event => {
         const target = event.target as HTMLElement;
         if (target.closest(".tb-sortable") !== event.currentTarget) return;
         if (
@@ -81,10 +82,10 @@ function Sortable({
           return;
         listeners?.onTouchStart?.(event);
       }}
-      onKeyDown={(event) => {
+      onKeyDown={event => {
         if (event.target === event.currentTarget) listeners?.onKeyDown?.(event);
       }}
-      className={`tb-sortable tb-${kind} ${isDragging ? "tb-dragging" : ""}`}
+      className={`tb-sortable tb-${kind} ${isDragging ? "tb-dragging" : ""} ${isOver ? "tb-over" : ""}`}
       style={{
         transform: transform
           ? `translate3d(${transform.x}px,${transform.y}px,0)`
@@ -115,16 +116,16 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
     }),
   );
   const change = (next: TaskBoard) =>
-    store.edit((book) => ({ ...book, taskBoard: next }));
+    store.edit(book => ({ ...book, taskBoard: next }));
   const editList = (id: string, update: (list: TaskList) => TaskList) =>
-    change({ lists: board.lists.map((l) => (l.id === id ? update(l) : l)) });
-  const list = board.lists.find((l) => l.cards.some((c) => c.id === selected));
-  const card = list?.cards.find((c) => c.id === selected);
+    change({ lists: board.lists.map(l => (l.id === id ? update(l) : l)) });
+  const list = board.lists.find(l => l.cards.some(c => c.id === selected));
+  const card = list?.cards.find(c => c.id === selected);
   const updateCard = (patch: Partial<TaskCard>) => {
     if (list && card)
-      editList(list.id, (l) => ({
+      editList(list.id, l => ({
         ...l,
-        cards: l.cards.map((c) =>
+        cards: l.cards.map(c =>
           c.id === card.id
             ? { ...c, ...patch, updatedAt: new Date().toISOString() }
             : c,
@@ -147,11 +148,11 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
       <fieldset disabled={!!store.recovery}>
         <DndContext
           sensors={sensors}
-          collisionDetection={(args) =>
+          collisionDetection={args =>
             closestCenter({
               ...args,
               droppableContainers: args.droppableContainers.filter(
-                (container) =>
+                container =>
                   args.active.data.current?.kind !== "list" ||
                   container.data.current?.kind === "list",
               ),
@@ -161,18 +162,18 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
         >
           <div className="tb-columns">
             <SortableContext
-              items={board.lists.map((l) => l.id)}
+              items={board.lists.map(l => l.id)}
               strategy={horizontalListSortingStrategy}
             >
-              {board.lists.map((l) => (
+              {board.lists.map(l => (
                 <Sortable key={l.id} id={l.id} kind="list">
                   <header>
                     <input
                       aria-label="List title"
                       maxLength={500}
                       value={l.title}
-                      onChange={(e) =>
-                        editList(l.id, (x) => ({
+                      onChange={e =>
+                        editList(l.id, x => ({
                           ...x,
                           title: e.target.value || "Untitled list",
                         }))
@@ -187,7 +188,7 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                           message: `Delete “${l.title}” and its ${l.cards.length} tasks? This cannot be undone.`,
                           action: () =>
                             change({
-                              lists: board.lists.filter((x) => x.id !== l.id),
+                              lists: board.lists.filter(x => x.id !== l.id),
                             }),
                         });
                       }}
@@ -196,18 +197,18 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                     </button>
                   </header>
                   <SortableContext
-                    items={l.cards.map((c) => c.id)}
+                    items={l.cards.map(c => c.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="tb-cards">
-                      {l.cards.map((c) => (
+                      {l.cards.map(c => (
                         <Sortable key={c.id} id={c.id} kind="card">
                           <button
                             className="tb-card-open"
                             onClick={() => setSelected(c.id)}
                           >
                             <div className="tb-tags">
-                              {c.labels.map((tag) => (
+                              {c.labels.map(tag => (
                                 <span
                                   key={tag.id}
                                   style={{ borderColor: tag.color }}
@@ -216,14 +217,16 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                                 </span>
                               ))}
                             </div>
-                            <strong dir="auto">{c.title}</strong>
+                            <span className="tb-card-title" dir="auto">
+                              {c.title}
+                            </span>
                             <div className="tb-meta">
                               {c.dueDate && (
                                 <time dateTime={c.dueDate}>◷ {c.dueDate}</time>
                               )}
                               {!!c.checklist.length && (
                                 <span>
-                                  ☑ {c.checklist.filter((i) => i.done).length}/
+                                  ☑ {c.checklist.filter(i => i.done).length}/
                                   {c.checklist.length}
                                 </span>
                               )}
@@ -243,7 +246,7 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                   </SortableContext>
                   {creatingIn === l.id ? (
                     <form
-                      onBlur={(event) => {
+                      onBlur={event => {
                         if (
                           !event.currentTarget.contains(
                             event.relatedTarget as Node | null,
@@ -251,13 +254,14 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                         )
                           setCreatingIn(null);
                       }}
-                      onKeyDown={(event) => {
+                      onKeyDown={event => {
                         if (event.key === "Escape") {
+                          event.preventDefault();
                           event.stopPropagation();
                           setCreatingIn(null);
                         }
                       }}
-                      onSubmit={(e) => {
+                      onSubmit={e => {
                         e.preventDefault();
                         const form = e.currentTarget;
                         const title = String(
@@ -265,7 +269,7 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                         ).trim();
                         if (!title) return;
                         const now = new Date().toISOString();
-                        editList(l.id, (x) => ({
+                        editList(l.id, x => ({
                           ...x,
                           cards: [
                             ...x.cards,
@@ -282,7 +286,11 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                           ],
                         }));
                         form.reset();
-                        setCreatingIn(null);
+                        form
+                          .querySelector<HTMLInputElement>(
+                            'input[name="title"]',
+                          )
+                          ?.focus();
                       }}
                     >
                       <input
@@ -332,9 +340,9 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
             setConfirmation({
               message: `Delete “${card.title}”? This cannot be undone.`,
               action: () => {
-                editList(list.id, (l) => ({
+                editList(list.id, l => ({
                   ...l,
-                  cards: l.cards.filter((c) => c.id !== card.id),
+                  cards: l.cards.filter(c => c.id !== card.id),
                 }));
                 setSelected(null);
               },
@@ -384,8 +392,9 @@ function CardDialog({
     <dialog
       ref={ref}
       className="tb-dialog"
+      aria-label="Task details"
       onCancel={close}
-      onClick={(e) => {
+      onClick={e => {
         if (e.target === e.currentTarget) close();
       }}
     >
@@ -400,7 +409,7 @@ function CardDialog({
             autoFocus
             value={card.title}
             maxLength={500}
-            onChange={(e) => {
+            onChange={e => {
               if (e.target.value.trim()) update({ title: e.target.value });
             }}
           />
@@ -412,7 +421,7 @@ function CardDialog({
             value={card.description}
             maxLength={100000}
             placeholder="Give this idea a little context…"
-            onChange={(e) => update({ description: e.target.value })}
+            onChange={e => update({ description: e.target.value })}
           />
         </label>
         <footer>
