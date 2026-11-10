@@ -99,6 +99,9 @@ function Card({
     [chapter.description],
   );
   const countWords = useMemo(() => words(chapter.text), [chapter.text]);
+  const [scrolling, setScrolling] = useState(false);
+  const scrollTimer = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => () => clearTimeout(scrollTimer.current), []);
   return (
     <article
       ref={setNodeRef}
@@ -132,7 +135,12 @@ function Card({
         <h2 dir="auto">{chapter.name || "Untitled chapter"}</h2>
       </button>
       <div
-        className="ws-card-summary"
+        className={`ws-card-summary${scrolling ? " is-scrolling" : ""}`}
+        onScroll={() => {
+          setScrolling(true);
+          clearTimeout(scrollTimer.current);
+          scrollTimer.current = setTimeout(() => setScrolling(false), 800);
+        }}
         role="region"
         aria-label={`Summary for ${chapter.name || "Untitled chapter"}`}
         tabIndex={0}
