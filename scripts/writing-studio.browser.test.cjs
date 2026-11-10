@@ -329,7 +329,7 @@ test(
       // One selector owns every manuscript workspace, including browser history.
       const selector = page.getByRole("combobox", { name: "Manuscript category", includeHidden: true });
       await selector.click();
-      assert.deepEqual(await page.getByRole("option").allTextContents(),
+      assert.deepEqual(await page.getByRole("listbox").getByRole("option").allTextContents(),
         ["Chapters✓", "Chapter Overview", "Characters", "Plotlines", "Themes", "Notes", "Tasks"]);
       await page.keyboard.press("Escape");
       for (const name of ["Characters", "Plotlines", "Themes", "Notes", "Tasks", "Chapter Overview", "Chapters"]) {

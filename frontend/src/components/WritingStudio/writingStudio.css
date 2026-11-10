@@ -68,12 +68,6 @@
   min-width: 0;
 }
 
-.ws input:focus,
-.ws select:focus {
-  outline: 2px solid var(--ws-accent);
-  outline-offset: 1px;
-}
-
 .ws a {
   color: inherit;
   text-decoration: none;
@@ -2033,3 +2027,37 @@ padding: 6px 10px;
 
 .ws-preview-summary { font-size: 18px; line-height: 1.7; }
 .ws .ws-back-to-preview { padding: 3px; }
+
+/* Semantic screenplay blocks: indentation is never stored as spaces. */
+.sp-page {font-family:"Courier Prime","Courier New",monospace!important;font-size:12pt!important;line-height:1.2!important;max-width:6in;margin-inline:auto;}
+.ws-prose .sp-block{font-family:"Courier Prime","Courier New",monospace;white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 1em;line-height:1.2;text-align:left;}
+.ws-prose .sp-character{margin-left:36%;margin-bottom:0;text-transform:uppercase;break-after:avoid;}
+.ws-prose .sp-dialogue{margin-left:17%;margin-right:25%;}
+.ws-prose .sp-parenthetical{margin-left:27%;margin-right:33%;margin-bottom:0;break-after:avoid;}
+.ws-prose .sp-scene_heading{margin-top:2em;text-transform:uppercase;break-after:avoid;}
+.ws-prose .sp-transition{text-align:right;text-transform:uppercase;}
+.sp-tools{display:flex;flex-wrap:wrap;gap:8px;padding:0;align-items:center;min-width:0;max-width:100%;}
+.sp-tools select{max-width:100%;padding:.35rem;}
+.sp-tools label{min-width:0;max-width:100%;}
+.sp-tools select[aria-label="Scene navigation"]{max-width:min(24rem,100%);}
+@media(max-width:600px){.sp-page{width:100%;font-size:14px!important;}.ws-prose .sp-dialogue{margin-left:10%;margin-right:10%;}.ws-prose .sp-parenthetical{margin-left:18%;margin-right:15%;}.ws-prose .sp-character{margin-left:25%;}}
+
+.ws-format-dialog{width:min(774px,calc(100vw - 32px));}.ws-format-dialog fieldset{border:0;padding:0;margin:0 0 20px;}.ws-format-dialog legend{font-weight:600;margin-bottom:8px;}.ws-format-choice{display:flex;gap:12px;align-items:flex-start;border:0;border-radius:8px;padding:12px;margin-bottom:10px;cursor:pointer;}.ws-format-choice:has(input:checked){background:#7c5c420a;}.ws-format-choice input{margin-top:5px;accent-color:var(--ws-accent,#7c5c42);}.ws-format-choice small{display:block;margin-top:4px;line-height:1.5;color:var(--ws-muted,#7a6856);}
+
+.ws .ws-format-dialog .app-confirm-actions button { transition: none; }
+.ws .ws-format-dialog .app-confirm-actions button:hover { background: transparent; }
+.ws .ws-format-dialog .app-confirm-actions .app-confirm-action:hover { background: var(--ws-accent, #7c5c42); }
+
+.ws-format-shortcuts{margin-bottom:24px;}.ws-format-shortcuts h3{font-weight:600;margin-bottom:12px;}.ws-format-shortcuts dl{display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;}.ws-format-shortcuts dt{font-weight:600;}.ws-format-shortcuts dd{margin:0;color:var(--ws-muted,#7a6856);}
+
+.ws-toolbar-end{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-inline-start:auto;max-width:100%;min-width:0;}
+.ws-toolbar-end .ws-add-selection-note{margin-left:0;white-space:nowrap;}
+.ws-toolbar-end .sp-tools button{width:auto;height:auto;}
+
+/* Empty Slate blocks have no intrinsic width: reserve the script column explicitly. */
+.sp-page{width:100%;}
+.ws-annotated-editor{--ws-annotation-space:292px;}
+.ws-annotated-editor > .sp-page{width:min(6in,calc(100% - var(--ws-annotation-space)));margin-left:max(0px,calc((100% - var(--ws-annotation-space) - 6in)/2));margin-right:var(--ws-annotation-space);}
+@media(max-width:1050px) and (min-width:761px){.ws-annotated-editor{--ws-annotation-space:222px;}}
+@media(max-width:760px){.ws-annotated-editor{--ws-annotation-space:0px;}}
+.ws-prose > .sp-scene_heading:first-child{margin-top:0;}

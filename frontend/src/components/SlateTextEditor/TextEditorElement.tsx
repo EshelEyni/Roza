@@ -11,6 +11,7 @@ export const TextEditorElement: FC<ElementProps> = ({
   children,
   element,
 }) => {
+  if (["scene_heading", "action", "character", "dialogue", "parenthetical", "transition"].includes(element.type)) return <p {...attributes} className={`sp-block sp-${element.type}`} data-screenplay={element.type}>{children}</p>;
   const style = { textAlign: element.align };
   switch (element.type) {
     case "block-quote":

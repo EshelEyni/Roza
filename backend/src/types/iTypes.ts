@@ -55,6 +55,7 @@ export interface IBasicBookDataItem extends Document {
 
 export interface IChapter extends IBasicBookDataItem {
   planning?: import("../../../shared/types/books").ChapterPlanning;
+  format?: "prose" | "screenplay";
   annotations?: import("../../../shared/types/books").ChapterAnnotation[];
   name: string;
   description: ISlateCustomElement[];

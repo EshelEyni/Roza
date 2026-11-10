@@ -1,4 +1,7 @@
 import { ChapterPlanning } from "./ChapterPlanning";
+import { ChapterFormatDialog } from "./ChapterFormatDialog";
+import { proseBlocks, screenplayStart } from "./screenplay";
+import { downloadScreenplayPdf } from "./screenplayPdf";
 import { ItemMenu } from "./ItemMenu";
 import { CategorySelect } from "./CategorySelect";
 import {
@@ -187,6 +190,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   );
   const [size, setSize] = useState(() => preference("roza:studio:font", "20"));
   const [settings, setSettings] = useState(false);
+  const [formatChapter, setFormatChapter] = useState<string | null>(null);
   const [restoreKey, setRestoreKey] = useState(0);
   const [archived, setArchived] = useState<BookDataItem[]>([]);
   const items = book[category].filter(item => !item.isArchived);
@@ -337,6 +341,26 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       style={{ "--ws-font-size": `${size}px` } as React.CSSProperties}
     >
       {confirmationDialog}
+      {formatChapter &&
+        item?.type === "chapters" &&
+        item.id === formatChapter && (
+          <ChapterFormatDialog
+            key={item.id}
+            value={item.format || "prose"}
+            onClose={() => setFormatChapter(null)}
+            onApply={format => {
+              if (!store.recovery) {
+                const text =
+                  format === "prose"
+                    ? proseBlocks(item.text)
+                    : screenplayStart(item.text);
+                updateItem({ format, text });
+                if (text !== item.text) setRestoreKey(key => key + 1);
+              }
+              setFormatChapter(null);
+            }}
+          />
+        )}
       <header className="ws-header">
         <button
           className="ws-back"
@@ -489,6 +513,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           </button>
           <button onClick={() => download(book, "html")}>
             Export manuscript (.html)
+          </button>
+          <button onClick={() => downloadScreenplayPdf(book)}>
+            Export screenplay (.pdf)
+          </button>
+          <button onClick={() => download(book, "fountain")}>
+            Export screenplay (.fountain)
           </button>
           <p>
             HTML preserves formatting and chapter order. Open it in your browser
@@ -668,6 +698,15 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   <ItemMenu>
                     <summary>More</summary>
                     <div>
+                      {item.type === "chapters" && !preview && (
+                        <button
+                          type="button"
+                          disabled={!!store.recovery}
+                          onClick={() => setFormatChapter(item.id)}
+                        >
+                          Chapter Format
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => void leave(`/book/${book.id}`)}
@@ -754,6 +793,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     ) : (
                       <ManuscriptEditor
                         key={`${item.id}:${restoreKey}`}
+                        format={
+                          item.type === "chapters" ? item.format : "prose"
+                        }
                         value={text}
                         readOnly={preview || !!store.recovery}
                         annotations={

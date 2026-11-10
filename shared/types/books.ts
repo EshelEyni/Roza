@@ -100,6 +100,7 @@ export interface ChapterPlanning {
 
 export interface Chapter extends BasicBookDataItem {
   planning?: ChapterPlanning;
+  format?: "prose" | "screenplay";
   annotations?: ChapterAnnotation[];
   name: string;
   description: SlateCustomElement[];
@@ -140,7 +141,19 @@ export type BooKDataItemType =
   | "plotlines"
   | "notes";
 
+export type ScreenplayType =
+  | "scene_heading"
+  | "action"
+  | "character"
+  | "dialogue"
+  | "parenthetical"
+  | "transition";
+export interface ScreenplayElement extends BaseElement {
+  type: ScreenplayType;
+  children: SlateCustomText[];
+}
 export type SlateElementType =
+  | ScreenplayType
   | "paragraph"
   | "heading-one"
   | "heading-two"
@@ -187,6 +200,7 @@ export interface BlockQuoteElement extends BaseElement {
 }
 
 export type SlateCustomElement =
+  | ScreenplayElement
   | ListItemElement
   | ListElement
   | ParagraphElement
