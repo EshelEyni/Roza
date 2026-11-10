@@ -439,7 +439,9 @@
   color: var(--ws-accent);
   background: transparent;
   border-radius: 0;
-  box-shadow: inset 0 -2px 0 var(--ws-accent);
+  box-shadow: none;
+  font-weight: 700;
+  text-decoration: none;
 }
 
 .cp-elements-header {
