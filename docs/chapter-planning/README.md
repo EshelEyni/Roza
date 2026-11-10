@@ -1,0 +1,58 @@
+# Chapter planning (Ticket 8)
+
+Branch: `feature/chapter-planning`, based on verified `origin/main` commit `04f07d4342fac11188b8b5af3ba348ef7fe1897e`.
+
+## Connected workspaces
+
+Chapter Planning is collapsed by default in Chapters and Chapter Preview. Its Summary, Tasks, Characters, Themes and Plotlines sections expand independently. Expanded content scrolls within a bounded area, leaving manuscript navigation available. Summary editing preserves rich text; character and plotline contribution notes are plain text stored on the chapter association.
+
+Tasks are existing book task-board cards, extended with optional `chapterId` and `completed`. The inspector creates, associates, renames, completes, reopens and deletes these same cards; Open in board opens the original card and list. The board supports chapter assignment/removal and a chapter filter. Completion is explicit, independent of editable board list names.
+
+Characters, themes and plotlines reuse the existing book libraries. Story Bible adds profiles, role/general notes, optional theme/plotline colors, chapter associations and an ordered manuscript timeline. The older category editors and Story Bible edit the same records. Chapters link to entity IDs, with separate contribution notes for plotlines and characters. Theme tags and compact counts appear on overview cards; filters cover all three libraries and unfinished tasks. Reordering is disabled while filtering to avoid ambiguous moves, while chapter editing remains available.
+
+## Database migration and API
+
+This is an additive, backward-compatible Mongoose schema migration. No bulk rewrite or production database command is required or performed. Existing manuscripts, IDs, rich text, descriptions and task-board cards remain in place. Chapters without `planning` behave as empty plans. Existing task cards default to incomplete; no status is guessed from renamed/localized list titles. Planning and task fields are initialized when first edited and saved using the existing book PATCH API.
+
+Added fields:
+
+- `chapters[].planning.{themes,plotlines,characters}[]`: `{ entityId, note? }`.
+- `taskBoard.lists[].cards[].chapterId?`, `completed?`.
+- `characters[].role?`, `notes?`.
+- `themes[].color?`, `plotlines[].color?`.
+
+The existing authenticated owner-scoped book API, serialized autosave, optimistic `updatedAt` conflict check and browser recovery store are reused. Server validation runs before updates and rejects unknown book-local references, duplicate associations, mismatched item `bookId` values and malformed collections. Schema validation enforces colors and note lengths. Chapter and entity archive actions preserve records and references; archived entities are hidden from active pickers. Hard removal of a referenced record is rejected until its references are removed. Archiving a chapter never deletes shared entities or board tasks.
+
+For rollout, release the backend schema and frontend together (or backend first). An older backend does not know the new fields. Rollback should retain the additive database fields and avoid saving planning-bearing books through an older backend. No deployment was performed.
+
+## Verification
+
+- Frontend production build / TypeScript check.
+- Shared and backend TypeScript project build (`tsc -b shared backend`).
+- Frontend lint: zero errors; existing repository warnings only.
+- Backend lint for all touched source files.
+- 26 focused Node tests: chapter planning/schema, task board, draft saving/recovery, annotations and rendering.
+- 9 book API tests: authorization scoping, atomic conflict handling, archive preservation, invalid cross-book planning and tasks.
+- Browser integration: entity creation/reuse, character role, separate contribution notes, board context, completion/reopening in preview, persisted refresh, overview filters, keyboard reordering, desktop/tablet/mobile widths and Hebrew/English text. API responses are supplied by the test fixture; schema round trips separately cover Mongoose persistence shape.
+- Existing task-board and writing-studio browser regressions.
+
+Screenshots are in `docs/chapter-planning/screenshots/`.
+
+Known baseline issue: `scripts/writing-studio-details.test.cjs` has a palette-only assertion that fails on hard-coded shadow colors already present in `origin/main`'s `writingStudio.css`; the rendering test in that file passes. Vite also reports the existing large-chunk and outdated Browserslist warnings.
+
+## Limits
+
+No live production database or touch hardware was used. Shared elements are archived, not permanently deleted; restoring archived elements has no new UI. The entire book still uses the existing whole-document save architecture, with its version conflict protection. Large-book optimization and translations of new interface labels are outside this ticket; Hebrew and English content and direction are supported.
+
+Reproduce the main checks from the worktree:
+
+```powershell
+node frontend/node_modules/typescript/bin/tsc -b shared backend
+node --test scripts/chapter-planning.test.cjs scripts/task-board.test.cjs scripts/writing-studio.test.cjs scripts/writing-annotations.test.cjs scripts/writing-annotations-schema.test.cjs
+# From frontend/: npm run lint; npm run build
+# From backend/: node node_modules/jest/bin/jest.js --runInBand --watchAll=false src/controllers/book/bookStudio.test.ts
+# With PLAYWRIGHT_MODULE pointing to an installed Playwright package:
+node --test --test-concurrency=1 scripts/chapter-planning.browser.test.cjs scripts/task-board.browser.test.cjs scripts/writing-studio.browser.test.cjs
+```
+
+Run browser checks after builds finish: a concurrent Vite build can trigger a fixture page reload. The browser suites launch local test servers and Edge; they do not contact production.
