@@ -53,6 +53,9 @@ function cleanCss(css: string): string {
 
 function cleanDocument(source: string): string {
   const body = sanitizeHtml(source, {
+    // EPUB XHTML uses empty anchors such as <a id="note1"/>.
+    // Respect their closing slash so following prose is not wrapped in an anchor.
+    parser: { recognizeSelfClosing: true },
     allowedTags: [
       "html",
       "head",
@@ -75,7 +78,7 @@ function cleanDocument(source: string): string {
       "br",
     ],
     allowedAttributes: {
-      "*": ["id", "class", "lang", "dir", "title"],
+      "*": ["id", "class", "lang", "dir", "title", "epub:type", "role", "hidden"],
       html: ["xmlns", "xmlns:epub", "lang", "dir"],
       a: ["href", "name"],
       img: ["src", "alt", "width", "height"],
@@ -87,6 +90,10 @@ function cleanDocument(source: string): string {
     allowProtocolRelative: false,
     allowVulnerableTags: true,
     transformTags: {
+      nav: (_tag, attributes) => ({
+        tagName: "nav",
+        attribs: { ...attributes, ...("hidden" in attributes ? { hidden: "hidden" } : {}) },
+      }),
       // Common EPUB covers wrap a raster image in SVG. Keep the image without SVG active content.
       svg: () => ({ tagName: "div", attribs: {} }),
       image: (_tag, attributes) => ({
@@ -94,15 +101,13 @@ function cleanDocument(source: string): string {
         attribs: { src: attributes["xlink:href"] || attributes.href || "", alt: "" },
       }),
       style: (_tag, attributes) => ({ tagName: "style", attribs: attributes }),
-      a: (_tag, attributes) => ({
-        tagName: "a",
-        attribs: {
-          ...attributes,
-          href: /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(attributes.href || "")
-            ? ""
-            : attributes.href || "",
-        },
-      }),
+      a: (_tag, attributes) => {
+        const attribs = { ...attributes };
+        // Note targets are anchors, but must not become links with an empty href.
+        if (!attribs.href || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(attribs.href))
+          delete attribs.href;
+        return { tagName: "a", attribs };
+      },
     },
     exclusiveFilter: frame => frame.tag === "link" && frame.attribs.rel !== "stylesheet",
   });

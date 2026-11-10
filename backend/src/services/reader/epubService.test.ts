@@ -1,5 +1,6 @@
 import AdmZip from "adm-zip";
 import fs from "fs";
+import { DOMParser } from "@xmldom/xmldom";
 import { XMLValidator } from "fast-xml-parser";
 import { parseEpub, MAX_EPUB_SIZE } from "./epubService";
 
@@ -32,7 +33,7 @@ function makeEpub({
   zip.addFile(
     "OEBPS/chapter.xhtml",
     Buffer.from(
-      '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter</title></head><body>' +
+      '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Chapter</title></head><body>' +
         body +
         "</body></html>",
     ),
@@ -61,6 +62,60 @@ describe("EPUB import", () => {
     const chapter = new AdmZip(result.buffer).readAsText("OEBPS/chapter.xhtml");
     expect(chapter).toContain('src="../Images/cover.jpg"');
     expect(chapter).not.toMatch(/<svg|<script|xlink:/);
+  });
+
+  it("preserves EPUB navigation semantics, labels, and hidden auxiliary navigation", () => {
+    const zip = makeEpub({ extra: '<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/>' });
+    zip.addFile("OEBPS/nav.xhtml", Buffer.from(
+      '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body>' +
+      '<nav epub:type="toc" id="toc"><ol><li><a href="chapter.xhtml#chapter">Chapter 10: Texas Coed</a></li></ol></nav>' +
+      '<nav epub:type="page-list" role="doc-pagelist" hidden=""><ol><li><a href="chapter.xhtml#page1">1</a></li></ol></nav>' +
+      '</body></html>',
+    ));
+    const archive = new AdmZip(parseEpub(zip.toBuffer(), "test.epub").buffer);
+    const source = archive.readAsText("OEBPS/nav.xhtml");
+    expect(XMLValidator.validate(source)).toBe(true);
+    const doc = new DOMParser().parseFromString(source, "application/xhtml+xml");
+    const navs = doc.getElementsByTagName("nav");
+    expect(navs[0].getAttributeNS("http://www.idpf.org/2007/ops", "type")).toBe("toc");
+    const link = navs[0].getElementsByTagName("a")[0];
+    expect(link.textContent).toBe("Chapter 10: Texas Coed");
+    expect(link.getAttribute("href")).toBe("chapter.xhtml#chapter");
+    expect(navs[1].getAttribute("epub:type")).toBe("page-list");
+    expect(navs[1].hasAttribute("hidden")).toBe(true);
+    expect(navs[1].getAttribute("role")).toBe("doc-pagelist");
+  });
+
+  it("keeps self-closing note targets empty without turning surrounding prose into links", () => {
+    const body = '<p>Before <a id="note371"/>First paragraph <i>emphasis</i>.</p>' +
+      '<p><a id="note372"/>Second paragraph.</p><a href="#note371" epub:type="noteref">Note</a>';
+    const archive = new AdmZip(parseEpub(makeEpub({ body }).toBuffer(), "test.epub").buffer);
+    const source = archive.readAsText("OEBPS/chapter.xhtml");
+    expect(XMLValidator.validate(source)).toBe(true);
+    const doc = new DOMParser().parseFromString(source, "application/xhtml+xml");
+    const anchors = doc.getElementsByTagName("a");
+    expect(anchors.length).toBe(3);
+    for (const target of [anchors[0], anchors[1]]) {
+      expect(target.textContent).toBe("");
+      expect(target.hasAttribute("href")).toBe(false);
+    }
+    expect(doc.getElementsByTagName("p")[0].textContent).toBe("Before First paragraph emphasis.");
+    expect(doc.getElementsByTagName("p")[1].textContent).toBe("Second paragraph.");
+    expect(anchors[2].getAttribute("href")).toBe("#note371");
+    expect(anchors[2].getAttribute("epub:type")).toBe("noteref");
+  });
+
+  it("still strips executable content and unsafe links with XHTML self-closing elements", () => {
+    const body = '<script src="https://evil.test/run.js"/><iframe src="https://evil.test/frame"/>' +
+      '<p><a id="target" onclick="alert(1)"/>Safe text</p>' +
+      '<a href="jav&#x61;script:alert(1)" epub:type="noteref">Bad link</a>' +
+      '<a href="//evil.test">External link</a><img src="https://evil.test/img" onerror="alert(1)"/>';
+    const archive = new AdmZip(parseEpub(makeEpub({ body }).toBuffer(), "test.epub").buffer);
+    const source = archive.readAsText("OEBPS/chapter.xhtml");
+    expect(source).not.toMatch(/<script|<iframe|onclick|onerror|javascript:|evil\.test/i);
+    expect(source).toContain("Safe text");
+    expect(source).toContain("default-src 'none'");
+    expect(XMLValidator.validate(source)).toBe(true);
   });
 
   it("uses the filename when a title is missing", () => {

@@ -20,7 +20,7 @@ export function applyPreferences(
     "p, li, blockquote": {
       "line-height": preferences.lineHeight + " !important",
     },
-    a: {
+    "a[href]": {
       color:
         preferences.theme === "dark"
           ? "#d5b88d !important"
