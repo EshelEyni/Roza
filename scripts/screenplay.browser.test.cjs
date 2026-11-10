@@ -231,8 +231,36 @@ test(
       const base = server.resolvedUrls.local[0];
 
       await page.goto(base + "book-edit/" + initial.id);
-      const mode = page.getByLabel("Chapter format", { exact: true });
-      await mode.selectOption("screenplay");
+      const openFormat = async () => {
+        await page.locator(".ws-item-menu > summary").click();
+        await page
+          .getByRole("button", { name: "Chapter Format", exact: true })
+          .click();
+        return page.getByRole("dialog", {
+          name: "Chapter Format",
+          exact: true,
+        });
+      };
+      assert.equal(
+        await page
+          .getByRole("combobox", { name: "Chapter format", exact: true })
+          .count(),
+        0,
+      );
+      let formatDialog = await openFormat();
+      await formatDialog.getByRole("radio", { name: /Screenplay/ }).check();
+      await formatDialog
+        .getByRole("button", { name: "Cancel", exact: true })
+        .click();
+      assert.equal(await page.locator(".sp-tools").count(), 0);
+      formatDialog = await openFormat();
+      await formatDialog.getByRole("radio", { name: /Screenplay/ }).check();
+      await page.screenshot({
+        path: path.join(screenshots, "chapter-format-dialog.png"),
+      });
+      await formatDialog
+        .getByRole("button", { name: "Apply format", exact: true })
+        .click();
       const editor = page.getByRole("textbox", {
         name: "Manuscript",
         exact: true,
@@ -262,26 +290,67 @@ test(
       assert.equal(saved.chapters[0].format, "screenplay");
       assert.ok(saved.chapters[0].text.some((b) => b.type === "dialogue"));
       await page.reload();
-      await mode.waitFor();
-      assert.equal(await mode.inputValue(), "screenplay");
+      await editor.waitFor();
+      formatDialog = await openFormat();
+      assert.equal(
+        await formatDialog
+          .getByRole("radio", { name: /Screenplay/ })
+          .isChecked(),
+        true,
+      );
+      await page.keyboard.press("Escape");
       assert.ok(
         await editor.innerText().then((t) => t.includes("Hello there.")),
       );
-      await editor.click();await page.keyboard.press("Control+End");await page.keyboard.press("Enter");
-      await page.getByLabel("Screenplay element",{exact:true}).selectOption("character");
+      await editor.click();
+      await page.keyboard.press("Control+End");
+      await page.keyboard.press("Enter");
+      await page
+        .getByLabel("Screenplay element", { exact: true })
+        .selectOption("character");
       await page.keyboard.type("ELIJAH");
-      await page.getByRole("button",{name:"Add ELIJAH to Character Library",exact:true}).click();
-      await page.getByLabel("Character library",{exact:true}).selectOption("ELIJAH");
-      await page.keyboard.press("Enter");await page.keyboard.type("Good morning.");
+      await page
+        .getByRole("button", {
+          name: "Add ELIJAH to Character Library",
+          exact: true,
+        })
+        .click();
+      await page
+        .getByLabel("Character library", { exact: true })
+        .selectOption("ELIJAH");
+      await page.keyboard.press("Enter");
+      await page.keyboard.type("Good morning.");
       await page.getByLabel("Tab cycles elements (Escape to release)").check();
-      await editor.click();await page.keyboard.press("Control+End");await page.keyboard.press("Tab");
+      await editor.click();
+      await page.keyboard.press("Control+End");
+      await page.keyboard.press("Tab");
       await page.keyboard.press("Escape");
-      assert.equal(await page.getByLabel("Tab cycles elements (Escape to release)").isChecked(),false);
-      await editor.evaluate(el=>{const data=new DataTransfer();data.setData("text/plain","\nINT. HALL - NIGHT\n\nMARA\n(softly)\nWelcome.");el.dispatchEvent(new ClipboardEvent("paste",{clipboardData:data,bubbles:true,cancelable:true}));});
-      assert.ok(await editor.locator('.sp-scene_heading').count()>=2);
+      assert.equal(
+        await page
+          .getByLabel("Tab cycles elements (Escape to release)")
+          .isChecked(),
+        false,
+      );
+      await editor.evaluate((el) => {
+        const data = new DataTransfer();
+        data.setData(
+          "text/plain",
+          "\nINT. HALL - NIGHT\n\nMARA\n(softly)\nWelcome.",
+        );
+        el.dispatchEvent(
+          new ClipboardEvent("paste", {
+            clipboardData: data,
+            bubbles: true,
+            cancelable: true,
+          }),
+        );
+      });
+      assert.ok((await editor.locator(".sp-scene_heading").count()) >= 2);
       await page.waitForTimeout(2200);
-      assert.ok(saved.characters.some(c=>c.name === "ELIJAH"));
-      await page.screenshot({path:path.join(screenshots,"screenplay-desktop.png")});
+      assert.ok(saved.characters.some((c) => c.name === "ELIJAH"));
+      await page.screenshot({
+        path: path.join(screenshots, "screenplay-desktop.png"),
+      });
       await page.setViewportSize({ width: 390, height: 844 });
       assert.ok(
         await page.evaluate(

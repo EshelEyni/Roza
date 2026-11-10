@@ -1,3 +1,4 @@
+import { ChapterFormatDialog } from "./ChapterFormatDialog";
 import { downloadScreenplayPdf } from "./screenplayPdf";
 import { ItemMenu } from "./ItemMenu";
 import { CategorySelect } from "./CategorySelect";
@@ -167,6 +168,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   );
   const [size, setSize] = useState(() => preference("roza:studio:font", "20"));
   const [settings, setSettings] = useState(false);
+  const [formatChapter, setFormatChapter] = useState<string | null>(null);
   const [restoreKey, setRestoreKey] = useState(0);
   const [archived, setArchived] = useState<BookDataItem[]>([]);
   const items = book[category].filter((item) => !item.isArchived);
@@ -314,6 +316,19 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       style={{ "--ws-font-size": `${size}px` } as React.CSSProperties}
     >
       {confirmationDialog}
+      {formatChapter &&
+        item?.type === "chapters" &&
+        item.id === formatChapter && (
+          <ChapterFormatDialog
+            key={item.id}
+            value={item.format || "prose"}
+            onClose={() => setFormatChapter(null)}
+            onApply={(format) => {
+              if (!store.recovery) updateItem({ format });
+              setFormatChapter(null);
+            }}
+          />
+        )}
       <header className="ws-header">
         <button
           className="ws-back"
@@ -643,6 +658,15 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   <ItemMenu>
                     <summary>More</summary>
                     <div>
+                      {item.type === "chapters" && !preview && (
+                        <button
+                          type="button"
+                          disabled={!!store.recovery}
+                          onClick={() => setFormatChapter(item.id)}
+                        >
+                          Chapter Format
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => void leave(`/book/${book.id}`)}
@@ -675,25 +699,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   onChange={(event) => updateItem({ name: event.target.value })}
                 />
 
-                {item.type === "chapters" && !preview && (
-                  <label>
-                    Chapter format{" "}
-                    <select
-                      aria-label="Chapter format"
-                      disabled={!!store.recovery}
-                      value={item.format || "prose"}
-                      onChange={(event) =>
-                        updateItem({
-                          format: event.target.value as "prose" | "screenplay",
-                        })
-                      }
-                    >
-                      <option value="prose">Prose</option>
-                      <option value="screenplay">Screenplay</option>
-                    </select>
-                    <small> Existing text and block types are preserved.</small>
-                  </label>
-                )}
                 {summary && item.type === "chapters" ? (
                   <section
                     id="ws-chapter-summary"
