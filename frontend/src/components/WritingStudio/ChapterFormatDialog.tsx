@@ -96,10 +96,6 @@ export function ChapterFormatDialog({
             </dd>
             <dt>Escape</dt>
             <dd>Turn off Tab cycling.</dd>
-            <dt>Ctrl/Cmd+Z</dt>
-            <dd>Undo.</dd>
-            <dt>Ctrl/Cmd+Shift+Z</dt>
-            <dd>Redo.</dd>
           </dl>
         </section>
       )}
