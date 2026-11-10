@@ -1,9 +1,10 @@
 import type { BooKDataItemType } from "../../../../shared/types/books";
 
-export type StudioSection = BooKDataItemType | "overview" | "tasks";
+export type StudioSection = BooKDataItemType | "overview" | "tasks" | "bible";
 export const studioSections: StudioSection[] = [
   "chapters",
   "overview",
+  "bible",
   "characters",
   "plotlines",
   "themes",
@@ -11,6 +12,6 @@ export const studioSections: StudioSection[] = [
   "tasks",
 ];
 export const sectionLabel = (value: StudioSection) =>
-  value === "overview"
+  value === "bible" ? "Story Bible" : value === "overview"
     ? "Chapter Overview"
     : value[0].toUpperCase() + value.slice(1);

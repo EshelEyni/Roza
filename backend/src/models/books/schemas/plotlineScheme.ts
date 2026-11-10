@@ -6,6 +6,7 @@ import { getDefaultSlateElement } from "../../../services/util/utilService";
 
 const plotlineSchema = new Schema<IPlotline>(
   {
+    color: { type: String, default: "", validate: (v: string) => !v || /^#[0-9a-f]{6}$/i.test(v) },
     bookId: {
       type: Schema.Types.ObjectId,
       required: [true, "Please provide a book id"],

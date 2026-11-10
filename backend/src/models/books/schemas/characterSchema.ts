@@ -5,6 +5,8 @@ import { getDefaultSlateElement } from "../../../services/util/utilService";
 
 const characterSchema = new Schema<ICharacter>(
   {
+    role: { type: String, default: "", maxlength: 500 },
+    notes: { type: String, default: "", maxlength: 50000 },
     bookId: {
       type: Schema.Types.ObjectId,
       required: [true, "Please provide a book id"],

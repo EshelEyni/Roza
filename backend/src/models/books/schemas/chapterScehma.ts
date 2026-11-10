@@ -34,8 +34,16 @@ const annotationSchema = new Schema(
   { _id: false },
 );
 
+const linkSchema = new Schema({
+  entityId: { type: String, required: true, match: /^[a-f0-9]{24}$/i },
+  note: { type: String, default: "", maxlength: 50000 },
+}, { _id: false });
+const planningSchema = new Schema({
+  themes: [linkSchema], plotlines: [linkSchema], characters: [linkSchema],
+}, { _id: false });
 const chapterSchema = new Schema<IChapter>(
   {
+    planning: { type: planningSchema, default: undefined },
     annotations: { type: [annotationSchema], default: undefined },
     bookId: {
       type: Schema.Types.ObjectId,

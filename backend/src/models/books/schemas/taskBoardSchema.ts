@@ -17,6 +17,8 @@ const card = new Schema(
   {
     id,
     title: text,
+    chapterId: { type: String, default: "", maxlength: 100 },
+    completed: { type: Boolean, default: false },
     description: { type: String, default: "", maxlength: 100000 },
     dueDate: {
       type: String,

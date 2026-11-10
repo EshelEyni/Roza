@@ -1,3 +1,4 @@
+import { ChapterPlanning, PlanningBadges, PlanningFilter, matchesPlanning, PlanningNavigation } from "./ChapterPlanning";
 import { ItemMenu } from "./ItemMenu";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -74,7 +75,9 @@ function Card({
   onSummary,
   onRename,
   onDelete,
+  book,
 }: {
+  book: Book;
   chapter: Chapter;
   index: number;
   selected: boolean;
@@ -148,6 +151,7 @@ function Card({
       >
         {summary || "No summary yet. Give this chapter a place in your story."}
       </div>
+      <PlanningBadges book={book} chapter={chapter} />
       <div className="ws-card-bottom">
         <small>{countWords.toLocaleString()} words</small>
         <button disabled={locked} onClick={onSummary}>
@@ -176,9 +180,11 @@ export function ChapterOverview({
   selected,
   onChapterEdited,
   onOpenChapter,
+  planningNavigation,
 }: {
   book: Book;
   store: DraftStore;
+  planningNavigation: PlanningNavigation;
   selected: string;
   onChapterEdited: (id: string) => void;
   onOpenChapter: (id: string) => void;
@@ -187,6 +193,7 @@ export function ChapterOverview({
     () => book.chapters.filter((c) => !c.isArchived),
     [book.chapters],
   );
+  const [planningFilter, setPlanningFilter] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const edited = useRef(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -298,6 +305,7 @@ export function ChapterOverview({
       <div role="status" className="ws-sr-only">
         {announcement}
       </div>
+      <PlanningFilter book={book} value={planningFilter} onChange={setPlanningFilter} />
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -314,13 +322,14 @@ export function ChapterOverview({
           strategy={rectSortingStrategy}
         >
           <div className="ws-board">
-            {chapters.map((chapter, index) => (
+            {chapters.filter(c => matchesPlanning(book, c, planningFilter)).map((chapter) => (
               <Card
                 key={chapter.id}
                 chapter={chapter}
-                index={index}
+                book={book}
+                index={chapters.indexOf(chapter)}
                 selected={chapter.id === selected}
-                locked={!!store.recovery}
+                locked={!!store.recovery || !!planningFilter}
                 onPreview={() => setPreviewId(chapter.id)}
                 onEdit={() => setEditId(chapter.id)}
                 onSummary={() => setSummaryId(chapter.id)}
@@ -437,6 +446,7 @@ export function ChapterOverview({
               </button>
             </header>
             <div className="ws-chapter-reading" key={current.id}>
+              <ChapterPlanning key={`planning:${current.id}`} store={store} chapter={current} onChapter={id => { void store.flush(); setEditId(null); setSummaryId(null); setPreviewId(id); }} onEntity={(kind, id) => { closePanel(); planningNavigation.onEntity(kind, id); }} onTask={id => { closePanel(); planningNavigation.onTask(id); }} />
               {editing ? (
                 <>
                   <p className="ws-muted">Changes save automatically.</p>

@@ -1,3 +1,4 @@
+import { validatePlanning } from "./planningValidation";
 import { Types } from "mongoose";
 import { BookModel } from "../../models/books/bookModel";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
@@ -42,6 +43,8 @@ const getBookById = asyncErrorCatcher(async (req: Request, res: Response, next: 
 
 const addBook = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
   const loggedInUserId = getLoggedInUserIdFromReq();
+  try { validatePlanning(req.body, String(req.body.id || req.body._id || "")); }
+  catch (error) { throw new AppError((error as Error).message, 400); }
   const book = await BookModel.create({ ...req.body, userId: loggedInUserId });
 
   res.status(201).json({
@@ -107,6 +110,8 @@ const updateBook = asyncErrorCatcher(async (req: Request, res: Response, next: N
       ];
     } else changes[field] = req.body[field];
   }
+  try { validatePlanning({ ...current, ...changes }, id); }
+  catch (error) { throw new AppError((error as Error).message, 400); }
   // Atomic compare-and-swap protects simultaneous requests too.
   const book = await BookModel.findOneAndUpdate(
     { _id: id, userId: loggedInUserId, updatedAt: current.updatedAt },

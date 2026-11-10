@@ -97,7 +97,8 @@ function Sortable({
     </div>
   );
 }
-export function TaskBoardView({ store }: { store: DraftStore }) {
+export function TaskBoardView({ store, initialTaskId = "" }: { store: DraftStore; initialTaskId?: string }) {
+  const [chapterFilter, setChapterFilter] = useState("");
   const [confirmation, setConfirmation] = useState<{
     message: string;
     action: () => void;
@@ -105,7 +106,7 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
   const [initial] = useState(emptyBoard);
   const board = store.book.taskBoard || initial;
   const [creatingIn, setCreatingIn] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(initialTaskId || null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, {
@@ -145,6 +146,7 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
         </div>
         <span>{board.lists.reduce((n, l) => n + l.cards.length, 0)} tasks</span>
       </div>
+      <label className="cp-filter">Chapter <select aria-label="Filter tasks by chapter" value={chapterFilter} onChange={e => setChapterFilter(e.target.value)}><option value="">All chapters</option>{store.book.chapters.filter(c => !c.isArchived).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
       <fieldset disabled={!!store.recovery}>
         <DndContext
           sensors={sensors}
@@ -201,7 +203,7 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="tb-cards">
-                      {l.cards.map(c => (
+                      {l.cards.filter(c => !chapterFilter || c.chapterId === chapterFilter).map(c => (
                         <Sortable key={c.id} id={c.id} kind="card">
                           <button
                             className="tb-card-open"
@@ -221,6 +223,8 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                               {c.title}
                             </span>
                             <div className="tb-meta">
+                              {c.completed && <span>✓ Completed</span>}
+                              {c.chapterId && <span dir="auto">{store.book.chapters.find(ch => ch.id === c.chapterId)?.name || "Archived chapter"}</span>}
                               {c.dueDate && (
                                 <time dateTime={c.dueDate}>◷ {c.dueDate}</time>
                               )}
@@ -275,6 +279,7 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
                             ...x.cards,
                             {
                               id: uid(),
+                              chapterId: chapterFilter,
                               title,
                               description: "",
                               dueDate: "",
@@ -332,6 +337,7 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
       </fieldset>
       {card && list && (
         <CardDialog
+          chapters={store.book.chapters}
           card={card}
           list={list}
           update={updateCard}
@@ -369,12 +375,14 @@ export function TaskBoardView({ store }: { store: DraftStore }) {
 }
 function CardDialog({
   card,
+  chapters,
   list,
   update,
   close,
   remove,
   disabled,
 }: {
+  chapters: import("../../../../shared/types/books").Chapter[];
   card: TaskCard;
   list: TaskList;
   update: (patch: Partial<TaskCard>) => void;
@@ -414,6 +422,8 @@ function CardDialog({
             }}
           />
         </label>
+        <label>Chapter<select aria-label="Task chapter" value={card.chapterId || ""} onChange={e => update({chapterId: e.target.value})}><option value="">Book-wide task</option>{chapters.map(c => <option key={c.id} value={c.id}>{c.name}{c.isArchived ? " (archived)" : ""}</option>)}</select></label>
+        <label><input type="checkbox" checked={!!card.completed} onChange={e => update({completed: e.target.checked})} /> Completed</label>
         <label>
           Description
           <textarea

@@ -30,6 +30,8 @@ export interface Reference {
 }
 
 export interface TaskCard {
+  chapterId?: string;
+  completed?: boolean;
   id: string;
   title: string;
   description: string;
@@ -85,7 +87,12 @@ export interface ChapterAnnotation {
   quote: string;
 }
 
+export type StoryKind = "themes" | "plotlines" | "characters";
+export interface ChapterLink { entityId: string; note?: string }
+export interface ChapterPlanning { themes: ChapterLink[]; plotlines: ChapterLink[]; characters: ChapterLink[] }
+
 export interface Chapter extends BasicBookDataItem {
+  planning?: ChapterPlanning;
   annotations?: ChapterAnnotation[];
   name: string;
   description: SlateCustomElement[];
@@ -94,18 +101,22 @@ export interface Chapter extends BasicBookDataItem {
 }
 
 export interface Character extends BasicBookDataItem {
+  role?: string;
+  notes?: string;
   name: string;
   description: SlateCustomElement[];
   type: "characters";
 }
 
 export interface Theme extends BasicBookDataItem {
+  color?: string;
   name: string;
   description: SlateCustomElement[];
   type: "themes";
 }
 
 export interface Plotline extends BasicBookDataItem {
+  color?: string;
   name: string;
   description: SlateCustomElement[];
   type: "plotlines";

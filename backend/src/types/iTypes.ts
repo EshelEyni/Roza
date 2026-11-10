@@ -54,6 +54,7 @@ export interface IBasicBookDataItem extends Document {
 }
 
 export interface IChapter extends IBasicBookDataItem {
+  planning?: import("../../../shared/types/books").ChapterPlanning;
   annotations?: import("../../../shared/types/books").ChapterAnnotation[];
   name: string;
   description: ISlateCustomElement[];
@@ -62,18 +63,22 @@ export interface IChapter extends IBasicBookDataItem {
 }
 
 export interface ICharacter extends IBasicBookDataItem {
+  role?: string;
+  notes?: string;
   name: string;
   description: ISlateCustomElement[];
   type: "characters";
 }
 
 export interface ITheme extends IBasicBookDataItem {
+  color?: string;
   name: string;
   description: ISlateCustomElement[];
   type: "themes";
 }
 
 export interface IPlotline extends IBasicBookDataItem {
+  color?: string;
   name: string;
   description: ISlateCustomElement[];
   type: "plotlines";

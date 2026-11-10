@@ -1,3 +1,4 @@
+import { ChapterPlanning, StoryBible } from "./ChapterPlanning";
 import { ItemMenu } from "./ItemMenu";
 import { CategorySelect } from "./CategorySelect";
 import {
@@ -104,8 +105,16 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     : "chapters";
   const overview = section === "overview";
   const tasks = section === "tasks";
+  const bible = section === "bible";
+  const [bibleTarget, setBibleTarget] = useState<{kind: import("../../../../shared/types/books").StoryKind; id: string}>({kind: "characters", id: ""});
+  const [taskTarget, setTaskTarget] = useState("");
+  const planningNavigation = {
+    onChapter: (id: string) => { setSelection(current => ({...current, chapters: id})); changeSection("chapters"); },
+    onEntity: (kind: import("../../../../shared/types/books").StoryKind, id: string) => { setBibleTarget({kind, id}); changeSection("bible"); },
+    onTask: (id: string) => { setTaskTarget(id); changeSection("tasks"); },
+  };
   const category: BooKDataItemType =
-    overview || tasks ? "chapters" : (section as BooKDataItemType);
+    overview || tasks || bible ? "chapters" : (section as BooKDataItemType);
   const [selection, setSelection] = useState<
     Partial<Record<BooKDataItemType, string>>
   >(() => {
@@ -486,7 +495,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         >
           ☰ {sectionLabel(section)}{" "}
           <span>
-            {!overview && !tasks && item
+            {!overview && !tasks && !bible && item
               ? itemName(item, items.indexOf(item))
               : "Choose a workspace"}
           </span>
@@ -511,7 +520,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             options={studioSections}
             onChange={changeSection}
           />
-          {!overview && !tasks && (
+          {!overview && !tasks && !bible && (
             <>
               <input
                 type="search"
@@ -577,6 +586,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           <ChapterOverview
             book={book}
             store={store}
+            planningNavigation={planningNavigation}
             selected={selected}
             onOpenChapter={(chapterId) => {
               setSelection((current) => ({ ...current, chapters: chapterId }));
@@ -589,13 +599,14 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         )}
         {tasks && (
           <div className="ws-task-surface">
-            <TaskBoardView store={store} />
+            <TaskBoardView store={store} initialTaskId={taskTarget} />
           </div>
         )}
+        {bible && <StoryBible key={`${bibleTarget.kind}:${bibleTarget.id}`} store={store} onChapter={planningNavigation.onChapter} selectedKind={bibleTarget.kind} selectedId={bibleTarget.id} />}
         <section
           className="ws-writing"
           aria-label="Writing workspace"
-          style={overview || tasks ? { display: "none" } : undefined}
+          style={overview || tasks || bible ? { display: "none" } : undefined}
         >
           {item ? (
             <>
@@ -668,6 +679,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   onChange={(event) => updateItem({ name: event.target.value })}
                 />
 
+                {item.type === "chapters" && <ChapterPlanning key={`planning:${item.id}`} store={store} chapter={item} {...planningNavigation} />}
                 {summary && item.type === "chapters" ? (
                   <section
                     id="ws-chapter-summary"
