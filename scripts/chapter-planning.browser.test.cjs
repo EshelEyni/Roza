@@ -217,7 +217,7 @@ test(
       const planning = page.locator('.ws-writing .cp-chapter-bible');
       assert.equal(await page.locator('.ws-writing .cp-inspector').count(),0);
       await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
-      await page.getByRole('heading',{name:'Chapter Bible - The house by the sea',exact:true}).waitFor();
+      await page.getByRole('heading',{name:'Chapter Bible',exact:true}).waitFor();
       assert.equal(await page.locator('.ws-writing .ws-page-footer').count(),0);
       assert.equal(await page.locator('.ws-writing .ws-chapter-title').count(),0);
       assert.equal(await planning.locator('[role=status]').count(),0);

@@ -207,3 +207,20 @@
     padding-right: 18px;
   }
 }
+.cp-chapter-context {
+  margin: 0 0 8px;
+  color: var(--ws-muted);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+.cp-chapter-context > span:first-child {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
+.cp-chapter-bible h1 {
+  margin: 0 0 24px;
+  font-size: clamp(32px, 3vw, 40px);
+  white-space: nowrap;
+}

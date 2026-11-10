@@ -4,7 +4,7 @@ Branch: `feature/chapter-planning`, based on verified `origin/main` commit `04f0
 
 ## Connected workspaces
 
-In Chapters, the Chapter Bible button immediately after More switches the manuscript page to a chapter workspace with Characters, Themes, Plotlines, Tasks and Summary navigation. Press it again, or choose Read/Summary/Annotations, to return to writing. Chapter Preview retains its collapsible Chapter Planning inspector. Both views edit the same shared records. The heading is Chapter Bible - [Chapter Title], the page matches manuscript editor width, and save state is shown only in the app header. Summary editing preserves rich text; character and plotline contribution notes are plain text stored on the chapter association.
+In Chapters, the Chapter Bible button immediately after More switches the manuscript page to a chapter workspace with Characters, Themes, Plotlines, Tasks and Summary navigation. Press it again, or choose Read/Summary/Annotations, to return to writing. Chapter Preview retains its collapsible Chapter Planning inspector. Both views edit the same shared records. A muted chapter number and name sit above the Chapter Bible heading, the page matches manuscript editor width, and save state is shown only in the app header. Summary editing preserves rich text; character and plotline contribution notes are plain text stored on the chapter association.
 
 Tasks are existing book task-board cards, extended with optional `chapterId` and `completed`. The inspector creates, associates, renames, completes, reopens and deletes these same cards; Open in board opens the original card and list. The board supports chapter assignment/removal and a chapter filter. Completion is explicit, independent of editable board list names.
 

@@ -169,10 +169,19 @@ export function ChapterPlanning({
     >
       {page ? (
         <>
-          <span className="ws-eyebrow">THE SHAPE OF THIS CHAPTER</span>
-          <h1>
-            Chapter Bible - <bdi>{chapter.name || "Untitled chapter"}</bdi>
-          </h1>
+          <p className="cp-chapter-context">
+            <span>
+              CHAPTER{" "}
+              {String(
+                book.chapters
+                  .filter(c => !c.isArchived)
+                  .findIndex(c => c.id === chapter.id) + 1,
+              ).padStart(2, "0")}
+            </span>
+            <span aria-hidden="true"> · </span>
+            <bdi>{chapter.name || "Untitled chapter"}</bdi>
+          </p>
+          <h1>Chapter Bible</h1>
           <nav className="cp-bible-nav" aria-label="Chapter Bible sections">
             {(
               ["characters", "themes", "plotlines", "tasks", "summary"] as const
