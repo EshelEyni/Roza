@@ -59,9 +59,6 @@ export function ChapterElements({
   return (
     <div className={`cp-elements cp-elements-${kind}`}>
       <header className="cp-elements-header">
-        <h2>
-          {kind[0].toUpperCase() + kind.slice(1)} <small>{linked.length}</small>
-        </h2>
         <button
           className="ws-primary"
           onClick={() => setCreating(value => !value)}

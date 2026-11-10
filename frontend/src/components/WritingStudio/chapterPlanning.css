@@ -441,3 +441,5 @@
   border-radius: 0;
   box-shadow: inset 0 -2px 0 var(--ws-accent);
 }
+
+.cp-elements-header { justify-content: flex-end; }
