@@ -24,29 +24,26 @@ export function ScreenplayToolbar({
   const currentScene = scenes.filter((scene) => scene.index <= index).at(-1);
   return (
     <div className="sp-tools">
-      <label>
-        Element{" "}
-        <select
-          aria-label="Screenplay element"
-          disabled={
-            !("children" in block) || !block.children.every(Text.isText)
-          }
-          title="Existing lists retain their structure; choose a text paragraph to change its element."
-          value={type}
-          onChange={(e) => {
-            Transforms.setNodes(editor, { type: e.target.value } as never, {
-              at: [index],
-            });
-            ReactEditor.focus(editor);
-          }}
-        >
-          {screenplayTypes.map((t) => (
-            <option key={t} value={t}>
-              {t.replace("_", " ")}
-            </option>
-          ))}
-        </select>
-      </label>
+      <select
+        aria-label="Screenplay element"
+        disabled={!("children" in block) || !block.children.every(Text.isText)}
+        title="Existing lists retain their structure; choose a text paragraph to change its element."
+        value={type}
+        onChange={(e) => {
+          Transforms.setNodes(editor, { type: e.target.value } as never, {
+            at: [index],
+          });
+          ReactEditor.focus(editor);
+        }}
+      >
+        {screenplayTypes.map((t) => (
+          <option key={t} value={t}>
+            {t
+              .replace("_", " ")
+              .replace(/\b\w/g, (letter) => letter.toUpperCase())}
+          </option>
+        ))}
+      </select>
       {type === "character" && (
         <label>
           Character{" "}
@@ -79,31 +76,28 @@ export function ScreenplayToolbar({
             Add {text} to Character Library
           </button>
         )}
-      <label>
-        Scenes ({scenes.length}){" "}
-        <select
-          aria-label="Scene navigation"
-          disabled={!scenes.length}
-          value={currentScene?.index ?? ""}
-          onChange={(event) => {
-            const scene = scenes.find(
-              (entry) => String(entry.index) === event.target.value,
-            );
-            if (!scene) return;
-            Transforms.select(editor, Editor.start(editor, [scene.index]));
-            ReactEditor.focus(editor);
-          }}
-        >
-          <option value="" disabled>
-            {scenes.length ? "Choose a scene" : "No scenes yet"}
+      <select
+        aria-label="Scene navigation"
+        disabled={!scenes.length}
+        value={currentScene?.index ?? ""}
+        onChange={(event) => {
+          const scene = scenes.find(
+            (entry) => String(entry.index) === event.target.value,
+          );
+          if (!scene) return;
+          Transforms.select(editor, Editor.start(editor, [scene.index]));
+          ReactEditor.focus(editor);
+        }}
+      >
+        <option value="" disabled>
+          {scenes.length ? "Choose a scene" : "No scenes yet"}
+        </option>
+        {scenes.map((scene, i) => (
+          <option key={scene.index} value={scene.index}>
+            {i + 1}. {scene.title}
           </option>
-          {scenes.map((scene, i) => (
-            <option key={scene.index} value={scene.index}>
-              {i + 1}. {scene.title}
-            </option>
-          ))}
-        </select>
-      </label>
+        ))}
+      </select>
     </div>
   );
 }

@@ -21,7 +21,13 @@ import {
   onFormatText,
 } from "../SlateTextEditor/textEditorService";
 
-function Toolbar({ onAddNote }: { onAddNote?: () => void }) {
+function Toolbar({
+  onAddNote,
+  screenplayControls,
+}: {
+  onAddNote?: () => void;
+  screenplayControls?: ReactNode;
+}) {
   const editor = useSlate() as ReturnType<typeof useSlate> & HistoryEditor;
   return (
     <div className="ws-toolbar" role="toolbar" aria-label="Text formatting">
@@ -80,17 +86,20 @@ function Toolbar({ onAddNote }: { onAddNote?: () => void }) {
       >
         ↷
       </button>
-      {onAddNote && (
-        <button
-          type="button"
-          className="ws-add-selection-note"
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={onAddNote}
-          title="Add note to selected text or current paragraph"
-        >
-          + Note
-        </button>
-      )}
+      <div className="ws-toolbar-end">
+        {screenplayControls}
+        {onAddNote && (
+          <button
+            type="button"
+            className="ws-add-selection-note"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={onAddNote}
+            title="Add note to selected text or current paragraph"
+          >
+            + Note
+          </button>
+        )}
+      </div>
     </div>
   );
 }
@@ -208,14 +217,16 @@ export function ManuscriptEditor({
           );
       }}
     >
-      {!readOnly && format === "screenplay" && (
-        <ScreenplayToolbar
-          characters={characters}
-          onCreateCharacter={onCreateCharacter}
-        />
-      )}
       {!readOnly && (
         <Toolbar
+          screenplayControls={
+            format === "screenplay" ? (
+              <ScreenplayToolbar
+                characters={characters}
+                onCreateCharacter={onCreateCharacter}
+              />
+            ) : undefined
+          }
           onAddNote={annotations !== undefined ? addSelectionNote : undefined}
         />
       )}
