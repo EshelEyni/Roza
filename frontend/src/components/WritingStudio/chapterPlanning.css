@@ -533,3 +533,28 @@
   font-size: 12px;
   color: var(--ws-muted);
 }
+/* Keep a compact search opposite the smaller entity actions. */
+.cp-elements-tools .cp-elements-search {
+  flex: 0 1 360px;
+  max-width: 40%;
+}
+.cp-elements-tools > button:first-of-type {
+  margin-inline-start: auto;
+}
+.ws .cp-elements-tools > button {
+  font-size: 0.85em;
+  padding: 6.8px 10.2px;
+  gap: 6px;
+}
+.ws .cp-elements-tools > .ws-primary {
+  padding: 10.2px 17px;
+}
+@media (max-width: 760px) {
+  .cp-elements-tools {
+    flex-wrap: wrap;
+  }
+  .cp-elements-tools .cp-elements-search {
+    flex: 1 0 100%;
+    max-width: none;
+  }
+}
