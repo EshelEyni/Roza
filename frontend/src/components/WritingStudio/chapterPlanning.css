@@ -442,4 +442,27 @@
   box-shadow: inset 0 -2px 0 var(--ws-accent);
 }
 
-.cp-elements-header { justify-content: flex-end; }
+.cp-elements-header {
+  justify-content: flex-end;
+}
+.cp-elements-tools > button {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.cp-elements-tools > select {
+  flex: 0 1 260px;
+}
+@media (max-width: 600px) {
+  .cp-elements-tools {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .cp-elements-tools .cp-elements-search {
+    flex-basis: 100%;
+  }
+  .cp-elements-tools > select {
+    flex: 1;
+    width: auto;
+  }
+}

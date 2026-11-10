@@ -58,16 +58,7 @@ export function ChapterElements({
   }
   return (
     <div className={`cp-elements cp-elements-${kind}`}>
-      <header className="cp-elements-header">
-        <button
-          className="ws-primary"
-          onClick={() => setCreating(value => !value)}
-          aria-expanded={creating}
-        >
-          <FiPlus aria-hidden="true" /> Add new {singular}
-        </button>
-      </header>
-      <div className="cp-elements-tools">
+      <header className="cp-elements-header cp-elements-tools">
         <label className="cp-elements-search">
           <FiSearch aria-hidden="true" />
           <input
@@ -78,6 +69,13 @@ export function ChapterElements({
             onChange={e => setSearch(e.target.value)}
           />
         </label>
+        <button
+          className="ws-primary"
+          onClick={() => setCreating(value => !value)}
+          aria-expanded={creating}
+        >
+          <FiPlus aria-hidden="true" /> Add new {singular}
+        </button>
         {!!available.length && (
           <select
             aria-label={`Associate ${kind} with chapter`}
@@ -98,7 +96,7 @@ export function ChapterElements({
             ))}
           </select>
         )}
-      </div>
+      </header>
       {creating && (
         <form
           className="cp-element-create"
