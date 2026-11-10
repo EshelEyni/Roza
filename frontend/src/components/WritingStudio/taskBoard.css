@@ -45,7 +45,7 @@
 }
 .tb-list {
   flex: 0 0 288px;
-  background: transparent;
+  background: var(--ws-paper);
   border: 1px solid var(--ws-line);
   border-radius: 8px;
   padding: 10px;

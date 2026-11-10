@@ -2033,7 +2033,10 @@ padding: 6px 10px;
 
 /* Boards share the manuscript layout and keep the section selector available. */
 .ws-layout > .ws-task-surface {
+  flex: 1;
   min-width: 0;
+  overflow: auto;
+  background: var(--ws-bg);
 }
 /* Only the reading pane scrolls, keeping the chapter controls visible. */
 .ws-chapter-dialog { overflow: hidden; }
@@ -2046,3 +2049,7 @@ padding: 6px 10px;
 @keyframes ws-preview-enter { from { opacity: .65; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .ws-chapter-reading > .ws-prose { animation: none; } }
 @media (max-width: 600px) { .ws-chapter-dialog > footer { gap: 8px; } .ws-chapter-dialog > footer > button { flex: 1 1 40%; } .ws-chapter-dialog h2 { font-size: 23px; overflow-wrap: anywhere; } }
+
+.ws-preview-open-chapter { display: inline-flex; align-items: center; border: 1px solid transparent; border-radius: 5px; font: inherit; white-space: nowrap; }
+.ws-chapter-dialog > footer > .ws-preview-done { margin-inline-start: auto; flex: 0 0 auto; }
+@media (max-width: 600px) { .ws-chapter-dialog > footer > .ws-preview-open-chapter { flex: 1 1 40%; justify-content: center; } }

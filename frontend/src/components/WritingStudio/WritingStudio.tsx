@@ -578,6 +578,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             book={book}
             store={store}
             selected={selected}
+            onOpenChapter={(chapterId) => {
+              setSelection((current) => ({ ...current, chapters: chapterId }));
+              changeSection("chapters");
+            }}
             onChapterEdited={(chapterId) => {
               if (chapterId === selected) setRestoreKey((n) => n + 1);
             }}

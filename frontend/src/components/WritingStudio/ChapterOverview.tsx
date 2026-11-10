@@ -155,13 +155,17 @@ function PreviewSummary({
   chapter,
   store,
   onChange,
+  editing,
 }: {
   chapter: Chapter;
   store: DraftStore;
   onChange: (value: Chapter["description"]) => void;
+  editing: boolean;
 }) {
-  const [editing, setEditing] = useState(false);
   const [expanded, setExpanded] = useState(true);
+  useEffect(() => {
+    if (editing) setExpanded(true);
+  }, [editing]);
   const text = plainText(chapter.description);
   return (
     <section className="ws-preview-summary" aria-label="Chapter summary">
@@ -182,20 +186,6 @@ function PreviewSummary({
         {store.state === "error" && (
           <button onClick={() => void store.flush()}>Retry save</button>
         )}
-        <button
-          disabled={!!store.recovery}
-          onClick={() => {
-            setExpanded(true);
-            setEditing(!editing);
-            void store.flush();
-          }}
-        >
-          {editing
-            ? "Done editing"
-            : text.trim()
-              ? "Edit Summary"
-              : "Add Summary"}
-        </button>
       </div>
       {expanded &&
         (editing ? (
@@ -331,11 +321,13 @@ export function ChapterOverview({
   store,
   selected,
   onChapterEdited,
+  onOpenChapter,
 }: {
   book: Book;
   store: DraftStore;
   selected: string;
   onChapterEdited: (id: string) => void;
+  onOpenChapter: (id: string) => void;
 }) {
   const chapters = useMemo(
     () => book.chapters.filter((c) => !c.isArchived),
@@ -343,6 +335,7 @@ export function ChapterOverview({
   );
   const [editId, setEditId] = useState<string | null>(null);
   const edited = useRef(false);
+  const [summaryEditingId, setSummaryEditingId] = useState<string | null>(null);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [summaryId, setSummaryId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState("");
@@ -389,12 +382,14 @@ export function ChapterOverview({
       dialog.current
         ?.querySelector<HTMLElement>('[aria-label="Close chapter panel"]')
         ?.focus();
+    setSummaryEditingId(null);
   }, [previewId]);
   function closePanel() {
     void store.flush();
     if (editId && edited.current) onChapterEdited(editId);
     edited.current = false;
     setEditId(null);
+    setSummaryEditingId(null);
     setPreviewId(null);
     setSummaryId(null);
   }
@@ -606,6 +601,7 @@ export function ChapterOverview({
                 <>
                   <PreviewSummary
                     key={current.id}
+                    editing={summaryEditingId === current.id}
                     chapter={current}
                     store={store}
                     onChange={(description) =>
@@ -632,7 +628,7 @@ export function ChapterOverview({
                       setPreviewId(chapters[chapters.indexOf(preview) - 1].id);
                     }}
                   >
-                    ← Previous Chapter
+                    ← Previous
                   </button>
                   <button
                     disabled={chapters.indexOf(preview) === chapters.length - 1}
@@ -641,9 +637,30 @@ export function ChapterOverview({
                       setPreviewId(chapters[chapters.indexOf(preview) + 1].id);
                     }}
                   >
-                    Next Chapter →
+                    Next →
                   </button>
                 </>
+              )}
+              {preview && !editing && (
+                <button
+                  className="ws-primary"
+                  disabled={!!store.recovery}
+                  onClick={() => {
+                    setSummaryEditingId(
+                      summaryEditingId === current.id ? null : current.id,
+                    );
+                    void store.flush();
+                    dialog.current
+                      ?.querySelector(".ws-chapter-reading")
+                      ?.scrollTo({ top: 0 });
+                  }}
+                >
+                  {summaryEditingId === current.id
+                    ? "Done editing"
+                    : plainText(current.description).trim()
+                      ? "Edit Summary"
+                      : "Add Summary"}
+                </button>
               )}
               {!editing && (
                 <button
@@ -657,7 +674,21 @@ export function ChapterOverview({
                   Edit chapter
                 </button>
               )}
-              <button onClick={closePanel}>Done</button>
+              {preview && !editing && (
+                <a
+                  className="ws-primary ws-preview-open-chapter"
+                  href="?workspace=chapters"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    const id = current.id;
+                    closePanel();
+                    onOpenChapter(id);
+                  }}
+                >
+                  Open in Chapters
+                </a>
+              )}
+              <button className="ws-preview-done" onClick={closePanel}>Done</button>
             </footer>
           </>
         )}
