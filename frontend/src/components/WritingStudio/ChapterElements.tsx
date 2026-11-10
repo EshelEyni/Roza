@@ -1,13 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { ConfirmDialog } from "../Modals/ConfirmDialog";
-import {
-  FiPlus,
-  FiSearch,
-  FiTrash2,
-  FiChevronDown,
-  FiLink,
-} from "react-icons/fi";
+import { FiPlus, FiSearch, FiTrash2, FiEdit2, FiLink } from "react-icons/fi";
 import {
   Chapter,
   StoryKind,
@@ -16,7 +10,7 @@ import {
 import { DraftStore } from "./draftStore";
 import { ManuscriptEditor } from "./ManuscriptEditor";
 import { getDefaultBookDataItem } from "../../services/bookUtilService";
-import { newId, plainText } from "./manuscript";
+import { newId, plainText, richTextHtml } from "./manuscript";
 
 export function ChapterElements({
   store,
@@ -39,7 +33,10 @@ export function ChapterElements({
   const [removing, setRemoving] = useState<{ id: string; name: string } | null>(
     null,
   );
-  const [opened, setOpened] = useState<string | null>(null);
+  const [details, setDetails] = useState<{
+    id: string;
+    editing: boolean;
+  } | null>(null);
   const book = store.book;
   const singular =
     kind === "characters"
@@ -59,7 +56,12 @@ export function ChapterElements({
   );
   function update(
     id: string,
-    patch: { name?: string; description?: SlateCustomElement[] },
+    patch: {
+      name?: string;
+      description?: SlateCustomElement[];
+      role?: string;
+      notes?: string;
+    },
   ) {
     store.edit(b => ({
       ...b,
@@ -106,7 +108,7 @@ export function ChapterElements({
             };
             store.edit(b => ({ ...b, [kind]: [...b[kind], entity] }));
             link(kind, entity.id);
-            setOpened(entity.id);
+            setDetails({ id: entity.id, editing: true });
             setSearch("");
             setCreating(false);
           }}
@@ -129,18 +131,13 @@ export function ChapterElements({
       <div className="cp-element-list" aria-label={`Chapter ${kind}`}>
         {matches.map(entity => {
           const association = associations.find(a => a.entityId === entity.id)!;
-          const expanded = opened === entity.id;
           return (
-            <article
-              key={entity.id}
-              className={`cp-element ${expanded ? "is-open" : ""}`}
-            >
+            <article key={entity.id} className="cp-element">
               <header className="cp-element-header">
                 <button
                   className="cp-element-open"
-                  aria-expanded={expanded}
-                  aria-controls={`cp-element-${entity.id}`}
-                  onClick={() => setOpened(expanded ? null : entity.id)}
+                  aria-haspopup="dialog"
+                  onClick={() => setDetails({ id: entity.id, editing: false })}
                 >
                   <span className="cp-element-name" dir="auto">
                     {"color" in entity && entity.color && (
@@ -151,95 +148,35 @@ export function ChapterElements({
                     )}
                     {entity.name}
                   </span>
-                  {!expanded && (
+                  {
                     <span className="cp-element-excerpt" dir="auto">
                       {association.note ||
                         plainText(entity.description) ||
                         `Add ${singular} details…`}
                     </span>
-                  )}
-                  <FiChevronDown
-                    className="cp-element-chevron"
-                    aria-hidden="true"
-                  />
-                </button>
-                <button
-                  className="cp-element-delete"
-                  aria-label={`Remove ${entity.name} from chapter`}
-                  title="Remove from this chapter"
-                  onClick={() =>
-                    setRemoving({ id: entity.id, name: entity.name })
                   }
-                >
-                  <FiTrash2 aria-hidden="true" size={16} />
                 </button>
-              </header>
-              {expanded && (
-                <div className="cp-element-body" id={`cp-element-${entity.id}`}>
-                  <label>
-                    Name
-                    <input
-                      dir="auto"
-                      value={entity.name}
-                      maxLength={500}
-                      onChange={e => {
-                        if (e.target.value.trim())
-                          update(entity.id, { name: e.target.value });
-                      }}
-                    />
-                  </label>
-                  <p className="ws-muted">
-                    {kind === "characters" ? "Biography" : "Description"} ·
-                    shared across the book
-                  </p>
-                  <ManuscriptEditor
-                    key={entity.id}
-                    value={entity.description}
-                    label={`${entity.name} description`}
-                    onChange={description => update(entity.id, { description })}
-                  />
-                  {kind !== "themes" && (
-                    <label>
-                      In this chapter
-                      <textarea
-                        dir="auto"
-                        aria-label={`${entity.name} chapter contribution`}
-                        value={association.note || ""}
-                        maxLength={50000}
-                        placeholder="Role or development in this chapter…"
-                        onChange={e =>
-                          link(kind, entity.id, false, e.target.value)
-                        }
-                      />
-                    </label>
-                  )}
-                  <footer>
-                    <button onClick={() => onEntity(kind, entity.id)}>
-                      Open profile
-                    </button>
-                    <div className="cp-related">
-                      {book.chapters
-                        .filter(
-                          c =>
-                            !c.isArchived &&
-                            c.id !== chapter.id &&
-                            c.planning?.[kind].some(
-                              a => a.entityId === entity.id,
-                            ),
-                        )
-                        .map(c => (
-                          <button
-                            key={c.id}
-                            dir="auto"
-                            onClick={() => onChapter(c.id)}
-                          >
-                            {c.name}
-                          </button>
-                        ))}
-                    </div>
-                  </footer>
+                <div className="cp-element-actions">
+                  <button
+                    className="cp-element-edit"
+                    aria-label={`Edit ${entity.name}`}
+                    title={`Edit ${singular}`}
+                    onClick={() => setDetails({ id: entity.id, editing: true })}
+                  >
+                    <FiEdit2 aria-hidden="true" size={16} />
+                  </button>
+                  <button
+                    className="cp-element-delete"
+                    aria-label={`Remove ${entity.name} from chapter`}
+                    title="Remove from this chapter"
+                    onClick={() =>
+                      setRemoving({ id: entity.id, name: entity.name })
+                    }
+                  >
+                    <FiTrash2 aria-hidden="true" size={16} />
+                  </button>
                 </div>
-              )}
+              </header>
             </article>
           );
         })}
@@ -251,6 +188,40 @@ export function ChapterElements({
             : `No ${kind} linked yet. Add a new ${singular} or link one from your book.`}
         </p>
       )}
+      {details &&
+        (() => {
+          const entity = entities.find(e => e.id === details.id);
+          if (!entity) return null;
+          return (
+            <EntityDetailsDialog
+              key={entity.id + String(details.editing)}
+              entity={entity}
+              kind={kind}
+              editing={details.editing}
+              disabled={!!store.recovery}
+              note={
+                associations.find(a => a.entityId === entity.id)?.note || ""
+              }
+              onClose={() => setDetails(null)}
+              onUpdate={patch => update(entity.id, patch)}
+              onNote={note => link(kind, entity.id, false, note)}
+              onProfile={() => {
+                setDetails(null);
+                onEntity(kind, entity.id);
+              }}
+              chapters={book.chapters.filter(
+                c =>
+                  !c.isArchived &&
+                  c.id !== chapter.id &&
+                  c.planning?.[kind].some(a => a.entityId === entity.id),
+              )}
+              onChapter={id => {
+                setDetails(null);
+                onChapter(id);
+              }}
+            />
+          );
+        })()}
       {linking && (
         <LinkEntitiesDialog
           kind={kind}
@@ -366,6 +337,204 @@ function LinkEntitiesDialog({
       </fieldset>
       <footer>
         <span>{linkedIds.length} linked to this chapter</span>
+        <button className="ws-primary" onClick={onClose}>
+          Done
+        </button>
+      </footer>
+    </dialog>,
+    document.body,
+  );
+}
+
+function EntityDetailsDialog({
+  entity,
+  kind,
+  editing,
+  disabled,
+  note,
+  onClose,
+  onUpdate,
+  onNote,
+  onProfile,
+  chapters,
+  onChapter,
+}: {
+  entity: {
+    id: string;
+    name: string;
+    description: SlateCustomElement[];
+    role?: string;
+    notes?: string;
+  };
+  kind: StoryKind;
+  editing: boolean;
+  disabled: boolean;
+  note: string;
+  onClose: () => void;
+  onUpdate: (patch: {
+    name?: string;
+    description?: SlateCustomElement[];
+    role?: string;
+    notes?: string;
+  }) => void;
+  onNote: (note: string) => void;
+  onProfile: () => void;
+  chapters: Chapter[];
+  onChapter: (id: string) => void;
+}) {
+  const dialog = useRef<HTMLDialogElement>(null);
+  const singular =
+    kind === "characters"
+      ? "character"
+      : kind === "themes"
+        ? "theme"
+        : "plotline";
+  useEffect(() => {
+    const previous = document.activeElement as HTMLElement | null;
+    const element = dialog.current!;
+    const overflow = document.body.style.overflow;
+    element.showModal();
+    document.body.style.overflow = "hidden";
+    return () => {
+      element.close();
+      document.body.style.overflow = overflow;
+      previous?.focus();
+    };
+  }, []);
+  return createPortal(
+    <dialog
+      ref={dialog}
+      className="ws cp-link-dialog cp-entity-dialog"
+      aria-label={editing ? `Edit ${singular}` : `${entity.name} details`}
+      onCancel={e => {
+        e.preventDefault();
+        onClose();
+      }}
+      onKeyDown={e => {
+        if (e.key === "Escape") e.stopPropagation();
+      }}
+      onClick={e => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <header>
+        <div>
+          <span className="ws-eyebrow">
+            {editing
+              ? `EDIT ${singular.toUpperCase()}`
+              : `${singular.toUpperCase()} DETAILS`}
+          </span>
+          <h2 dir="auto">{entity.name}</h2>
+        </div>
+        <button aria-label="Close entity details" onClick={onClose}>
+          ×
+        </button>
+      </header>
+      {editing ? (
+        <fieldset disabled={disabled}>
+          <label>
+            Name
+            <input
+              autoFocus
+              dir="auto"
+              value={entity.name}
+              maxLength={500}
+              onChange={e => {
+                if (e.target.value.trim()) onUpdate({ name: e.target.value });
+              }}
+            />
+          </label>
+          {kind === "characters" && (
+            <label>
+              Role
+              <input
+                dir="auto"
+                value={entity.role || ""}
+                maxLength={500}
+                onChange={e => onUpdate({ role: e.target.value })}
+              />
+            </label>
+          )}
+          <p className="ws-muted">
+            {kind === "characters" ? "Biography" : "Description"} · shared
+            across the book
+          </p>
+          <ManuscriptEditor
+            key={entity.id}
+            label={`${entity.name} description`}
+            value={entity.description}
+            readOnly={disabled}
+            onChange={description => onUpdate({ description })}
+          />
+          {kind === "characters" && (
+            <label>
+              General notes
+              <textarea
+                dir="auto"
+                value={entity.notes || ""}
+                maxLength={50000}
+                onChange={e => onUpdate({ notes: e.target.value })}
+              />
+            </label>
+          )}
+          {kind !== "themes" && (
+            <label>
+              In this chapter
+              <textarea
+                dir="auto"
+                aria-label={`${entity.name} chapter contribution`}
+                value={note}
+                maxLength={50000}
+                onChange={e => onNote(e.target.value)}
+              />
+            </label>
+          )}
+        </fieldset>
+      ) : (
+        <div className="cp-entity-reading">
+          {entity.role && (
+            <p className="ws-muted" dir="auto">
+              {entity.role}
+            </p>
+          )}
+          <h3>{kind === "characters" ? "Biography" : "Description"}</h3>
+          {plainText(entity.description).trim() ? (
+            <div
+              className="ws-prose"
+              dir="auto"
+              dangerouslySetInnerHTML={{
+                __html: richTextHtml(entity.description),
+              }}
+            />
+          ) : (
+            <p className="ws-muted">No description yet.</p>
+          )}
+          {entity.notes && (
+            <>
+              <h3>General notes</h3>
+              <p dir="auto">{entity.notes}</p>
+            </>
+          )}
+          {kind !== "themes" && (
+            <>
+              <h3>In this chapter</h3>
+              <p dir="auto">{note || "No chapter notes yet."}</p>
+            </>
+          )}
+        </div>
+      )}
+      {!!chapters.length && (
+        <div className="cp-related">
+          <span className="ws-muted">Also in</span>
+          {chapters.map(c => (
+            <button key={c.id} dir="auto" onClick={() => onChapter(c.id)}>
+              {c.name}
+            </button>
+          ))}
+        </div>
+      )}
+      <footer>
+        <button onClick={onProfile}>Open profile</button>
         <button className="ws-primary" onClick={onClose}>
           Done
         </button>

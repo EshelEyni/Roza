@@ -560,3 +560,69 @@
     max-width: none;
   }
 }
+.ws .cp-element-open:hover {
+  background: transparent;
+}
+.cp-element-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.cp-element-actions button {
+  padding: 8px;
+  color: var(--ws-muted);
+}
+.cp-elements-characters .cp-element-open {
+  grid-template-columns: minmax(0, 1fr);
+}
+.cp-entity-dialog {
+  width: min(720px, calc(100vw - 32px));
+  overflow-y: auto;
+}
+.cp-entity-dialog fieldset {
+  border: 0;
+  padding: 0;
+  margin-block: 20px;
+  min-width: 0;
+  --ws-editor-min-height: 120px;
+}
+.cp-entity-dialog label {
+  display: block;
+  margin-block: 14px;
+}
+.cp-entity-dialog label input,
+.cp-entity-dialog textarea {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  border: 1px solid var(--ws-line);
+  background: transparent;
+  color: inherit;
+  border-radius: 5px;
+}
+.cp-entity-dialog textarea {
+  min-height: 90px;
+  resize: vertical;
+  font: inherit;
+}
+.cp-entity-dialog h3 {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--ws-muted);
+  margin-block: 24px 8px;
+}
+.cp-entity-reading p {
+  white-space: pre-wrap;
+}
+.cp-entity-dialog .ws-prose {
+  min-height: 0;
+  font-size: 18px;
+}
+.cp-entity-dialog .ws-prose p {
+  white-space: normal;
+}
+.cp-entity-dialog .cp-related {
+  align-items: center;
+  margin-top: 20px;
+}
