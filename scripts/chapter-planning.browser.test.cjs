@@ -227,6 +227,18 @@ test(
         await planning.getByLabel('New '+kind.toLowerCase()+' name',{exact:true}).press('Enter');
       }
       await create('Characters','character','Mara');
+      const editName=page.getByRole('dialog',{name:'Edit character',exact:true});
+      await editName.getByRole('button',{name:'Rename character',exact:true}).click();
+      await editName.getByLabel('character name',{exact:true}).fill('Mara revised');
+      await editName.getByLabel('character name',{exact:true}).press('Enter');
+      assert.equal(await editName.getByRole('button',{name:'Rename character',exact:true}).innerText(),'Mara revised');
+      await editName.getByRole('button',{name:'Rename character',exact:true}).click();
+      await editName.getByLabel('character name',{exact:true}).fill('Discarded name');
+      await editName.getByLabel('character name',{exact:true}).press('Escape');
+      assert.equal(await editName.getByRole('button',{name:'Rename character',exact:true}).innerText(),'Mara revised');
+      await editName.getByRole('button',{name:'Rename character',exact:true}).click();
+      await editName.getByLabel('character name',{exact:true}).fill('Mara');
+      await editName.getByLabel('character name',{exact:true}).press('Tab');
       assert.equal(await page.getByRole('dialog',{name:'Edit character',exact:true}).getByLabel('Role',{exact:true}).count(),0);
       assert.equal(await page.getByRole('dialog',{name:'Edit character',exact:true}).getByLabel('General notes',{exact:true}).count(),0);
       await page.getByRole('dialog',{name:'Edit character',exact:true}).getByRole('textbox',{name:'Mara description',exact:true}).fill('A returning daughter.');

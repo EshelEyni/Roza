@@ -377,6 +377,10 @@ function EntityDetailsDialog({
   onChapter: (id: string) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
+  const [renaming, setRenaming] = useState(false);
+  const [nameDraft, setNameDraft] = useState(entity.name);
+  const cancelRename = useRef(false);
+  const nameButton = useRef<HTMLButtonElement>(null);
   const singular =
     kind === "characters"
       ? "character"
@@ -418,7 +422,50 @@ function EntityDetailsDialog({
               ? `EDIT ${singular.toUpperCase()}`
               : `${singular.toUpperCase()} DETAILS`}
           </span>
-          <h2 dir="auto">{entity.name}</h2>
+          {editing ? (
+            renaming ? (
+              <input
+                className="cp-entity-name-input"
+                autoFocus
+                dir="auto"
+                aria-label={singular + " name"}
+                value={nameDraft}
+                maxLength={500}
+                onChange={e => setNameDraft(e.target.value)}
+                onBlur={() => {
+                  if (!cancelRename.current && nameDraft.trim())
+                    onUpdate({ name: nameDraft.trim() });
+                  cancelRename.current = false;
+                  setRenaming(false);
+                }}
+                onKeyDown={e => {
+                  if (e.key === "Enter" || e.key === "Escape") {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    cancelRename.current = e.key === "Escape";
+                    e.currentTarget.blur();
+                    requestAnimationFrame(() => nameButton.current?.focus());
+                  }
+                }}
+              />
+            ) : (
+              <button
+                ref={nameButton}
+                className="cp-entity-name"
+                dir="auto"
+                aria-label={"Rename " + singular}
+                disabled={disabled}
+                onClick={() => {
+                  setNameDraft(entity.name);
+                  setRenaming(true);
+                }}
+              >
+                {entity.name}
+              </button>
+            )
+          ) : (
+            <h2 dir="auto">{entity.name}</h2>
+          )}
         </div>
         <button aria-label="Close entity details" onClick={onClose}>
           ×
@@ -426,18 +473,6 @@ function EntityDetailsDialog({
       </header>
       {editing ? (
         <fieldset disabled={disabled}>
-          <label>
-            Name
-            <input
-              autoFocus
-              dir="auto"
-              value={entity.name}
-              maxLength={500}
-              onChange={e => {
-                if (e.target.value.trim()) onUpdate({ name: e.target.value });
-              }}
-            />
-          </label>
           <p className="ws-muted">
             {kind === "characters" ? "Biography" : "Description"} · shared
             across the book
