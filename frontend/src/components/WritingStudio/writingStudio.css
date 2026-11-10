@@ -2046,3 +2046,5 @@ padding: 6px 10px;
 .ws .ws-format-dialog .app-confirm-actions button { transition: none; }
 .ws .ws-format-dialog .app-confirm-actions button:hover { background: transparent; }
 .ws .ws-format-dialog .app-confirm-actions .app-confirm-action:hover { background: var(--ws-accent, #7c5c42); }
+
+.ws-format-shortcuts{margin-bottom:24px;}.ws-format-shortcuts h3{font-weight:600;margin-bottom:12px;}.ws-format-shortcuts dl{display:grid;grid-template-columns:max-content 1fr;gap:8px 16px;}.ws-format-shortcuts dt{font-weight:600;}.ws-format-shortcuts dd{margin:0;color:var(--ws-muted,#7a6856);}

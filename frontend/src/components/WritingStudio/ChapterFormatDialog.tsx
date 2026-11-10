@@ -68,12 +68,41 @@ export function ChapterFormatDialog({
           </span>
         </label>
       </fieldset>
-      <p>
-        Switching to Prose converts screenplay elements into normal paragraphs
-        and removes their script indentation and alignment. Your text, inline
-        formatting, summaries and annotations are kept. Switching to Screenplay
-        enables script tools and layout; you can assign elements while editing.
-      </p>
+      {format === "prose" ? (
+        <p>
+          Switching to Prose converts screenplay elements into normal paragraphs
+          and removes their script indentation and alignment. Your text, inline
+          formatting, summaries and annotations are kept. Switching to
+          Screenplay enables script tools and layout; you can assign elements
+          while editing.
+        </p>
+      ) : (
+        <section
+          aria-label="Screenplay shortcuts"
+          className="ws-format-shortcuts"
+        >
+          <h3>Screenplay shortcuts</h3>
+          <dl>
+            <dt>Enter</dt>
+            <dd>Move to the next element.</dd>
+            <dt>Shift+Enter</dt>
+            <dd>Insert a line break.</dd>
+            <dt>Ctrl/Cmd+Enter</dt>
+            <dd>Cycle the element type.</dd>
+            <dt>Tab</dt>
+            <dd>
+              Move focus, or cycle elements when “Tab cycles elements” is
+              enabled.
+            </dd>
+            <dt>Escape</dt>
+            <dd>Turn off Tab cycling.</dd>
+            <dt>Ctrl/Cmd+Z</dt>
+            <dd>Undo.</dd>
+            <dt>Ctrl/Cmd+Shift+Z</dt>
+            <dd>Redo.</dd>
+          </dl>
+        </section>
+      )}
       <div className="app-confirm-actions">
         <button type="button" onClick={onClose}>
           Cancel

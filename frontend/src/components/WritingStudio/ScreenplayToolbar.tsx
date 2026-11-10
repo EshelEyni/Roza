@@ -108,13 +108,6 @@ export function ScreenplayToolbar({
         />
         Tab cycles elements (Escape to release)
       </label>
-      <details>
-        <summary>Shortcuts</summary>
-        <p>
-          Enter: next element. Shift+Enter: line break. Ctrl/Cmd+Enter: cycle
-          element. Tab moves focus. Undo: Ctrl/Cmd+Z.
-        </p>
-      </details>
     </div>
   );
 }
