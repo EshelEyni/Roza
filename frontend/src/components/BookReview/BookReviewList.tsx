@@ -42,13 +42,13 @@ export const BookReviewList: FC<ReviewListProps> = ({
     navigate("/reviews");
   }
 
-  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setNewBookReview({ ...newBookReview, [e.target.name]: e.target.value });
+  function handleInputChange(name: string) {
+    setNewBookReview({ ...newBookReview, name });
   }
 
-  function handleAddBook() {
-    if (!newBookReview.name || !loggedInUser?.id) return;
-    addBookReview({ ...newBookReview, userId: loggedInUser?.id });
+  function handleAddBook(name: string) {
+    if (!name || !loggedInUser?.id) return;
+    addBookReview({ ...newBookReview, name, userId: loggedInUser?.id });
     setNewBookReview(getDefaultBookReview());
   }
 

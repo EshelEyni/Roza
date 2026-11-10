@@ -1,4 +1,5 @@
-import { FC } from "react";
+import { FC, useRef } from "react";
+import { useDebouncedValueChange } from "../../hooks/useDebouncedValueChange";
 import { Modal } from "./Modal";
 import { useTranslation } from "react-i18next";
 import { H3 } from "../App/H3";
@@ -8,8 +9,8 @@ type AddEntityModalProps = {
   title: string;
   defaultValue: string;
   placeholder: string;
-  handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  onAddEntity: () => void;
+  handleInputChange: (value: string) => void;
+  onAddEntity: (value: string) => void;
 };
 
 export const AddEntityModal: FC<AddEntityModalProps> = ({
@@ -20,8 +21,15 @@ export const AddEntityModal: FC<AddEntityModalProps> = ({
   onAddEntity,
 }) => {
   const { t } = useTranslation();
+  const latestValue = useRef(defaultValue);
+  const nameChange = useDebouncedValueChange(handleInputChange);
+  function add() {
+    nameChange.cancel();
+    onAddEntity(latestValue.current);
+    latestValue.current = "";
+  }
   return (
-    <Modal>
+    <Modal onClose={nameChange.cancel} onOpen={() => { latestValue.current = defaultValue; }}>
       <Modal.OpenBtn modalName="addBook">
         <div>{title}</div>
       </Modal.OpenBtn>
@@ -34,7 +42,10 @@ export const AddEntityModal: FC<AddEntityModalProps> = ({
             type="text"
             name="name"
             defaultValue={defaultValue}
-            onChange={handleInputChange}
+            onChange={event => {
+              latestValue.current = event.target.value;
+              nameChange.schedule(event.target.value);
+            }}
             className="rounded-md border border-app-800 p-2 text-center text-xl text-app-700"
             placeholder={placeholder}
             autoFocus={true}
@@ -44,7 +55,7 @@ export const AddEntityModal: FC<AddEntityModalProps> = ({
             <Modal.CloseBtn>
               <span>{t("btnCancel")}</span>
             </Modal.CloseBtn>
-            <Modal.CloseBtn onClick={onAddEntity}>
+            <Modal.CloseBtn onClick={add}>
               <span>{t("btnAdd")}</span>
             </Modal.CloseBtn>
           </div>

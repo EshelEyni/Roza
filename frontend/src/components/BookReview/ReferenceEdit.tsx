@@ -12,6 +12,7 @@ import { MinimizedText } from "./MinimizedText";
 import classnames from "classnames";
 import { DeleteEntityModal } from "../Modals/DeleteEntityModal";
 import { Input } from "../App/Input";
+import { useDebouncedValueChange } from "../../hooks/useDebouncedValueChange";
 
 type ReferenceEditProps = {
   reference: Reference;
@@ -24,12 +25,12 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
     isMinimizedProp: reference.isMinimized,
   });
 
-  function handlePagesInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+  const pagesChange = useDebouncedValueChange(pages => {
     updateBookReviewEntity({
       type: "updateReference",
-      reference: { ...reference, pages: e.target.value },
+      reference: { ...reference, pages },
     });
-  }
+  });
 
   function handleTextChange(text: SlateCustomElement[]) {
     const updatedReference = { ...reference, text };
@@ -52,6 +53,7 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
   }
 
   function handleDeleteReference() {
+    pagesChange.cancel();
     updateBookReviewEntity({
       type: "removeReference",
       referenceId: reference.id,
@@ -73,9 +75,7 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
               "max-w-[100px]": isMinimized,
             },
           )}
-          onChange={e =>
-            debounce(e => handlePagesInputChange(e), 1500).debouncedFunc(e)
-          }
+          onChange={e => pagesChange.schedule(e.target.value)}
         />
         {isMinimized && (
           <MinimizedText textEl={reference.text} maxLength={50} />

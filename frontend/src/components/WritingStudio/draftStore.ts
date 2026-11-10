@@ -85,7 +85,7 @@ export class DraftStore {
       clearTimeout(this.timer);
       this.timer = setTimeout(() => {
         void this.flush();
-      }, 700);
+      }, 1500);
     }
     this.emit();
   };

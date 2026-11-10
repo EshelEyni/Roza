@@ -85,7 +85,7 @@ export function useReaderState(book: ReaderBook, userId: string) {
         /* Saving to the server still works when local storage is full. */
       }
       clearTimeout(timer.current);
-      timer.current = setTimeout(() => void flushRef.current?.(), 500);
+      timer.current = setTimeout(() => void flushRef.current?.(), 1500);
     },
     [cacheKey],
   );
