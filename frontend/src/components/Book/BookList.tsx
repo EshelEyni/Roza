@@ -42,13 +42,13 @@ export const BookList: FC<BookListProps> = ({
     navigate("/books");
   }
 
-  function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
-    setNewBook({ ...newBook, [e.target.name]: e.target.value });
+  function handleInputChange(name: string) {
+    setNewBook({ ...newBook, name });
   }
 
-  function handleAddBook() {
-    if (!newBook.name || !loggedInUser?.id) return;
-    addBook({ ...newBook, userId: loggedInUser?.id });
+  function handleAddBook(name: string) {
+    if (!name || !loggedInUser?.id) return;
+    addBook({ ...newBook, name, userId: loggedInUser?.id });
     setNewBook(getDefaultBook());
   }
   return (
