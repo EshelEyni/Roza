@@ -213,11 +213,15 @@ test(
       const base = server.resolvedUrls.local[0];
       await page.goto(base + "books");
       await page.getByRole("link", {name: "Write The Shape of Quiet", exact:true}).click();
+      const editorWidth=await page.locator('.ws-writing .ws-page').evaluate(el=>el.getBoundingClientRect().width);
       const planning = page.locator('.ws-writing .cp-chapter-bible');
       assert.equal(await page.locator('.ws-writing .cp-inspector').count(),0);
       await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
-      await page.getByRole('heading',{name:'Chapter Bible',exact:true}).waitFor();
+      await page.getByRole('heading',{name:'Chapter Bible - The house by the sea',exact:true}).waitFor();
       assert.equal(await page.locator('.ws-writing .ws-page-footer').count(),0);
+      assert.equal(await page.locator('.ws-writing .ws-chapter-title').count(),0);
+      assert.equal(await planning.locator('[role=status]').count(),0);
+      assert.equal(await page.locator('.ws-writing .ws-page').evaluate(el=>el.getBoundingClientRect().width),editorWidth);
       await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
       assert.equal(await page.locator('.ws-writing .ws-page-footer').count(),1);
       await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
@@ -253,12 +257,12 @@ test(
       await chooseWorkspace(page,'Chapters');
       await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
       await planning.getByRole('button',{name:'Mara',exact:true}).click();
-      await page.getByRole('region',{name:'Story Bible'}).waitFor();
-      await page.getByLabel('Role',{exact:true}).fill('Protagonist');
-      await page.getByLabel('Associate story element with chapter').selectOption(initial.chapters[1].id);
-      assert.equal(await page.locator('.cp-timeline li').count(),2);
-      await page.screenshot({path:path.join(screenshots,'story-bible-desktop.png')});
-      await page.getByRole('button',{name:'1. The house by the sea',exact:true}).click();
+      assert.match(await page.getByRole('combobox',{name:'Manuscript category',includeHidden:true}).innerText(),/Characters/);
+      await chooseWorkspace(page,'Chapters');
+      await page.locator('.ws-chapters').getByRole('button',{name:/An unopened letter/}).click();
+      await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
+      await planning.getByLabel('Associate characters with chapter',{exact:true}).selectOption(saved.characters[0].id);
+      await page.locator('.ws-chapters').getByRole('button',{name:/The house by the sea/}).click();
       await chooseWorkspace(page,'Chapter Overview');
       await page.getByLabel('Filter chapter planning').selectOption('unfinished');
       assert.equal(await page.locator('.ws-board-card').count(),0);
@@ -275,7 +279,6 @@ test(
       await page.reload();
       await page.getByLabel('Filter chapter planning').selectOption('unfinished');
       assert.equal(await page.locator('.ws-board-card').count(),1);
-      assert.equal(saved.characters[0].role,'Protagonist');
       assert.equal(saved.taskBoard.lists[0].cards[0].id,taskId);
       await page.getByLabel('Filter chapter planning').selectOption('');
       const handle=page.getByRole('button',{name:'Reorder An unopened letter',exact:true});
@@ -298,6 +301,9 @@ test(
       await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
       await planning.getByRole('button',{name:'Characters',exact:true}).click();
       await page.screenshot({path:path.join(screenshots,'planning-mobile.png')});
+      const bibleWidth=await page.locator('.ws-writing .ws-page').evaluate(el=>el.getBoundingClientRect().width);
+      await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
+      assert.equal(await page.locator('.ws-writing .ws-page').evaluate(el=>el.getBoundingClientRect().width),bibleWidth);
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
       assert.deepEqual(errors,[]);
     } finally { await browser?.close(); await server.close(); }

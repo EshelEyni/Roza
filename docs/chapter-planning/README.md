@@ -4,11 +4,11 @@ Branch: `feature/chapter-planning`, based on verified `origin/main` commit `04f0
 
 ## Connected workspaces
 
-In Chapters, the Chapter Bible button immediately after More switches the manuscript page to a Story Bible-style chapter workspace with Characters, Themes, Plotlines, Tasks and Summary navigation. Press it again, or choose Read/Summary/Annotations, to return to writing. Chapter Preview retains its collapsible Chapter Planning inspector. Both views edit the same shared records. Summary editing preserves rich text; character and plotline contribution notes are plain text stored on the chapter association.
+In Chapters, the Chapter Bible button immediately after More switches the manuscript page to a chapter workspace with Characters, Themes, Plotlines, Tasks and Summary navigation. Press it again, or choose Read/Summary/Annotations, to return to writing. Chapter Preview retains its collapsible Chapter Planning inspector. Both views edit the same shared records. The heading is Chapter Bible - [Chapter Title], the page matches manuscript editor width, and save state is shown only in the app header. Summary editing preserves rich text; character and plotline contribution notes are plain text stored on the chapter association.
 
 Tasks are existing book task-board cards, extended with optional `chapterId` and `completed`. The inspector creates, associates, renames, completes, reopens and deletes these same cards; Open in board opens the original card and list. The board supports chapter assignment/removal and a chapter filter. Completion is explicit, independent of editable board list names.
 
-Characters, themes and plotlines reuse the existing book libraries. Story Bible adds profiles, role/general notes, optional theme/plotline colors, chapter associations and an ordered manuscript timeline. The older category editors and Story Bible edit the same records. Chapters link to entity IDs, with separate contribution notes for plotlines and characters. Theme tags and compact counts appear on overview cards; filters cover all three libraries and unfinished tasks. Reordering is disabled while filtering to avoid ambiguous moves, while chapter editing remains available.
+Characters, themes and plotlines reuse the existing book libraries. The separate book-wide Story Bible UI has been removed. Shared entities remain accessible through the existing Characters, Themes and Plotlines category editors. Chapter Bible references open those existing editors. Backend fields for role/general notes and optional colors remain preserved. Chapters link to entity IDs, with separate contribution notes for plotlines and characters. Theme tags and compact counts appear on overview cards; filters cover all three libraries and unfinished tasks. Reordering is disabled while filtering to avoid ambiguous moves, while chapter editing remains available.
 
 ## Database migration and API
 
@@ -33,7 +33,7 @@ For rollout, release the backend schema and frontend together (or backend first)
 - Backend lint for all touched source files.
 - 26 focused Node tests: chapter planning/schema, task board, draft saving/recovery, annotations and rendering.
 - 9 book API tests: authorization scoping, atomic conflict handling, archive preservation, invalid cross-book planning and tasks.
-- Browser integration: entity creation/reuse, character role, separate contribution notes, board context, completion/reopening in preview, persisted refresh, overview filters, keyboard reordering, desktop/tablet/mobile widths and Hebrew/English text. API responses are supplied by the test fixture; schema round trips separately cover Mongoose persistence shape.
+- Browser integration: entity creation/reuse, separate contribution notes, board context, completion/reopening in preview, persisted refresh, overview filters, keyboard reordering, desktop/tablet/mobile widths and Hebrew/English text. API responses are supplied by the test fixture; schema round trips separately cover Mongoose persistence shape.
 - Existing task-board and writing-studio browser regressions.
 
 Screenshots are in `docs/chapter-planning/screenshots/`.

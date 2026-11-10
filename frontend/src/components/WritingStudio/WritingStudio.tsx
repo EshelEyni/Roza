@@ -1,4 +1,4 @@
-import { ChapterPlanning, StoryBible } from "./ChapterPlanning";
+import { ChapterPlanning } from "./ChapterPlanning";
 import { ItemMenu } from "./ItemMenu";
 import { CategorySelect } from "./CategorySelect";
 import {
@@ -105,11 +105,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     : "chapters";
   const overview = section === "overview";
   const tasks = section === "tasks";
-  const bible = section === "bible";
-  const [bibleTarget, setBibleTarget] = useState<{
-    kind: import("../../../../shared/types/books").StoryKind;
-    id: string;
-  }>({ kind: "characters", id: "" });
   const [taskTarget, setTaskTarget] = useState("");
   const planningNavigation = {
     onChapter: (id: string) => {
@@ -120,8 +115,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       kind: import("../../../../shared/types/books").StoryKind,
       id: string,
     ) => {
-      setBibleTarget({ kind, id });
-      changeSection("bible");
+      setSelection(current => ({ ...current, [kind]: id }));
+      changeSection(kind);
     },
     onTask: (id: string) => {
       setTaskTarget(id);
@@ -129,7 +124,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     },
   };
   const category: BooKDataItemType =
-    overview || tasks || bible ? "chapters" : (section as BooKDataItemType);
+    overview || tasks ? "chapters" : (section as BooKDataItemType);
   const [selection, setSelection] = useState<
     Partial<Record<BooKDataItemType, string>>
   >(() => {
@@ -515,7 +510,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         >
           ☰ {sectionLabel(section)}{" "}
           <span>
-            {!overview && !tasks && !bible && item
+            {!overview && !tasks && item
               ? itemName(item, items.indexOf(item))
               : "Choose a workspace"}
           </span>
@@ -540,7 +535,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             options={studioSections}
             onChange={changeSection}
           />
-          {!overview && !tasks && !bible && (
+          {!overview && !tasks && (
             <>
               <input
                 type="search"
@@ -622,19 +617,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             <TaskBoardView store={store} initialTaskId={taskTarget} />
           </div>
         )}
-        {bible && (
-          <StoryBible
-            key={`${bibleTarget.kind}:${bibleTarget.id}`}
-            store={store}
-            onChapter={planningNavigation.onChapter}
-            selectedKind={bibleTarget.kind}
-            selectedId={bibleTarget.id}
-          />
-        )}
         <section
           className="ws-writing"
           aria-label="Writing workspace"
-          style={overview || tasks || bible ? { display: "none" } : undefined}
+          style={overview || tasks ? { display: "none" } : undefined}
         >
           {item ? (
             <>
@@ -708,23 +694,25 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 </div>
               </div>
               <article
-                className={`ws-page ${summary && item.type === "chapters" ? "ws-summary-mode" : ""}`}
+                className={`ws-page ${chapterBible && item.type === "chapters" ? "ws-chapter-bible-page" : ""} ${summary && item.type === "chapters" ? "ws-summary-mode" : ""}`}
               >
-                <input
-                  dir="auto"
-                  className="ws-chapter-title"
-                  aria-label={
-                    category === "notes"
-                      ? "Note title"
-                      : "Chapter or page title"
-                  }
-                  value={item.name || ""}
-                  readOnly={preview || !!store.recovery}
-                  placeholder={
-                    category === "notes" ? "Untitled note" : "Untitled"
-                  }
-                  onChange={event => updateItem({ name: event.target.value })}
-                />
+                {!(chapterBible && item.type === "chapters") && (
+                  <input
+                    dir="auto"
+                    className="ws-chapter-title"
+                    aria-label={
+                      category === "notes"
+                        ? "Note title"
+                        : "Chapter or page title"
+                    }
+                    value={item.name || ""}
+                    readOnly={preview || !!store.recovery}
+                    placeholder={
+                      category === "notes" ? "Untitled note" : "Untitled"
+                    }
+                    onChange={event => updateItem({ name: event.target.value })}
+                  />
+                )}
 
                 {chapterBible && item.type === "chapters" ? (
                   <div id="ws-chapter-bible">

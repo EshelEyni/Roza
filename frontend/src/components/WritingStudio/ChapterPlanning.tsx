@@ -170,7 +170,9 @@ export function ChapterPlanning({
       {page ? (
         <>
           <span className="ws-eyebrow">THE SHAPE OF THIS CHAPTER</span>
-          <h1>Chapter Bible</h1>
+          <h1>
+            Chapter Bible - <bdi>{chapter.name || "Untitled chapter"}</bdi>
+          </h1>
           <nav className="cp-bible-nav" aria-label="Chapter Bible sections">
             {(
               ["characters", "themes", "plotlines", "tasks", "summary"] as const
@@ -197,13 +199,6 @@ export function ChapterPlanning({
       )}
       {(page || expanded) && (
         <div className="cp-content">
-          <p className="ws-muted" role="status">
-            {store.state === "error"
-              ? "Not saved · retry using Save"
-              : store.state === "saved"
-                ? "All changes saved"
-                : "Saving…"}
-          </p>
           <fieldset disabled={!!store.recovery}>
             <PlanningGroup
               page={page}
@@ -430,6 +425,7 @@ export function ChapterPlanning({
                       ? "plotline"
                       : "character"}
                   <select
+                    aria-label={`Associate ${kind} with chapter`}
                     value=""
                     onChange={e => {
                       if (e.target.value) link(kind, e.target.value);
@@ -523,231 +519,5 @@ export function PlanningFilter({
         ))}
       </select>
     </label>
-  );
-}
-export function StoryBible({
-  store,
-  onChapter,
-  selectedKind = "characters",
-  selectedId = "",
-}: {
-  store: DraftStore;
-  onChapter: (id: string) => void;
-  selectedKind?: StoryKind;
-  selectedId?: string;
-}) {
-  const [kind, setKind] = useState<StoryKind>(selectedKind);
-  const [id, setId] = useState(selectedId);
-  const book = store.book;
-  const entities = book[kind].filter(e => !e.isArchived);
-  const entity = entities.find(e => e.id === id) || entities[0];
-  function update(patch: Record<string, unknown>) {
-    if (entity)
-      store.edit(b => ({
-        ...b,
-        [kind]: b[kind].map(e => (e.id === entity.id ? { ...e, ...patch } : e)),
-      }));
-  }
-  return (
-    <section className="cp-bible" aria-label="Story Bible">
-      <span className="ws-eyebrow">THE PEOPLE & THREADS OF YOUR STORY</span>
-      <h1>Story Bible</h1>
-      <div className="cp-bible-nav">
-        {storyKinds.map(k => (
-          <button
-            key={k}
-            aria-pressed={kind === k}
-            onClick={() => {
-              setKind(k);
-              setId("");
-            }}
-          >
-            {k[0].toUpperCase() + k.slice(1)}
-          </button>
-        ))}
-      </div>
-      <fieldset disabled={!!store.recovery}>
-        <div className="cp-create">
-          <select
-            aria-label="Story element"
-            value={entity?.id || ""}
-            onChange={e => setId(e.target.value)}
-          >
-            <option value="" disabled>
-              Select a story element
-            </option>
-            {entities.map(e => (
-              <option key={e.id} value={e.id}>
-                {e.name}
-              </option>
-            ))}
-          </select>
-          <button
-            onClick={() => {
-              const entry = {
-                ...getDefaultBookDataItem({ bookId: book.id, type: kind }),
-                id: newId(),
-                name: "Untitled",
-              };
-              store.edit(b => ({ ...b, [kind]: [...b[kind], entry] }));
-              setId(entry.id);
-            }}
-          >
-            ＋ Create
-          </button>
-        </div>
-        {entity ? (
-          <div key={entity.id} className="cp-profile">
-            <label>
-              Name
-              <input
-                dir="auto"
-                maxLength={500}
-                value={entity.name}
-                onChange={e => {
-                  if (e.target.value.trim()) update({ name: e.target.value });
-                }}
-              />
-            </label>
-            {"color" in entity || kind !== "characters" ? (
-              <label>
-                Color{" "}
-                <input
-                  type="color"
-                  value={("color" in entity && entity.color) || "#a4775a"}
-                  onChange={e => update({ color: e.target.value })}
-                />
-                <button onClick={() => update({ color: "" })}>
-                  Clear color
-                </button>
-              </label>
-            ) : null}
-            {kind === "characters" && (
-              <>
-                <label>
-                  Role
-                  <input
-                    dir="auto"
-                    maxLength={500}
-                    value={"role" in entity ? entity.role || "" : ""}
-                    onChange={e => update({ role: e.target.value })}
-                  />
-                </label>
-                <label>
-                  General notes
-                  <textarea
-                    dir="auto"
-                    maxLength={50000}
-                    value={"notes" in entity ? entity.notes || "" : ""}
-                    onChange={e => update({ notes: e.target.value })}
-                  />
-                </label>
-              </>
-            )}
-            <p className="ws-muted">
-              {kind === "characters"
-                ? "Biography & description"
-                : "Description"}
-            </p>
-            <ManuscriptEditor
-              key={entity.id}
-              label="Story element description"
-              value={entity.description}
-              onChange={description => update({ description })}
-            />
-            <h2>Across the manuscript</h2>
-            <label>
-              Associate chapter
-              <select
-                aria-label="Associate story element with chapter"
-                value=""
-                onChange={e => {
-                  const chapterId = e.target.value;
-                  if (!chapterId) return;
-                  store.edit(b => ({
-                    ...b,
-                    chapters: b.chapters.map(c => {
-                      if (c.id !== chapterId) return c;
-                      const planning = c.planning || {
-                        characters: [],
-                        themes: [],
-                        plotlines: [],
-                      };
-                      return {
-                        ...c,
-                        planning: {
-                          ...planning,
-                          [kind]: [
-                            ...planning[kind],
-                            { entityId: entity.id, note: "" },
-                          ],
-                        },
-                      };
-                    }),
-                  }));
-                }}
-              >
-                <option value="">Choose chapter…</option>
-                {book.chapters
-                  .filter(
-                    c =>
-                      !c.isArchived &&
-                      !c.planning?.[kind].some(l => l.entityId === entity.id),
-                  )
-                  .map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-              </select>
-            </label>
-            <ol className="cp-timeline">
-              {book.chapters
-                .filter(
-                  c =>
-                    !c.isArchived &&
-                    c.planning?.[kind].some(l => l.entityId === entity.id),
-                )
-                .map(c => (
-                  <li key={c.id}>
-                    <button dir="auto" onClick={() => onChapter(c.id)}>
-                      {book.chapters.filter(v => !v.isArchived).indexOf(c) + 1}.{" "}
-                      {c.name}
-                    </button>
-                    <p dir="auto">
-                      {
-                        c.planning?.[kind].find(l => l.entityId === entity.id)
-                          ?.note
-                      }
-                    </p>
-                  </li>
-                ))}
-            </ol>
-            <button
-              onClick={() => {
-                if (
-                  window.confirm(
-                    `Archive “${entity.name}”? Chapter references are preserved for recovery.`,
-                  )
-                )
-                  update({ isArchived: true });
-              }}
-            >
-              Archive story element
-            </button>
-          </div>
-        ) : (
-          <p className="ws-muted">
-            Create your first{" "}
-            {kind === "characters"
-              ? "character"
-              : kind === "themes"
-                ? "theme"
-                : "plotline"}
-            .
-          </p>
-        )}
-      </fieldset>
-    </section>
   );
 }

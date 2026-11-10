@@ -196,3 +196,14 @@
 .ws-document-actions > div {
   flex-wrap: wrap;
 }
+/* Match the annotated manuscript page at every viewport size. */
+.ws-page.ws-chapter-bible-page {
+  max-width: 1180px;
+  width: 100%;
+}
+@media (max-width: 760px) {
+  .ws-page.ws-chapter-bible-page {
+    padding-left: 46px;
+    padding-right: 18px;
+  }
+}

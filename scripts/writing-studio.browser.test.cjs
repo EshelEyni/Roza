@@ -330,7 +330,7 @@ test(
       const selector = page.getByRole("combobox", { name: "Manuscript category", includeHidden: true });
       await selector.click();
       assert.deepEqual(await page.getByRole("option").allTextContents(),
-        ["Chapters✓", "Chapter Overview", "Story Bible", "Characters", "Plotlines", "Themes", "Notes", "Tasks"]);
+        ["Chapters✓", "Chapter Overview", "Characters", "Plotlines", "Themes", "Notes", "Tasks"]);
       await page.keyboard.press("Escape");
       for (const name of ["Characters", "Plotlines", "Themes", "Notes", "Tasks", "Chapter Overview", "Chapters"]) {
         await chooseWorkspace(page, name);
@@ -550,6 +550,7 @@ test(
       await board.locator(".ws-drag-handle").first().focus();
       await page.keyboard.press("Space");
       await page.waitForFunction(() => !!document.querySelector(".is-dragging"));
+      await page.waitForTimeout(100);
       await page.keyboard.press("ArrowRight");
       await page.waitForTimeout(300);
       await page.keyboard.press("Space");
@@ -562,6 +563,7 @@ test(
       await board.locator(".ws-drag-handle").first().focus();
       await page.keyboard.press("Space");
       await page.waitForFunction(() => !!document.querySelector(".is-dragging"));
+      await page.waitForTimeout(100);
       await page.keyboard.press("ArrowRight");
       await page.waitForTimeout(300);
       await page.keyboard.press("Space");
