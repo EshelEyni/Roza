@@ -576,8 +576,8 @@ dialog.ws.cp-link-dialog {
   grid-template-columns: minmax(0, 1fr);
 }
 dialog.ws.cp-entity-dialog {
-  width: min(560px, calc(100vw - 32px));
-  max-width: 560px;
+  width: min(710px, calc(100vw - 32px));
+  max-width: 710px;
   background: var(--ws-paper);
   overflow-y: auto;
 }
