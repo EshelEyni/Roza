@@ -474,7 +474,7 @@
   align-items: center;
   gap: 7px;
 }
-.cp-link-dialog {
+dialog.ws.cp-link-dialog {
   width: min(500px, calc(100vw - 32px));
   max-height: 85dvh;
   margin: auto;
@@ -575,8 +575,10 @@
 .cp-elements-characters .cp-element-open {
   grid-template-columns: minmax(0, 1fr);
 }
-.cp-entity-dialog {
-  width: min(720px, calc(100vw - 32px));
+dialog.ws.cp-entity-dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-width: 560px;
+  background: var(--ws-paper);
   overflow-y: auto;
 }
 .cp-entity-dialog fieldset {

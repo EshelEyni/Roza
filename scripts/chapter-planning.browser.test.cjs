@@ -233,6 +233,8 @@ test(
       await planning.locator('.cp-element-open').filter({hasText:'Mara'}).click();
       const readCharacter=page.getByRole('dialog',{name:'Mara details',exact:true});
       assert.equal(await readCharacter.locator('input, textarea, [contenteditable=true]').count(),0);
+      assert.ok(await readCharacter.evaluate(el=>el.getBoundingClientRect().width)<=560);
+      assert.equal(await readCharacter.evaluate(el=>getComputedStyle(el).backgroundColor),await page.locator('.ws-writing .ws-page').evaluate(el=>getComputedStyle(el).backgroundColor));
       await readCharacter.getByText('Returns to her childhood home.',{exact:true}).waitFor();
       await page.screenshot({path:path.join(screenshots,'character-details-desktop.png')});
       await readCharacter.getByRole('button',{name:'Done',exact:true}).click();
