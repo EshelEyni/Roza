@@ -216,15 +216,9 @@ export function TaskBoardView({
               strategy={horizontalListSortingStrategy}
             >
               {board.lists.map(l => (
-                <Sortable
-                  key={l.id}
-                  id={l.id}
-                  kind="list"
-                  disabled={!!chapterId}
-                >
+                <Sortable key={l.id} id={l.id} kind="list">
                   <header>
                     <input
-                      readOnly={!!chapterId}
                       aria-label="List title"
                       maxLength={500}
                       value={l.title}
@@ -235,24 +229,22 @@ export function TaskBoardView({
                         }))
                       }
                     />
-                    {!chapterId && (
-                      <button
-                        className="tb-delete-list"
-                        aria-label={`Delete list ${l.title}`}
-                        title="Delete list"
-                        onClick={() => {
-                          setConfirmation({
-                            message: `Delete “${l.title}” and its ${l.cards.length} tasks? This cannot be undone.`,
-                            action: () =>
-                              change({
-                                lists: board.lists.filter(x => x.id !== l.id),
-                              }),
-                          });
-                        }}
-                      >
-                        <FiTrash2 aria-hidden="true" size={16} />
-                      </button>
-                    )}
+                    <button
+                      className="tb-delete-list"
+                      aria-label={`Delete list ${l.title}`}
+                      title="Delete list"
+                      onClick={() => {
+                        setConfirmation({
+                          message: `Delete “${l.title}” and its ${l.cards.length} tasks?${chapterId ? ` This list is shared with the book.${l.cards.some(c => c.chapterId !== chapterId) ? " It includes tasks outside this chapter." : ""}` : ""} This cannot be undone.`,
+                          action: () =>
+                            change({
+                              lists: board.lists.filter(x => x.id !== l.id),
+                            }),
+                        });
+                      }}
+                    >
+                      <FiTrash2 aria-hidden="true" size={16} />
+                    </button>
                   </header>
                   <SortableContext
                     items={l.cards
@@ -393,21 +385,19 @@ export function TaskBoardView({
                 </Sortable>
               ))}
             </SortableContext>
-            {!chapterId && (
-              <button
-                className="tb-add-list"
-                onClick={() =>
-                  change({
-                    lists: [
-                      ...board.lists,
-                      { id: uid(), title: "New list", cards: [] },
-                    ],
-                  })
-                }
-              >
-                ＋ Add List
-              </button>
-            )}
+            <button
+              className="tb-add-list"
+              onClick={() =>
+                change({
+                  lists: [
+                    ...board.lists,
+                    { id: uid(), title: "New list", cards: [] },
+                  ],
+                })
+              }
+            >
+              ＋ Add List
+            </button>
           </div>
         </DndContext>
       </fieldset>

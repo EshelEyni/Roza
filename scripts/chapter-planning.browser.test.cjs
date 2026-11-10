@@ -253,7 +253,13 @@ test(
       await planning.getByRole('button',{name:'Tasks',exact:true}).click();
       const board=planning.getByRole('region',{name:'Chapter task board'});
       assert.equal(await board.locator('.tb-card').count(),0);
-      assert.equal(await board.locator('.tb-delete-list').count(),0);
+      assert.equal(await board.locator('.tb-delete-list').count(),3);
+      assert.equal(await board.locator('.tb-list').first().evaluate(el=>getComputedStyle(el).backgroundColor),await page.locator('.ws-writing .ws-page').evaluate(el=>getComputedStyle(el).backgroundColor));
+      await board.getByRole('button',{name:'＋ Add List',exact:true}).click();
+      await board.locator('.tb-list').last().getByLabel('List title',{exact:true}).fill('Review');
+      await board.getByRole('button',{name:'Delete list Review',exact:true}).click();
+      await page.getByRole('button',{name:'Delete',exact:true}).click();
+      assert.equal(await board.locator('.tb-list').count(),3);
       await board.locator('.tb-list').first().getByRole('button',{name:'＋ Add Card',exact:true}).click();
       await board.getByLabel('New task in To Do',{exact:true}).fill('Research the harbour');
       await board.getByLabel('New task in To Do',{exact:true}).press('Enter');

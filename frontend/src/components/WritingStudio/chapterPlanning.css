@@ -399,13 +399,6 @@
 .cp-chapter-bible .tb-chapter .tb-columns {
   padding-top: 14px;
 }
-.cp-chapter-bible .tb-chapter .tb-list {
-  flex-basis: 270px;
-  background: var(--ws-soft);
-}
-.cp-chapter-bible .tb-chapter .tb-card {
-  background: var(--ws-paper);
-}
 .tb-chapter-link {
   display: flex !important;
   align-items: center;

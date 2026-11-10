@@ -182,6 +182,7 @@ test(
       );
     });
     server.middlewares.use(async (req, res) => {
+      if (req.url.startsWith("/.well-known/")) { res.statusCode = 404; return res.end(); }
       res.setHeader("Content-Type", "text/html");
       res.end(
         await server.transformIndexHtml(
