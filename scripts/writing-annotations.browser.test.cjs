@@ -199,8 +199,7 @@ test(
       await categoryMenu.click();
       const categoryOptions = page.getByRole('listbox', {name:'Manuscript categories'});
       assert.equal(await categoryOptions.evaluate(node => getComputedStyle(node).backgroundColor), await categoryMenu.evaluate(node => getComputedStyle(node).backgroundColor));
-      // Chapter Overview and Tasks now precede Characters.
-      await page.keyboard.press('ArrowDown');
+      // Chapter Overview precedes Characters.
       await page.keyboard.press('ArrowDown');
       await page.keyboard.press('ArrowDown');
       await page.keyboard.press('Enter');

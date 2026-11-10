@@ -329,7 +329,7 @@ test(
       const selector = page.getByRole("combobox", { name: "Manuscript category", includeHidden: true });
       await selector.click();
       assert.deepEqual(await page.getByRole("option").allTextContents(),
-        ["Chapters✓", "Chapter Overview", "Tasks", "Characters", "Plotlines", "Themes", "Notes"]);
+        ["Chapters✓", "Chapter Overview", "Characters", "Plotlines", "Themes", "Notes", "Tasks"]);
       await page.keyboard.press("Escape");
       for (const name of ["Characters", "Plotlines", "Themes", "Notes", "Tasks", "Chapter Overview", "Chapters"]) {
         await chooseWorkspace(page, name);

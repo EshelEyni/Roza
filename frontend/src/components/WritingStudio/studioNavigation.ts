@@ -4,11 +4,11 @@ export type StudioSection = BooKDataItemType | "overview" | "tasks";
 export const studioSections: StudioSection[] = [
   "chapters",
   "overview",
-  "tasks",
   "characters",
   "plotlines",
   "themes",
   "notes",
+  "tasks",
 ];
 export const sectionLabel = (value: StudioSection) =>
   value === "overview"
