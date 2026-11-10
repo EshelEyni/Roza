@@ -2035,3 +2035,14 @@ padding: 6px 10px;
 .ws-layout > .ws-task-surface {
   min-width: 0;
 }
+/* Only the reading pane scrolls, keeping the chapter controls visible. */
+.ws-chapter-dialog { overflow: hidden; }
+.ws-chapter-reading { min-height: 0; }
+.ws-preview-summary-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ws-preview-summary-heading > .ws-muted { margin-inline-start: auto; font: 12px/1.5 sans-serif; }
+.ws-preview-summary textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 12px; padding: 12px; min-height: 100px; max-height: 28dvh; resize: vertical; border: 1px solid var(--ws-line); border-radius: 6px; background: var(--ws-paper); color: var(--ws-ink); font: 15px/1.6 Georgia, serif; }
+.ws-preview-summary { font-size: 15px; }
+.ws-chapter-reading > .ws-prose { animation: ws-preview-enter 140ms ease-out; }
+@keyframes ws-preview-enter { from { opacity: .65; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .ws-chapter-reading > .ws-prose { animation: none; } }
+@media (max-width: 600px) { .ws-chapter-dialog > footer { gap: 8px; } .ws-chapter-dialog > footer > button { flex: 1 1 40%; } .ws-chapter-dialog h2 { font-size: 23px; overflow-wrap: anywhere; } }

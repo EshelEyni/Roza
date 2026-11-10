@@ -398,7 +398,26 @@ test(
         await page.locator(".ws-chapter-reading").innerText(),
         /Unsaved overview context/,
       );
-      await page.getByRole("button", { name: "Next →", exact: true }).click();
+      const previewDialog = page.getByRole('dialog');
+      await previewDialog.getByText('Chapter 1 of 2 · Reading preview').waitFor();
+      assert.equal(await previewDialog.getByRole('button', { name: '← Previous Chapter', exact: true }).isDisabled(), true);
+      await previewDialog.getByRole('button', { name: 'Edit Summary', exact: true }).click();
+      const inlineSummary = previewDialog.getByRole('textbox', { name: 'Chapter summary', exact: true });
+      await inlineSummary.fill('Reviewed in preview.\nA second line.');
+      await inlineSummary.press('ArrowRight');
+      await inlineSummary.press('Escape');
+      assert.equal(await previewDialog.isVisible(), true);
+      await previewDialog.getByText('Chapter 1 of 2 · Reading preview').waitFor();
+      await previewDialog.getByRole('button', { name: 'Next Chapter →', exact: true }).click();
+      await previewDialog.getByText('Chapter 2 of 2 · Reading preview').waitFor();
+      assert.equal(await previewDialog.getByRole('button', { name: 'Next Chapter →', exact: true }).isDisabled(), true);
+      await page.keyboard.press('ArrowLeft');
+      await previewDialog.getByText('Chapter 1 of 2 · Reading preview').waitFor();
+      assert.match(await previewDialog.locator('.ws-preview-summary').innerText(), /Reviewed in preview/);
+      assert.equal(await previewDialog.locator('.ws-chapter-reading').evaluate(node => node.scrollTop), 0);
+      await page.getByRole('button', { name: '✓ All changes saved' }).waitFor();
+      assert.equal(saved.chapters[0].description.map(node => node.children.map(leaf => leaf.text).join('')).join('\n'), 'Reviewed in preview.\nA second line.');
+      await page.keyboard.press('ArrowRight');
       assert.match(
         await page.locator(".ws-chapter-reading").innerText(),
         /twenty years/,
@@ -412,6 +431,23 @@ test(
         .fill("The letter changes everything.");
       await page.getByRole("button", { name: "Done", exact: true }).click();
       await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      if (process.env.PREVIEW_ONLY === '1') {
+        await page.reload();
+        await toggleOverview(page);
+        await page.getByRole('button', { name: 'Preview The house by the sea' }).click();
+        assert.match(await page.locator('.ws-preview-summary').innerText(), /Reviewed in preview/);
+        await page.getByRole('dialog').getByRole('button', { name: 'Next Chapter →', exact: true }).click();
+        await page.getByRole('dialog').getByRole('button', { name: 'Edit Summary', exact: true }).click();
+        await page.getByRole('dialog').getByRole('textbox', { name: 'Chapter summary', exact: true }).fill('Mobile review.');
+        await page.setViewportSize({ width: 390, height: 844 });
+        const bounds = await page.getByRole('dialog').boundingBox();
+        assert.ok(bounds.width <= 390 && bounds.height <= 844);
+        assert.equal(await page.getByRole('dialog').evaluate(node => node.scrollHeight <= node.clientHeight), true);
+        await page.getByRole('dialog').getByRole('button', { name: 'Done', exact: true }).click();
+        await page.getByRole('button', { name: '✓ All changes saved' }).waitFor();
+        assert.equal(saved.chapters[1].description[0].children[0].text, 'Mobile review.');
+        return;
+      }
       // Keyboard drag is available from each handle.
       const handle = board.getByRole("button", {
         name: "Reorder An unopened letter",

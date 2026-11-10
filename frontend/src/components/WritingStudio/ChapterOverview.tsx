@@ -38,7 +38,6 @@ function SummaryTooltip({
   text: string;
   children: React.ReactElement<{ "aria-describedby"?: string }>;
 }) {
-
   const id = useId();
 
   const hideTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -79,7 +78,6 @@ function SummaryTooltip({
     }, 150);
   }
 
-
   function show() {
     clearTimeout(hideTimer.current);
     if (disabled || !text.trim() || !ref.current) return;
@@ -98,7 +96,6 @@ function SummaryTooltip({
       maxHeight: below >= 160 ? below : Math.max(100, rect.top - 18),
     });
   }
-
 
   useEffect(() => {
     if (!position) return;
@@ -120,7 +117,6 @@ function SummaryTooltip({
     };
   }, [position]);
 
-
   return (
     <div
       ref={ref}
@@ -128,7 +124,7 @@ function SummaryTooltip({
       onMouseEnter={scheduleShow}
       onMouseLeave={scheduleHide}
       onFocus={show}
-      onBlur={event => {
+      onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           clearTimeout(showTimer.current);
           setPosition(null);
@@ -152,6 +148,85 @@ function SummaryTooltip({
         </div>
       )}
     </div>
+  );
+}
+
+function PreviewSummary({
+  chapter,
+  store,
+  onChange,
+}: {
+  chapter: Chapter;
+  store: DraftStore;
+  onChange: (value: Chapter["description"]) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+  const text = plainText(chapter.description);
+  return (
+    <section className="ws-preview-summary" aria-label="Chapter summary">
+      <div className="ws-preview-summary-heading">
+        <button aria-expanded={expanded} onClick={() => setExpanded(!expanded)}>
+          <span aria-hidden="true">{expanded ? "▾" : "▸"}</span> Chapter summary
+        </button>
+        <span role="status" className="ws-muted">
+          {store.storageError && store.dirty
+            ? "Local backup unavailable · "
+            : ""}
+          {store.state === "error"
+            ? "Not saved online"
+            : store.state === "saved"
+              ? "Saved"
+              : "Saving…"}
+        </span>
+        {store.state === "error" && (
+          <button onClick={() => void store.flush()}>Retry save</button>
+        )}
+        <button
+          disabled={!!store.recovery}
+          onClick={() => {
+            setExpanded(true);
+            setEditing(!editing);
+            void store.flush();
+          }}
+        >
+          {editing
+            ? "Done editing"
+            : text.trim()
+              ? "Edit Summary"
+              : "Add Summary"}
+        </button>
+      </div>
+      {expanded &&
+        (editing ? (
+          <textarea
+            autoFocus
+            aria-label="Chapter summary"
+            dir="auto"
+            rows={4}
+            disabled={!!store.recovery}
+            value={text}
+            onBlur={() => void store.flush()}
+            onChange={(event) =>
+              onChange(
+                event.target.value.split("\n").map((line) => ({
+                  type: "paragraph",
+                  children: [{ text: line }],
+                })),
+              )
+            }
+          />
+        ) : text.trim() ? (
+          <div
+            dir="auto"
+            dangerouslySetInnerHTML={{
+              __html: richTextHtml(chapter.description),
+            }}
+          />
+        ) : (
+          <p className="ws-muted">No summary yet.</p>
+        ))}
+    </section>
   );
 }
 
@@ -263,7 +338,7 @@ export function ChapterOverview({
   onChapterEdited: (id: string) => void;
 }) {
   const chapters = useMemo(
-    () => book.chapters.filter(c => !c.isArchived),
+    () => book.chapters.filter((c) => !c.isArchived),
     [book.chapters],
   );
   const [editId, setEditId] = useState<string | null>(null);
@@ -273,9 +348,9 @@ export function ChapterOverview({
   const [announcement, setAnnouncement] = useState("");
   const dialog = useRef<HTMLDialogElement>(null);
   const origin = useRef<HTMLElement | null>(null);
-  const preview = chapters.find(c => c.id === previewId);
-  const summary = chapters.find(c => c.id === summaryId);
-  const editing = chapters.find(c => c.id === editId);
+  const preview = chapters.find((c) => c.id === previewId);
+  const summary = chapters.find((c) => c.id === summaryId);
+  const editing = chapters.find((c) => c.id === editId);
   const current = editing || preview || summary;
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -286,7 +361,7 @@ export function ChapterOverview({
   const stats = useMemo(
     () => ({
       words: chapters.reduce((n, c) => n + words(c.text), 0),
-      missing: chapters.filter(c => !plainText(c.description).trim()).length,
+      missing: chapters.filter((c) => !plainText(c.description).trim()).length,
     }),
     [chapters],
   );
@@ -309,7 +384,14 @@ export function ChapterOverview({
     );
     return () => cancelAnimationFrame(frame);
   }, [editId]);
+  useEffect(() => {
+    if (previewId)
+      dialog.current
+        ?.querySelector<HTMLElement>('[aria-label="Close chapter panel"]')
+        ?.focus();
+  }, [previewId]);
   function closePanel() {
+    void store.flush();
     if (editId && edited.current) onChapterEdited(editId);
     edited.current = false;
     setEditId(null);
@@ -317,17 +399,17 @@ export function ChapterOverview({
     setSummaryId(null);
   }
   function update(id: string, change: Partial<Chapter>) {
-    store.edit(b => ({
+    store.edit((b) => ({
       ...b,
-      chapters: b.chapters.map(c => (c.id === id ? { ...c, ...change } : c)),
+      chapters: b.chapters.map((c) => (c.id === id ? { ...c, ...change } : c)),
     }));
   }
   function reorder(from: number, to: number) {
     if (from < 0 || to < 0 || to >= chapters.length || from === to) return;
     const ordered = arrayMove(chapters, from, to);
-    store.edit(b => ({
+    store.edit((b) => ({
       ...b,
-      chapters: [...ordered, ...b.chapters.filter(c => c.isArchived)],
+      chapters: [...ordered, ...b.chapters.filter((c) => c.isArchived)],
     }));
     setAnnouncement(`${chapters[from].name} moved to chapter ${to + 1}.`);
   }
@@ -355,7 +437,7 @@ export function ChapterOverview({
                 id: newId(),
                 name: `Chapter ${chapters.length + 1}`,
               } as Chapter;
-              store.edit(b => ({ ...b, chapters: [...b.chapters, chapter] }));
+              store.edit((b) => ({ ...b, chapters: [...b.chapters, chapter] }));
               setSummaryId(chapter.id);
             }}
           >
@@ -376,13 +458,13 @@ export function ChapterOverview({
         onDragEnd={({ active, over }) => {
           if (over)
             reorder(
-              chapters.findIndex(c => c.id === active.id),
-              chapters.findIndex(c => c.id === over.id),
+              chapters.findIndex((c) => c.id === active.id),
+              chapters.findIndex((c) => c.id === over.id),
             );
         }}
       >
         <SortableContext
-          items={chapters.map(c => c.id)}
+          items={chapters.map((c) => c.id)}
           strategy={rectSortingStrategy}
         >
           <div className="ws-board">
@@ -431,11 +513,44 @@ export function ChapterOverview({
               ? "Edit chapter summary"
               : "Chapter reading preview"
         }
-        onCancel={event => {
+        onKeyDown={(event) => {
+          const target = event.target as HTMLElement;
+          if (
+            target.closest(
+              'textarea, input, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"]',
+            )
+          ) {
+            if (event.key === "Escape") {
+              event.preventDefault();
+              event.stopPropagation();
+            }
+            return;
+          }
+          if (
+            !preview ||
+            event.altKey ||
+            event.ctrlKey ||
+            event.metaKey ||
+            event.shiftKey
+          )
+            return;
+          if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+            event.preventDefault();
+            const next =
+              chapters[
+                chapters.indexOf(preview) + (event.key === "ArrowLeft" ? -1 : 1)
+              ];
+            if (next) {
+              void store.flush();
+              setPreviewId(next.id);
+            }
+          }
+        }}
+        onCancel={(event) => {
           event.preventDefault();
           closePanel();
         }}
-        onClick={event => {
+        onClick={(event) => {
           if (event.target === event.currentTarget) closePanel();
         }}
       >
@@ -448,7 +563,7 @@ export function ChapterOverview({
                     ? "EDIT CHAPTER"
                     : summary
                       ? "CHAPTER SUMMARY"
-                      : `CHAPTER ${chapters.indexOf(current) + 1} · READING PREVIEW`}
+                      : `Chapter ${chapters.indexOf(current) + 1} of ${chapters.length} · Reading preview`}
                 </span>
                 <h2 dir="auto">{current.name || "Untitled chapter"}</h2>
               </div>
@@ -465,7 +580,7 @@ export function ChapterOverview({
                     value={editing.text}
                     label="Chapter manuscript"
                     readOnly={!!store.recovery}
-                    onChange={text => {
+                    onChange={(text) => {
                       edited.current = true;
                       update(editing.id, { text });
                     }}
@@ -482,19 +597,20 @@ export function ChapterOverview({
                     value={summary.description}
                     label="Chapter summary"
                     readOnly={!!store.recovery}
-                    onChange={description =>
+                    onChange={(description) =>
                       update(summary.id, { description })
                     }
                   />
                 </>
               ) : (
                 <>
-                  <div
-                    className="ws-preview-summary"
-                    dir="auto"
-                    dangerouslySetInnerHTML={{
-                      __html: richTextHtml(current.description),
-                    }}
+                  <PreviewSummary
+                    key={current.id}
+                    chapter={current}
+                    store={store}
+                    onChange={(description) =>
+                      update(current.id, { description })
+                    }
                   />
                   <div
                     className="ws-prose"
@@ -511,19 +627,21 @@ export function ChapterOverview({
                 <>
                   <button
                     disabled={chapters.indexOf(preview) === 0}
-                    onClick={() =>
-                      setPreviewId(chapters[chapters.indexOf(preview) - 1].id)
-                    }
+                    onClick={() => {
+                      void store.flush();
+                      setPreviewId(chapters[chapters.indexOf(preview) - 1].id);
+                    }}
                   >
-                    ← Previous
+                    ← Previous Chapter
                   </button>
                   <button
                     disabled={chapters.indexOf(preview) === chapters.length - 1}
-                    onClick={() =>
-                      setPreviewId(chapters[chapters.indexOf(preview) + 1].id)
-                    }
+                    onClick={() => {
+                      void store.flush();
+                      setPreviewId(chapters[chapters.indexOf(preview) + 1].id);
+                    }}
                   >
-                    Next →
+                    Next Chapter →
                   </button>
                 </>
               )}
