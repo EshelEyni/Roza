@@ -240,6 +240,9 @@ test(
       await planning.getByRole('button',{name:'Remove Jonah from chapter',exact:true}).click();
       const removeCharacter=page.getByRole('dialog',{name:'Remove character from chapter?',exact:true});
       await removeCharacter.getByText(/only unlinks the character/).waitFor();
+      assert.ok(await removeCharacter.evaluate(el=>parseFloat(getComputedStyle(el).paddingLeft)>=20));
+      assert.notEqual(await removeCharacter.evaluate(el=>getComputedStyle(el).borderRadius),'0px');
+      await page.screenshot({path:path.join(screenshots,'confirmation-desktop.png')});
       await removeCharacter.getByRole('button',{name:'Cancel',exact:true}).click();
       assert.equal(await planning.locator('.cp-element').count(),2);
       await planning.getByRole('button',{name:'Remove Jonah from chapter',exact:true}).click();

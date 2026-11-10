@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { ConfirmDialog } from "../Reader/ReaderArchiveDialog";
+import { ConfirmDialog } from "../Modals/ConfirmDialog";
 import {
   FiPlus,
   FiSearch,
@@ -271,10 +271,9 @@ export function ChapterElements({
       )}
       {removing && (
         <ConfirmDialog
-          heading={`Remove ${singular} from chapter?`}
+          title={`Remove ${singular} from chapter?`}
           message={`Remove “${removing.name}” from this chapter? This only unlinks the ${singular}; it remains in your book and other chapters.`}
           confirmLabel="Remove from chapter"
-          icon={<FiTrash2 aria-hidden="true" />}
           onCancel={() => setRemoving(null)}
           onConfirm={() => {
             link(kind, removing.id, true);

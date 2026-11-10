@@ -1,4 +1,4 @@
-import { ConfirmDialog } from "../Reader/ReaderArchiveDialog";
+import { ConfirmDialog } from "../Modals/ConfirmDialog";
 import { FiTrash2 } from "react-icons/fi";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -428,10 +428,9 @@ export function TaskBoardView({
       )}
       {confirmation && (
         <ConfirmDialog
-          heading="Delete permanently?"
+          title="Delete permanently?"
           message={confirmation.message}
           confirmLabel="Delete"
-          icon={<FiTrash2 aria-hidden="true" />}
           onCancel={() => setConfirmation(null)}
           onConfirm={() => {
             confirmation.action();
