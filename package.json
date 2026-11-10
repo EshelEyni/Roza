@@ -10,7 +10,8 @@
     "docker:publish": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy/publish-image.ps1",
     "deploy:roza": "gh workflow run deploy-roza.yml --repo EshelEyni/Roza --ref main",
     "deploy:watch": "gh run watch --repo EshelEyni/Roza",
-    "deploy:all": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy/publish-and-deploy.ps1"
+    "deploy:all": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy/publish-and-deploy.ps1",
+    "gi": "concurrently --names backend,frontend \"npm install --prefix backend\" \"npm install --prefix frontend\""
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
