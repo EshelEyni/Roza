@@ -224,3 +224,227 @@
   font-size: clamp(32px, 3vw, 40px);
   white-space: nowrap;
 }
+/* Chapter elements: quiet character cards and compact theme/plotline rows. */
+.cp-elements-header,
+.cp-elements-tools {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-block: 20px;
+}
+.cp-elements-header h2 {
+  margin: 0;
+  font:
+    400 22px Georgia,
+    serif;
+}
+.cp-elements-header h2 small {
+  font: 13px var(--font-primary, sans-serif);
+  color: var(--ws-muted);
+  margin-inline-start: 8px;
+}
+.cp-elements-header button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.cp-elements-tools .cp-elements-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+}
+.cp-content .cp-elements-search input {
+  border: 0;
+  border-bottom: 1px solid var(--ws-line);
+  border-radius: 0;
+  padding-inline: 4px;
+}
+.cp-elements-tools select {
+  max-width: 260px;
+}
+.cp-element-create {
+  display: flex;
+  gap: 8px;
+  padding: 14px 0;
+  align-items: center;
+}
+.cp-element-create input {
+  flex: 1;
+}
+.cp-element-create button {
+  flex-shrink: 0;
+}
+.cp-element-list {
+  display: grid;
+  gap: 14px;
+}
+.cp-elements-characters .cp-element-list {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+  align-items: start;
+}
+.cp-element {
+  min-width: 0;
+  border-radius: 7px;
+  border: 1px solid var(--ws-line);
+  background: var(--ws-paper);
+  overflow: hidden;
+}
+.cp-elements-characters .cp-element.is-open {
+  grid-column: 1 / -1;
+}
+.cp-element-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 10px;
+}
+.cp-element-header .cp-element-open {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  text-align: start;
+  padding: 8px;
+  gap: 8px;
+}
+.cp-element-name {
+  font-family: Georgia, serif;
+  font-size: 19px;
+  overflow-wrap: anywhere;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.cp-element-name i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.cp-element-excerpt {
+  grid-column: 1;
+  font-size: 13px;
+  color: var(--ws-muted);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.cp-elements-characters .cp-element-excerpt {
+  min-height: 38px;
+}
+.cp-element-chevron {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  color: var(--ws-muted);
+}
+.cp-element.is-open .cp-element-chevron {
+  transform: rotate(180deg);
+}
+.cp-element-header .cp-element-delete {
+  color: var(--ws-muted);
+  padding: 8px;
+}
+.cp-element-body {
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--ws-line);
+}
+.cp-element-body .ws-prose {
+  font-size: 17px;
+}
+.cp-element-body footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.cp-elements-themes .cp-element,
+.cp-elements-plotlines .cp-element {
+  border: 0;
+  border-bottom: 1px solid var(--ws-line);
+  border-radius: 0;
+  background: transparent;
+}
+.cp-elements-themes .cp-element-list,
+.cp-elements-plotlines .cp-element-list {
+  gap: 0;
+}
+.cp-elements-themes .cp-element-header,
+.cp-elements-plotlines .cp-element-header {
+  padding: 5px 0;
+}
+.cp-elements-themes .cp-element-name,
+.cp-elements-plotlines .cp-element-name {
+  font-size: 17px;
+}
+.cp-elements-empty {
+  color: var(--ws-muted);
+  padding: 36px 0;
+  text-align: center;
+}
+.cp-elements-hint {
+  font-size: 12px;
+  color: var(--ws-muted);
+  margin-top: 20px;
+}
+.cp-chapter-bible .tb-chapter {
+  padding: 0;
+}
+.cp-chapter-bible .tb-chapter .tb-columns {
+  padding-top: 14px;
+}
+.cp-chapter-bible .tb-chapter .tb-list {
+  flex-basis: 270px;
+  background: var(--ws-soft);
+}
+.cp-chapter-bible .tb-chapter .tb-card {
+  background: var(--ws-paper);
+}
+.tb-chapter-link {
+  display: flex !important;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--ws-muted);
+}
+.tb-chapter-link select {
+  max-width: 250px;
+}
+@media (max-width: 600px) {
+  .cp-elements-header {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .cp-elements-tools {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .cp-elements-tools select {
+    max-width: none;
+  }
+  .cp-element-create {
+    flex-wrap: wrap;
+  }
+  .cp-element-create input {
+    flex-basis: 100%;
+  }
+  .tb-chapter-link {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .tb-chapter-link select {
+    max-width: none;
+  }
+}
+.cp-chapter-bible .cp-bible-nav button[aria-pressed="true"] {
+  color: var(--ws-accent);
+  background: transparent;
+  border-radius: 0;
+  box-shadow: inset 0 -2px 0 var(--ws-accent);
+}

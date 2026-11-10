@@ -42,10 +42,12 @@ function Sortable({
   id,
   children,
   kind,
+  disabled = false,
 }: {
   id: string;
   children: React.ReactNode;
   kind: string;
+  disabled?: boolean;
 }) {
   const {
     attributes,
@@ -55,14 +57,20 @@ function Sortable({
     transition,
     isDragging,
     isOver,
-  } = useSortable({ id, data: { kind } });
+  } = useSortable({
+    id,
+    data: { kind },
+    disabled: { draggable: disabled, droppable: false },
+  });
   return (
     <div
       ref={setNodeRef}
-      {...attributes}
-      aria-label={kind === "list" ? "Reorder list" : "Reorder task"}
+      {...(disabled ? {} : attributes)}
+      aria-label={
+        disabled ? undefined : kind === "list" ? "Reorder list" : "Reorder task"
+      }
       onPointerDown={event => {
-        if (event.pointerType === "touch") return;
+        if (disabled || event.pointerType === "touch") return;
         const target = event.target as HTMLElement;
         if (target.closest(".tb-sortable") !== event.currentTarget) return;
         if (
@@ -73,6 +81,7 @@ function Sortable({
         listeners?.onPointerDown?.(event);
       }}
       onTouchStart={event => {
+        if (disabled) return;
         const target = event.target as HTMLElement;
         if (target.closest(".tb-sortable") !== event.currentTarget) return;
         if (
@@ -83,7 +92,8 @@ function Sortable({
         listeners?.onTouchStart?.(event);
       }}
       onKeyDown={event => {
-        if (event.target === event.currentTarget) listeners?.onKeyDown?.(event);
+        if (!disabled && event.target === event.currentTarget)
+          listeners?.onKeyDown?.(event);
       }}
       className={`tb-sortable tb-${kind} ${isDragging ? "tb-dragging" : ""} ${isOver ? "tb-over" : ""}`}
       style={{
@@ -100,11 +110,16 @@ function Sortable({
 export function TaskBoardView({
   store,
   initialTaskId = "",
+  chapterId,
+  onOpenTask,
 }: {
   store: DraftStore;
   initialTaskId?: string;
+  chapterId?: string;
+  onOpenTask?: (id: string) => void;
 }) {
-  const [chapterFilter, setChapterFilter] = useState("");
+  const [filter, setChapterFilter] = useState("");
+  const chapterFilter = chapterId || filter;
   const [confirmation, setConfirmation] = useState<{
     message: string;
     action: () => void;
@@ -145,32 +160,75 @@ export function TaskBoardView({
     if (over) change(moveTask(board, String(active.id), String(over.id)));
   };
   return (
-    <section className="tb" aria-label="Book task board">
-      <div className="tb-heading">
-        <div>
-          <span className="ws-eyebrow">MAKE SPACE FOR PROGRESS</span>
-          <h1>Your writing, in motion.</h1>
-          <p>Small steps toward your next chapter.</p>
+    <section
+      className={`tb ${chapterId ? "tb-chapter" : ""}`}
+      aria-label={chapterId ? "Chapter task board" : "Book task board"}
+    >
+      {!chapterId && (
+        <div className="tb-heading">
+          <div>
+            <span className="ws-eyebrow">MAKE SPACE FOR PROGRESS</span>
+            <h1>Your writing, in motion.</h1>
+            <p>Small steps toward your next chapter.</p>
+          </div>
+          <span>
+            {board.lists.reduce((n, l) => n + l.cards.length, 0)} tasks
+          </span>
         </div>
-        <span>{board.lists.reduce((n, l) => n + l.cards.length, 0)} tasks</span>
-      </div>
-      <label className="cp-filter">
-        Chapter{" "}
-        <select
-          aria-label="Filter tasks by chapter"
-          value={chapterFilter}
-          onChange={e => setChapterFilter(e.target.value)}
-        >
-          <option value="">All chapters</option>
-          {store.book.chapters
-            .filter(c => !c.isArchived)
-            .map(c => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-        </select>
-      </label>
+      )}
+      {!chapterId && (
+        <label className="cp-filter">
+          Chapter{" "}
+          <select
+            aria-label="Filter tasks by chapter"
+            value={chapterFilter}
+            onChange={e => setChapterFilter(e.target.value)}
+          >
+            <option value="">All chapters</option>
+            {store.book.chapters
+              .filter(c => !c.isArchived)
+              .map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+          </select>
+        </label>
+      )}
+      {chapterId && (
+        <label className="tb-chapter-link">
+          Link a task from the book
+          <select
+            aria-label="Link existing chapter task"
+            disabled={!!store.recovery}
+            value=""
+            onChange={e => {
+              const id = e.target.value;
+              if (!id) return;
+              change({
+                lists: board.lists.map(l => ({
+                  ...l,
+                  cards: l.cards.map(c =>
+                    c.id === id
+                      ? { ...c, chapterId, updatedAt: new Date().toISOString() }
+                      : c,
+                  ),
+                })),
+              });
+            }}
+          >
+            <option value="">Choose a task…</option>
+            {board.lists
+              .flatMap(l => l.cards)
+              .filter(c => c.chapterId !== chapterId)
+              .map(c => (
+                <option key={c.id} value={c.id}>
+                  {c.title}
+                </option>
+              ))}
+          </select>
+        </label>
+      )}
       <fieldset disabled={!!store.recovery}>
         <DndContext
           sensors={sensors}
@@ -192,9 +250,15 @@ export function TaskBoardView({
               strategy={horizontalListSortingStrategy}
             >
               {board.lists.map(l => (
-                <Sortable key={l.id} id={l.id} kind="list">
+                <Sortable
+                  key={l.id}
+                  id={l.id}
+                  kind="list"
+                  disabled={!!chapterId}
+                >
                   <header>
                     <input
+                      readOnly={!!chapterId}
                       aria-label="List title"
                       maxLength={500}
                       value={l.title}
@@ -205,25 +269,31 @@ export function TaskBoardView({
                         }))
                       }
                     />
-                    <button
-                      className="tb-delete-list"
-                      aria-label={`Delete list ${l.title}`}
-                      title="Delete list"
-                      onClick={() => {
-                        setConfirmation({
-                          message: `Delete “${l.title}” and its ${l.cards.length} tasks? This cannot be undone.`,
-                          action: () =>
-                            change({
-                              lists: board.lists.filter(x => x.id !== l.id),
-                            }),
-                        });
-                      }}
-                    >
-                      <FiTrash2 aria-hidden="true" size={16} />
-                    </button>
+                    {!chapterId && (
+                      <button
+                        className="tb-delete-list"
+                        aria-label={`Delete list ${l.title}`}
+                        title="Delete list"
+                        onClick={() => {
+                          setConfirmation({
+                            message: `Delete “${l.title}” and its ${l.cards.length} tasks? This cannot be undone.`,
+                            action: () =>
+                              change({
+                                lists: board.lists.filter(x => x.id !== l.id),
+                              }),
+                          });
+                        }}
+                      >
+                        <FiTrash2 aria-hidden="true" size={16} />
+                      </button>
+                    )}
                   </header>
                   <SortableContext
-                    items={l.cards.map(c => c.id)}
+                    items={l.cards
+                      .filter(
+                        c => !chapterFilter || c.chapterId === chapterFilter,
+                      )
+                      .map(c => c.id)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="tb-cards">
@@ -277,7 +347,9 @@ export function TaskBoardView({
                             </button>
                           </Sortable>
                         ))}
-                      {!l.cards.length && (
+                      {!l.cards.some(
+                        c => !chapterFilter || c.chapterId === chapterFilter,
+                      ) && (
                         <p className="tb-empty">
                           A little room for your next idea.
                         </p>
@@ -355,24 +427,29 @@ export function TaskBoardView({
                 </Sortable>
               ))}
             </SortableContext>
-            <button
-              className="tb-add-list"
-              onClick={() =>
-                change({
-                  lists: [
-                    ...board.lists,
-                    { id: uid(), title: "New list", cards: [] },
-                  ],
-                })
-              }
-            >
-              ＋ Add List
-            </button>
+            {!chapterId && (
+              <button
+                className="tb-add-list"
+                onClick={() =>
+                  change({
+                    lists: [
+                      ...board.lists,
+                      { id: uid(), title: "New list", cards: [] },
+                    ],
+                  })
+                }
+              >
+                ＋ Add List
+              </button>
+            )}
           </div>
         </DndContext>
       </fieldset>
       {card && list && (
         <CardDialog
+          onOpenBoard={
+            chapterId && onOpenTask ? () => onOpenTask(card.id) : undefined
+          }
           chapters={store.book.chapters}
           card={card}
           list={list}
@@ -410,6 +487,7 @@ export function TaskBoardView({
   );
 }
 function CardDialog({
+  onOpenBoard,
   card,
   chapters,
   list,
@@ -419,6 +497,7 @@ function CardDialog({
   disabled,
 }: {
   chapters: import("../../../../shared/types/books").Chapter[];
+  onOpenBoard?: () => void;
   card: TaskCard;
   list: TaskList;
   update: (patch: Partial<TaskCard>) => void;
@@ -508,6 +587,7 @@ function CardDialog({
           </button>
         </footer>
       </fieldset>
+      {onOpenBoard && <button onClick={onOpenBoard}>Open in book board</button>}
       <button className="ws-primary" onClick={close}>
         Done
       </button>

@@ -1,3 +1,5 @@
+import { ChapterElements } from "./ChapterElements";
+import { TaskBoardView } from "./TaskBoard";
 import { chapterTasks, storyKinds } from "./planningModel";
 import {
   Book,
@@ -77,7 +79,7 @@ function PlanningGroup({
   if (page)
     return visible ? (
       <section className="cp-bible-section">
-        <h2>{title}</h2>
+        {title && <h2>{title}</h2>}
         {children}
       </section>
     ) : null;
@@ -245,111 +247,125 @@ export function ChapterPlanning({
                 </>
               }
             >
-              {tasks.map(task => (
-                <div className="cp-task" key={task.id}>
-                  <input
-                    type="checkbox"
-                    aria-label={`Complete ${task.title}`}
-                    checked={!!task.completed}
-                    onChange={e =>
-                      patchTask(task.id, { completed: e.target.checked })
-                    }
-                  />
-                  <input
-                    dir="auto"
-                    aria-label="Chapter task title"
-                    maxLength={500}
-                    value={task.title}
-                    onChange={e => {
-                      if (e.target.value.trim())
-                        patchTask(task.id, { title: e.target.value });
-                    }}
-                  />
-                  <button onClick={() => onTask(task.id)}>Open in board</button>
-                  <button
-                    aria-label={`Delete task ${task.title}`}
-                    onClick={() => {
-                      if (window.confirm(`Delete “${task.title}”?`))
-                        store.edit(b => ({
-                          ...b,
-                          taskBoard: {
-                            lists: (b.taskBoard?.lists || []).map(l => ({
-                              ...l,
-                              cards: l.cards.filter(c => c.id !== task.id),
-                            })),
-                          },
-                        }));
+              {page ? (
+                <TaskBoardView
+                  store={store}
+                  chapterId={chapter.id}
+                  onOpenTask={onTask}
+                />
+              ) : (
+                <>
+                  {tasks.map(task => (
+                    <div className="cp-task" key={task.id}>
+                      <input
+                        type="checkbox"
+                        aria-label={`Complete ${task.title}`}
+                        checked={!!task.completed}
+                        onChange={e =>
+                          patchTask(task.id, { completed: e.target.checked })
+                        }
+                      />
+                      <input
+                        dir="auto"
+                        aria-label="Chapter task title"
+                        maxLength={500}
+                        value={task.title}
+                        onChange={e => {
+                          if (e.target.value.trim())
+                            patchTask(task.id, { title: e.target.value });
+                        }}
+                      />
+                      <button onClick={() => onTask(task.id)}>
+                        Open in board
+                      </button>
+                      <button
+                        aria-label={`Delete task ${task.title}`}
+                        onClick={() => {
+                          if (window.confirm(`Delete “${task.title}”?`))
+                            store.edit(b => ({
+                              ...b,
+                              taskBoard: {
+                                lists: (b.taskBoard?.lists || []).map(l => ({
+                                  ...l,
+                                  cards: l.cards.filter(c => c.id !== task.id),
+                                })),
+                              },
+                            }));
+                        }}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  <form
+                    className="cp-create"
+                    onSubmit={e => {
+                      e.preventDefault();
+                      const form = e.currentTarget;
+                      const title = String(
+                        new FormData(form).get("title") || "",
+                      ).trim();
+                      if (!title) return;
+                      store.edit(b => {
+                        const board = structuredClone(
+                          b.taskBoard || emptyBoard(),
+                        );
+                        if (!board.lists.length)
+                          board.lists.push({
+                            id: uid(),
+                            title: "To Do",
+                            cards: [],
+                          });
+                        const now = new Date().toISOString();
+                        board.lists[0].cards.push({
+                          id: uid(),
+                          title,
+                          chapterId: chapter.id,
+                          completed: false,
+                          description: "",
+                          dueDate: "",
+                          checklist: [],
+                          labels: [],
+                          createdAt: now,
+                          updatedAt: now,
+                        });
+                        return { ...b, taskBoard: board };
+                      });
+                      form.reset();
                     }}
                   >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <form
-                className="cp-create"
-                onSubmit={e => {
-                  e.preventDefault();
-                  const form = e.currentTarget;
-                  const title = String(
-                    new FormData(form).get("title") || "",
-                  ).trim();
-                  if (!title) return;
-                  store.edit(b => {
-                    const board = structuredClone(b.taskBoard || emptyBoard());
-                    if (!board.lists.length)
-                      board.lists.push({
-                        id: uid(),
-                        title: "To Do",
-                        cards: [],
-                      });
-                    const now = new Date().toISOString();
-                    board.lists[0].cards.push({
-                      id: uid(),
-                      title,
-                      chapterId: chapter.id,
-                      completed: false,
-                      description: "",
-                      dueDate: "",
-                      checklist: [],
-                      labels: [],
-                      createdAt: now,
-                      updatedAt: now,
-                    });
-                    return { ...b, taskBoard: board };
-                  });
-                  form.reset();
-                }}
-              >
-                <input
-                  dir="auto"
-                  name="title"
-                  aria-label="New chapter task"
-                  maxLength={500}
-                  placeholder="What needs doing?"
-                  required
-                />
-                <button>Add task</button>
-              </form>
-              <label>
-                Associate existing task
-                <select
-                  value=""
-                  onChange={e => {
-                    if (e.target.value)
-                      patchTask(e.target.value, { chapterId: chapter.id });
-                  }}
-                >
-                  <option value="">Choose a task…</option>
-                  {(book.taskBoard?.lists || [])
-                    .flatMap(l => l.cards)
-                    .filter(c => c.chapterId !== chapter.id)
-                    .map(c => (
-                      <option key={c.id} value={c.id}>
-                        {c.title}
-                      </option>
-                    ))}
-                </select>
-              </label>
+                    <input
+                      dir="auto"
+                      name="title"
+                      aria-label="New chapter task"
+                      maxLength={500}
+                      placeholder="What needs doing?"
+                      required
+                    />
+                    <button>Add task</button>
+                  </form>
+                  <label>
+                    Associate existing task
+                    <select
+                      value=""
+                      onChange={e => {
+                        if (e.target.value)
+                          patchTask(e.target.value, { chapterId: chapter.id });
+                      }}
+                    >
+                      <option value="">Choose a task…</option>
+                      {(book.taskBoard?.lists || [])
+                        .flatMap(l => l.cards)
+                        .filter(c => c.chapterId !== chapter.id)
+                        .map(c => (
+                          <option key={c.id} value={c.id}>
+                            {c.title}
+                          </option>
+                        ))}
+                    </select>
+                  </label>
+                </>
+              )}
             </PlanningGroup>
             {storyKinds.map(kind => (
               <PlanningGroup
@@ -357,137 +373,155 @@ export function ChapterPlanning({
                 page={page}
                 visible={active === kind}
                 title={
-                  <>
-                    {kind[0].toUpperCase() + kind.slice(1)} ·{" "}
-                    {chapter.planning?.[kind].length || 0}
-                  </>
+                  page ? null : (
+                    <>
+                      {kind[0].toUpperCase() + kind.slice(1)} ·{" "}
+                      {chapter.planning?.[kind].length || 0}
+                    </>
+                  )
                 }
               >
-                {(chapter.planning?.[kind] || []).map(association => {
-                  const entity = book[kind].find(
-                    v => v.id === association.entityId && !v.isArchived,
-                  );
-                  if (!entity) return null;
-                  return (
-                    <div
-                      className={`cp-link ${kind === "themes" ? "cp-theme" : ""}`}
-                      key={entity.id}
-                    >
-                      <div className="cp-link-heading">
-                        <button
-                          dir="auto"
-                          style={{
-                            borderColor:
-                              "color" in entity ? entity.color : undefined,
-                          }}
-                          onClick={() => onEntity(kind, entity.id)}
+                {page ? (
+                  <ChapterElements
+                    store={store}
+                    chapter={chapter}
+                    kind={kind}
+                    link={link}
+                    onEntity={onEntity}
+                    onChapter={onChapter}
+                  />
+                ) : (
+                  <>
+                    {(chapter.planning?.[kind] || []).map(association => {
+                      const entity = book[kind].find(
+                        v => v.id === association.entityId && !v.isArchived,
+                      );
+                      if (!entity) return null;
+                      return (
+                        <div
+                          className={`cp-link ${kind === "themes" ? "cp-theme" : ""}`}
+                          key={entity.id}
                         >
-                          {entity.name}
-                        </button>
-                        <button
-                          aria-label={`Remove ${entity.name} from chapter`}
-                          onClick={() => link(kind, entity.id, true)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                      {kind !== "themes" && (
-                        <textarea
-                          dir="auto"
-                          aria-label={`${entity.name} chapter contribution`}
-                          maxLength={50000}
-                          placeholder="Development in this chapter…"
-                          value={association.note || ""}
-                          onChange={e =>
-                            link(kind, entity.id, false, e.target.value)
-                          }
-                        />
-                      )}
-                      <div className="cp-related">
-                        {book.chapters
+                          <div className="cp-link-heading">
+                            <button
+                              dir="auto"
+                              style={{
+                                borderColor:
+                                  "color" in entity ? entity.color : undefined,
+                              }}
+                              onClick={() => onEntity(kind, entity.id)}
+                            >
+                              {entity.name}
+                            </button>
+                            <button
+                              aria-label={`Remove ${entity.name} from chapter`}
+                              onClick={() => link(kind, entity.id, true)}
+                            >
+                              ×
+                            </button>
+                          </div>
+                          {kind !== "themes" && (
+                            <textarea
+                              dir="auto"
+                              aria-label={`${entity.name} chapter contribution`}
+                              maxLength={50000}
+                              placeholder="Development in this chapter…"
+                              value={association.note || ""}
+                              onChange={e =>
+                                link(kind, entity.id, false, e.target.value)
+                              }
+                            />
+                          )}
+                          <div className="cp-related">
+                            {book.chapters
+                              .filter(
+                                c =>
+                                  !c.isArchived &&
+                                  c.id !== chapter.id &&
+                                  c.planning?.[kind].some(
+                                    l => l.entityId === entity.id,
+                                  ),
+                              )
+                              .map(c => (
+                                <button
+                                  key={c.id}
+                                  dir="auto"
+                                  onClick={() => onChapter(c.id)}
+                                >
+                                  {c.name}
+                                </button>
+                              ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <label>
+                      Add{" "}
+                      {kind === "themes"
+                        ? "theme"
+                        : kind === "plotlines"
+                          ? "plotline"
+                          : "character"}
+                      <select
+                        aria-label={`Associate ${kind} with chapter`}
+                        value=""
+                        onChange={e => {
+                          if (e.target.value) link(kind, e.target.value);
+                        }}
+                      >
+                        <option value="">Choose existing…</option>
+                        {book[kind]
                           .filter(
-                            c =>
-                              !c.isArchived &&
-                              c.id !== chapter.id &&
-                              c.planning?.[kind].some(
-                                l => l.entityId === entity.id,
+                            v =>
+                              !v.isArchived &&
+                              !chapter.planning?.[kind].some(
+                                l => l.entityId === v.id,
                               ),
                           )
-                          .map(c => (
-                            <button
-                              key={c.id}
-                              dir="auto"
-                              onClick={() => onChapter(c.id)}
-                            >
-                              {c.name}
-                            </button>
+                          .map(v => (
+                            <option key={v.id} value={v.id}>
+                              {v.name}
+                            </option>
                           ))}
-                      </div>
-                    </div>
-                  );
-                })}
-                <label>
-                  Add{" "}
-                  {kind === "themes"
-                    ? "theme"
-                    : kind === "plotlines"
-                      ? "plotline"
-                      : "character"}
-                  <select
-                    aria-label={`Associate ${kind} with chapter`}
-                    value=""
-                    onChange={e => {
-                      if (e.target.value) link(kind, e.target.value);
-                    }}
-                  >
-                    <option value="">Choose existing…</option>
-                    {book[kind]
-                      .filter(
-                        v =>
-                          !v.isArchived &&
-                          !chapter.planning?.[kind].some(
-                            l => l.entityId === v.id,
-                          ),
-                      )
-                      .map(v => (
-                        <option key={v.id} value={v.id}>
-                          {v.name}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <form
-                  className="cp-create"
-                  onSubmit={e => {
-                    e.preventDefault();
-                    const form = e.currentTarget;
-                    const name = String(
-                      new FormData(form).get("name") || "",
-                    ).trim();
-                    if (!name) return;
-                    const entity = {
-                      ...getDefaultBookDataItem({
-                        bookId: book.id,
-                        type: kind,
-                      }),
-                      id: newId(),
-                      name,
-                    };
-                    store.edit(b => ({ ...b, [kind]: [...b[kind], entity] }));
-                    link(kind, entity.id);
-                    form.reset();
-                  }}
-                >
-                  <input
-                    dir="auto"
-                    name="name"
-                    aria-label={`New ${kind} name`}
-                    maxLength={500}
-                    placeholder="Create a new story element…"
-                    required
-                  />
-                  <button>Create & link</button>
-                </form>
+                      </select>
+                    </label>
+                    <form
+                      className="cp-create"
+                      onSubmit={e => {
+                        e.preventDefault();
+                        const form = e.currentTarget;
+                        const name = String(
+                          new FormData(form).get("name") || "",
+                        ).trim();
+                        if (!name) return;
+                        const entity = {
+                          ...getDefaultBookDataItem({
+                            bookId: book.id,
+                            type: kind,
+                          }),
+                          id: newId(),
+                          name,
+                        };
+                        store.edit(b => ({
+                          ...b,
+                          [kind]: [...b[kind], entity],
+                        }));
+                        link(kind, entity.id);
+                        form.reset();
+                      }}
+                    >
+                      <input
+                        dir="auto"
+                        name="name"
+                        aria-label={`New ${kind} name`}
+                        maxLength={500}
+                        placeholder="Create a new story element…"
+                        required
+                      />
+                      <button>Create & link</button>
+                    </form>
+                  </>
+                )}
               </PlanningGroup>
             ))}
           </fieldset>
