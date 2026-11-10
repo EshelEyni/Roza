@@ -2030,3 +2030,8 @@ padding: 6px 10px;
 .ws-category-options [role="option"] { display: flex; justify-content: space-between; gap: 12px; padding: 9px 12px; border-radius: 3px; cursor: pointer; }
 .ws-category-options [role="option"].is-active { background: var(--ws-soft); }
 .ws-category-options [aria-selected="true"] { color: var(--ws-accent); font-weight: 600; }
+
+/* Boards share the manuscript layout and keep the section selector available. */
+.ws-layout > .ws-task-surface {
+  min-width: 0;
+}

@@ -1,9 +1,18 @@
 import { ItemMenu } from "./ItemMenu";
-import { useTranslation } from "react-i18next";
 import { CategorySelect } from "./CategorySelect";
+import {
+  sectionLabel,
+  studioSections,
+  StudioSection,
+} from "./studioNavigation";
 import { useConfirmation } from "../Modals/useConfirmation";
 import { useEffect, useMemo, useReducer, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import {
+  Link,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Book,
@@ -27,13 +36,6 @@ import { ChapterOverview } from "./ChapterOverview";
 import "./writingStudio.css";
 import { TaskBoardView } from "./TaskBoard";
 
-const categories: BooKDataItemType[] = [
-  "chapters",
-  "characters",
-  "plotlines",
-  "themes",
-  "notes",
-];
 function preference(key: string, fallback: string) {
   try {
     return localStorage.getItem(key) || fallback;
@@ -77,7 +79,6 @@ export default function WritingStudio() {
 }
 
 export function Workspace({ initialBook }: { initialBook: Book }) {
-  const { t } = useTranslation();
   const { confirm, confirmationDialog } = useConfirmation();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -93,22 +94,64 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const [, render] = useReducer((n) => n + 1, 0);
   const book = store.book;
   const scope = `roza:studio:${book.userId}:${book.id}`;
-  const [category, setCategory] = useState<BooKDataItemType>(
-    categories.includes(params.dataItemType as BooKDataItemType)
-      ? (params.dataItemType as BooKDataItemType)
-      : "chapters",
-  );
-  const [selected, setSelected] = useState(() => {
-    const candidate =
-      params.dataItemId ||
-      (category === "chapters" ? preference(`${scope}:chapter`, "") : "");
-    const available = book[category].filter((entry) => !entry.isArchived);
-    return available.some((entry) => entry.id === candidate)
-      ? candidate
-      : available[0]?.id || "";
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requested =
+    searchParams.get("workspace") || params.dataItemType || "chapters";
+  const section: StudioSection = studioSections.includes(
+    requested as StudioSection,
+  )
+    ? (requested as StudioSection)
+    : "chapters";
+  const overview = section === "overview";
+  const tasks = section === "tasks";
+  const category: BooKDataItemType =
+    overview || tasks ? "chapters" : (section as BooKDataItemType);
+  const [selection, setSelection] = useState<
+    Partial<Record<BooKDataItemType, string>>
+  >(() => {
+    const entries = (
+      [
+        "chapters",
+        "characters",
+        "plotlines",
+        "themes",
+        "notes",
+      ] as BooKDataItemType[]
+    ).map((type) => {
+      const candidate =
+        params.dataItemType === type
+          ? params.dataItemId
+          : type === "chapters"
+            ? preference(`${scope}:chapter`, "")
+            : "";
+      const pages = book[type].filter((entry) => !entry.isArchived);
+      return [
+        type,
+        pages.find((entry) => entry.id === candidate)?.id || pages[0]?.id || "",
+      ];
+    });
+    return Object.fromEntries(entries);
   });
-  const [overview, setOverview] = useState(false);
-  const [tasks, setTasks] = useState(false);
+  const available = book[category].filter((entry) => !entry.isArchived);
+  const selected = available.some((entry) => entry.id === selection[category])
+    ? selection[category]!
+    : available[0]?.id || "";
+  function setSelected(id: string) {
+    setSelection((current) => ({ ...current, [category]: id }));
+  }
+  function changeSection(next: StudioSection) {
+    if (next !== section)
+      setSearchParams((current) => {
+        const nextParams = new URLSearchParams(current);
+        nextParams.set("workspace", next);
+        return nextParams;
+      });
+    setDrawer(false);
+    setFocus(false);
+    setSearch("");
+    setNotes(true);
+    setSummary(false);
+  }
   const [drawer, setDrawer] = useState(false);
   const [focus, setFocus] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -200,7 +243,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   function select(id: string) {
     setSummary(false);
     setSelected(id);
-    setOverview(false);
+    if (overview || tasks) changeSection("chapters");
     setDrawer(false);
     setNotes(true);
     if (category === "chapters") remember(`${scope}:chapter`, id);
@@ -284,8 +327,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             aria-label="Book title"
             value={book.name}
             disabled={!!store.recovery}
-            onChange={event =>
-              store.edit(current => ({
+            onChange={(event) =>
+              store.edit((current) => ({
                 ...current,
                 name: event.target.value,
               }))
@@ -434,27 +477,18 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           </p>
         </section>
       )}
-      {tasks && (
-        <button className="ws-task-entry" onClick={() => setTasks(false)}>
-          ← Return to manuscript
-        </button>
-      )}
-      <div className="ws-task-surface" hidden={!tasks}>
-        {tasks && <TaskBoardView store={store} />}
-      </div>
-      <div
-        className="ws-layout"
-        style={tasks ? { display: "none" } : undefined}
-      >
+      <div className="ws-layout">
         <button
           className="ws-mobile-nav"
           onClick={() => setDrawer(!drawer)}
           aria-expanded={drawer}
           aria-controls="studio-navigation"
         >
-          ☰ {category === "chapters" ? "Chapters" : "Planning"}{" "}
+          ☰ {sectionLabel(section)}{" "}
           <span>
-            {item ? itemName(item, items.indexOf(item)) : "Choose a chapter"}
+            {!overview && !tasks && item
+              ? itemName(item, items.indexOf(item))
+              : "Choose a workspace"}
           </span>
         </button>
         <aside
@@ -464,20 +498,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         >
           <div className="ws-sidebar-top">
             <span className="ws-eyebrow">YOUR MANUSCRIPT</span>
-            {category === "chapters" && (
-              <button
-                aria-label="Open chapter overview"
-                className="ws-overview-toggle"
-                aria-pressed={overview}
-                onClick={() => {
-                  setOverview(value => !value);
-                  setDrawer(false);
-                  setFocus(false);
-                }}
-              >
-                ▦ Overview
-              </button>
-            )}
             <button
               className="ws-drawer-close"
               onClick={() => setDrawer(false)}
@@ -487,60 +507,57 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             </button>
           </div>
           <CategorySelect
-            value={category}
-            options={categories}
-            onChange={(type) => {
-              setCategory(type);
-              setOverview(false);
-              setSelected(book[type].find((entry) => !entry.isArchived)?.id || "");
-              setSearch("");
-              setNotes(true);
-              setSummary(false);
-            }}
+            value={section}
+            options={studioSections}
+            onChange={changeSection}
           />
-          <input
-            type="search"
-            aria-label="Search manuscript"
-            placeholder="Search titles and text…"
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-          />
-          <nav className="ws-chapters">
-            {filtered.map((entry) => (
+          {!overview && !tasks && (
+            <>
+              <input
+                type="search"
+                aria-label="Search manuscript"
+                placeholder="Search titles and text…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              <nav className="ws-chapters">
+                {filtered.map((entry) => (
+                  <button
+                    key={entry.id}
+                    aria-current={entry.id === selected ? "page" : undefined}
+                    onClick={() => select(entry.id)}
+                  >
+                    <span className="ws-chapter-number">
+                      {String(items.indexOf(entry) + 1).padStart(2, "0")}
+                    </span>
+                    <span className="ws-chapter-label">
+                      <strong dir="auto">
+                        {itemName(entry, items.indexOf(entry))}
+                      </strong>
+                      <small>
+                        {words(
+                          "text" in entry ? entry.text : entry.description,
+                        ).toLocaleString()}{" "}
+                        words
+                      </small>
+                    </span>
+                  </button>
+                ))}
+                {!filtered.length && (
+                  <p className="ws-muted">
+                    {search ? "No matching pages." : "A fresh page awaits."}
+                  </p>
+                )}
+              </nav>
               <button
-                key={entry.id}
-                aria-current={entry.id === selected ? "page" : undefined}
-                onClick={() => select(entry.id)}
+                className="ws-add"
+                disabled={!!store.recovery}
+                onClick={addItem}
               >
-                <span className="ws-chapter-number">
-                  {String(items.indexOf(entry) + 1).padStart(2, "0")}
-                </span>
-                <span className="ws-chapter-label">
-                  <strong dir="auto">
-                    {itemName(entry, items.indexOf(entry))}
-                  </strong>
-                  <small>
-                    {words(
-                      "text" in entry ? entry.text : entry.description,
-                    ).toLocaleString()}{" "}
-                    words
-                  </small>
-                </span>
+                ＋ {category === "chapters" ? "Add chapter" : "Add page"}
               </button>
-            ))}
-            {!filtered.length && (
-              <p className="ws-muted">
-                {search ? "No matching pages." : "A fresh page awaits."}
-              </p>
-            )}
-          </nav>
-          <button
-            className="ws-add"
-            disabled={!!store.recovery}
-            onClick={addItem}
-          >
-            ＋ {category === "chapters" ? "Add chapter" : "Add page"}
-          </button>
+            </>
+          )}
           <div className="ws-progress">
             <span>
               {total.toLocaleString()}{" "}
@@ -561,14 +578,20 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             book={book}
             store={store}
             selected={selected}
-            onChapterEdited={chapterId => { if (chapterId === selected) setRestoreKey(n => n + 1); }}
-            onClose={() => setOverview(false)}
+            onChapterEdited={(chapterId) => {
+              if (chapterId === selected) setRestoreKey((n) => n + 1);
+            }}
           />
+        )}
+        {tasks && (
+          <div className="ws-task-surface">
+            <TaskBoardView store={store} />
+          </div>
         )}
         <section
           className="ws-writing"
           aria-label="Writing workspace"
-          style={overview ? { display: "none" } : undefined}
+          style={overview || tasks ? { display: "none" } : undefined}
         >
           {item ? (
             <>
@@ -588,7 +611,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   {category === "chapters" && (
                     <button
                       type="button"
-                      onClick={() => setSummary(value => !value)}
+                      onClick={() => setSummary((value) => !value)}
                       aria-expanded={summary}
                       aria-controls="ws-chapter-summary"
                     >
@@ -609,9 +632,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   <ItemMenu>
                     <summary>More</summary>
                     <div>
-                      <button onClick={() => setTasks(true)}>
-                        {t("writingTasks")}
-                      </button>
                       <button
                         type="button"
                         onClick={() => void leave(`/book/${book.id}`)}
@@ -666,7 +686,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       label="Chapter summary"
                       placeholder="Summarize what happens in this chapter…"
                       readOnly={preview || !!store.recovery}
-                      onChange={description => updateItem({ description })}
+                      onChange={(description) => updateItem({ description })}
                     />
                   </section>
                 ) : (
@@ -740,8 +760,11 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       i.id === entry.id ? { ...i, isArchived: false } : i,
                     ),
                   }));
-                  setCategory(entry.type);
-                  setSelected(entry.id);
+                  setSelection((current) => ({
+                    ...current,
+                    [entry.type]: entry.id,
+                  }));
+                  changeSection(entry.type);
                   setArchived((current) => current.slice(0, -1));
                 }}
               >

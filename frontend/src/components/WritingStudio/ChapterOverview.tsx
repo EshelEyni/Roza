@@ -256,13 +256,11 @@ export function ChapterOverview({
   store,
   selected,
   onChapterEdited,
-  onClose,
 }: {
   book: Book;
   store: DraftStore;
   selected: string;
   onChapterEdited: (id: string) => void;
-  onClose: () => void;
 }) {
   const chapters = useMemo(
     () => book.chapters.filter(c => !c.isArchived),
@@ -345,7 +343,6 @@ export function ChapterOverview({
           </p>
         </div>
         <div>
-          <button onClick={onClose}>← Back to writing</button>
           <button
             className="ws-primary"
             disabled={!!store.recovery}

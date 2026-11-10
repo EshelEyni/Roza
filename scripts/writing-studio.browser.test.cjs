@@ -1,3 +1,14 @@
+async function chooseWorkspace(page, name) {
+  const selector = page.getByRole("combobox", { name: "Manuscript category", includeHidden: true });
+  await selector.waitFor({ state: "attached" });
+  if (!(await selector.isVisible())) await page.locator(".ws-mobile-nav").click();
+  await selector.click();
+  await page.getByRole("option", { name, exact: true }).click();
+}
+async function toggleOverview(page) {
+  const current = await page.getByRole("combobox", { name: "Manuscript category", includeHidden: true }).innerText();
+  await chooseWorkspace(page, current.includes("Chapter Overview") ? "Chapters" : "Chapter Overview");
+}
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
@@ -314,9 +325,35 @@ test(
         path: path.join(screenshots, "studio-desktop.png"),
       });
 
+      // One selector owns every manuscript workspace, including browser history.
+      const selector = page.getByRole("combobox", { name: "Manuscript category", includeHidden: true });
+      await selector.click();
+      assert.deepEqual(await page.getByRole("option").allTextContents(),
+        ["Chapters✓", "Chapter Overview", "Tasks", "Characters", "Plotlines", "Themes", "Notes"]);
+      await page.keyboard.press("Escape");
+      for (const name of ["Characters", "Plotlines", "Themes", "Notes", "Tasks", "Chapter Overview", "Chapters"]) {
+        await chooseWorkspace(page, name);
+        assert.ok((await selector.innerText()).includes(name));
+        await selector.click();
+        assert.equal(await page.getByRole("option", { name, exact: true }).getAttribute("aria-selected"), "true");
+        await page.keyboard.press("Escape");
+        if (["Tasks", "Chapter Overview"].includes(name)) {
+          assert.equal(await page.locator(".ws-chapters").count(), 0);
+        }
+      }
+      await chooseWorkspace(page, "Tasks");
+      await page.goBack();
+      await page.waitForURL(url => url.searchParams.get("workspace") === "chapters");
+      assert.match(await selector.innerText(), /Chapters/);
+      await page.goForward();
+      await page.waitForURL(url => url.searchParams.get("workspace") === "tasks");
+      assert.match(await selector.innerText(), /Tasks/);
+      await chooseWorkspace(page, "Chapters");
+      assert.equal(await page.getByRole("button", { name: "Open chapter overview" }).count(), 0);
+      assert.equal(await page.locator(".ws-task-entry").count(), 0);
       // The overview keeps the current editor instance and uses the same save queue.
       await editor.fill("Unsaved overview context.");
-      await page.getByRole("button", { name: "Open chapter overview" }).click();
+      await toggleOverview(page);
       const board = page.getByRole("region", { name: "Chapter overview" });
       await board.waitFor();
       assert.equal(await board.locator(".ws-board-card").count(), 2);
@@ -341,18 +378,18 @@ test(
       await firstCard.getByRole('button', { name: 'Edit chapter', exact: true }).click();
       await chapterModal.getByRole('textbox', { name: 'Chapter manuscript', exact: true }).fill('Unsaved overview context.');
       await chapterModal.getByRole('button', { name: 'Done', exact: true }).click();
-      const overviewToggle = page.getByRole('button', { name: 'Open chapter overview' });
-      assert.equal(await overviewToggle.getAttribute('aria-pressed'), 'true');
+      const overviewToggle = page.getByRole('combobox', { name: 'Manuscript category' });
+      assert.match(await overviewToggle.innerText(), /Chapter Overview/);
       const cards = await board.locator('.ws-board-card').evaluateAll(nodes => nodes.map(node => {
         const rect = node.getBoundingClientRect(); return { x: rect.x, y: rect.y, width: rect.width };
       }));
       assert.ok(cards[0].width >= 280 && cards[0].width <= 400);
       assert.equal(cards[0].y, cards[1].y);
       assert.ok(cards[1].x > cards[0].x);
-      await overviewToggle.click();
-      assert.equal(await overviewToggle.getAttribute('aria-pressed'), 'false');
+      await toggleOverview(page);
+      assert.match(await overviewToggle.innerText(), /Chapters/);
       assert.equal(await editor.innerText(), 'Unsaved overview context.');
-      await overviewToggle.click();
+      await toggleOverview(page);
       await board
         .getByRole("button", { name: "Preview The house by the sea" })
         .click();
@@ -402,7 +439,7 @@ test(
         path: path.join(screenshots, "chapter-overview-desktop.png"),
       });
       await page.reload();
-      await page.getByRole("button", { name: "Open chapter overview" }).click();
+      await page.getByRole("region", { name: "Chapter overview" }).waitFor();
       assert.match(
         await board.locator(".ws-board-card").first().innerText(),
         /An unopened letter/,
@@ -414,7 +451,7 @@ test(
       const chapterMenu = board.locator('.ws-item-menu').first();
       await chapterMenu.locator('summary').click();
       assert.equal(await chapterMenu.getByRole('button', { name: /^(Move up|Move down|Duplicate)$/ }).count(), 0);
-      await board.getByRole('button', { name: '← Back to writing', exact: true }).focus();
+      await page.locator('.ws-board-heading button').first().focus();
       assert.equal(await chapterMenu.getAttribute('open'), null);
       await chapterMenu.locator('summary').click();
       await board.getByRole('heading', { name: 'Chapter overview', exact: true }).click();
@@ -451,7 +488,9 @@ test(
       });
       await secondHandle.scrollIntoViewIfNeeded();
       const from = await secondHandle.boundingBox();
-      const to = await handle.boundingBox();
+      const targetCard = await handle.locator("xpath=ancestor::*[contains(@class, 'ws-board-card')]").boundingBox();
+      const sourceCard = await secondHandle.locator("xpath=ancestor::*[contains(@class, 'ws-board-card')]").boundingBox();
+      const to = { x: targetCard.x, y: targetCard.y + (targetCard.height - sourceCard.height) / 2 + from.y - sourceCard.y, width: targetCard.width, height: from.height };
       await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
       await page.mouse.down();
       await page.mouse.move(from.x + from.width / 2 - 12, from.y + from.height / 2);
@@ -465,11 +504,9 @@ test(
       await page.waitForFunction(() => document.querySelector(".ws-board-card h2")?.textContent === "The house by the sea");
       await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].name, "The house by the sea");
-      await board
-        .getByRole("button", { name: "← Back to writing", exact: true })
-        .click();
+      await chooseWorkspace(page, "Chapters");
       assert.equal(await editor.innerText(), "Unsaved overview context.");
-      await page.getByRole("button", { name: "Open chapter overview" }).click();
+      await toggleOverview(page);
       await page.setViewportSize({ width: 390, height: 844 });
       assert.equal(
         await page.evaluate(
@@ -487,9 +524,7 @@ test(
         path: path.join(screenshots, "chapter-preview-mobile.png"),
       });
       await page.keyboard.press("Escape");
-      await board
-        .getByRole("button", { name: "← Back to writing", exact: true })
-        .click();
+      await chooseWorkspace(page, "Chapters");
       await page.setViewportSize({ width: 1365, height: 900 });
       await editor.fill("First chapter revised.");
       await page.getByRole("button", { name: /An unopened letter/ }).click();
@@ -503,6 +538,9 @@ test(
         saved.chapters[1].text[0].children[0].text,
         "Second chapter revised.",
       );
+      for (const section of ["Chapter Overview", "Tasks", "Notes", "Chapters"]) await chooseWorkspace(page, section);
+      assert.equal(await page.getByRole("textbox", { name: "Chapter or page title", exact: true }).inputValue(), "An unopened letter");
+      assert.equal(await editor.innerText(), "Second chapter revised.");
       delay = 300;
       await editor.fill("While saving");
       await page.keyboard.press("Control+s");
@@ -543,7 +581,7 @@ test(
         .getByRole("textbox", { name: "Chapter or page title" })
         .fill("New chapter");
       await editor.fill("A fresh start.");
-      await page.getByRole('button', { name: 'Open chapter overview' }).click();
+      await toggleOverview(page);
       await page.setViewportSize({ width: 1100, height: 900 });
       const wrappedCards = await board.locator('.ws-board-card').evaluateAll(nodes => nodes.map(node => {
         const rect = node.getBoundingClientRect(); return { x: rect.x, y: rect.y, width: rect.width };
@@ -554,7 +592,7 @@ test(
       assert.equal(wrappedCards[2].x, wrappedCards[0].x);
       assert.equal(await board.locator('.ws-board').evaluate(node => node.scrollWidth <= node.clientWidth), true);
       await page.screenshot({ path: path.join(screenshots, 'chapter-overview-grid.png') });
-      await page.getByRole('button', { name: 'Open chapter overview' }).click();
+      await toggleOverview(page);
       await page.setViewportSize({ width: 1365, height: 900 });
       const writingMenu = page.locator('.ws-writing .ws-item-menu');
       await writingMenu.locator('summary').click();

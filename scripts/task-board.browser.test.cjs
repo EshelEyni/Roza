@@ -1,3 +1,14 @@
+async function chooseWorkspace(page, name) {
+  const selector = page.getByRole("combobox", { name: "Manuscript category", includeHidden: true });
+  await selector.waitFor({ state: "attached" });
+  if (!(await selector.isVisible())) await page.locator(".ws-mobile-nav").click();
+  await selector.click();
+  await page.getByRole("option", { name, exact: true }).click();
+}
+async function toggleOverview(page) {
+  const current = await page.getByRole("combobox", { name: "Manuscript category", includeHidden: true }).innerText();
+  await chooseWorkspace(page, current.includes("Chapter Overview") ? "Chapters" : "Chapter Overview");
+}
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const path = require("node:path");
@@ -196,11 +207,7 @@ test(
       const base = server.resolvedUrls.local[0];
 
       await page.goto(base + "book-edit/" + initial.id);
-      await page.getByText("More", { exact: true }).click();
-      await page
-        .locator(".ws-item-menu")
-        .getByRole("button", { name: "Tasks" })
-        .click();
+      await chooseWorkspace(page, "Tasks");
       assert.deepEqual(
         await page
           .getByRole("textbox", { name: "List title", exact: true })
@@ -273,11 +280,7 @@ test(
       assert.equal(saved.chapters[0].name, initial.chapters[0].name);
       await page.reload();
       assert.equal(await page.locator(".ws-task-entry").count(), 0);
-      await page.getByText("More", { exact: true }).click();
-      await page
-        .locator(".ws-item-menu")
-        .getByRole("button", { name: "Tasks" })
-        .click();
+      await chooseWorkspace(page, "Tasks");
       await page
         .getByRole("button", { name: /Research the setting/ })
         .waitFor();
@@ -381,7 +384,7 @@ test(
         .getByRole("button", { name: "✓ All changes saved", exact: true })
         .waitFor();
       assert.equal(saved.taskBoard.lists.flatMap((l) => l.cards).length, 0);
-      await page.locator(".ws-task-entry").click();
+      await chooseWorkspace(page, "Chapters");
       await page
         .getByRole("textbox", { name: "Chapter or page title", exact: true })
         .waitFor();

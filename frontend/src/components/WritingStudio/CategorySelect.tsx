@@ -1,20 +1,20 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { BooKDataItemType } from "../../../../shared/types/books";
+import { sectionLabel, StudioSection } from "./studioNavigation";
 export function CategorySelect({
   value,
   options,
   onChange,
 }: {
-  value: BooKDataItemType;
-  options: BooKDataItemType[];
-  onChange: (value: BooKDataItemType) => void;
+  value: StudioSection;
+  options: StudioSection[];
+  onChange: (value: StudioSection) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const root = useRef<HTMLDivElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const id = useId();
-  const label = (value: string) => value[0].toUpperCase() + value.slice(1);
+  const label = sectionLabel;
   useEffect(() => {
     const outside = (event: PointerEvent) => {
       if (!root.current?.contains(event.target as Node)) setOpen(false);
@@ -31,7 +31,7 @@ export function CategorySelect({
     <div
       ref={root}
       className="ws-category-select"
-      onBlur={event => {
+      onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false);
       }}
     >
@@ -48,7 +48,7 @@ export function CategorySelect({
           setActive(options.indexOf(value));
           setOpen(!open);
         }}
-        onKeyDown={event => {
+        onKeyDown={(event) => {
           if (event.key === "Escape") {
             if (open) {
               event.preventDefault();
@@ -64,7 +64,7 @@ export function CategorySelect({
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
             setOpen(true);
-            setActive(index =>
+            setActive((index) =>
               open
                 ? (index +
                     (event.key === "ArrowDown" ? 1 : -1) +
@@ -89,7 +89,7 @@ export function CategorySelect({
             !event.metaKey &&
             !event.altKey
           ) {
-            const index = options.findIndex(option =>
+            const index = options.findIndex((option) =>
               option.startsWith(event.key.toLowerCase()),
             );
             if (index >= 0) {
@@ -118,7 +118,7 @@ export function CategorySelect({
               aria-selected={option === value}
               className={index === active ? "is-active" : ""}
               onPointerMove={() => setActive(index)}
-              onMouseDown={event => event.preventDefault()}
+              onMouseDown={(event) => event.preventDefault()}
               onClick={() => choose(index)}
             >
               {label(option)}
