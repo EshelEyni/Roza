@@ -309,15 +309,10 @@ test(
         .getByLabel("Screenplay element", { exact: true })
         .selectOption("character");
       await page.keyboard.type("ELIJAH");
-      await page
-        .getByRole("button", {
-          name: "Add ELIJAH to Character Library",
-          exact: true,
-        })
-        .click();
-      await page
-        .getByLabel("Character library", { exact: true })
-        .selectOption("ELIJAH");
+      assert.equal(
+        await page.getByLabel("Character library", { exact: true }).count(),
+        0,
+      );
       await page.keyboard.press("Enter");
       await page.keyboard.type("Good morning.");
       assert.equal(
@@ -382,7 +377,13 @@ test(
             )?.textContent === "INT. HALL - NIGHT",
       );
       await page.waitForTimeout(2200);
-      assert.ok(saved.characters.some((c) => c.name === "ELIJAH"));
+      assert.ok(
+        saved.chapters[0].text.some(
+          (block) =>
+            block.type === "character" &&
+            block.children.some((leaf) => leaf.text.includes("ELIJAH")),
+        ),
+      );
       await page.screenshot({
         path: path.join(screenshots, "screenplay-desktop.png"),
       });

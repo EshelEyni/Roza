@@ -732,25 +732,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   <ManuscriptEditor
                     key={`${item.id}:${restoreKey}`}
                     format={item.type === "chapters" ? item.format : "prose"}
-                    characters={book.characters
-                      .filter((c) => !c.isArchived)
-                      .map((c) => c.name)}
-                    onCreateCharacter={(name) =>
-                      store.edit((current) => ({
-                        ...current,
-                        characters: [
-                          ...current.characters,
-                          {
-                            ...getDefaultBookDataItem({
-                              type: "characters",
-                              bookId: book.id,
-                            }),
-                            id: newId(),
-                            name,
-                          } as Book["characters"][number],
-                        ],
-                      }))
-                    }
                     value={text}
                     readOnly={preview || !!store.recovery}
                     annotations={

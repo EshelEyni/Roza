@@ -106,8 +106,6 @@ function Toolbar({
 export function ManuscriptEditor({
   value,
   format = "prose",
-  characters,
-  onCreateCharacter,
   onChange,
   readOnly = false,
   label = "Manuscript",
@@ -119,8 +117,6 @@ export function ManuscriptEditor({
 }: {
   value: SlateCustomElement[];
   format?: "prose" | "screenplay";
-  characters?: string[];
-  onCreateCharacter?: (name: string) => void;
   onChange: (
     value: SlateCustomElement[],
     annotations?: ChapterAnnotation[],
@@ -220,12 +216,7 @@ export function ManuscriptEditor({
       {!readOnly && (
         <Toolbar
           screenplayControls={
-            format === "screenplay" ? (
-              <ScreenplayToolbar
-                characters={characters}
-                onCreateCharacter={onCreateCharacter}
-              />
-            ) : undefined
+            format === "screenplay" ? <ScreenplayToolbar /> : undefined
           }
           onAddNote={annotations !== undefined ? addSelectionNote : undefined}
         />

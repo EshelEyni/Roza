@@ -1,13 +1,7 @@
 import { Editor, Node, Transforms, Text } from "slate";
 import { ReactEditor, useSlate } from "slate-react";
 import { screenplayTypes, isScreenplay } from "./screenplay";
-export function ScreenplayToolbar({
-  characters = [],
-  onCreateCharacter,
-}: {
-  characters?: string[];
-  onCreateCharacter?: (name: string) => void;
-}) {
+export function ScreenplayToolbar() {
   const editor = useSlate();
   const index = editor.selection?.anchor.path[0] ?? 0;
   const block = editor.children[index];
@@ -15,7 +9,6 @@ export function ScreenplayToolbar({
     "type" in block && isScreenplay(String(block.type))
       ? String(block.type)
       : "action";
-  const text = Node.string(block);
   const scenes = editor.children.flatMap((node, i) =>
     "type" in node && node.type === "scene_heading"
       ? [{ index: i, title: Node.string(node) || "Untitled scene" }]
@@ -44,38 +37,6 @@ export function ScreenplayToolbar({
           </option>
         ))}
       </select>
-      {type === "character" && (
-        <label>
-          Character{" "}
-          <select
-            aria-label="Character library"
-            value=""
-            onChange={(e) => {
-              if (!e.target.value) return;
-              Transforms.select(editor, Editor.range(editor, [index]));
-              Transforms.insertText(editor, e.target.value.toUpperCase());
-              ReactEditor.focus(editor);
-            }}
-          >
-            <option value="">Choose or type a new name</option>
-            {characters
-              .filter((name) => name.toUpperCase().includes(text.toUpperCase()))
-              .map((name) => (
-                <option key={name}>{name}</option>
-              ))}
-          </select>
-        </label>
-      )}
-      {type === "character" &&
-        onCreateCharacter &&
-        text.trim() &&
-        !characters.some(
-          (name) => name.toUpperCase() === text.toUpperCase(),
-        ) && (
-          <button type="button" onClick={() => onCreateCharacter(text.trim())}>
-            Add {text} to Character Library
-          </button>
-        )}
       <select
         aria-label="Scene navigation"
         disabled={!scenes.length}
