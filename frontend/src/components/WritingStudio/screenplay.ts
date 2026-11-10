@@ -14,12 +14,38 @@ export const screenplayTypes: ScreenplayType[] = [
 export const isScreenplay = (type: string): type is ScreenplayType =>
   screenplayTypes.includes(type as ScreenplayType);
 
+export function screenplayStart(
+  nodes: SlateCustomElement[],
+): SlateCustomElement[] {
+  if (!nodes.length)
+    return [{ type: "scene_heading", children: [{ text: "" }] }];
+  if (
+    nodes.length === 1 &&
+    Node.string(nodes[0]) === "" &&
+    nodes[0].children.every((child) => "text" in child)
+  ) {
+    return [
+      {
+        type: "scene_heading",
+        children: nodes[0]
+          .children as import("../../../../shared/types/books").SlateCustomText[],
+      },
+    ];
+  }
+  return nodes;
+}
+
 /** Change block metadata only, preserving text leaves and annotation paths. */
 export function proseBlocks(nodes: SlateCustomElement[]): SlateCustomElement[] {
-  return nodes.map(node => {
-    if (node.type === "scene_heading" || node.type === "action" ||
-        node.type === "character" || node.type === "dialogue" ||
-        node.type === "parenthetical" || node.type === "transition") {
+  return nodes.map((node) => {
+    if (
+      node.type === "scene_heading" ||
+      node.type === "action" ||
+      node.type === "character" ||
+      node.type === "dialogue" ||
+      node.type === "parenthetical" ||
+      node.type === "transition"
+    ) {
       const paragraph = { ...node, type: "paragraph" as const };
       delete paragraph.align;
       return paragraph;
@@ -123,7 +149,11 @@ export function withScreenplay<T extends Editor>(
     }
     const index = editor.selection?.anchor.path[0];
     const block = index === undefined ? undefined : editor.children[index];
-    if (block && Element.isElement(block) && block.children.some(Element.isElement)) {
+    if (
+      block &&
+      Element.isElement(block) &&
+      block.children.some(Element.isElement)
+    ) {
       insertBreak();
       return;
     }

@@ -2053,3 +2053,11 @@ padding: 6px 10px;
 .ws-toolbar-end{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-inline-start:auto;max-width:100%;min-width:0;}
 .ws-toolbar-end .ws-add-selection-note{margin-left:0;white-space:nowrap;}
 .ws-toolbar-end .sp-tools button{width:auto;height:auto;}
+
+/* Empty Slate blocks have no intrinsic width: reserve the script column explicitly. */
+.sp-page{width:100%;}
+.ws-annotated-editor{--ws-annotation-space:292px;}
+.ws-annotated-editor > .sp-page{width:min(6in,calc(100% - var(--ws-annotation-space)));margin-left:max(0px,calc((100% - var(--ws-annotation-space) - 6in)/2));margin-right:var(--ws-annotation-space);}
+@media(max-width:1050px) and (min-width:761px){.ws-annotated-editor{--ws-annotation-space:222px;}}
+@media(max-width:760px){.ws-annotated-editor{--ws-annotation-space:0px;}}
+.ws-prose > .sp-scene_heading:first-child{margin-top:0;}

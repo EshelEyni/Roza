@@ -7,7 +7,8 @@ require.extensions[".ts"] = (module, file) =>
     ts.transpileModule(fs.readFileSync(file, "utf8"), {
       compilerOptions: {
         module: ts.ModuleKind.CommonJS,
-        target: ts.ScriptTarget.ES2022, esModuleInterop: true,
+        target: ts.ScriptTarget.ES2022,
+        esModuleInterop: true,
       },
     }).outputText,
     file,
@@ -119,19 +120,67 @@ test("schema defaults old chapters to prose and round-trips screenplay alongside
   );
 });
 
-
-test('PDF uses Letter pages, Courier 12pt and paginates long scripts',()=>{
- const {createScreenplayPdf}=require('../frontend/src/components/WritingStudio/screenplayPdf.ts');
- const pdf=createScreenplayPdf({name:'Script',chapters:[{format:'screenplay',text:[block('scene_heading','INT. ROOM - DAY'),...Array.from({length:100},()=>block('dialogue','A line of dialogue.'))]}]});
- assert.equal(pdf.internal.pageSize.getWidth(),612);assert.equal(pdf.internal.pageSize.getHeight(),792);
- assert.equal(pdf.getFont().fontName,'courier');assert.equal(pdf.getFontSize(),12);assert.ok(pdf.getNumberOfPages()>1);assert.ok(pdf.output().startsWith('%PDF-'));
+test("PDF uses Letter pages, Courier 12pt and paginates long scripts", () => {
+  const {
+    createScreenplayPdf,
+  } = require("../frontend/src/components/WritingStudio/screenplayPdf.ts");
+  const pdf = createScreenplayPdf({
+    name: "Script",
+    chapters: [
+      {
+        format: "screenplay",
+        text: [
+          block("scene_heading", "INT. ROOM - DAY"),
+          ...Array.from({ length: 100 }, () =>
+            block("dialogue", "A line of dialogue."),
+          ),
+        ],
+      },
+    ],
+  });
+  assert.equal(pdf.internal.pageSize.getWidth(), 612);
+  assert.equal(pdf.internal.pageSize.getHeight(), 792);
+  assert.equal(pdf.getFont().fontName, "courier");
+  assert.equal(pdf.getFontSize(), 12);
+  assert.ok(pdf.getNumberOfPages() > 1);
+  assert.ok(pdf.output().startsWith("%PDF-"));
 });
 
-test('switching to prose removes every screenplay type and alignment without changing text or marks',()=>{
- const {proseBlocks,screenplayTypes}=require('../frontend/src/components/WritingStudio/screenplay.ts');
- const before=screenplayTypes.map(type=>({type,align:'right',children:[{text:'Words',bold:true}]}));
- const result=proseBlocks(before);
- assert.ok(result.every(node=>node.type==='paragraph' && !('align' in node)));
- assert.deepEqual(result.map(node=>node.children),before.map(node=>node.children));
- assert.ok(before.every(node=>node.align==='right'));
+test("switching to prose removes every screenplay type and alignment without changing text or marks", () => {
+  const {
+    proseBlocks,
+    screenplayTypes,
+  } = require("../frontend/src/components/WritingStudio/screenplay.ts");
+  const before = screenplayTypes.map((type) => ({
+    type,
+    align: "right",
+    children: [{ text: "Words", bold: true }],
+  }));
+  const result = proseBlocks(before);
+  assert.ok(
+    result.every((node) => node.type === "paragraph" && !("align" in node)),
+  );
+  assert.deepEqual(
+    result.map((node) => node.children),
+    before.map((node) => node.children),
+  );
+  assert.ok(before.every((node) => node.align === "right"));
+});
+
+test("empty screenplays initialize as an unindented scene heading while populated content is preserved", () => {
+  const {
+    screenplayStart,
+  } = require("../frontend/src/components/WritingStudio/screenplay.ts");
+  for (const value of [
+    [],
+    [block("paragraph", "")],
+    [{ ...block("character", ""), align: "right" }],
+  ]) {
+    const result = screenplayStart(value);
+    assert.equal(result[0].type, "scene_heading");
+    assert.equal(Node.string(result[0]), "");
+    assert.equal(result[0].align, undefined);
+  }
+  const populated = [block("dialogue", "Keep this.")];
+  assert.equal(screenplayStart(populated), populated);
 });

@@ -68,6 +68,8 @@ if (process.env.CARD_SCROLL_ONLY === "1")
   initial.chapters[0].description = paragraph(
     "A complete chapter summary with selectable text. ".repeat(100),
   );
+if (process.env.EMPTY_SCREENPLAY_ONLY === "1")
+  initial.chapters[0].text = paragraph("");
 test(
   "screenplay writing: keyboard blocks, persistence, history and mobile",
   { timeout: 180000 },
@@ -231,6 +233,64 @@ test(
       const base = server.resolvedUrls.local[0];
 
       await page.goto(base + "book-edit/" + initial.id);
+      if (process.env.EMPTY_SCREENPLAY_ONLY === "1") {
+        const editor = page.getByRole("textbox", {
+          name: "Manuscript",
+          exact: true,
+        });
+        await editor.waitFor();
+        await page.locator(".ws-item-menu > summary").click();
+        await page
+          .getByRole("button", { name: "Chapter Format", exact: true })
+          .click();
+        const dialog = page.getByRole("dialog", {
+          name: "Chapter Format",
+          exact: true,
+        });
+        await dialog.getByRole("radio", { name: /Screenplay/ }).check();
+        await dialog
+          .getByRole("button", { name: "Apply format", exact: true })
+          .click();
+        await editor.locator(".sp-scene_heading").waitFor();
+        assert.equal(
+          await page
+            .getByLabel("Screenplay element", { exact: true })
+            .inputValue(),
+          "scene_heading",
+        );
+        assert.ok((await editor.boundingBox()).width > 300);
+        await page.waitForFunction(
+          () =>
+            document.activeElement?.getAttribute("aria-label") === "Manuscript",
+        );
+        const hint = editor.locator("[data-slate-placeholder]");
+        assert.ok((await hint.boundingBox()).width > 300);
+        await page.screenshot({
+          path: path.join(screenshots, "screenplay-empty-desktop.png"),
+        });
+        await page.keyboard.type("int. kitchen - day");
+        await page.keyboard.press("Enter");
+        await page.keyboard.type("A kettle whistles.");
+        await page.waitForTimeout(2200);
+        assert.equal(saved.chapters[0].text[0].type, "scene_heading");
+        assert.equal(
+          saved.chapters[0].text[0].children[0].text,
+          "INT. KITCHEN - DAY",
+        );
+        assert.equal(saved.chapters[0].text[1].type, "action");
+        await page.setViewportSize({ width: 390, height: 844 });
+        assert.ok((await editor.boundingBox()).width > 200);
+        assert.ok(
+          await page.evaluate(
+            () => document.documentElement.scrollWidth <= innerWidth,
+          ),
+        );
+        await page.screenshot({
+          path: path.join(screenshots, "screenplay-empty-mobile.png"),
+        });
+        assert.deepEqual(errors, []);
+        return;
+      }
       const openFormat = async () => {
         await page.locator(".ws-item-menu > summary").click();
         await page

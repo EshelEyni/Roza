@@ -4,9 +4,10 @@ import {
   screenplayTypes,
   withScreenplay,
   parseScreenplay,
+  screenplayStart,
 } from "./screenplay";
 import { ReactNode, useMemo, useRef, useState } from "react";
-import { createEditor, Editor, Range, Text, Transforms } from "slate";
+import { createEditor, Editor, Range, Text, Transforms, Node } from "slate";
 import { ChapterAnnotation } from "../../../../shared/types/books";
 import { AnnotationMargin } from "./AnnotationMargin";
 import { transformAnnotations, validAnchor } from "./annotations";
@@ -192,9 +193,11 @@ export function ManuscriptEditor({
     <Slate
       editor={editor}
       initialValue={
-        value.length
-          ? structuredClone(value)
-          : [{ type: "paragraph", children: [{ text: "" }] }]
+        format === "screenplay"
+          ? structuredClone(screenplayStart(value))
+          : value.length
+            ? structuredClone(value)
+            : [{ type: "paragraph", children: [{ text: "" }] }]
       }
       onChange={(next) => {
         if (
@@ -227,6 +230,11 @@ export function ManuscriptEditor({
         }
       >
         <Editable
+          autoFocus={
+            !readOnly &&
+            format === "screenplay" &&
+            value.every((node) => Node.string(node) === "")
+          }
           className={`ws-prose ${format === "screenplay" ? "sp-page" : ""}`}
           onKeyDown={(event) => {
             if (readOnly || event.nativeEvent.isComposing) return;
@@ -274,7 +282,9 @@ export function ManuscriptEditor({
           dir="auto"
           readOnly={readOnly}
           spellCheck
-          placeholder={placeholder}
+          placeholder={
+            format === "screenplay" ? "INT. LOCATION - DAY" : placeholder
+          }
           onMouseMove={(event) => {
             const element = (event.target as HTMLElement).closest(
               '[data-slate-node="element"]',

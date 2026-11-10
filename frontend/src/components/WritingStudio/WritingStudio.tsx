@@ -1,5 +1,5 @@
 import { ChapterFormatDialog } from "./ChapterFormatDialog";
-import { proseBlocks } from "./screenplay";
+import { proseBlocks, screenplayStart } from "./screenplay";
 import { downloadScreenplayPdf } from "./screenplayPdf";
 import { ItemMenu } from "./ItemMenu";
 import { CategorySelect } from "./CategorySelect";
@@ -326,8 +326,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             onClose={() => setFormatChapter(null)}
             onApply={(format) => {
               if (!store.recovery) {
-                updateItem(format === "prose" ? { format, text: proseBlocks(item.text) } : { format });
-                if (format === "prose") setRestoreKey(key => key + 1);
+                const text =
+                  format === "prose"
+                    ? proseBlocks(item.text)
+                    : screenplayStart(item.text);
+                updateItem({ format, text });
+                if (text !== item.text) setRestoreKey((key) => key + 1);
               }
               setFormatChapter(null);
             }}
