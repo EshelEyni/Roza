@@ -186,7 +186,7 @@ export function ChapterPlanning({
           <h1>Chapter Bible</h1>
           <nav className="cp-bible-nav" aria-label="Chapter Bible sections">
             {(
-              ["characters", "themes", "plotlines", "tasks", "summary"] as const
+              ["summary", "characters", "themes", "plotlines", "tasks"] as const
             ).map(tab => (
               <button
                 key={tab}
