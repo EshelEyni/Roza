@@ -9,9 +9,14 @@ const pointSchema = new Schema(
       type: [Number],
       required: true,
       validate: (path: number[]) =>
-        path.length > 0 && path.every(n => Number.isInteger(n) && n >= 0),
+        path.length > 0 && path.every((n) => Number.isInteger(n) && n >= 0),
     },
-    offset: { type: Number, required: true, min: 0, validate: Number.isInteger },
+    offset: {
+      type: Number,
+      required: true,
+      min: 0,
+      validate: Number.isInteger,
+    },
   },
   { _id: false },
 );
@@ -42,7 +47,7 @@ const chapterSchema = new Schema<IChapter>(
       required: [true, "Please provide a book id"],
     },
     format: { type: String, enum: ["prose", "screenplay"], default: "prose" },
- name: {
+    name: {
       type: String,
       default: "פרק חדש",
       trim: true,

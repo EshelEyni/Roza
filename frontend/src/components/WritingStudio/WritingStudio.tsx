@@ -467,8 +467,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           <button onClick={() => download(book, "html")}>
             Export manuscript (.html)
           </button>
-          <button onClick={() => downloadScreenplayPdf(book)}>Export screenplay (.pdf)</button>
-          <button onClick={() => download(book, "fountain")}>Export screenplay (.fountain)</button>
+          <button onClick={() => downloadScreenplayPdf(book)}>
+            Export screenplay (.pdf)
+          </button>
+          <button onClick={() => download(book, "fountain")}>
+            Export screenplay (.fountain)
+          </button>
           <p>
             HTML preserves formatting and chapter order. Open it in your browser
             to print or save as PDF. Backups include planning notes.
@@ -671,7 +675,25 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   onChange={(event) => updateItem({ name: event.target.value })}
                 />
 
-                {item.type === "chapters" && !preview && <label>Chapter format <select aria-label="Chapter format" disabled={!!store.recovery} value={item.format || "prose"} onChange={event => updateItem({format:event.target.value as "prose" | "screenplay"})}><option value="prose">Prose</option><option value="screenplay">Screenplay</option></select><small> Existing text and block types are preserved.</small></label>}
+                {item.type === "chapters" && !preview && (
+                  <label>
+                    Chapter format{" "}
+                    <select
+                      aria-label="Chapter format"
+                      disabled={!!store.recovery}
+                      value={item.format || "prose"}
+                      onChange={(event) =>
+                        updateItem({
+                          format: event.target.value as "prose" | "screenplay",
+                        })
+                      }
+                    >
+                      <option value="prose">Prose</option>
+                      <option value="screenplay">Screenplay</option>
+                    </select>
+                    <small> Existing text and block types are preserved.</small>
+                  </label>
+                )}
                 {summary && item.type === "chapters" ? (
                   <section
                     id="ws-chapter-summary"
@@ -699,9 +721,27 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   </section>
                 ) : (
                   <ManuscriptEditor
-                    key={`${item.id}:${item.type === "chapters" ? item.format : "prose"}:${restoreKey}`}
+                    key={`${item.id}:${restoreKey}`}
                     format={item.type === "chapters" ? item.format : "prose"}
-                    characters={book.characters.filter(c => !c.isArchived).map(c => c.name)}
+                    characters={book.characters
+                      .filter((c) => !c.isArchived)
+                      .map((c) => c.name)}
+                    onCreateCharacter={(name) =>
+                      store.edit((current) => ({
+                        ...current,
+                        characters: [
+                          ...current.characters,
+                          {
+                            ...getDefaultBookDataItem({
+                              type: "characters",
+                              bookId: book.id,
+                            }),
+                            id: newId(),
+                            name,
+                          } as Book["characters"][number],
+                        ],
+                      }))
+                    }
                     value={text}
                     readOnly={preview || !!store.recovery}
                     annotations={

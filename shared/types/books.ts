@@ -125,13 +125,19 @@ export type BooKDataItemType =
   | "plotlines"
   | "notes";
 
-export type ScreenplayType = "scene_heading" | "action" | "character" | "dialogue" | "parenthetical" | "transition";
+export type ScreenplayType =
+  | "scene_heading"
+  | "action"
+  | "character"
+  | "dialogue"
+  | "parenthetical"
+  | "transition";
 export interface ScreenplayElement extends BaseElement {
- type: ScreenplayType;
- children: SlateCustomText[];
+  type: ScreenplayType;
+  children: SlateCustomText[];
 }
 export type SlateElementType =
- | ScreenplayType
+  | ScreenplayType
   | "paragraph"
   | "heading-one"
   | "heading-two"
@@ -178,7 +184,7 @@ export interface BlockQuoteElement extends BaseElement {
 }
 
 export type SlateCustomElement =
- | ScreenplayElement
+  | ScreenplayElement
   | ListItemElement
   | ListElement
   | ParagraphElement

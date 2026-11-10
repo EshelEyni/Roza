@@ -7,21 +7,21 @@ import {
 } from "../../../../shared/types/books";
 
 export const plainText = (nodes: SlateCustomElement[]) =>
-  nodes.map(node => Node.string(node)).join("\n");
+  nodes.map((node) => Node.string(node)).join("\n");
 export const words = (nodes: SlateCustomElement[]) =>
   plainText(nodes).trim().split(/\s+/u).filter(Boolean).length;
 export const manuscriptWords = (book: Book) =>
   book.chapters
-    .filter(chapter => !chapter.isArchived)
+    .filter((chapter) => !chapter.isArchived)
     .reduce((count, chapter) => count + words(chapter.text), 0);
 export const newId = () =>
-  Array.from(crypto.getRandomValues(new Uint8Array(12)), byte =>
+  Array.from(crypto.getRandomValues(new Uint8Array(12)), (byte) =>
     byte.toString(16).padStart(2, "0"),
   ).join("");
 const escape = (text: string) =>
   text.replace(
     /[&<>"']/g,
-    char =>
+    (char) =>
       ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
         char
       ]!,
@@ -56,9 +56,9 @@ export const richTextHtml = (nodes: SlateCustomElement[]) =>
 
 export function manuscriptHtml(book: Book) {
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escape(book.name)}</title><style>body{max-width:42rem;margin:4rem auto;padding:0 1.5rem;font:19px/1.8 Georgia,serif;color:#292721}h1,h2{line-height:1.2}section{break-before:page;margin-top:4rem}blockquote{border-inline-start:3px solid #aaa;padding-inline-start:1.5rem} .sp-page{font:12pt/1 Courier,monospace;max-width:6in}.sp-block{white-space:pre-wrap;margin:0 0 1em}.sp-character{margin-left:2.2in;margin-bottom:0;text-transform:uppercase;break-after:avoid}.sp-dialogue{margin-left:1in;margin-right:1.5in}.sp-parenthetical{margin-left:1.6in;margin-right:2in;margin-bottom:0;break-after:avoid}.sp-scene_heading{margin-top:2em;text-transform:uppercase;break-after:avoid}.sp-transition{text-align:right;text-transform:uppercase}@page{size:letter;margin:1in 1in 1in 1.5in}@media print{body{margin:0;max-width:none}}</style></head><body dir="auto"><h1>${escape(book.name)}</h1>${book.chapters
-    .filter(c => !c.isArchived)
+    .filter((c) => !c.isArchived)
     .map(
-      c =>
+      (c) =>
         `<section class="${c.format === "screenplay" ? "sp-page" : ""}"><h2>${escape(c.name)}</h2>${c.text.map(htmlNode).join("")}</section>`,
     )
     .join("")}</body></html>`;
@@ -72,7 +72,12 @@ export function download(book: Book, format: "json" | "html" | "fountain") {
             null,
             2,
           )
-        : format === "fountain" ? book.chapters.filter(c => !c.isArchived && c.format === "screenplay").map(c=>fountain(c.text)).join("\n") : manuscriptHtml(book),
+        : format === "fountain"
+          ? book.chapters
+              .filter((c) => !c.isArchived && c.format === "screenplay")
+              .map((c) => fountain(c.text))
+              .join("\n")
+          : manuscriptHtml(book),
     ],
     {
       type: format === "json" ? "application/json" : "text/html;charset=utf-8",
