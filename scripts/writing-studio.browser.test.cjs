@@ -411,6 +411,7 @@ test(
         .getByRole("textbox", { name: "Chapter summary", exact: true })
         .fill("The letter changes everything.");
       await page.getByRole("button", { name: "Done", exact: true }).click();
+      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
       // Keyboard drag is available from each handle.
       const handle = board.getByRole("button", {
         name: "Reorder An unopened letter",
@@ -421,6 +422,8 @@ test(
       await page.waitForFunction(
         () => !!document.querySelector(".is-dragging"),
       );
+      // Let the drag sensor finish measuring the grid before moving.
+      await page.waitForTimeout(100);
       await page.keyboard.press("ArrowLeft");
       await page.waitForTimeout(300);
       await page.keyboard.press("Space");
@@ -490,7 +493,12 @@ test(
       const from = await secondHandle.boundingBox();
       const targetCard = await handle.locator("xpath=ancestor::*[contains(@class, 'ws-board-card')]").boundingBox();
       const sourceCard = await secondHandle.locator("xpath=ancestor::*[contains(@class, 'ws-board-card')]").boundingBox();
-      const to = { x: targetCard.x, y: targetCard.y + (targetCard.height - sourceCard.height) / 2 + from.y - sourceCard.y, width: targetCard.width, height: from.height };
+      const to = {
+        x: targetCard.x + (targetCard.width - sourceCard.width) / 2 + from.x - sourceCard.x,
+        y: targetCard.y + (targetCard.height - sourceCard.height) / 2 + from.y - sourceCard.y,
+        width: from.width,
+        height: from.height,
+      };
       await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
       await page.mouse.down();
       await page.mouse.move(from.x + from.width / 2 - 12, from.y + from.height / 2);
@@ -500,6 +508,7 @@ test(
       });
       await page.waitForTimeout(300);
       await board.locator(".ws-board-card.is-over").waitFor();
+      await page.waitForTimeout(100);
       await page.mouse.up();
       await page.waitForFunction(() => document.querySelector(".ws-board-card h2")?.textContent === "The house by the sea");
       await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
