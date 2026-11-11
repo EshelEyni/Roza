@@ -41,9 +41,11 @@ export function validatePlanning(value: unknown, bookId: string): void {
       }
     }
   }
-  if (book.taskBoard !== undefined)
-    for (const list of records(record(book.taskBoard).lists))
+  for (const board of [book.taskBoard, ...records(book.chapters).map(c => c.taskBoard)]) {
+    if (board === undefined) continue;
+    for (const list of records(record(board).lists))
       for (const card of records(list.cards))
         if (card.chapterId && !chapterIds.has(String(card.chapterId)))
           throw new Error("A task chapter does not belong to this book.");
+  }
 }

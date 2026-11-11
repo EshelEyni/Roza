@@ -1,6 +1,6 @@
 import { ConfirmDialog } from "../Modals/ConfirmDialog";
 import { FiTrash2 } from "react-icons/fi";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DndContext,
   PointerSensor,
@@ -22,6 +22,7 @@ import {
 import { TaskBoard, TaskCard, TaskList } from "../../../../shared/types/books";
 import { DraftStore } from "./draftStore";
 import "./taskBoard.css";
+import { chapterBoard, withChapterBoard } from "./planningModel";
 import { emptyBoard, moveTask, uid } from "./taskBoardModel";
 const boardKeyboardCoordinates: KeyboardCoordinateGetter = (event, args) => {
   if (args.context.active?.data.current?.kind !== "list")
@@ -111,7 +112,6 @@ export function TaskBoardView({
   store,
   initialTaskId = "",
   chapterId,
-  onOpenTask,
 }: {
   store: DraftStore;
   initialTaskId?: string;
@@ -119,13 +119,13 @@ export function TaskBoardView({
   onOpenTask?: (id: string) => void;
 }) {
   const [filter, setChapterFilter] = useState("");
-  const chapterFilter = chapterId || filter;
+  const chapterFilter = chapterId ? "" : filter;
   const [confirmation, setConfirmation] = useState<{
     message: string;
     action: () => void;
   } | null>(null);
   const [initial] = useState(emptyBoard);
-  const board = store.book.taskBoard || initial;
+  const board = useMemo(() => chapterId ? chapterBoard(store.book, chapterId) : store.book.taskBoard || initial, [store.book, chapterId, initial]);
   const [creatingIn, setCreatingIn] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(
     initialTaskId || null,
@@ -140,7 +140,7 @@ export function TaskBoardView({
     }),
   );
   const change = (next: TaskBoard) =>
-    store.edit(book => ({ ...book, taskBoard: next }));
+    store.edit(book => chapterId ? withChapterBoard(book, chapterId, next) : ({ ...book, taskBoard: next }));
   const editList = (id: string, update: (list: TaskList) => TaskList) =>
     change({ lists: board.lists.map(l => (l.id === id ? update(l) : l)) });
   const list = board.lists.find(l => l.cards.some(c => c.id === selected));
@@ -235,7 +235,7 @@ export function TaskBoardView({
                       title="Delete list"
                       onClick={() => {
                         setConfirmation({
-                          message: `Delete “${l.title}” and its ${l.cards.length} tasks?${chapterId ? ` This list is shared with the book.${l.cards.some(c => c.chapterId !== chapterId) ? " It includes tasks outside this chapter." : ""}` : ""} This cannot be undone.`,
+                          message: `Delete “${l.title}” and its ${l.cards.length} tasks? This cannot be undone.`,
                           action: () =>
                             change({
                               lists: board.lists.filter(x => x.id !== l.id),
@@ -345,7 +345,7 @@ export function TaskBoardView({
                             ...x.cards,
                             {
                               id: uid(),
-                              chapterId: chapterFilter,
+                              chapterId: chapterId || chapterFilter,
                               title,
                               description: "",
                               dueDate: "",
@@ -403,10 +403,8 @@ export function TaskBoardView({
       </fieldset>
       {card && list && (
         <CardDialog
-          onOpenBoard={
-            chapterId && onOpenTask ? () => onOpenTask(card.id) : undefined
-          }
           chapters={store.book.chapters}
+          chapterLocked={!!chapterId}
           card={card}
           list={list}
           update={updateCard}
@@ -443,6 +441,7 @@ export function TaskBoardView({
 }
 function CardDialog({
   onOpenBoard,
+  chapterLocked = false,
   card,
   chapters,
   list,
@@ -453,6 +452,7 @@ function CardDialog({
 }: {
   chapters: import("../../../../shared/types/books").Chapter[];
   onOpenBoard?: () => void;
+  chapterLocked?: boolean;
   card: TaskCard;
   list: TaskList;
   update: (patch: Partial<TaskCard>) => void;
@@ -496,6 +496,7 @@ function CardDialog({
           Chapter
           <select
             aria-label="Task chapter"
+            disabled={chapterLocked}
             value={card.chapterId || ""}
             onChange={e => update({ chapterId: e.target.value })}
           >

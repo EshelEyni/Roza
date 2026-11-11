@@ -1,3 +1,4 @@
+import { taskBoardSchema } from "./taskBoardSchema";
 import { Schema } from "mongoose";
 import { IChapter } from "../../../types/iTypes";
 import { SlateCustomElementSchema } from "../../schemas/slateElementSchema";
@@ -23,6 +24,7 @@ const pointSchema = new Schema(
 const annotationSchema = new Schema(
   {
     id: { type: String, required: true },
+    general: { type: Boolean, default: undefined },
     content: { type: String, default: "", maxlength: 50000 },
     quote: { type: String, default: "", maxlength: 500 },
     anchor: {
@@ -56,6 +58,7 @@ const planningSchema = new Schema(
 );
 const chapterSchema = new Schema<IChapter>(
   {
+    taskBoard: { type: taskBoardSchema, default: undefined },
     planning: { type: planningSchema, default: undefined },
     annotations: { type: [annotationSchema], default: undefined },
     bookId: {

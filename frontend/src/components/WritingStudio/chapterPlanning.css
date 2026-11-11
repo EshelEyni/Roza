@@ -33,7 +33,7 @@
   display: block;
   margin-block: 0.75rem;
 }
-.cp-content input:not([type="checkbox"]),
+.cp-content input:not([type="checkbox"]):not(.tb-list header input),
 .cp-content select,
 .cp-content textarea,
 .cp-profile input:not([type="color"]),
@@ -273,7 +273,7 @@
   align-items: center;
 }
 .cp-element-create input {
-  flex: 1;
+  flex: 0 1 420px;
 }
 .cp-element-create button {
   flex-shrink: 0;
