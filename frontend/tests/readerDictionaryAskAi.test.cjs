@@ -14,7 +14,7 @@ for(const mobile of [false,true])for(const reuse of [false,true])test('auto subm
  if(!reuse)store.setDraft('Keep my draft',original);
  let panel,closed=false;
  const actions=useReaderPanelActions({mobile,shell:{current:null},chat:{start:store.start,forTab:key=>({send:q=>store.send(q,'visible-page',undefined,key)})},textSelection:{text:'countenanced',word:'countenanced',cfi:'word-start',endCfi:'word-end'},setPanel:value=>{panel=value;},closeLookup:()=>{closed=true;}});
- const question="";
+ const question="What does 'countenanced' mean in this context?";
  actions.askAi(true);
  const state=store.getSnapshot(),tab=state.tabs[state.activeKey];
  assert.equal(panel,'chat');assert.equal(closed,true);assert.equal(tab.pending.question,question);assert.equal(tab.sending,true);assert.equal(tab.pending.passage.text,'countenanced');
