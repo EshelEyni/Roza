@@ -38,6 +38,7 @@ export const lookupReaderDictionary = asyncErrorCatcher(async (req: Request, res
     res.json({ status: "success", data: { entry: null } });
     return;
   }
+  const saveVocabulary = async () => {
   const identity = { userId, requestId };
   try {
     await ReaderLookupModel.updateOne(
@@ -83,5 +84,19 @@ export const lookupReaderDictionary = asyncErrorCatcher(async (req: Request, res
     await ReaderVocabularyModel.updateOne(filter, update);
   }
   const vocabulary = await ReaderVocabularyModel.findOne(filter).orFail();
-  res.json({ status: "success", data: { entry, lookupCount: vocabulary.lookupCount } });
+  return vocabulary.lookupCount;
+  };
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const lookupCount = await Promise.race([
+      saveVocabulary().catch(error => {
+        if (error instanceof AppError && error.statusCode === 409) throw error;
+        return undefined;
+      }),
+      new Promise<undefined>(resolve => { timer = setTimeout(() => resolve(undefined), 3000); }),
+    ]);
+    res.json({ status: "success", data: { entry, lookupCount } });
+  } finally {
+    clearTimeout(timer);
+  }
 });
