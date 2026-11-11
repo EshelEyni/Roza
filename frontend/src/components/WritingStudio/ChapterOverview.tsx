@@ -1,8 +1,6 @@
-import { matchesPlanning } from "./planningModel";
 import {
   ChapterPlanning,
   PlanningBadges,
-  PlanningFilter,
   PlanningNavigation,
 } from "./ChapterPlanning";
 import { ItemMenu } from "./ItemMenu";
@@ -76,7 +74,6 @@ function Card({
   index,
   selected,
   locked,
-  reorderLocked,
   onPreview,
   onEdit,
   onSummary,
@@ -89,7 +86,6 @@ function Card({
   index: number;
   selected: boolean;
   locked: boolean;
-  reorderLocked: boolean;
   onPreview: () => void;
   onEdit: () => void;
   onSummary: () => void;
@@ -104,7 +100,7 @@ function Card({
     transition,
     isDragging,
     isOver,
-  } = useSortable({ id: chapter.id, disabled: locked || reorderLocked });
+  } = useSortable({ id: chapter.id, disabled: locked });
   const summary = useMemo(
     () => plainText(chapter.description),
     [chapter.description],
@@ -130,7 +126,7 @@ function Card({
         </span>
         <button
           className="ws-drag-handle"
-          disabled={locked || reorderLocked}
+          disabled={locked}
           aria-label={`Reorder ${chapter.name}`}
           {...attributes}
           {...listeners}
@@ -201,7 +197,6 @@ export function ChapterOverview({
     () => book.chapters.filter(c => !c.isArchived),
     [book.chapters],
   );
-  const [planningFilter, setPlanningFilter] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const edited = useRef(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -313,11 +308,6 @@ export function ChapterOverview({
       <div role="status" className="ws-sr-only">
         {announcement}
       </div>
-      <PlanningFilter
-        book={book}
-        value={planningFilter}
-        onChange={setPlanningFilter}
-      />
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
@@ -334,9 +324,7 @@ export function ChapterOverview({
           strategy={rectSortingStrategy}
         >
           <div className="ws-board">
-            {chapters
-              .filter(c => matchesPlanning(book, c, planningFilter))
-              .map(chapter => (
+            {chapters.map(chapter => (
                 <Card
                   key={chapter.id}
                   chapter={chapter}
@@ -344,7 +332,6 @@ export function ChapterOverview({
                   index={chapters.indexOf(chapter)}
                   selected={chapter.id === selected}
                   locked={!!store.recovery}
-                  reorderLocked={!!planningFilter}
                   onPreview={() => setPreviewId(chapter.id)}
                   onEdit={() => setEditId(chapter.id)}
                   onSummary={() => setSummaryId(chapter.id)}
