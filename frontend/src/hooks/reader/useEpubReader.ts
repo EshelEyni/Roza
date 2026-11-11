@@ -125,6 +125,14 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     closeLookup: selection.closeLookup,
     markTranslation,
     passageMarks,
+    getLookupPage: async (cfi: string) => {
+      await runtime.lookupLocations.current;
+      const locations = runtime.epubRef.current?.locations;
+      // Use the existing fixed text locations, never reflowed screen page numbers.
+      if (!locations?.length()) return cfi;
+      const index = locations.locationFromCfi(cfi);
+      return typeof index === "number" && index >= 0 ? locations.cfiFromLocation(index) || cfi : cfi;
+    },
     getProgressDestination,
     returnPoint: jumpHistory.returnPoint,
     goBack: jumpHistory.goBack,

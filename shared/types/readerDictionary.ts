@@ -4,6 +4,7 @@ export interface ReaderDictionaryLookup {
   word: string;
   location: string;
   requestId: string;
+  pageLocation?: string;
   provider?: ReaderLookupProvider;
 }
 

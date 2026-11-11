@@ -25,6 +25,7 @@ import type { ReaderTextSelection } from "../../types/reader";
 export function ReaderDictionary({
   selection,
   bookId,
+  getLookupPage,
   onClose: closePopup,
   onTranslationDismiss,
   onAskAi,
@@ -37,6 +38,7 @@ export function ReaderDictionary({
 }: {
   selection: ReaderTextSelection;
   bookId: string;
+  getLookupPage: (cfi: string) => Promise<string>;
   onClose: () => void;
   onTranslationDismiss?: (selection: ReaderTextSelection) => void;
   onAskAi: (autoSubmit?: boolean) => void;
@@ -127,12 +129,18 @@ export function ReaderDictionary({
     setOpened(true);
     setLookups(current => ({ ...current, [provider]: { ...current[provider], loading: true, error: false } }));
     try {
+      const signal = AbortSignal.timeout(15000);
+      const pageLocation = await Promise.race([
+        getLookupPage(selection.cfi),
+        new Promise<never>((_, reject) => signal.addEventListener("abort", () => reject(new Error("Lookup timed out")), { once: true })),
+      ]);
       const data = await readerApiService.lookupWord(bookId, {
         word: selection.word,
         location: selection.cfi,
+        pageLocation,
         requestId: requestId.current[provider]!,
         provider,
-      });
+      }, signal);
       if (mounted.current) setLookups(current => ({ ...current, [provider]: { result: data } }));
     } catch {
       if (mounted.current) setLookups(current => ({ ...current, [provider]: { ...current[provider], error: true } }));
@@ -331,10 +339,10 @@ export function ReaderDictionary({
                 type="button"
                 className="reader-button reader-dictionary-lookup-action"
                 key={provider}
-                disabled={lookups[provider]?.loading}
+                aria-busy={lookups[provider]?.loading}
                 onClick={() => {
                   setLookupProvider(provider);
-                  if (!lookups[provider]?.result || lookups[provider]?.error) void lookup(provider);
+                  if (!lookups[provider]) void lookup(provider);
                 }}
               >
                 {provider === "google" ? <FiGlobe aria-hidden="true" /> : <FiBookOpen aria-hidden="true" />}
