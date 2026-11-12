@@ -201,6 +201,68 @@ export function ReaderDictionary({
   // CSS viewport units keep these bounds current when the window is resized.
   const popupWidth = opened ? 360 : actionWidth;
   const popupTop = `clamp(12px, ${selection.y}px, max(12px, calc(100dvh - ${opened ? 442 : 152}px)))`;
+  const [mobilePosition, setMobilePosition] = useState<{
+    left: number; top: number; width: number; maxHeight: number; visibility: "visible" | "hidden";
+  }>();
+  useEffect(() => {
+    if (!mobile || opened) return;
+    const viewport = window.visualViewport;
+    let request = 0;
+    const update = () => {
+      const element = dialog.current;
+      if (!element) return;
+      const bounds = selection.getBounds?.();
+      const left = viewport?.offsetLeft || 0;
+      const top = viewport?.offsetTop || 0;
+      const width = viewport?.width || window.innerWidth;
+      const height = viewport?.height || window.innerHeight;
+      const margin = 12;
+      const gap = 28; // Leave room for native selection handles.
+      const popupWidth = Math.min(actionWidth, Math.max(0, width - margin * 2));
+      const popupHeight = element.scrollHeight + 2;
+      const bottom = top + height - margin;
+      const selectionTop = bounds?.top ?? selection.y - 8;
+      const selectionBottom = bounds?.bottom ?? selection.y - 8;
+      const below = Math.max(0, bottom - Math.max(top + margin, selectionBottom + gap));
+      // Safari normally places its native menu above the range.
+      const above = Math.max(0, Math.min(bottom, selectionTop - 80) - top - margin);
+      const useBelow = below >= popupHeight || below >= above;
+      const space = useBelow ? below : above;
+      setMobilePosition({
+        width: popupWidth,
+        left: Math.max(left + margin, Math.min(bounds?.left ?? selection.x,
+          left + width - margin - popupWidth)),
+        top: useBelow ? bottom - below : top + margin + above - Math.min(popupHeight, space),
+        maxHeight: space,
+        // Avoid covering the range if it fills the entire visible viewport.
+        visibility: space >= 44 && (extending || !selection.getBounds || !!bounds) ? "visible" : "hidden",
+      });
+    };
+    const schedule = () => {
+      cancelAnimationFrame(request);
+      request = requestAnimationFrame(update);
+    };
+    update();
+    const observer = new ResizeObserver(schedule);
+    if (dialog.current) observer.observe(dialog.current);
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
+    viewport?.addEventListener("resize", schedule);
+    viewport?.addEventListener("scroll", schedule);
+    const doc = selection.selectionDocument;
+    doc?.addEventListener("scroll", schedule, true);
+    doc?.addEventListener("selectionchange", schedule);
+    return () => {
+      cancelAnimationFrame(request);
+      observer.disconnect();
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+      viewport?.removeEventListener("resize", schedule);
+      viewport?.removeEventListener("scroll", schedule);
+      doc?.removeEventListener("scroll", schedule, true);
+      doc?.removeEventListener("selectionchange", schedule);
+    };
+  }, [mobile, opened, selection, actionWidth, extending]);
   const content = (
     <div
       className={"reader-dictionary " + (opened ? "is-open" : "")}
@@ -223,7 +285,7 @@ export function ReaderDictionary({
       aria-label={t(
         opened ? "reader.dictionaryTitle" : "reader.chat.selectionActions",
       )}
-      style={mobile && opened ? undefined : {
+      style={mobile && opened ? undefined : mobile ? (mobilePosition || { visibility: "hidden" }) : {
         width: popupWidth,
         left: `clamp(12px, ${selection.x}px, max(12px, calc(100dvw - ${popupWidth + 12}px)))`,
         top: popupTop,

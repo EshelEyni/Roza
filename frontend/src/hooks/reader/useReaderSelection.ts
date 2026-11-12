@@ -312,6 +312,14 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
         cfi,
         x: offset.left + rect.left,
         y: offset.top + rect.bottom + 8,
+        selectionDocument: contents.document,
+        getBounds: () => {
+          if (!frame.isConnected || !range.startContainer.isConnected) return null;
+          const bounds = range.getBoundingClientRect();
+          const origin = frame.getBoundingClientRect();
+          return { left: origin.left + bounds.left, top: origin.top + bounds.top,
+            bottom: origin.top + bounds.bottom };
+        },
       };
       current.current = next;
       setTextSelection(next);
