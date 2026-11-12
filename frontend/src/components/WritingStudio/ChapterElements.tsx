@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { ConfirmDialog } from "../Modals/ConfirmDialog";
 import { FiPlus, FiSearch, FiTrash2, FiEdit2, FiLink } from "react-icons/fi";
 import {
+  Book,
   Chapter,
   StoryKind,
   SlateCustomElement,
@@ -28,7 +29,8 @@ export function ChapterElements({
   onChapter: (id: string) => void;
 }) {
   const [search, setSearch] = useState("");
-  const [creating, setCreating] = useState(false);
+  const [creating, setCreating] = useState<Book[StoryKind][number] | null>(null);
+  const [creationNote, setCreationNote] = useState("");
   const [linking, setLinking] = useState(false);
   const [removing, setRemoving] = useState<{ id: string; name: string } | null>(
     null,
@@ -81,8 +83,17 @@ export function ChapterElements({
         </label>
         <button
           className="ws-primary"
-          onClick={() => setCreating(value => !value)}
-          aria-expanded={creating}
+          onClick={() => {
+            setCreationNote("");
+            setCreating({
+              ...(getDefaultBookDataItem({
+                bookId: book.id,
+                type: kind,
+              }) as Book[StoryKind][number]),
+              id: newId(),
+            });
+          }}
+          aria-haspopup="dialog"
         >
           <FiPlus aria-hidden="true" /> Add new {singular}
         </button>
@@ -91,40 +102,29 @@ export function ChapterElements({
         </button>
       </header>
       {creating && (
-        <form
-          className="cp-element-create"
-          onSubmit={e => {
-            e.preventDefault();
-            const name = String(
-              new FormData(e.currentTarget).get("name") || "",
-            ).trim();
-            if (!name) return;
-            const entity = {
-              ...getDefaultBookDataItem({ bookId: book.id, type: kind }),
-              id: newId(),
-              name,
-            };
+        <EntityDetailsDialog
+          entity={creating}
+          kind={kind}
+          editing
+          disabled={!!store.recovery}
+          note={creationNote}
+          onClose={() => setCreating(null)}
+          onUpdate={patch =>
+            setCreating(entity => entity && { ...entity, ...patch })
+          }
+          onNote={setCreationNote}
+          onCreate={name => {
+            if (store.recovery) return;
+            const entity = { ...creating, name };
             store.edit(b => ({ ...b, [kind]: [...b[kind], entity] }));
-            link(kind, entity.id);
-            setDetails({ id: entity.id, editing: true });
+            link(kind, entity.id, false, creationNote);
             setSearch("");
-            setCreating(false);
+            setCreating(null);
           }}
-        >
-          <input
-            autoFocus
-            dir="auto"
-            name="name"
-            aria-label={`New ${kind} name`}
-            placeholder={`${singular[0].toUpperCase() + singular.slice(1)} name`}
-            required
-            maxLength={500}
-          />
-          <button type="submit">Create & link</button>
-          <button type="button" onClick={() => setCreating(false)}>
-            Cancel
-          </button>
-        </form>
+          onProfile={() => {}}
+          chapters={[]}
+          onChapter={onChapter}
+        />
       )}
       <div className="cp-element-list" aria-label={`Chapter ${kind}`}>
         {matches.map(entity => {
@@ -353,6 +353,7 @@ function EntityDetailsDialog({
   onUpdate,
   onNote,
   onProfile,
+  onCreate,
   chapters,
   onChapter,
 }: {
@@ -371,6 +372,7 @@ function EntityDetailsDialog({
     description?: SlateCustomElement[];
   }) => void;
   onNote: (note: string) => void;
+  onCreate?: (name: string) => void;
   onProfile: () => void;
   chapters: Chapter[];
   onChapter: (id: string) => void;
@@ -402,7 +404,7 @@ function EntityDetailsDialog({
     <dialog
       ref={dialog}
       className="ws cp-link-dialog cp-entity-dialog"
-      aria-label={editing ? `Edit ${singular}` : `${entity.name} details`}
+      aria-label={onCreate ? `Create ${singular}` : editing ? `Edit ${singular}` : `${entity.name} details`}
       onCancel={e => {
         e.preventDefault();
         onClose();
@@ -417,12 +419,14 @@ function EntityDetailsDialog({
       <header>
         <div>
           <span className="ws-eyebrow">
-            {editing
-              ? `EDIT ${singular.toUpperCase()}`
-              : `${singular.toUpperCase()} DETAILS`}
+            {onCreate
+              ? `CREATE ${singular.toUpperCase()}`
+              : editing
+                ? `EDIT ${singular.toUpperCase()}`
+                : `${singular.toUpperCase()} DETAILS`}
           </span>
           {editing ? (
-            renaming ? (
+            renaming || onCreate ? (
               <input
                 className="cp-entity-name-input"
                 autoFocus
@@ -430,14 +434,23 @@ function EntityDetailsDialog({
                 aria-label={singular + " name"}
                 value={nameDraft}
                 maxLength={500}
+                disabled={disabled}
                 onChange={e => setNameDraft(e.target.value)}
                 onBlur={() => {
+                  if (onCreate) return;
                   if (!cancelRename.current && nameDraft.trim())
                     onUpdate({ name: nameDraft.trim() });
                   cancelRename.current = false;
                   setRenaming(false);
                 }}
                 onKeyDown={e => {
+                  if (onCreate) {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (!disabled && nameDraft.trim()) onCreate(nameDraft.trim());
+                    }
+                    return;
+                  }
                   if (e.key === "Enter" || e.key === "Escape") {
                     e.preventDefault();
                     e.stopPropagation();
@@ -529,10 +542,23 @@ function EntityDetailsDialog({
         </div>
       )}
       <footer>
-        <button onClick={onProfile}>Open profile</button>
-        <button className="ws-primary" onClick={onClose}>
-          Done
-        </button>
+        {onCreate ? (
+          <>
+            <button onClick={onClose}>Cancel</button>
+            <button
+              className="ws-primary"
+              disabled={disabled || !nameDraft.trim()}
+              onClick={() => onCreate(nameDraft.trim())}
+            >
+              Save
+            </button>
+          </>
+        ) : (
+          <>
+            <button onClick={onProfile}>Open profile</button>
+            <button className="ws-primary" onClick={onClose}>Done</button>
+          </>
+        )}
       </footer>
     </dialog>,
     document.body,
