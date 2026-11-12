@@ -1751,7 +1751,7 @@ padding: 6px 10px;
   font-size: 11px;
   text-align: left;
 }
-.ws-note-select > span:first-child {
+.ws-note-select > span:not(.ws-note-preview):first-child {
   flex-shrink: 0;
   color: var(--ws-accent);
 }
@@ -2104,3 +2104,74 @@ padding: 6px 10px;
 .ws-draft-mode .ws-item-menu > div { max-height: 50vh; overflow: auto; width: 220px; }
 
 .ws-toolbar .ws-ai-control button { width: auto; height: auto; min-height: 33px; white-space: normal; }
+
+/* Quiet field underlines and explicit actions for draft/AI controls. */
+.ws .ws-draft-header select,
+.ws .ws-draft-secondary input,
+.ws .ws-ai-review select,
+.ws .ws-ai-review input:not([type="checkbox"]),
+.ws .ws-ai-review textarea {
+  border: 0;
+  border-bottom: 1px solid var(--ws-line);
+  border-radius: 0;
+  background: transparent;
+}
+.ws .ws-draft-header select:focus,
+.ws .ws-draft-secondary input:focus,
+.ws .ws-ai-review select:focus,
+.ws .ws-ai-review input:not([type="checkbox"]):focus,
+.ws .ws-ai-review textarea:focus {
+  outline: none;
+  border-bottom-color: var(--ws-accent);
+  box-shadow: 0 1px 0 var(--ws-accent);
+}
+.ws .ws-ai-review > button {
+  border: 1px solid var(--ws-line);
+  border-radius: 5px;
+  background: var(--ws-soft);
+  padding: 8px 14px;
+  margin-top: 10px;
+  margin-inline-end: 8px;
+}
+.ws .ws-ai-review > button:first-of-type {
+  background: var(--ws-accent);
+  border-color: var(--ws-accent);
+  color: var(--ws-paper);
+}
+.ws .ws-ai-review > button:hover:not(:disabled) {
+  border-color: var(--ws-accent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ws-ink) 15%, transparent);
+}
+
+/* Compact annotation cards share one hover surface. */
+.ws-annotation-card header { min-height: 30px; }
+.ws-annotation-card .ws-note-select { padding: 4px 10px; }
+.ws-annotation-card .ws-note-drag { padding: 4px 8px; line-height: 20px; }
+.ws .ws-annotation-card:not(.is-active):hover { background: var(--ws-soft); }
+.ws .ws-annotation-card header button:hover { background: transparent; }
+
+.ws-annotation-card .ws-note-drag { font-size: 13px; line-height: 16px; padding: 2px 8px; }
+
+/* Draft actions use the same button treatment as AI review actions. */
+.ws .ws-draft-header > button,
+.ws .ws-draft-secondary > button {
+  border: 1px solid var(--ws-line);
+  border-radius: 5px;
+  background: var(--ws-soft);
+  padding: 7px 12px;
+}
+.ws .ws-draft-header > button:first-of-type {
+  background: var(--ws-accent);
+  border-color: var(--ws-accent);
+  color: var(--ws-paper);
+}
+.ws .ws-draft-header > button:hover:not(:disabled),
+.ws .ws-draft-secondary > button:hover:not(:disabled) {
+  border-color: var(--ws-accent);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--ws-ink) 15%, transparent);
+}
+.ws .ws-draft-secondary > button[aria-pressed="true"] {
+  border-color: var(--ws-accent);
+  background: var(--ws-accent);
+  color: var(--ws-paper);
+}

@@ -102,7 +102,7 @@ test("crowded margin cards never overlap, including a measured expanded card", (
   for (let i = 1; i < result.length; i++)
     assert.ok(
       result[i].top >=
-        result[i - 1].top + (result[i - 1].id === "10" ? 277 : 44) + 8,
+        result[i - 1].top + (result[i - 1].id === "10" ? 277 : 32) + 8,
     );
 });
 test("empty paragraph anchors survive typing and saved ranges survive reload", () => {

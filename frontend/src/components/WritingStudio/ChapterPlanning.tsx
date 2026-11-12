@@ -1,3 +1,4 @@
+import { ChapterGeneralNotes } from "./ChapterGeneralNotes";
 import { ChapterElements } from "./ChapterElements";
 import { TaskBoardView } from "./TaskBoard";
 import { chapterBoard, withChapterBoard, chapterTasks, storyKinds } from "./planningModel";
@@ -108,7 +109,7 @@ export function ChapterPlanning({
   summaryElsewhere?: boolean;
   page?: boolean;
 } & PlanningNavigation) {
-  const [active, setActive] = useState<StoryKind | "tasks" | "summary">(
+  const [active, setActive] = useState<StoryKind | "tasks" | "summary" | "general-notes">(
     "characters",
   );
   const Container = page ? "section" : "details";
@@ -189,14 +190,14 @@ export function ChapterPlanning({
           <h1>Chapter Bible</h1>
           <nav className="cp-bible-nav" aria-label="Chapter Bible sections">
             {(
-              ["summary", "characters", "themes", "plotlines", "tasks"] as const
+              ["summary", "characters", "themes", "plotlines", "general-notes", "tasks"] as const
             ).map(tab => (
               <button
                 key={tab}
                 aria-pressed={active === tab}
                 onClick={() => setActive(tab)}
               >
-                {tab[0].toUpperCase() + tab.slice(1)}
+                {tab === "general-notes" ? "Notes" : tab[0].toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </nav>
@@ -380,6 +381,9 @@ export function ChapterPlanning({
                   </label>
                 </>
               )}
+            </PlanningGroup>
+            <PlanningGroup page={page} visible={active === "general-notes"} title={page ? null : "Notes"}>
+              <ChapterGeneralNotes store={store} chapter={chapter} />
             </PlanningGroup>
             {storyKinds.map(kind => (
               <PlanningGroup

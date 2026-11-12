@@ -36,11 +36,11 @@ export function transformAnnotations(
 }
 /** Compact cards flow down the margin; only the active card expands. */
 export function layoutAnnotations(
-  notes: { id: string; top: number }[],
+  notes: { id: string; top: number; height?: number }[],
   active: string | null,
   expandedHeight: number,
 ) {
-  let bottom = 0;
+  let bottom = -Infinity;
   const selected = notes.find(note => note.id === active);
   return [...notes]
     .sort((a, b) => a.top - b.top)
@@ -49,11 +49,11 @@ export function layoutAnnotations(
       let top = Math.max(note.top, bottom);
       if (
         selected &&
-        top + 44 + 8 > selected.top &&
+        top + (note.height || 32) + 8 > selected.top &&
         top < selected.top + expandedHeight + 8
       )
         top = selected.top + expandedHeight + 8;
-      bottom = top + (note.id === active ? expandedHeight : 44) + 8;
+      bottom = top + (note.id === active ? expandedHeight : (note.height || 32)) + 8;
       return { ...note, top };
     })
     .sort((a, b) => a.top - b.top);

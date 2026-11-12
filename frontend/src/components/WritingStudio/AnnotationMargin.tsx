@@ -39,7 +39,7 @@ export function AnnotationMargin({
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   const root = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<Line[]>([]);
-  const [positions, setPositions] = useState<{ id: string; top: number }[]>([]);
+  const [positions, setPositions] = useState<{ id: string; top: number; height: number }[]>([]);
   const setActive = (id: string | null) => {
     onActive(id);
   };
@@ -62,6 +62,13 @@ export function AnnotationMargin({
     const container = root.current?.parentElement;
     if (!container) return;
     const bounds = container.getBoundingClientRect();
+    const prose = container.querySelector('.ws-prose');
+    const rowHeight = (element: globalThis.Element | null): number => {
+      if (!element) return 38;
+      const style = getComputedStyle(element);
+      return parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.9;
+    };
+    const defaultHeight = rowHeight(prose);
     const next: Line[] = [];
     for (const [node, path] of Editor.nodes(editor, {
       at: [],
@@ -89,23 +96,20 @@ export function AnnotationMargin({
           anchor: point,
           focus: point,
         }).getBoundingClientRect();
-        if (rect.height) return rect.top - bounds.top;
-        return (
-          ReactEditor.toDOMNode(
-            editor,
-            Node.get(editor, point.path.slice(0, -1)),
-          ).getBoundingClientRect().top - bounds.top
-        );
+        const block = ReactEditor.toDOMNode(editor, Node.get(editor, point.path.slice(0, -1)));
+        const height = rowHeight(block);
+        if (rect.height) return { top: rect.top - bounds.top + (rect.height - height) / 2, height };
+        return { top: block.getBoundingClientRect().top - bounds.top, height };
       } catch {
         return null;
       }
     };
     let detached = Math.max(0, ...next.map(line => line.top)) + 56;
-    const located = notes.map(note => {
+    const located = notes.filter(note => !note.general).map(note => {
       const top = topOf(note);
-      if (top !== null) return { id: note.id, top: Math.max(40, top) };
-      const result = { id: note.id, top: detached };
-      detached += 52;
+      if (top !== null) return { id: note.id, ...top };
+      const result = { id: note.id, top: detached, height: defaultHeight };
+      detached += defaultHeight + 8;
       return result;
     });
     setLines(previous =>
@@ -126,11 +130,15 @@ export function AnnotationMargin({
     const observer = new ResizeObserver(schedule);
     const container = root.current?.parentElement;
     if (container) observer.observe(container);
+    const typography = new MutationObserver(schedule);
+    const studio = container?.closest('.ws');
+    if (studio) typography.observe(studio, { attributes: true, attributeFilter: ['style', 'class'] });
     window.addEventListener("resize", schedule);
     document.fonts?.ready.then(schedule);
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
+      typography.disconnect();
       window.removeEventListener("resize", schedule);
     };
   }, [measure]);
@@ -211,7 +219,7 @@ export function AnnotationMargin({
     onChange([...notes, note]);
     setActive(note.id);
   };
-  const notesById = new Map(notes.map(note => [note.id, note]));
+  const notesById = new Map(notes.filter(note => !note.general).map(note => [note.id, note]));
   // Measurement is committed after render; removed notes must disappear immediately.
   const layout = layoutAnnotations(
     positions.filter(position => notesById.has(position.id)),
@@ -220,7 +228,7 @@ export function AnnotationMargin({
   );
   const extent = Math.max(
     0,
-    ...layout.map(note => note.top + (note.id === active ? height : 44)),
+    ...layout.map(note => note.top + (note.id === active ? height : (note.height || 32))),
   );
   const lineByPath = new Map(
     lines.map(line => [
@@ -302,11 +310,7 @@ export function AnnotationMargin({
       </div>
       {visible && (
         <aside className="ws-annotation-rail" aria-label="Chapter annotations">
-          {!readOnly && <button type="button" onClick={() => {
-            const note: ChapterAnnotation = { id: crypto.randomUUID(), content: "", general: true, anchor: null, quote: "" };
-            onChange([...notes, note]); setActive(note.id);
-          }}>+ General Note</button>}
-          {notes.length === 0 && (
+          {notes.every(note => note.general) && (
             <p className="ws-annotation-hint">
               Use + beside a paragraph to leave a note.
             </p>
@@ -325,6 +329,9 @@ export function AnnotationMargin({
               <section
                 key={note.id}
                 data-annotation-id={note.id}
+                onBlur={event => {
+                  if (!event.currentTarget.contains(event.relatedTarget as HTMLElement | null)) setActive(null);
+                }}
                 ref={expanded ? activeCard : undefined}
                 className={`ws-annotation-card ${expanded ? "is-active" : ""} ${temp ? "is-floating" : ""} ${dragging === note.id ? "is-dragging" : ""}`}
                 style={
@@ -344,16 +351,14 @@ export function AnnotationMargin({
                     : `Note on paragraph ${line ? line.number : ""}`
                 }
               >
-                <header>
+                <header style={{ height: position.height ? position.height - 2 : undefined, minHeight: position.height ? position.height - 2 : undefined }}>
                   <button
                     type="button"
                     className="ws-note-select"
                     aria-expanded={expanded}
                     onClick={() => (expanded ? setActive(null) : select(note))}
                   >
-                    <span>
-                      {note.general ? "General Note" : detached ? "Unattached · text removed" : "Note"}
-                    </span>
+                    {detached && <span>Unattached · text removed</span>}
                     {!expanded && (
                       <span className="ws-note-preview">
                         {note.content || "New note"}
@@ -517,6 +522,14 @@ export function AnnotationMargin({
                       maxLength={50000}
                       value={note.content}
                       onFocus={() => setActive(note.id)}
+                      onKeyDown={event => {
+                        if (event.key !== "Escape") return;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        if (!note.content.trim() && !readOnly)
+                          onChange(notes.filter(entry => entry.id !== note.id));
+                        setActive(null);
+                      }}
                       onChange={event =>
                         onChange(
                           notes.map(entry =>

@@ -545,6 +545,57 @@ test(
       await page.locator(".ws-chapters button").nth(1).click();
       assert.equal(await page.locator(".ws-draft-pane:visible").count(), 0);
       assert.ok((await main.innerText()).includes("twenty years"));
+      await page.getByRole('button', {name:'Chapter Bible', exact:true}).click();
+      await page.getByRole('button', {name:'Notes', exact:true}).click();
+      await page.getByRole('button', {name:'Add note', exact:true}).click();
+      await page.getByRole('textbox', {name:'Note 1', exact:true}).fill('Keep the chapter quiet.');
+      await page.getByRole('button', {name:'Add note',exact:true}).click();
+      await page.getByRole('textbox', {name:'Note 2',exact:true}).fill('The letter should stay unopened until the last scene. Let the tension come from what remains unsaid.');
+      await page.getByRole('textbox', {name:'Note 1',exact:true}).fill('Keep the chapter quiet. The return to the house should feel familiar at first, with small details hinting that something has changed.');
+      await page.screenshot({path:path.join(screenshots,'notes-desktop.png'),fullPage:true});
+      await page.setViewportSize({width:390,height:844});
+      assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
+      await page.screenshot({path:path.join(screenshots,'notes-mobile.png'),fullPage:true});
+      await page.setViewportSize({width:1365,height:900});
+      await page.locator('.cp-note-card').nth(1).getByRole('button',{name:'Delete note',exact:true}).click();
+      await page.getByRole('dialog').getByRole('button',{name:'Delete note',exact:true}).click();
+      await page.getByRole('textbox', {name:'Note 1',exact:true}).fill('Keep the chapter quiet.');
+
+      await page.getByRole('button', {name:'Chapter Bible', exact:true}).click();
+      assert.equal(await page.getByRole('button', {name:'+ General Note', exact:true}).count(),0);
+      assert.equal(await page.locator('.ws-annotation-card').filter({hasText:'Keep the chapter quiet.'}).count(),0);
+      await page.getByRole('button', {name:'Chapter Bible', exact:true}).click();
+      await page.getByRole('button', {name:'Notes', exact:true}).click();
+      assert.equal(await page.getByRole('textbox', {name:'Note 1', exact:true}).inputValue(),'Keep the chapter quiet.');
+      await page.getByRole('button', {name:'Delete note', exact:true}).click();
+      await page.getByRole('dialog').getByRole('button', {name:'Delete note', exact:true}).click();
+      assert.equal(await page.getByRole('textbox', {name:'Note 1', exact:true}).count(),0);
+      await page.getByRole('button', {name:'Chapter Bible', exact:true}).click();
+      await page.getByRole('button', {name:'Add note to paragraph 1', exact:true}).click();
+      await page.getByRole('textbox', {name:'Annotation text', exact:true}).press('Escape');
+      assert.equal(await page.locator('.ws-annotation-card').count(),0);
+      await page.getByRole('button', {name:'Add note to paragraph 1', exact:true}).click();
+      await page.getByRole('textbox', {name:'Annotation text', exact:true}).fill('A note attached to the first row.');
+      await page.getByRole('textbox', {name:'Chapter or page title', exact:true}).click();
+      assert.equal(await page.locator('.ws-annotation-card.is-active').count(),0);
+      await page.waitForTimeout(150);
+      const alignment=await page.evaluate(()=>{
+        const leaf=document.querySelector('[aria-label="Manuscript"] [data-slate-string]');
+        const range=document.createRange();range.setStart(leaf.firstChild,0);range.setEnd(leaf.firstChild,0);
+        const text=range.getBoundingClientRect(),card=document.querySelector('.ws-annotation-card').getBoundingClientRect();
+        return Math.abs((text.top+text.height/2)-(card.top+card.height/2));
+      });
+      assert.ok(alignment<4, 'Note should align with its attached row, offset='+alignment);
+      await page.getByRole('button', {name:'Options', exact:true}).click();
+      for (const size of ['18','24','20']) {
+        await page.locator('.ws-options select').nth(1).selectOption(size);
+        await page.waitForFunction(()=>{
+          const row=document.querySelector('[aria-label="Manuscript"] p');
+          const card=document.querySelector('.ws-annotation-card');
+          return row && card && Math.abs(parseFloat(getComputedStyle(row).lineHeight)-card.getBoundingClientRect().height)<0.5;
+        });
+      }
+      assert.equal(await page.locator('.ws-note-drag').evaluate(el=>getComputedStyle(el).fontSize),'13px');
       assert.equal(aiCalls, 4);
       assert.deepEqual(errors, []);
     } finally {

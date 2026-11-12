@@ -733,6 +733,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   )}
                   {category === "chapters" && (
                     <button
+                      disabled={!!activeDraft}
                       onClick={() => {
                         setChapterBible(false);
                         setNotes(summary ? true : !notes);
@@ -747,8 +748,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     <button
                       aria-pressed={chapterBible}
                       aria-controls="ws-chapter-bible"
-                      disabled={!!activeDraft}
                       onClick={() => {
+                        setDraftId("");
                         setChapterBible(value => !value);
                         setSummary(false);
                       }}
