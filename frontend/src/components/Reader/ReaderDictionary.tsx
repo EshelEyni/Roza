@@ -339,6 +339,7 @@ export function ReaderDictionary({
                 type="button"
                 className="reader-button reader-dictionary-lookup-action"
                 key={provider}
+                aria-pressed={provider === (entry?.kind === "translation" ? "google" : lookupProvider)}
                 aria-busy={lookups[provider]?.loading}
                 onClick={() => {
                   setLookupProvider(provider);
@@ -346,17 +347,17 @@ export function ReaderDictionary({
                 }}
               >
                 {provider === "google" ? <FiGlobe aria-hidden="true" /> : <FiBookOpen aria-hidden="true" />}
-                {t(provider === "google" ? "reader.translateWithGoogle" : "reader.lookupHebrew")}
+                {t(provider === "google" ? "reader.googleButton" : "reader.localButton")}
               </button>
             ))}
             <button
               type="button"
-              className="reader-button reader-dictionary-lookup-action"
+              className="reader-button reader-dictionary-lookup-action reader-dictionary-ai-action"
               disabled={aiDisabled}
               onClick={() => onAskAi(true)}
             >
               <FiMessageSquare aria-hidden="true" />
-              {t("reader.chat.ask")}
+              {t("reader.aiButton")}
             </button>
           </div>
           {loading && <p role="status">{t("reader.lookupLoading")}</p>}
