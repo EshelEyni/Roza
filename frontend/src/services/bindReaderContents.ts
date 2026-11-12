@@ -37,12 +37,23 @@ export function bindReaderContents(
     if (!event.defaultPrevented) onKey(event);
   };
   contents.document.addEventListener("keydown", onKeyDown);
-  const onSelectionChange = () =>
+  const updateMultiwordCallout = () => {
+    const iphone = /iPhone|iPod/.test(contents.document.defaultView?.navigator?.userAgent || "");
+    const text = contents.document.getSelection()?.toString().trim() || "";
+    // Apply inside the EPUB iframe: publisher styles can override inherited callout rules.
+    contents.document.documentElement?.toggleAttribute("data-reader-multiword-callout",
+      mobileRef.current && iphone && /\S+\s+\S+/.test(text));
+  };
+  const onSelectionChange = () => {
+    updateMultiwordCallout();
     selection.onSelectionChange(contents.document);
+  };
+  updateMultiwordCallout();
   contents.document.addEventListener("selectionchange", onSelectionChange);
   cleanups.push(() =>
     contents.document.removeEventListener("selectionchange", onSelectionChange),
   );
+  cleanups.push(() => contents.document.documentElement?.removeAttribute("data-reader-multiword-callout"));
   const onPointerDown = (event: PointerEvent) => {
     if (event.button === 2 && (event.buttons & 1) && dragging && dragButton === 1) {
       return;
@@ -220,6 +231,9 @@ export function bindReaderContents(
         "-webkit-user-select": "text",
         "user-select": "text",
         "touch-action": "pan-y pinch-zoom",
+      },
+      "html[data-reader-multiword-callout], html[data-reader-multiword-callout] *": {
+        "-webkit-touch-callout": "none !important",
       },
     },
     "reader-touch",
