@@ -201,9 +201,54 @@ export function ReaderDictionary({
   // CSS viewport units keep these bounds current when the window is resized.
   const popupWidth = opened ? 360 : actionWidth;
   const popupTop = `clamp(12px, ${selection.y}px, max(12px, calc(100dvh - ${opened ? 442 : 152}px)))`;
+  const [mobilePosition, setMobilePosition] = useState<{
+    left: number; top: number; width: number; maxHeight: number; visibility: "visible" | "hidden";
+  }>();
+  useEffect(() => {
+    if (!mobile || opened) return;
+    const viewport = window.visualViewport;
+    let request = 0;
+    const update = () => {
+      const element = dialog.current;
+      if (!element) return;
+      const left = viewport?.offsetLeft || 0;
+      const top = viewport?.offsetTop || 0;
+      const width = viewport?.width || window.innerWidth;
+      const height = viewport?.height || window.innerHeight;
+      const popupWidth = Math.min(actionWidth, Math.max(0, width - 24));
+      const maxHeight = Math.max(0, height - 24);
+      // Dock in the reader footer instead of following Safari's selection menu.
+      setMobilePosition({
+        width: popupWidth,
+        left: left + (width - popupWidth) / 2,
+        top: Math.max(top + 12, top + height - Math.min(element.scrollHeight + 2, maxHeight) - 8),
+        maxHeight,
+        visibility: "visible",
+      });
+    };
+    const schedule = () => {
+      cancelAnimationFrame(request);
+      request = requestAnimationFrame(update);
+    };
+    update();
+    const observer = new ResizeObserver(schedule);
+    if (dialog.current) observer.observe(dialog.current);
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
+    viewport?.addEventListener("resize", schedule);
+    viewport?.addEventListener("scroll", schedule);
+    return () => {
+      cancelAnimationFrame(request);
+      observer.disconnect();
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+      viewport?.removeEventListener("resize", schedule);
+      viewport?.removeEventListener("scroll", schedule);
+    };
+  }, [mobile, opened, actionWidth]);
   const content = (
     <div
-      className={"reader-dictionary " + (opened ? "is-open" : "")}
+      className={"reader-dictionary " + (opened ? "is-open" : mobile ? "reader-selection-docked" : "")}
       ref={dialog}
       tabIndex={-1}
       onPointerDown={event => {
@@ -223,7 +268,7 @@ export function ReaderDictionary({
       aria-label={t(
         opened ? "reader.dictionaryTitle" : "reader.chat.selectionActions",
       )}
-      style={mobile && opened ? undefined : {
+      style={mobile && opened ? undefined : mobile ? (mobilePosition || { visibility: "hidden" }) : {
         width: popupWidth,
         left: `clamp(12px, ${selection.x}px, max(12px, calc(100dvw - ${popupWidth + 12}px)))`,
         top: popupTop,

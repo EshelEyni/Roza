@@ -1480,6 +1480,13 @@
     overflow-y: auto;
     padding: 6px;
   }
+  .reader-dictionary.reader-selection-docked {
+    // Keep the controls above the home indicator without shifting the EPUB range.
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+  .reader-selection-docked .reader-dictionary-actions {
+    justify-content: center;
+  }
   .reader-dictionary-actions {
     gap: 4px;
   }
