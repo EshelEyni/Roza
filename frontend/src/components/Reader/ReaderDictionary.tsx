@@ -211,31 +211,19 @@ export function ReaderDictionary({
     const update = () => {
       const element = dialog.current;
       if (!element) return;
-      const bounds = selection.getBounds?.();
       const left = viewport?.offsetLeft || 0;
       const top = viewport?.offsetTop || 0;
       const width = viewport?.width || window.innerWidth;
       const height = viewport?.height || window.innerHeight;
-      const margin = 12;
-      const gap = 28; // Leave room for native selection handles.
-      const popupWidth = Math.min(actionWidth, Math.max(0, width - margin * 2));
-      const popupHeight = element.scrollHeight + 2;
-      const bottom = top + height - margin;
-      const selectionTop = bounds?.top ?? selection.y - 8;
-      const selectionBottom = bounds?.bottom ?? selection.y - 8;
-      const below = Math.max(0, bottom - Math.max(top + margin, selectionBottom + gap));
-      // Safari normally places its native menu above the range.
-      const above = Math.max(0, Math.min(bottom, selectionTop - 80) - top - margin);
-      const useBelow = below >= popupHeight || below >= above;
-      const space = useBelow ? below : above;
+      const popupWidth = Math.min(actionWidth, Math.max(0, width - 24));
+      const maxHeight = Math.max(0, height - 24);
+      // Dock in the reader footer instead of following Safari's selection menu.
       setMobilePosition({
         width: popupWidth,
-        left: Math.max(left + margin, Math.min(bounds?.left ?? selection.x,
-          left + width - margin - popupWidth)),
-        top: useBelow ? bottom - below : top + margin + above - Math.min(popupHeight, space),
-        maxHeight: space,
-        // Avoid covering the range if it fills the entire visible viewport.
-        visibility: space >= 44 && (extending || !selection.getBounds || !!bounds) ? "visible" : "hidden",
+        left: left + (width - popupWidth) / 2,
+        top: Math.max(top + 12, top + height - Math.min(element.scrollHeight + 2, maxHeight) - 8),
+        maxHeight,
+        visibility: "visible",
       });
     };
     const schedule = () => {
@@ -249,9 +237,6 @@ export function ReaderDictionary({
     window.addEventListener("scroll", schedule, true);
     viewport?.addEventListener("resize", schedule);
     viewport?.addEventListener("scroll", schedule);
-    const doc = selection.selectionDocument;
-    doc?.addEventListener("scroll", schedule, true);
-    doc?.addEventListener("selectionchange", schedule);
     return () => {
       cancelAnimationFrame(request);
       observer.disconnect();
@@ -259,13 +244,11 @@ export function ReaderDictionary({
       window.removeEventListener("scroll", schedule, true);
       viewport?.removeEventListener("resize", schedule);
       viewport?.removeEventListener("scroll", schedule);
-      doc?.removeEventListener("scroll", schedule, true);
-      doc?.removeEventListener("selectionchange", schedule);
     };
-  }, [mobile, opened, selection, actionWidth, extending]);
+  }, [mobile, opened, actionWidth]);
   const content = (
     <div
-      className={"reader-dictionary " + (opened ? "is-open" : "")}
+      className={"reader-dictionary " + (opened ? "is-open" : mobile ? "reader-selection-docked" : "")}
       ref={dialog}
       tabIndex={-1}
       onPointerDown={event => {

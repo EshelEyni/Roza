@@ -32,34 +32,34 @@ function position(bounds, viewport, mobile = true) {
   return { value: () => states.at(-1), viewport: window.visualViewport, listeners, tree, cleanups };
 }
 const portrait = { offsetLeft: 0, offsetTop: 0, width: 390, height: 664 };
-test('word and paragraph ranges prefer below, leaving handle clearance', () => {
-  for (const bounds of [{ left: 20, top: 50, bottom: 72 }, { left: 18, top: 90, bottom: 440 }]) {
-    const p = position(bounds, portrait).value();
-    assert.equal(p.top, bounds.bottom + 28);
-    assert.ok(p.left >= 12 && p.left + p.width <= 378);
+test('word and paragraph selections dock at the same bottom position', () => {
+  for (const bounds of [{ left: 20, top: 50, bottom: 72 }, { left: 18, top: 90, bottom: 440 }, { left: 12, top: 0, bottom: 664 }]) {
+    const fixture = position(bounds, portrait);
+    const p = fixture.value();
+    assert.equal(p.top + 60, portrait.height - 8);
+    assert.equal(p.left, (portrait.width - p.width) / 2);
     assert.equal(p.visibility, 'visible');
+    assert.match(fixture.tree.props.className, /reader-selection-docked/);
   }
 });
-test('bottom selection flips above with native menu clearance', () => {
-  const p = position({ left: 360, top: 610, bottom: 636 }, portrait).value();
-  assert.ok(p.top + 60 <= 610 - 80);
-  assert.equal(p.left + p.width, 378);
-});
-test('visual viewport resizing and panning recomputes bounds', () => {
+test('visual viewport resize and pan keep the dock on screen', () => {
   const fixture = position({ left: 500, top: 130, bottom: 160 }, portrait);
-  Object.assign(fixture.viewport, { width: 320, height: 300, offsetTop: 40, offsetLeft: 20 });
-  fixture.listeners.resize();
-  const p = fixture.value();
-  assert.ok(p.left >= 32 && p.left + p.width <= 328);
-  assert.ok(p.top >= 52 && p.top + 60 <= 328);
+  for (const viewport of [
+    { width: 320, height: 300, offsetTop: 40, offsetLeft: 20 },
+    { width: 844, height: 390, offsetTop: 0, offsetLeft: 0 },
+  ]) {
+    Object.assign(fixture.viewport, viewport);
+    fixture.listeners.resize();
+    const p = fixture.value();
+    assert.ok(p.left >= viewport.offsetLeft + 12);
+    assert.ok(p.left + p.width <= viewport.offsetLeft + viewport.width - 12);
+    assert.equal(p.top + 60, viewport.offsetTop + viewport.height - 8);
+  }
   fixture.cleanups.forEach(fn => { if (typeof fn === 'function') fn(); });
-});
-test('full viewport paragraph never gets covered by the floating toolbar', () => {
-  assert.equal(position({ left: 12, top: 0, bottom: 664 }, portrait).value().visibility, 'hidden');
 });
 test('desktop retains existing CSS positioning', () => {
   const fixture = position({ left: 20, top: 50, bottom: 72 }, portrait, false);
   assert.equal(fixture.value(), undefined);
   assert.match(fixture.tree.props.style.top, /^clamp/);
+  assert.doesNotMatch(fixture.tree.props.className, /reader-selection-docked/);
 });
-

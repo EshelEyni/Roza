@@ -25,8 +25,6 @@ export type ReaderSearchSession = {
 export type ReaderPanel = "contents" | "settings" | "search" | "chat";
 export type ReaderDirection = "next" | "prev";
 export interface ReaderTextSelection {
-  getBounds?: () => { left: number; top: number; bottom: number } | null;
-  selectionDocument?: Document;
   text: string;
   word?: string;
   cfi: string;
