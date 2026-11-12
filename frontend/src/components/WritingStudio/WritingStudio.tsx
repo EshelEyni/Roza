@@ -1,3 +1,6 @@
+import { DraftPane } from "./DraftPane";
+import { createChapterDraft, changeChapterDraft, promoteChapterDraft } from "./chapterDrafts";
+import { Chapter, ChapterAnnotation } from "../../../../shared/types/books";
 import { ChapterPlanning } from "./ChapterPlanning";
 import { ChapterFormatDialog } from "./ChapterFormatDialog";
 import { proseBlocks, screenplayStart } from "./screenplay";
@@ -178,6 +181,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     setSummary(false);
     setChapterBible(false);
   }
+  const [draftId, setDraftId] = useState("");
+  const [visitedDrafts, setVisitedDrafts] = useState<string[]>([]);
+  const [mobilePane, setMobilePane] = useState("draft");
   const [drawer, setDrawer] = useState(false);
   const [focus, setFocus] = useState(false);
   const [preview, setPreview] = useState(false);
@@ -203,6 +209,41 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       .toLocaleLowerCase()
       .includes(search.toLocaleLowerCase()),
   );
+  const chapter = !overview && !tasks && item?.type === "chapters" ? item : undefined;
+  const activeDraft = chapter?.drafts?.find(d => d.id === draftId);
+  function openDraft(id: string) {
+    setVisitedDrafts(ids => ids.includes(id) ? ids : [...ids, id]);
+    setDraftId(id); setSummary(false); setChapterBible(false); setDrawer(false); setFocus(false); setMobilePane("draft");
+  }
+  function editChapter(change: (chapter: Chapter) => Chapter, chapterId = chapter?.id) {
+    if (!chapterId) return;
+    store.edit(current => ({ ...current, chapters: current.chapters.map(c => c.id === chapterId ? change(c) : c) }));
+  }
+  function addDraft(blank = false) {
+    if (!chapter || store.recovery) return;
+    const draft = createChapterDraft(chapter, `Draft ${(chapter.drafts?.length || 0) + 1}`, blank);
+    editChapter(c => ({ ...c, drafts: [...(c.drafts || []), draft] })); openDraft(draft.id);
+  }
+  function aiDraft(text: SlateCustomElement[], annotations: ChapterAnnotation[], name: string) {
+    if (!chapter || store.recovery) return;
+    const draft = { ...createChapterDraft(chapter, name), text, annotations, format: activeDraft?.format || chapter.format };
+    editChapter(c => ({ ...c, drafts: [...(c.drafts || []), draft] })); openDraft(draft.id);
+  }
+  async function promoteDraft() {
+    if (!chapter || !activeDraft) return;
+    const chapterId = chapter.id, id = activeDraft.id;
+    if (await confirm({ title: "Promote draft to Main?", message: `Replace Main with “${activeDraft.name}”? The previous Main will be kept as a dated draft for recovery. The promoted draft will remain intact.`, confirmLabel: "Promote to Main" })) {
+      editChapter(c => c.drafts?.some(d => d.id === id) ? promoteChapterDraft(c, id) : c, chapterId);
+      setRestoreKey(n => n + 1);
+    }
+  }
+  async function deleteDraft() {
+    if (!chapter || !activeDraft) return;
+    const chapterId = chapter.id, id = activeDraft.id;
+    if (await confirm({ title: "Delete draft?", message: `Permanently delete “${activeDraft.name}”? Main will be preserved.`, confirmLabel: "Delete draft" })) {
+      editChapter(c => ({ ...c, drafts: c.drafts?.filter(d => d.id !== id) }), chapterId); setDraftId("");
+    }
+  }
   const total = useMemo(() => manuscriptWords(book), [book]);
   const text = item ? ("text" in item ? item.text : item.description) : [];
   const visibleText =
@@ -269,6 +310,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   useEffect(() => {
     setSummary(false);
     setChapterBible(false);
+    setDraftId("");
+    setVisitedDrafts([]);
   }, [selected, category]);
 
   function select(id: string) {
@@ -340,7 +383,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
 
   return (
     <main
-      className={`ws ws-studio ${tasks ? "ws-tasks-open" : ""} ${dark ? "ws-dark" : ""} ${focus ? "ws-focus" : ""}`}
+      className={`ws ws-studio ${tasks ? "ws-tasks-open" : ""} ${dark ? "ws-dark" : ""} ${focus ? "ws-focus" : ""} ${activeDraft ? "ws-draft-mode" : ""}`}
       style={{ "--ws-font-size": `${size}px` } as React.CSSProperties}
     >
       {confirmationDialog}
@@ -665,6 +708,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 </span>
                 <div>
                   <button
+                    disabled={!!activeDraft}
                     onClick={() => {
                       setChapterBible(false);
                       setPreview(!preview);
@@ -675,6 +719,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   </button>
                   {category === "chapters" && (
                     <button
+                      disabled={!!activeDraft}
                       type="button"
                       onClick={() => {
                         setChapterBible(false);
@@ -702,6 +747,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     <button
                       aria-pressed={chapterBible}
                       aria-controls="ws-chapter-bible"
+                      disabled={!!activeDraft}
                       onClick={() => {
                         setChapterBible(value => !value);
                         setSummary(false);
@@ -710,13 +756,18 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       Chapter Bible
                     </button>
                   )}
+                  {chapter && <ItemMenu><summary>Drafts ({chapter.drafts?.length || 0})</summary><div>
+                    <button disabled={!!store.recovery} onClick={() => addDraft()}>Create draft from Main</button>
+                    <button disabled={!!store.recovery} onClick={() => addDraft(true)}>Create blank draft</button>
+                    {chapter.drafts?.map(d => <button key={d.id} onClick={() => openDraft(d.id)}>{d.name}</button>)}
+                  </div></ItemMenu>}
                   <ItemMenu>
                     <summary>More</summary>
                     <div>
                       {item.type === "chapters" && !preview && (
                         <button
                           type="button"
-                          disabled={!!store.recovery}
+                          disabled={!!store.recovery || !!activeDraft}
                           onClick={() => setFormatChapter(item.id)}
                         >
                           Chapter Format
@@ -735,9 +786,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   </ItemMenu>
                 </div>
               </div>
+              {activeDraft && <nav className="ws-draft-mobile-switch" aria-label="Writing panel"><button aria-pressed={mobilePane === "main"} onClick={() => setMobilePane("main")}>Main</button><button aria-pressed={mobilePane === "draft"} onClick={() => setMobilePane("draft")}>Draft</button></nav>}
+              <div className={`ws-draft-layout ws-show-${mobilePane}`}>
               <article
-                className={`ws-page ${chapterBible && item.type === "chapters" ? "ws-chapter-bible-page" : ""} ${summary && item.type === "chapters" ? "ws-summary-mode" : ""}`}
+                className={`ws-page ws-main-pane ${chapterBible && item.type === "chapters" ? "ws-chapter-bible-page" : ""} ${summary && item.type === "chapters" ? "ws-summary-mode" : ""}`}
               >
+                {activeDraft && <h2 className="ws-main-label">Main Version</h2>}
                 {!(chapterBible && item.type === "chapters") && (
                   <input
                     dir="auto"
@@ -748,7 +802,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                         : "Chapter or page title"
                     }
                     value={item.name || ""}
-                    readOnly={preview || !!store.recovery}
+                    readOnly={preview || !!store.recovery || !!activeDraft}
                     placeholder={
                       category === "notes" ? "Untitled note" : "Untitled"
                     }
@@ -788,6 +842,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                           key={`${item.id}:summary:${restoreKey}`}
                           value={item.description}
                           label="Chapter summary"
+                          aiEditing={{ bookId: book.id, chapterId: item.id, summary: true }}
                           placeholder="Summarize what happens in this chapter…"
                           readOnly={preview || !!store.recovery}
                           onChange={description => updateItem({ description })}
@@ -800,7 +855,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                           item.type === "chapters" ? item.format : "prose"
                         }
                         value={text}
-                        readOnly={preview || !!store.recovery}
+                        aiEditing={chapter ? { bookId: book.id, chapterId: chapter.id, annotations: chapter.annotations, onDraft: aiDraft } : undefined}
+                        readOnly={preview || !!store.recovery || !!activeDraft}
                         annotations={
                           item.type === "chapters"
                             ? item.annotations || []
@@ -834,6 +890,11 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   </>
                 )}
               </article>
+              {chapter && chapter.drafts?.filter(d => visitedDrafts.includes(d.id)).map(draft => <DraftPane key={`${chapter.id}:${draft.id}:${restoreKey}`} chapter={chapter} draft={draft} active={draft.id === activeDraft?.id} readOnly={!!store.recovery}
+                onSelect={openDraft} onClose={() => setDraftId("")} onPromote={() => void promoteDraft()} onDelete={() => void deleteDraft()}
+                onChange={change => editChapter(c => changeChapterDraft(c, draft.id, change))}
+                aiEditing={{ bookId: book.id, chapterId: chapter.id, onDraft: aiDraft }} />)}
+              </div>
             </>
           ) : (
             <div className="ws-empty">

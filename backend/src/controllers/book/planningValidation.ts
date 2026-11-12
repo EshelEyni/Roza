@@ -29,6 +29,18 @@ export function validatePlanning(value: unknown, bookId: string): void {
     }
   }
   for (const chapter of records(book.chapters)) {
+    const draftIds = new Set<string>();
+    for (const draft of records(chapter.drafts)) {
+      if (draft.chapterId !== id(chapter)) throw new Error("A draft belongs to another chapter.");
+      if (typeof draft.id !== "string" || !draft.id || draftIds.has(draft.id))
+        throw new Error("Invalid or duplicate chapter draft.");
+      draftIds.add(draft.id);
+      if (typeof draft.name !== "string" || !draft.name.trim() || draft.name.length > 200 ||
+          !Array.isArray(draft.text) || !draft.text.length ||
+          typeof draft.createdAt !== "string" || !Number.isFinite(Date.parse(draft.createdAt)) ||
+          typeof draft.updatedAt !== "string" || !Number.isFinite(Date.parse(draft.updatedAt)))
+        throw new Error("Invalid chapter draft.");
+    }
     if (chapter.planning === undefined) continue;
     const planning = record(chapter.planning);
     for (const kind of kinds) {

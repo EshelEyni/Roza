@@ -2061,3 +2061,46 @@ padding: 6px 10px;
 @media(max-width:1050px) and (min-width:761px){.ws-annotated-editor{--ws-annotation-space:222px;}}
 @media(max-width:760px){.ws-annotated-editor{--ws-annotation-space:0px;}}
 .ws-prose > .sp-scene_heading:first-child{margin-top:0;}
+/* Drafts reuse the manuscript surface and its existing save status. */
+.ws-draft-layout { display: contents; min-width: 0; }
+.ws-draft-mobile-switch { display: none; }
+.ws-draft-mode .ws-sidebar { display: none; }
+.ws-draft-mode .ws-writing { display: flex; flex-direction: column; overflow: hidden; }
+.ws-draft-mode .ws-draft-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); direction: ltr; flex: 1; min-height: 0; }
+.ws-draft-mode .ws-main-pane, .ws-draft-pane { direction: ltr; min-width: 0; overflow: auto; overscroll-behavior: contain; background: var(--ws-paper); margin: 0; padding: 24px clamp(20px, 3vw, 48px) 40px; max-width: none; }
+.ws-draft-mode .ws-main-pane { border-right: 1px solid var(--ws-line); }
+.ws-main-label { margin: 0 0 24px; font-size: 13px; font-weight: normal; color: var(--ws-muted); }
+.ws-draft-header, .ws-draft-secondary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.ws-draft-header label { flex: 1; }
+.ws-draft-header select { max-width: 100%; }
+.ws-draft-secondary { font-size: 12px; }
+.ws-draft-secondary input { width: 180px; padding: 6px; }
+.ws-draft-diff { white-space: pre-wrap; max-height: 35vh; overflow: auto; padding: 16px; background: var(--ws-soft); margin-bottom: 20px; }
+.ws-draft-mode .ws-annotated-editor { display: block; --ws-annotation-space: 0px; }
+.ws-ai-control { position: relative; }
+.ws-ai-review { position: absolute; z-index: 20; top: 100%; right: 0; width: min(620px, 82vw); max-height: 65dvh; overflow: auto; padding: 18px; border: 1px solid var(--ws-line); background: var(--ws-paper); color: var(--ws-ink); box-shadow: 0 8px 24px color-mix(in srgb, var(--ws-ink) 15%, transparent); font: 14px/1.6 var(--font-primary, Alef, sans-serif); }
+.ws-ai-review header { display: flex; justify-content: space-between; align-items: center; }
+.ws-ai-review label { display: block; margin: 8px 0; }
+.ws-ai-review textarea { width: 100%; min-height: 70px; background: var(--ws-paper); color: var(--ws-ink); border: 1px solid var(--ws-line); padding: 8px; }
+.ws-ai-review p { white-space: pre-wrap; text-align: start; font-weight: normal; }
+.ws-ai-comparison { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.ws ins { background: color-mix(in srgb, var(--ws-accent) 18%, transparent); text-decoration: underline; text-decoration-color: var(--ws-accent); }
+.ws del { background: var(--ws-soft); text-decoration-color: var(--ws-muted); }
+@media (max-width: 767px) {
+  .ws-draft-mode .ws-draft-layout { display: block; overflow: auto; }
+  .ws-draft-mode .ws-draft-mobile-switch { display: flex; gap: 8px; padding: 8px 16px; }
+  .ws-draft-mobile-switch button[aria-pressed="true"] { background: var(--ws-soft); }
+  .ws-draft-mode .ws-show-main .ws-draft-pane, .ws-draft-mode .ws-show-draft .ws-main-pane { display: none; }
+  .ws-draft-mode .ws-main-pane { border: 0; }
+  .ws-draft-mode .ws-document-actions { padding: 8px; flex-wrap: wrap; }
+  .ws-draft-mode .ws-document-actions > div { flex-wrap: wrap; }
+  .ws-ai-comparison { grid-template-columns: 1fr; }
+  .ws-ai-review { position: fixed; top: 22dvh; right: 4vw; width: 92vw; }
+}
+
+.ws-draft-mode .ws-annotated-editor > .ws-prose { margin-right: 0; }
+.ws-draft-mode .ws-annotation-layer { display: none; }
+.ws-draft-mode .ws-main-pane.ws-page { max-width: none; width: auto; }
+.ws-draft-mode .ws-item-menu > div { max-height: 50vh; overflow: auto; width: 220px; }
+
+.ws-toolbar .ws-ai-control button { width: auto; height: auto; min-height: 33px; white-space: normal; }

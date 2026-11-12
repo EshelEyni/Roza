@@ -228,6 +228,8 @@ export function ChapterPlanning({
                     key={chapter.id}
                     value={chapter.description}
                     label="Planning summary"
+                    aiEditing={{ bookId: store.book.id, chapterId: chapter.id, summary: true }}
+                    readOnly={!!store.recovery}
                     onChange={description =>
                       store.edit(b => ({
                         ...b,

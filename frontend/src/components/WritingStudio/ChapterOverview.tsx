@@ -493,6 +493,7 @@ export function ChapterOverview({
                     key={summary.id}
                     value={summary.description}
                     label="Chapter summary"
+                    aiEditing={{ bookId: book.id, chapterId: summary.id, summary: true }}
                     readOnly={!!store.recovery}
                     onChange={description =>
                       update(summary.id, { description })

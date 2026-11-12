@@ -63,7 +63,8 @@ async function askReaderAi(
   instructions: string,
   input: ReaderAiInput[],
   selectedModel: ReaderAiModel = "default",
-  purpose: "answer" | "summary" = "answer",
+  purpose: "answer" | "summary" | "edit" = "answer",
+  editOutputTokens = 4000,
 ): Promise<string> {
   if (!readerAiModels.includes(selectedModel))
     throw new AppError("Choose a supported AI model.", 400);
@@ -97,7 +98,7 @@ async function askReaderAi(
         instructions,
         input,
         // Reasoning tokens and visible text share the generation budget.
-        max_output_tokens: maxOutputTokens,
+        max_output_tokens: purpose === "edit" ? Math.min(16000, Math.max(reasoningModel ? 6000 : 1000, editOutputTokens)) : maxOutputTokens,
         ...(reasoningModel ? { reasoning: { effort: "low" } } : {}),
         store: false,
       }),
@@ -134,12 +135,14 @@ async function askReaderAi(
     }
     if (data.status !== "completed")
       throw new AppError("OpenAI did not complete the response. Retry this question.", 502);
-    const answer = (data.output || [])
+    if (purpose === "edit" && (data.output || []).some(item => item.content?.some(part => part.type === "refusal")))
+      throw new AppError("AI declined this editing request. Your writing is unchanged.", 422);
+    const rawAnswer = (data.output || [])
       .filter(item => item.type === "message")
       .flatMap(item => item.content || [])
       .map(item => (item.type === "output_text" ? item.text || "" : item.refusal || ""))
-      .join("\n")
-      .trim();
+      .join("\n");
+    const answer = purpose === "edit" ? rawAnswer : rawAnswer.trim();
     if (!answer)
       throw new AppError(
         "OpenAI completed the request but returned no answer text. Retry this question.",

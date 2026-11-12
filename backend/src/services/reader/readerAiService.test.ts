@@ -137,3 +137,22 @@ describe("Specific OpenAI error messages", () => {
     await expect(askReaderAi("", [])).rejects.toThrow("unreadable response");
   });
 });
+
+describe("Writing edit provider limits", () => {
+  const originalFetch = global.fetch;
+  beforeEach(() => { process.env.OPENAI_API_KEY = "test-key-not-real"; global.fetch = jest.fn(); });
+  afterEach(() => { global.fetch = originalFetch; delete process.env.OPENAI_API_KEY; });
+  it("preserves whitespace and bounds edit output without changing chat defaults", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue({ok:true,json:async()=>({status:"completed",output:[{type:"message",content:[{type:"output_text",text:"  שלום עולם.\n"}]}]})});
+    expect(await askReaderAi("Copy edit", [{role:"user",content:"  שלום עולם.\n"}], "gpt-4.1-mini", "edit", 1200)).toBe("  שלום עולם.\n");
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[0][1].body).max_output_tokens).toBe(1200);
+    await askReaderAi("Copy edit",[],"gpt-4.1-mini","edit",999999);
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body).max_output_tokens).toBe(16000);
+  });
+  it("rejects refusals and incomplete edits instead of returning replacement text", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce({ok:true,json:async()=>({status:"completed",output:[{type:"message",content:[{type:"refusal",refusal:"Declined"}]}]})});
+    await expect(askReaderAi("Copy edit",[],"default","edit")).rejects.toThrow("declined");
+    (global.fetch as jest.Mock).mockResolvedValueOnce({ok:true,json:async()=>({status:"incomplete",incomplete_details:{reason:"max_output_tokens"},output:[]})});
+    await expect(askReaderAi("Copy edit",[],"default","edit")).rejects.toThrow("before finishing");
+  });
+});

@@ -99,7 +99,20 @@ export interface ChapterPlanning {
   characters: ChapterLink[];
 }
 
+export interface ChapterDraft {
+  id: string;
+  chapterId: string;
+  name: string;
+  text: SlateCustomElement[];
+  createdAt: string;
+  updatedAt: string;
+  // Preserve anchors and chapter formatting through promotion/recovery.
+  annotations?: ChapterAnnotation[];
+  format?: "prose" | "screenplay";
+}
+
 export interface Chapter extends BasicBookDataItem {
+  drafts?: ChapterDraft[];
   taskBoard?: TaskBoard;
   planning?: ChapterPlanning;
   format?: "prose" | "screenplay";

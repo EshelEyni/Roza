@@ -56,8 +56,19 @@ const planningSchema = new Schema(
   },
   { _id: false },
 );
+const draftSchema = new Schema({
+  id: { type: String, required: true },
+  chapterId: { type: String, required: true },
+  name: { type: String, required: true, trim: true, maxlength: 200 },
+  text: { type: [SlateCustomElementSchema], required: true },
+  createdAt: { type: String, required: true },
+  updatedAt: { type: String, required: true },
+  annotations: { type: [annotationSchema], default: undefined },
+  format: { type: String, enum: ["prose", "screenplay"] },
+}, { _id: false });
 const chapterSchema = new Schema<IChapter>(
   {
+    drafts: { type: [draftSchema], default: undefined },
     taskBoard: { type: taskBoardSchema, default: undefined },
     planning: { type: planningSchema, default: undefined },
     annotations: { type: [annotationSchema], default: undefined },

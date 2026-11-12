@@ -1,3 +1,4 @@
+import { AiEdit, AiEditingContext } from "./AiEdit";
 import { ScreenplayToolbar } from "./ScreenplayToolbar";
 import {
   isScreenplay,
@@ -25,9 +26,11 @@ import {
 function Toolbar({
   onAddNote,
   screenplayControls,
+  aiEditing,
 }: {
   onAddNote?: () => void;
   screenplayControls?: ReactNode;
+  aiEditing?: AiEditingContext;
 }) {
   const editor = useSlate() as ReturnType<typeof useSlate> & HistoryEditor;
   return (
@@ -88,6 +91,7 @@ function Toolbar({
         ↷
       </button>
       <div className="ws-toolbar-end">
+        {aiEditing && <AiEdit context={aiEditing} />}
         {screenplayControls}
         {onAddNote && (
           <button
@@ -115,7 +119,9 @@ export function ManuscriptEditor({
   showAnnotations = true,
   legacyNotes,
   onRevealAnnotations,
+  aiEditing,
 }: {
+  aiEditing?: AiEditingContext;
   value: SlateCustomElement[];
   format?: "prose" | "screenplay";
   onChange: (
@@ -218,10 +224,11 @@ export function ManuscriptEditor({
     >
       {!readOnly && (
         <Toolbar
+          aiEditing={aiEditing}
           screenplayControls={
             format === "screenplay" ? <ScreenplayToolbar /> : undefined
           }
-          onAddNote={annotations !== undefined ? addSelectionNote : undefined}
+          onAddNote={annotations !== undefined && (showAnnotations || onRevealAnnotations) ? addSelectionNote : undefined}
         />
       )}
       <div
