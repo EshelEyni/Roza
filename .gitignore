@@ -32,3 +32,5 @@ coverage
 .studio-test-cache/
 
 .planning-test-cache/
+.annotations-test-cache/
+.test-browsers/

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   FiArrowLeft,
   FiBookOpen,
+  FiEdit3,
   FiMaximize,
   FiMinimize,
   FiRefreshCw,
@@ -49,6 +50,11 @@ export function ReaderToolbar({
         <h1>{book.title}</h1>
         <p>{book.author || t("reader.unknownAuthor")}</p>
       </div>
+      <button className={"reader-icon-button " + (panel === "annotations" ? "is-active" : "")}
+        onClick={() => togglePanel("annotations")} aria-label={t("reader.annotations.title")}
+        title={t("reader.annotations.title")} aria-expanded={panel === "annotations"}>
+        <FiEdit3 />
+      </button>
       <button
         className={
           "reader-icon-button " + (panel === "chat" ? "is-active" : "")

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   FiBookOpen,
+  FiEdit3,
+  FiEdit2,
   FiGlobe,
   FiMessageSquare,
   FiVolume2,
@@ -23,6 +25,8 @@ export type { ReaderTextSelection } from "../../types/reader";
 import type { ReaderTextSelection } from "../../types/reader";
 
 export function ReaderDictionary({
+  onAnnotate,
+  annotationBusy,
   selection,
   bookId,
   getLookupPage,
@@ -36,6 +40,8 @@ export function ReaderDictionary({
   atStart,
   atEnd,
 }: {
+  onAnnotate?: (note: boolean) => void;
+  annotationBusy?: boolean;
   selection: ReaderTextSelection;
   bookId: string;
   getLookupPage: (cfi: string) => Promise<string>;
@@ -349,6 +355,10 @@ export function ReaderDictionary({
               {t("reader.selectionExtendHelp")}
             </p>
           )}
+          {onAnnotate && <div className="reader-dictionary-actions">
+            <button className="reader-button" disabled={busy || annotationBusy} onClick={() => onAnnotate(false)}><FiEdit2 /> {t("reader.annotations.highlight")}</button>
+            <button className="reader-button" disabled={busy || annotationBusy} onClick={() => onAnnotate(true)}><FiEdit3 /> {t("reader.annotations.addNote")}</button>
+          </div>}
           {copyStatus && <p role="status">{copyStatus}</p>}
         </>
       ) : (

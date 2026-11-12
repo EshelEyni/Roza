@@ -28,6 +28,8 @@ export function EpubReader({
         <ReaderDictionary
           key={reader.textSelection.cfi}
           selection={reader.textSelection}
+          onAnnotate={note => reader.annotations.select(reader.textSelection!, note)}
+          annotationBusy={reader.annotations.busy || reader.annotations.loading}
           bookId={book.id}
           getLookupPage={reader.getLookupPage}
           onClose={reader.closeLookup}
@@ -57,6 +59,7 @@ export function EpubReader({
       />
       <div className="reader-workspace">
         <ReaderPanels
+          annotations={reader.annotations}
           panel={reader.panel}
           closePanel={reader.closePanel}
           toc={reader.toc}

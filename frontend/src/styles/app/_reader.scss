@@ -1937,3 +1937,34 @@
 .reader-return-button:hover { background: #a3896130; }
 .reader-return-button:focus-visible { outline: 2px solid #b18b55; outline-offset: 2px; }
 @media (max-width: 1024px) { .reader-return-button { max-width: 140px; font-size: 10px; } }
+
+// Saved annotations use epub.js SVG underlines with filled range rectangles.
+// This keeps their ownership separate from temporary highlight/search overlays.
+.reader-saved-annotation {
+  --annotation-fill: #f5d94e;
+  &[data-color="green"] { --annotation-fill: #7ed99a; }
+  &[data-color="blue"] { --annotation-fill: #86baff; }
+  &[data-color="pink"] { --annotation-fill: #f5a4cc; }
+  rect { fill: var(--annotation-fill) !important; fill-opacity: .38; stroke: none; }
+  line { stroke: none !important; }
+  &[data-note="true"] line { stroke: var(--annotation-fill) !important; stroke-width: 2; }
+}
+.reader-annotations {
+  padding: 16px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  ol { list-style: none; padding: 0; }
+  blockquote { margin: 10px 0; white-space: pre-wrap; }
+  textarea { display: block; width: 100%; min-height: 120px; padding: 10px; color: inherit; background: transparent; border: 1px solid currentColor; border-radius: 8px; }
+  fieldset { margin-bottom: 12px; }
+  .reader-annotation-color { margin: 4px; color: #28231e; }
+  .reader-annotation-color[aria-pressed="true"] { outline: 2px solid currentColor; outline-offset: 2px; }
+  .color-yellow { --annotation-fill: #f5d94e; }
+  .color-green { --annotation-fill: #7ed99a; }
+  .color-blue { --annotation-fill: #86baff; }
+  .color-pink { --annotation-fill: #f5a4cc; }
+  .reader-annotation-color { background: var(--annotation-fill); }
+}
+.reader-annotation-card { border-inline-start: 4px solid var(--annotation-fill); padding: 12px; margin-bottom: 16px; }
+.reader-annotation-passage { text-align: start; color: inherit; background: transparent; border: 0; width: 100%; cursor: pointer; }
+.reader-annotation-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }

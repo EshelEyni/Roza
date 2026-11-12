@@ -432,6 +432,27 @@
       "emptyHint": "Open an existing conversation or start a new one in this group.",
       "openBeside": "Open beside",
       "openBesideTitle": "Open beside: {{title}}"
+    },
+    "annotations": {
+      "title": "Annotations",
+      "highlight": "Highlight",
+      "addNote": "Add Note",
+      "color": "Highlight color",
+      "yellow": "Yellow",
+      "green": "Green",
+      "blue": "Blue",
+      "pink": "Pink",
+      "note": "Personal note",
+      "save": "Save",
+      "cancel": "Cancel",
+      "delete": "Delete annotation",
+      "deleteNote": "Remove note",
+      "edit": "Edit / Add note",
+      "empty": "No annotations in this book yet.",
+      "loading": "Loading annotations…",
+      "loadError": "Could not load annotations.",
+      "saveError": "Could not save changes. Please try again.",
+      "restoreError": "A saved passage could not be displayed. You can still view it here."
     }
   }
 }

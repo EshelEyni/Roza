@@ -1,4 +1,5 @@
 import express from "express";
+import { listAnnotations, saveAnnotation, deleteAnnotation } from "../../controllers/reader/readerAnnotationController";
 import { checkUserAuthentication } from "../../middlewares/authGuards/authGuardsMiddleware";
 import { checkReaderAccess } from "../../services/reader/readerAccessService";
 import { MAX_EPUB_SIZE } from "../../services/reader/epubService";
@@ -55,6 +56,9 @@ router.post(
   },
   addReaderBook,
 );
+router.get("/:id/annotations", listAnnotations);
+router.put("/:id/annotations", saveAnnotation);
+router.delete("/:id/annotations/:annotationId", deleteAnnotation);
 router.get("/:id/conversations", listConversations);
 router.post("/:id/conversations", createConversation);
 router.get("/:id/conversations/:conversationId", getConversation);

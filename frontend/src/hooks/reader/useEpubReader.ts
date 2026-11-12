@@ -16,6 +16,7 @@ import { useEpubPreferences } from "./useEpubPreferences";
 import { useReaderFullscreen } from "./useReaderFullscreen";
 import { useReaderJumpHistory } from "./useReaderJumpHistory";
 import { useReaderPagination } from "./useReaderPagination";
+import { useReaderAnnotations } from "./useReaderAnnotations";
 
 /** Compose reader concerns; DOM and EPUB lifecycle work live in dedicated hooks. */
 export function useEpubReader(book: ReaderBook, userId: string) {
@@ -63,6 +64,9 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     updateState,
     setNotice,
   );
+  const openAnnotations = useCallback(() => setPanel("annotations"), [setPanel]);
+  const annotations = useReaderAnnotations(runtime, book.id, userId, engine.chapter,
+    openAnnotations, selection.closeLookup);
   const {describeLocation} = pagination;
   useEpubPreferences(
     runtime,
@@ -111,6 +115,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     retry();
   }
   return {
+    annotations,
     mobile,
     state,
     updateState,

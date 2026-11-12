@@ -7,10 +7,12 @@ import { ReaderContents } from "./ReaderContents";
 import { ReaderSearch } from "./ReaderSearch";
 import { ReaderChat } from "./ReaderChat";
 import { ReaderSettings } from "./ReaderSettings";
+import { ReaderAnnotations } from "./ReaderAnnotations";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
 type Props = Pick<
   EpubReaderController,
   | "panel"
+  | "annotations"
   | "closePanel"
   | "toc"
   | "href"
@@ -26,6 +28,7 @@ type Props = Pick<
   | "publisherPagesAvailable"
 >;
 export function ReaderPanels({
+  annotations,
   panel,
   closePanel,
   toc,
@@ -55,7 +58,7 @@ export function ReaderPanels({
       mobileFullscreen={panel === "search" || panel === "chat"}
       mobileCloseInContent={panel === "search" || panel === "chat"}
       label={t(
-        panel === "chat"
+        panel === "annotations" ? "reader.annotations.title" : panel === "chat"
           ? "reader.chat.title"
           : panel === "contents"
             ? "reader.contents"
@@ -74,7 +77,7 @@ export function ReaderPanels({
     >
       {panel !== "chat" && <ReaderPanelResize width={chat.workspace.panelWidth}
         onWidthChange={chat.setPanelWidth} />}
-      {panel === "contents" ? (
+      {panel === "annotations" ? <ReaderAnnotations annotations={annotations} onNavigate={onNavigate} /> : panel === "contents" ? (
         <ReaderContents
           items={toc}
           currentHref={href}
