@@ -1,6 +1,6 @@
 import { ChapterElements } from "./ChapterElements";
 import { TaskBoardView } from "./TaskBoard";
-import { chapterTasks, storyKinds } from "./planningModel";
+import { chapterBoard, withChapterBoard, chapterTasks, storyKinds } from "./planningModel";
 import {
   Book,
   Chapter,
@@ -116,8 +116,11 @@ export function ChapterPlanning({
   const [summaryOpen, setSummaryOpen] = useState(false);
   const book = store.book;
   const tasks = chapterTasks(book, chapter.id);
+  function editTasks(update: (b: Book) => Book) {
+    store.edit(b => withChapterBoard(b, chapter.id, update({ ...b, taskBoard: chapterBoard(b, chapter.id) }).taskBoard!));
+  }
   function patchTask(id: string, patch: Partial<TaskCard>) {
-    store.edit(b => ({
+    editTasks(b => ({
       ...b,
       taskBoard: {
         lists: (b.taskBoard?.lists || []).map(l => ({
@@ -284,7 +287,7 @@ export function ChapterPlanning({
                         aria-label={`Delete task ${task.title}`}
                         onClick={() => {
                           if (window.confirm(`Delete “${task.title}”?`))
-                            store.edit(b => ({
+                            editTasks(b => ({
                               ...b,
                               taskBoard: {
                                 lists: (b.taskBoard?.lists || []).map(l => ({
@@ -308,7 +311,7 @@ export function ChapterPlanning({
                         new FormData(form).get("title") || "",
                       ).trim();
                       if (!title) return;
-                      store.edit(b => {
+                      editTasks(b => {
                         const board = structuredClone(
                           b.taskBoard || emptyBoard(),
                         );
@@ -352,7 +355,14 @@ export function ChapterPlanning({
                       value=""
                       onChange={e => {
                         if (e.target.value)
-                          patchTask(e.target.value, { chapterId: chapter.id });
+                          editTasks(b => {
+                            const card = book.taskBoard?.lists.flatMap(l => l.cards).find(c => c.id === e.target.value);
+                            if (!card) return b;
+                            const board = structuredClone(b.taskBoard!);
+                            if (!board.lists.length) board.lists = emptyBoard().lists;
+                            board.lists[0].cards.push({ ...structuredClone(card), id: uid(), chapterId: chapter.id });
+                            return { ...b, taskBoard: board };
+                          });
                       }}
                     >
                       <option value="">Choose a task…</option>

@@ -232,8 +232,7 @@ export function ChapterElements({
               link(kind, id);
               setSearch("");
             } else {
-              const entity = entities.find(e => e.id === id);
-              if (entity) setRemoving({ id, name: entity.name });
+              link(kind, id, true);
             }
           }}
         />

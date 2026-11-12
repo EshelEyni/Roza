@@ -109,6 +109,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const overview = section === "overview";
   const tasks = section === "tasks";
   const [taskTarget, setTaskTarget] = useState("");
+  const [taskChapterTarget, setTaskChapterTarget] = useState<string>();
   const planningNavigation = {
     onChapter: (id: string) => {
       setSelection(current => ({ ...current, chapters: id }));
@@ -122,8 +123,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       changeSection(kind);
     },
     onTask: (id: string) => {
-      setTaskTarget(id);
       changeSection("tasks");
+      setTaskChapterTarget(book.chapters.find(c => c.taskBoard?.lists.some(l => l.cards.some(card => card.id === id)))?.id);
+      setTaskTarget(id);
     },
   };
   const category: BooKDataItemType =
@@ -162,6 +164,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     setSelection(current => ({ ...current, [category]: id }));
   }
   function changeSection(next: StudioSection) {
+    setTaskChapterTarget(undefined);
     if (next !== section)
       setSearchParams(current => {
         const nextParams = new URLSearchParams(current);
@@ -644,7 +647,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         )}
         {tasks && (
           <div className="ws-task-surface">
-            <TaskBoardView store={store} initialTaskId={taskTarget} />
+            <TaskBoardView key={`${taskChapterTarget || "book"}:${taskTarget}`} store={store} initialTaskId={taskTarget} chapterId={taskChapterTarget} />
           </div>
         )}
         <section
@@ -695,6 +698,18 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       Annotations
                     </button>
                   )}
+                  {item.type === "chapters" && (
+                    <button
+                      aria-pressed={chapterBible}
+                      aria-controls="ws-chapter-bible"
+                      onClick={() => {
+                        setChapterBible(value => !value);
+                        setSummary(false);
+                      }}
+                    >
+                      Chapter Bible
+                    </button>
+                  )}
                   <ItemMenu>
                     <summary>More</summary>
                     <div>
@@ -718,18 +733,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       </button>
                     </div>
                   </ItemMenu>
-                  {item.type === "chapters" && (
-                    <button
-                      aria-pressed={chapterBible}
-                      aria-controls="ws-chapter-bible"
-                      onClick={() => {
-                        setChapterBible(value => !value);
-                        setSummary(false);
-                      }}
-                    >
-                      Chapter Bible
-                    </button>
-                  )}
                 </div>
               </div>
               <article

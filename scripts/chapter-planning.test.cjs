@@ -22,3 +22,27 @@ test('character schema no longer supports role or general notes; chapter notes r
   assert.equal(b.characters[0].notes,undefined);
   assert.equal(b.chapters[0].planning.characters[0].note,'A turning point');
 });
+
+const {chapterBoard, withChapterBoard} = require('../frontend/src/components/WritingStudio/planningModel.ts');
+const {moveTask} = require('../frontend/src/components/WritingStudio/taskBoardModel.ts');
+test('two chapters own list titles, cards and ordering; global tasks stay unchanged through persistence',()=>{
+ let book=fixture(); const second='555555555555555555555555'; book.chapters.push({id:second,bookId,name:'Second'});
+ const global=structuredClone(book.taskBoard);
+ let one=chapterBoard(book,chapterId); one.lists[0].title='First only';
+ one.lists.push({id:'new',title:'Extra',cards:[]}); one=moveTask(one,'new','list');
+ book=withChapterBoard(book,chapterId,one);
+ let two=chapterBoard(book,second); two.lists[0].title='Second only';
+ book=withChapterBoard(book,second,two);
+ book.chapters[0].annotations=[{id:'general-a',general:true,anchor:null,quote:'',content:'First note'},{id:'general-b',general:true,anchor:null,quote:'',content:'Another note'}];
+ book.chapters[1].annotations=[{id:'general-c',general:true,anchor:null,quote:'',content:'Second note'}];
+ const Model=model('IndependentChapterBoards',bookSchema);const doc=new Model(book);assert.equal(doc.validateSync(),undefined);
+ const restored=new Model(JSON.parse(JSON.stringify(doc)));
+ assert.equal(restored.chapters[0].taskBoard.lists[0].title,'Extra');
+ assert.equal(restored.chapters[0].taskBoard.lists[1].title,'First only');
+ assert.equal(restored.chapters[1].taskBoard.lists[0].title,'Second only');
+ assert.equal(restored.chapters[1].taskBoard.lists[0].cards.length,0);
+ assert.equal(restored.chapters[0].annotations[0].general,true);
+ assert.equal(restored.chapters[0].annotations[0].anchor,null);
+ assert.equal(restored.chapters[1].annotations[0].content,'Second note');
+ assert.deepEqual(book.taskBoard,global);
+});

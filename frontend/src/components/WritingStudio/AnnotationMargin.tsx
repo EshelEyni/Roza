@@ -103,7 +103,7 @@ export function AnnotationMargin({
     let detached = Math.max(0, ...next.map(line => line.top)) + 56;
     const located = notes.map(note => {
       const top = topOf(note);
-      if (top !== null) return { id: note.id, top };
+      if (top !== null) return { id: note.id, top: Math.max(40, top) };
       const result = { id: note.id, top: detached };
       detached += 52;
       return result;
@@ -302,6 +302,10 @@ export function AnnotationMargin({
       </div>
       {visible && (
         <aside className="ws-annotation-rail" aria-label="Chapter annotations">
+          {!readOnly && <button type="button" onClick={() => {
+            const note: ChapterAnnotation = { id: crypto.randomUUID(), content: "", general: true, anchor: null, quote: "" };
+            onChange([...notes, note]); setActive(note.id);
+          }}>+ General Note</button>}
           {notes.length === 0 && (
             <p className="ws-annotation-hint">
               Use + beside a paragraph to leave a note.
@@ -310,9 +314,9 @@ export function AnnotationMargin({
           {layout.map(position => {
             const note = notesById.get(position.id)!;
             const expanded = active === note.id;
-            const detached = !validAnchor(editor, note.anchor);
+            const detached = !note.general && !validAnchor(editor, note.anchor);
             const line =
-              !detached &&
+              !note.general && !detached &&
               lineByPath.get(
                 Range.start(note.anchor!).path.slice(0, -1).join("."),
               );
@@ -335,7 +339,7 @@ export function AnnotationMargin({
                     : { top: position.top, zIndex: expanded ? 3 : 1 }
                 }
                 aria-label={
-                  detached
+                  note.general ? "General note" : detached
                     ? "Unattached note"
                     : `Note on paragraph ${line ? line.number : ""}`
                 }
@@ -348,7 +352,7 @@ export function AnnotationMargin({
                     onClick={() => (expanded ? setActive(null) : select(note))}
                   >
                     <span>
-                      {detached ? "Unattached · text removed" : "Note"}
+                      {note.general ? "General Note" : detached ? "Unattached · text removed" : "Note"}
                     </span>
                     {!expanded && (
                       <span className="ws-note-preview">

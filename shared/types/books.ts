@@ -77,6 +77,7 @@ export interface BasicBookDataItem {
 export type BookDataItem = Chapter | Character | Theme | Plotline | Note;
 
 export interface ChapterAnnotation {
+  general?: boolean;
   id: string;
   content: string;
   /** Slate range transformed with document operations; null means deleted text. */
@@ -99,6 +100,7 @@ export interface ChapterPlanning {
 }
 
 export interface Chapter extends BasicBookDataItem {
+  taskBoard?: TaskBoard;
   planning?: ChapterPlanning;
   format?: "prose" | "screenplay";
   annotations?: ChapterAnnotation[];

@@ -54,6 +54,7 @@ export interface IBasicBookDataItem extends Document {
 }
 
 export interface IChapter extends IBasicBookDataItem {
+  taskBoard?: import("../../../shared/types/books").TaskBoard;
   planning?: import("../../../shared/types/books").ChapterPlanning;
   format?: "prose" | "screenplay";
   annotations?: import("../../../shared/types/books").ChapterAnnotation[];

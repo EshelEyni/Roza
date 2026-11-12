@@ -277,10 +277,12 @@ test(
       const picker=page.getByRole('dialog',{name:'Link existing characters',exact:true});
       await picker.getByRole('checkbox',{name:'Jonah',exact:true}).check();
       await picker.getByRole('checkbox',{name:'Mara',exact:true}).click();
-      await page.getByRole('dialog',{name:'Remove character from chapter?',exact:true}).getByRole('button',{name:'Cancel',exact:true}).click();
-      assert.equal(await picker.getByRole('checkbox',{name:'Mara',exact:true}).isChecked(),true);
+      assert.equal(await page.getByRole('dialog',{name:'Remove character from chapter?',exact:true}).count(),0);
+      assert.equal(await picker.getByRole('checkbox',{name:'Mara',exact:true}).isChecked(),false);
+      await picker.getByRole('checkbox',{name:'Mara',exact:true}).check();
       await picker.getByRole('checkbox',{name:'Jonah',exact:true}).click();
-      await page.getByRole('dialog',{name:'Remove character from chapter?',exact:true}).getByRole('button',{name:'Remove from chapter',exact:true}).click();
+      assert.equal(await picker.getByRole('checkbox',{name:'Jonah',exact:true}).isChecked(),false);
+      assert.equal(await page.getByRole('dialog',{name:'Remove character from chapter?',exact:true}).count(),0);
       await picker.getByLabel('Search book characters',{exact:true}).fill('Mara');
       assert.equal(await picker.getByRole('checkbox').count(),1);
       await picker.getByRole('button',{name:'Done',exact:true}).click();
@@ -345,13 +347,8 @@ test(
       await board.locator('.tb-list').nth(1).locator('.tb-card').waitFor();
       await page.screenshot({path:path.join(screenshots,'tasks-desktop.png')});
       await board.getByRole('button',{name:/Research the harbour/}).click();
-      await page.getByRole('button',{name:'Open in book board',exact:true}).click();
-      await page.getByRole('dialog',{name:'Task details'}).waitFor();
       assert.equal(await page.getByLabel('Task chapter').inputValue(),initial.chapters[0].id);
       await page.getByRole('dialog').getByRole('button',{name:'Done',exact:true}).click();
-      assert.equal(await page.locator('.tb-card').count(),2);
-      await chooseWorkspace(page,'Chapters');
-      await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
       await page.getByRole('button',{name:/All changes saved|Unsaved changes|Saving…/}).first().click();
       await page.getByRole('button',{name:'✓ All changes saved',exact:true}).waitFor();
       const mara=saved.characters.find(c=>c.name==='Mara');
@@ -359,7 +356,7 @@ test(
       assert.equal(saved.chapters[0].planning.characters.length,1);
       assert.equal(saved.chapters[0].planning.characters[0].note,'Returns home and finds the letter.');
       assert.equal(saved.taskBoard.lists[0].cards[0].id,'other-task');
-      assert.equal(saved.taskBoard.lists[1].cards[0].chapterId,initial.chapters[0].id);
+      assert.equal(saved.chapters[0].taskBoard.lists[1].cards[0].chapterId,initial.chapters[0].id);
       await page.reload();
       await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
       await planning.locator('.cp-element-open').filter({hasText:'Mara'}).click();
