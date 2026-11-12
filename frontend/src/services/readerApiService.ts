@@ -100,8 +100,8 @@ function saveOnLeave(id: string, state: ReaderState) {
 
 export default {
   request,
-  lookupWord: (id: string, selection: ReaderDictionaryLookup) =>
-    request<ReaderLookupResult>("POST", "/" + id + "/dictionary", selection),
+  lookupWord: (id: string, selection: ReaderDictionaryLookup, signal = AbortSignal.timeout(15000)) =>
+    request<ReaderLookupResult>("POST", "/" + id + "/dictionary", selection, signal),
   getAccess: () => request<{ enabled: boolean }>("GET", "/access"),
   query: (archived = false) => request<ReaderBook[]>("GET", archived ? "?archived=true" : ""),
   setArchived: (id: string, archived: boolean) =>

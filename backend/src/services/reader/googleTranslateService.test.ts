@@ -125,6 +125,21 @@ describe("Google Translate fallback", () => {
     expect(entry?.source).toBe("Google Translate");
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
+  it("keeps explicit Google translation usable when dictionary files fail", async () => {
+    const fs = require("fs") as typeof import("fs");
+    const read = jest.spyOn(fs, "readFileSync");
+    const originalRead = read.getMockImplementation() || fs.readFileSync;
+    // Load the service before failing only its dictionary-data reads.
+    const service = require("./readerDictionaryService") as typeof import("./readerDictionaryService");
+    read.mockImplementation(((file, ...args) => {
+      if (String(file).endsWith("wiktionary-en-he.json")) throw new Error("dictionary unavailable");
+      return originalRead(file, ...args);
+    }) as typeof fs.readFileSync);
+    try {
+      await expect(service.lookupReaderWordWithTranslation("book")).rejects.toThrow("dictionary unavailable");
+      await expect(service.lookupReaderWordWithTranslation("book", "google")).resolves.toMatchObject({ source: "Google Translate" });
+    } finally { read.mockRestore(); }
+  });
   it("keeps Google's result under the local canonical headword", async () => {
     const entry = await lookup("books", "google");
     expect(entry).toMatchObject({ word: "books", headword: "book", source: "Google Translate" });

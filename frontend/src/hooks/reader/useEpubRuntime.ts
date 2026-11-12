@@ -24,6 +24,7 @@ export function useEpubRuntime(
   selectionRef.current = selection;
   const epubRef = useRef<Book>();
   const renditionRef = useRef<Rendition>();
+  const lookupLocations = useRef<Promise<unknown>>(Promise.resolve());
   const changingLayout = useRef(false);
   const fullscreenResizeAnchor = useRef<string | null>(null);
   const pendingResize = useRef<ReturnType<typeof setTimeout>>();
@@ -44,6 +45,7 @@ export function useEpubRuntime(
       selectionRef,
       epubRef,
       renditionRef,
+      lookupLocations,
       changingLayout,
       fullscreenResizeAnchor,
       pendingResize,

@@ -71,7 +71,10 @@ export async function lookupReaderWordWithTranslation(
   input: string,
   provider: ReaderLookupProvider = "auto",
 ): Promise<ReaderDictionaryEntry | null> {
-  const local = lookupReaderWord(input);
+  let local: ReaderDictionaryEntry | null = null;
+  try { local = lookupReaderWord(input); } catch (error) {
+    if (provider === "auto") throw error;
+  }
   if (provider === "auto") return local || translateReaderWord(normalizeReaderWord(input));
   if (!process.env.GOOGLE_TRANSLATE_API_KEY?.trim())
     throw new AppError("Google Translate is not configured on the server.", 503);

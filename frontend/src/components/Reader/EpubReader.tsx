@@ -29,6 +29,7 @@ export function EpubReader({
           key={reader.textSelection.cfi}
           selection={reader.textSelection}
           bookId={book.id}
+          getLookupPage={reader.getLookupPage}
           onClose={reader.closeLookup}
           onTranslationDismiss={reader.markTranslation}
           aiDisabled={

@@ -389,6 +389,7 @@
     "lookupError": "Could not complete and save this lookup. Retry safely without counting it twice.",
     "wordNotFound": "This word is not in the local dictionary. It has not been added to vocabulary.",
     "dictionaryDetails": "More meanings, explanations & examples",
+    "vocabularySaveError": "Translation is available, but vocabulary saving could not be confirmed.",
     "vocabularySaved": "Saved to vocabulary · {{count}} lookups",
     "pos": {
       "n": "Noun",

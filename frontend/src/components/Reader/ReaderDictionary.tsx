@@ -25,6 +25,7 @@ import type { ReaderTextSelection } from "../../types/reader";
 export function ReaderDictionary({
   selection,
   bookId,
+  getLookupPage,
   onClose: closePopup,
   onTranslationDismiss,
   onAskAi,
@@ -37,6 +38,7 @@ export function ReaderDictionary({
 }: {
   selection: ReaderTextSelection;
   bookId: string;
+  getLookupPage: (cfi: string) => Promise<string>;
   onClose: () => void;
   onTranslationDismiss?: (selection: ReaderTextSelection) => void;
   onAskAi: (autoSubmit?: boolean) => void;
@@ -50,15 +52,15 @@ export function ReaderDictionary({
   const { t } = useTranslation();
   const mobile = useReaderMobile();
   const [opened, setOpened] = useState(false);
-  const [result, setResult] = useState<ReaderLookupResult>();
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(false);
+  const [lookups, setLookups] = useState<Partial<Record<ReaderLookupProvider, { result?: ReaderLookupResult; loading?: boolean; error?: boolean }>>>({});
+  const pending = useRef(new Set<ReaderLookupProvider>());
   const [lookupProvider, setLookupProvider] =
     useState<ReaderLookupProvider>("auto");
+  const { result, loading, error } = lookups[lookupProvider] || {};
   const [speechError, setSpeechError] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [copyStatus, setCopyStatus] = useState("");
-  const requestId = useRef(createRequestId());
+  const requestId = useRef<Partial<Record<ReaderLookupProvider, string>>>({});
   const button = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
@@ -119,25 +121,32 @@ export function ReaderDictionary({
     provider: ReaderLookupProvider = "auto",
     retry = false,
   ) {
-    if (loading || !selection.word) return;
-    if (!retry) requestId.current = createRequestId();
+    if (pending.current.has(provider) || !selection.word) return;
+    pending.current.add(provider);
+    if (!retry || !requestId.current[provider]) requestId.current[provider] = createRequestId();
     setLookupProvider(provider);
     translated.current = true;
     setOpened(true);
-    setLoading(true);
-    setError(false);
+    setLookups(current => ({ ...current, [provider]: { ...current[provider], loading: true, error: false } }));
     try {
+      const signal = AbortSignal.timeout(15000);
+      const pageLocation = await Promise.race([
+        getLookupPage(selection.cfi),
+        new Promise<never>((_, reject) => signal.addEventListener("abort", () => reject(new Error("Lookup timed out")), { once: true })),
+      ]);
       const data = await readerApiService.lookupWord(bookId, {
         word: selection.word,
         location: selection.cfi,
-        requestId: requestId.current,
+        pageLocation,
+        requestId: requestId.current[provider]!,
         provider,
-      });
-      if (mounted.current) setResult(data);
+      }, signal);
+      if (mounted.current) setLookups(current => ({ ...current, [provider]: { result: data } }));
     } catch {
-      if (mounted.current) setError(true);
+      if (mounted.current) setLookups(current => ({ ...current, [provider]: { ...current[provider], error: true } }));
     } finally {
-      if (mounted.current) setLoading(false);
+      pending.current.delete(provider);
+      if (mounted.current) setLookups(current => ({ ...current, [provider]: { ...current[provider], loading: false } }));
     }
   }
 
@@ -325,17 +334,21 @@ export function ReaderDictionary({
             <p role="status">{t("reader.pronunciationUnavailable")}</p>
           )}
           <div className="reader-dictionary-lookup-actions">
-            {result && entry?.kind !== "translation" && (
+            {(Object.keys({ auto: true, google: true }) as ReaderLookupProvider[]).map(provider => (
               <button
                 type="button"
                 className="reader-button reader-dictionary-lookup-action"
-                disabled={loading}
-                onClick={() => void lookup("google")}
+                key={provider}
+                aria-busy={lookups[provider]?.loading}
+                onClick={() => {
+                  setLookupProvider(provider);
+                  if (!lookups[provider]) void lookup(provider);
+                }}
               >
-                <FiGlobe aria-hidden="true" />
-                {t("reader.translateWithGoogle")}
+                {provider === "google" ? <FiGlobe aria-hidden="true" /> : <FiBookOpen aria-hidden="true" />}
+                {t(provider === "google" ? "reader.translateWithGoogle" : "reader.lookupHebrew")}
               </button>
-            )}
+            ))}
             <button
               type="button"
               className="reader-button reader-dictionary-lookup-action"
@@ -435,7 +448,7 @@ export function ReaderDictionary({
                 </details>
               )}
               <p className="reader-dictionary-saved" role="status">
-                {t("reader.vocabularySaved", { count: result.lookupCount })}
+                {result.lookupCount !== undefined ? t("reader.vocabularySaved", { count: result.lookupCount }) : t("reader.vocabularySaveError")}
               </p>
               <small className="reader-dictionary-source">
                 {entry.kind === "translation" ? (

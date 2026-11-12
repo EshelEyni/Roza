@@ -15,10 +15,26 @@ export function useReaderJumpHistory(runtime: EpubRuntime, location: Location | 
     return () => { runtime.linkObserver.current = undefined; };
   }, [runtime,location]);
   useEffect(() => {
-    if (!returnPoint) return;
-    const timeout = setTimeout(() => tracker.current?.dismiss(), 8000);
-    return () => clearTimeout(timeout);
-  }, [returnPoint]);
+    const dismiss = () => { tracker.current?.cancel(); tracker.current?.dismiss(); };
+    const outside = (event: Event) => {
+      if (event.target instanceof Node && !runtime.shell.current?.contains(event.target)) dismiss();
+    };
+    const blur = () => {
+      // Focusing the EPUB iframe also emits window blur; it remains reader context.
+      if (!document.hasFocus()) dismiss();
+    };
+    const visibility = () => { if (document.hidden) dismiss(); };
+    document.addEventListener("focusin", outside);
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("blur", blur);
+    return () => {
+      document.removeEventListener("focusin", outside);
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("visibilitychange", visibility);
+      window.removeEventListener("blur", blur);
+    };
+  }, [runtime]);
   useEffect(() => () => tracker.current?.cancel(), []);
   const goBack = useCallback(async () => {
     try { await tracker.current!.goBack(navigate); } catch { onError(); }

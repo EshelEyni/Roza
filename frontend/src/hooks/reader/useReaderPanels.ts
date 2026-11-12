@@ -50,8 +50,9 @@ export function useReaderPanelActions({
         text: textSelection.text,
         endCfi: textSelection.endCfi,
       });
-      // An empty question submits the attached selection using saved AI instructions.
-      if (autoSubmit) chat.forTab(key).send("");
+      if (autoSubmit) chat.forTab(key).send(
+        `What does '${textSelection.word || textSelection.text}' mean in this context?`,
+      );
       setPanel("chat");
       closeLookup();
     }, !autoSubmit);

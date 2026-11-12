@@ -268,7 +268,7 @@ export function useEpubBook(
         ready = true;
         setLoading(false);
         await rendition.reportLocation();
-        void epub.locations
+        runtime.lookupLocations.current = epub.locations
           .generate(1600)
           .then(() => {
             if (cancelled) return;
