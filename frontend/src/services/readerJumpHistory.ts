@@ -16,6 +16,14 @@ export class ReaderJumpHistory {
     this.previous = {cfi, at};
     const link = this.link && at - this.link.at <= 5000 ? this.link.cfi : null; this.link = null;
     if (!previous || this.returning) { this.sweep = this.previous; return; }
+    // The jump that creates a return point is already recorded. The next
+    // location change consumes it instead of creating another point in the sweep.
+    if (this.point) {
+      ++this.version;
+      this.dismiss();
+      this.sweep = this.previous;
+      return;
+    }
     const origin = link ? {cfi:link,at} : at - previous.at <= 1500 ? this.sweep || previous : previous;
     this.sweep = origin;
     const version = ++this.version;

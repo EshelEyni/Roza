@@ -11,3 +11,27 @@ test('normal reading does not accumulate a large-jump return point',async()=>{le
 test('an internal link to a different page creates a return point even for a short jump',async()=>{let point;const history=new ReaderJumpHistory(value=>point=value);await history.visit('10',describe,0);history.markLink('10',100);await history.visit('11',describe,200);assert.equal(point.cfi,'10');});
 test('a same-page link does not create a return point',async()=>{let point;const history=new ReaderJumpHistory(value=>point=value);const same=async()=>({page:10,label:'10'});await history.visit('a',same,0);history.markLink('a',100);await history.visit('b',same,200);assert.equal(point,undefined);});
 test('stale async resolutions cannot overwrite a newer jump',async()=>{let point;const history=new ReaderJumpHistory(value=>point=value);await history.visit('1',describe,0);let resume;const first=history.visit('20',cfi=>cfi==='1'?new Promise(done=>{resume=done}):describe(cfi),5000);await history.visit('40',describe,10000);resume({page:1,label:'1'});await first;assert.equal(point.cfi,'20');});
+
+
+test('the landing location keeps Go Back until the next page change',async()=>{
+  let point;const history=new ReaderJumpHistory(value=>point=value);
+  await history.visit('10',describe,0);await history.visit('30',describe,5000);
+  assert.equal(point.cfi,'10');
+  await history.visit('30',describe,6000);assert.equal(point.cfi,'10','Repeated reports of the landing page preserve the button');
+  await history.visit('31',describe,6500);assert.equal(point,null,'The next page dismisses without immediately recreating the button');
+  await history.visit('32',describe,7000);assert.equal(point,null,'The previous jump must not leak into a new sweep');
+});
+test('previous-page navigation or another jump dismisses a visible return point',async()=>{
+  for(const next of ['29','80']){
+    let point;const history=new ReaderJumpHistory(value=>point=value);
+    await history.visit('10',describe,0);await history.visit('30',describe,5000);
+    await history.visit(next,describe,6000);assert.equal(point,null);
+    let navigated=false;await history.goBack(async()=>{navigated=true});assert.equal(navigated,false);
+  }
+});
+test('after dismissal, a later independent jump can offer Go Back again',async()=>{
+  let point;const history=new ReaderJumpHistory(value=>point=value);
+  await history.visit('10',describe,0);await history.visit('30',describe,5000);
+  await history.visit('31',describe,6000);assert.equal(point,null);
+  await history.visit('50',describe,10000);assert.equal(point.cfi,'31');
+});
