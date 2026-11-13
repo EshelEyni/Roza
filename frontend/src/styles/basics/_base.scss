@@ -13,6 +13,27 @@ body {
   background-color: #eadac7;
 }
 
+.app-header-status-surface {
+  display: none;
+}
+
+@media (display-mode: standalone) {
+  @supports (-webkit-touch-callout: none) {
+    // Give iOS a top-edge color sample without painting over the header.
+    // This avoids its system status-bar blur bleeding into the navigation.
+    .app-header-status-surface {
+      display: block;
+      position: fixed;
+      inset: 0 0 auto;
+      height: 11px;
+      pointer-events: none;
+      background-color: #eadac7;
+      -webkit-background-clip: text;
+      background-clip: text;
+    }
+  }
+}
+
 #root {
   height: 100%;
   width: 100%;
