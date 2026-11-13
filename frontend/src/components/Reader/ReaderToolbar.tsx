@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
   FiArrowLeft,
+  FiX,
   FiBookOpen,
   FiEdit3,
   FiMaximize,
@@ -40,18 +41,19 @@ export function ReaderToolbar({
   if (rsvp?.active)
     return (
       <header className="reader-toolbar reader-toolbar-rsvp">
+        <span className="reader-rsvp-badge">RSVP</span>
+        <div className="reader-toolbar-title">
+          <h1>{rsvp.chapterTitle || book.title}</h1>
+        </div>
         <button
           className="reader-icon-button"
           aria-label={t("reader.rsvp.exit")}
+          title={t("reader.rsvp.exit")}
           disabled={rsvp.busy}
           onClick={() => void rsvp.toggle()}
         >
-          <FiArrowLeft />
+          <FiX aria-hidden="true" />
         </button>
-        <div className="reader-toolbar-title">
-          <h1>{book.title}</h1>
-        </div>
-        <span className="reader-rsvp-badge">RSVP</span>
       </header>
     );
   return (

@@ -2096,11 +2096,10 @@
 .reader-rsvp-speed strong { color: var(--rsvp-accent); }
 .reader-rsvp-speed input { display: block; width: 100%; min-height: 44px; margin: 8px 0 0; accent-color: var(--rsvp-accent); cursor: pointer; }
 .reader-rsvp-chapters { display: flex; justify-content: space-between; gap: 8px; }
-.reader-rsvp-chapters > button:nth-child(2) { color: var(--rsvp-accent); }
 .reader-rsvp-controls > p { margin: 0; text-align: center; }
 .reader-rsvp-hint { font-size: 11px; color: var(--rsvp-muted); }
 .reader-rsvp :focus-visible { outline: 2px solid var(--rsvp-accent); outline-offset: 4px; }
-.reader-rsvp-badge { margin-inline-start: auto; color: #876148; font: 700 12px Arial, sans-serif; letter-spacing: .16em; }
+.reader-rsvp-badge { margin-inline-start: 0; color: #876148; font: 700 12px Arial, sans-serif; letter-spacing: .16em; }
 @media (max-width: 600px), (max-height: 800px) {
   .reader-rsvp { padding-top: 10px; }
   .reader-rsvp-stage { min-height: 120px; padding: 16px 0; }
@@ -2116,8 +2115,8 @@
 .reader-mode-controls { display: flex; align-items: center; gap: 12px; direction: ltr; }
 .reader-toolbar-rsvp { border-bottom: 0; }
 .reader-toolbar-rsvp .reader-toolbar-title { text-align: center; }
-.reader-toolbar-rsvp .reader-rsvp-badge { min-width: 44px; text-align: end; }
-.reader-toolbar-rsvp { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; min-height: 64px; gap: 12px; padding: 10px 20px; }
+.reader-toolbar-rsvp .reader-rsvp-badge { min-width: 44px; text-align: left; }
+.reader-toolbar-rsvp { display: grid; grid-template-columns: 52px minmax(0, 1fr) 52px; direction: ltr; min-height: 64px; gap: 12px; padding: 10px 20px; }
 .reader-toolbar-rsvp .reader-toolbar-title { order: 0; }
 .reader-toolbar-rsvp > .reader-icon-button { border: 0; background: transparent; color: inherit; }
 @media (max-width: 1024px) {
@@ -2125,3 +2124,5 @@
   .reader-toolbar:has(.reader-mode-controls) { column-gap: 0; }
   .reader-mode-controls { gap: 0; }
 }
+
+.reader-toolbar-rsvp > .reader-icon-button:last-child { justify-self: end; }

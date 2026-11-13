@@ -174,6 +174,15 @@ test(
               await page.locator(".reader-paper").getAttribute("inert"),
               "",
             );
+            assert.equal(await page.locator(".reader-toolbar-rsvp h1").textContent(), "A");
+            assert.equal(await page.getByRole("button", {name:"Normal reading",exact:true}).count(), 0);
+            const headerOrder = await page.locator(".reader-toolbar-rsvp").evaluate(header => {
+              const label = header.querySelector(".reader-rsvp-badge").getBoundingClientRect();
+              const title = header.querySelector("h1").getBoundingClientRect();
+              const close = header.querySelector("button").getBoundingClientRect();
+              return label.x < title.x && title.x < close.x;
+            });
+            assert.ok(headerOrder, "RSVP label, chapter, and close button retain left-to-right order");
             const extraction = await page.evaluate(async () => {
               const { reader, service } = window.rsvpTest;
               const section = reader.searchBook.spine.get(0);
@@ -286,6 +295,7 @@ test(
             await page.waitForFunction(
               () => window.rsvpTest.reader.rsvp.word?.text === "Second",
             );
+            assert.equal(await page.locator(".reader-toolbar-rsvp h1").textContent(), "B");
             // Exercise actual long tokens, including an unusually wide synthetic token.
             const fitWord = async () => {
               const fits = await page
@@ -345,7 +355,7 @@ test(
               cfi,
             );
             await page
-              .getByRole("button", { name: "Normal reading", exact: true })
+              .getByRole("button", { name: "Exit RSVP mode", exact: true })
               .click();
             await page
               .waitForFunction(

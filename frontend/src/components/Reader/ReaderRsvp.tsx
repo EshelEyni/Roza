@@ -214,13 +214,7 @@ export function ReaderRsvp({
             <FiChevronLeft aria-hidden="true" />
             {t("reader.rsvp.chapter")}
           </button>
-          <button
-            onClick={() => void rsvp.toggle()}
-            disabled={rsvp.busy || !!selection}
-          >
-            {t("reader.rsvp.normal")}
-          </button>
-          <button
+<button
             aria-label={t("reader.rsvp.nextChapter")}
             onClick={() => rsvp.chapter(1)}
             disabled={rsvp.busy || !!selection || !rsvp.canNextChapter}

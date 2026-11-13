@@ -18,6 +18,7 @@ export function useReaderRsvp(runtime: EpubRuntime, unavailable: boolean) {
   const [error, setError] = useState("");
   const [words, setWords] = useState<RsvpWord[]>([]);
   const [index, setIndex] = useState(0);
+  const [chapterTitle, setChapterTitle] = useState("");
   const [sectionIndex, setSectionIndex] = useState(0);
   const [boundary, setBoundary] = useState(false);
   const [wpm, setWpm] = useState(() => {
@@ -51,6 +52,7 @@ export function useReaderRsvp(runtime: EpubRuntime, unavailable: boolean) {
       const next = extractRsvpWords(section);
       setWords(next);
       setSectionIndex(section.index);
+      setChapterTitle(book.navigation.get(section.href)?.label?.trim() || section.document.querySelector("title")?.textContent?.trim() || section.document.querySelector("h1,h2")?.textContent?.trim() || "");
       setIndex(from && next.length ? rsvpStart(next, from) : 0);
       setBoundary(false);
     } catch {
@@ -157,6 +159,7 @@ export function useReaderRsvp(runtime: EpubRuntime, unavailable: boolean) {
     wordNumber: words.length ? index + 1 : 0,
     wordCount: words.length,
     toggle,
+    chapterTitle,
     canPreviousChapter: adjacent(-1) !== null,
     canNextChapter: adjacent(1) !== null,
     play: () => {
