@@ -2065,3 +2065,5 @@
   .reader-mobile-progress { grid-template-columns: minmax(0, 1fr) auto; }
   .reader-mobile-progress .reader-reading-remaining { text-align: start; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 }
+.reader-keyboard-settings { margin: 4px 0 20px; }
+.reader-keyboard-settings input[type="number"] { width: 100%; padding: 9px 10px; border: 1px solid #9b876755; border-radius: 7px; background: transparent; color: inherit; font: inherit; }

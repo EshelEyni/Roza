@@ -1,3 +1,4 @@
+import { defaultReaderKeyboardSettings } from "../../services/readerKeyboardSettings";
 import { useMemo, useRef } from "react";
 import type { Book, Rendition } from "epubjs";
 import type { ReaderState } from "../../../../shared/types/reader";
@@ -10,6 +11,7 @@ export function useEpubRuntime(
   panel: ReaderPanel | null,
   selection: ReaderTextSelection | null,
 ) {
+  const keyboardRef = useRef(defaultReaderKeyboardSettings);
   const host = useRef<HTMLDivElement>(null);
   const shell = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
@@ -36,6 +38,7 @@ export function useEpubRuntime(
   const linkObserver = useRef<(() => void) | undefined>();
   return useMemo(
     () => ({
+      keyboardRef,
       host,
       shell,
       stateRef,

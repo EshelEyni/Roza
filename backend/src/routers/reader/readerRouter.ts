@@ -29,11 +29,15 @@ import {
 } from "../../controllers/reader/readerAiSettingsController";
 import { lookupReaderDictionary } from "../../controllers/reader/readerDictionaryController";
 
+import { getKeyboardSettings, updateKeyboardSettings } from "../../controllers/reader/readerKeyboardSettingsController";
+
 const router = express.Router();
 
 router.use(checkUserAuthentication);
 router.get("/access", getReaderAccess);
 router.use(checkReaderAccess);
+router.get("/keyboard-settings", getKeyboardSettings);
+router.patch("/keyboard-settings", updateKeyboardSettings);
 router.get("/ai-settings", getAiSettings);
 router.patch("/ai-settings", updateAiSettings);
 router.get("/", getReaderBooks);

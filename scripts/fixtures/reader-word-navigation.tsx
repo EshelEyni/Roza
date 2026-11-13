@@ -14,7 +14,7 @@ await i18next
   .use(initReactI18next)
   .init({ lng: "en", resources: { en: { translation: en } } });
 const book: ReaderBook = {
-  id: "navigation",
+  id: new URLSearchParams(window.location.search).get("book") || "navigation",
   title: "Navigation",
   author: "Fixture",
   cover: "",
@@ -37,7 +37,10 @@ const book: ReaderBook = {
   },
 };
 function Fixture() {
-  const reader = useEpubReader(book, "fixture");
+  const reader = useEpubReader(
+    book,
+    new URLSearchParams(window.location.search).get("user") || "fixture",
+  );
   useEffect(() => {
     Object.assign(window, { navigationTest: { reader } });
   }, [reader]);
@@ -50,7 +53,7 @@ function Fixture() {
       {reader.textSelection && !reader.textSelection.suppressTooltip && (
         <ReaderDictionary
           selection={reader.textSelection}
-          bookId="navigation"
+          bookId={book.id}
           getLookupPage={reader.getLookupPage}
           onClose={reader.closeLookup}
           onAskAi={() => {}}

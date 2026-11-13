@@ -1,3 +1,4 @@
+import { useReaderKeyboardSettings } from "./useReaderKeyboardSettings";
 import {useTranslation} from "react-i18next";
 import { useCallback, useRef, useState } from "react";
 import type { ReaderBook } from "../../../../shared/types/reader";
@@ -26,6 +27,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     book,
     userId,
   );
+  const keyboard = useReaderKeyboardSettings(userId);
   const selection = useReaderSelection();
   const { panel, setPanel, closePanel } = useReaderPanels();
   const runtime = useEpubRuntime(
@@ -35,6 +37,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     panel,
     selection.textSelection,
   );
+  runtime.keyboardRef.current = keyboard.keyboardSettings;
   const { markPassage, clearMarker, passageMarks } = useReaderPassageMarker(runtime);
   const activeSelection = useRef(selection.textSelection);
   activeSelection.current = selection.textSelection;
@@ -115,6 +118,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     retry();
   }
   return {
+    ...keyboard,
     annotations,
     mobile,
     state,

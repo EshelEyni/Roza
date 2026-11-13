@@ -95,6 +95,19 @@ test(
       res.setHeader("Content-Type", "application/epub+zip");
       res.end(file);
     });
+    let keyboardSettings = { unit: "words", count: 1 };
+    server.middlewares.use(
+      "/api/reader/keyboard-settings",
+      async (req, res) => {
+        if (req.method === "PATCH") {
+          let body = "";
+          for await (const chunk of req) body += chunk;
+          keyboardSettings = JSON.parse(body);
+        }
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({ status: "success", data: keyboardSettings }));
+      },
+    );
     server.middlewares.use("/api/", (req, res) => {
       if (req.url.includes("dictionary")) lookups.push(req.url);
       res.setHeader("Content-Type", "application/json");
@@ -468,7 +481,18 @@ test(
             }),
           );
       });
-      await page.waitForTimeout(100);
+      await page.waitForFunction(() => {
+        const doc = document.querySelector(
+          ".reader-viewport iframe",
+        ).contentDocument;
+        const name = document.querySelector(".reader-keyboard-word")?.dataset
+          .readerNativeHighlight;
+        return (
+          name &&
+          [...doc.defaultView.CSS.highlights.get(name)][0].toString() ===
+            "chapter0word3"
+        );
+      });
       assert.equal(await mark(), "chapter0word3");
       assert.equal(lookups.length, 2);
       // Crossing a spine section replaces the iframe and must retain keyboard focus.

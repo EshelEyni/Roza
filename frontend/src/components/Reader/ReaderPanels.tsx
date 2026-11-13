@@ -11,6 +11,10 @@ import { ReaderAnnotations } from "./ReaderAnnotations";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
 type Props = Pick<
   EpubReaderController,
+  | "keyboardSettings"
+  | "updateKeyboardSettings"
+  | "keyboardSaveStatus"
+  | "retryKeyboardSettings"
   | "panel"
   | "annotations"
   | "describeLocation"
@@ -30,6 +34,10 @@ type Props = Pick<
   | "publisherPagesAvailable"
 >;
 export function ReaderPanels({
+  keyboardSettings,
+  updateKeyboardSettings,
+  keyboardSaveStatus,
+  retryKeyboardSettings,
   annotations,
   describeLocation,
   totalPages,
@@ -98,6 +106,10 @@ export function ReaderPanels({
         desktop ? <ReaderWorkspace chat={chat} onClose={closePanel} onPassageNavigate={onPassageNavigate} /> : <ReaderChat chat={chat} onClose={closePanel} onPassageNavigate={onPassageNavigate} />
       ) : (
         <ReaderSettings
+          keyboardSettings={keyboardSettings}
+          onKeyboardChange={updateKeyboardSettings}
+          keyboardSaveStatus={keyboardSaveStatus}
+          onKeyboardRetry={retryKeyboardSettings}
           preferences={state.preferences}
           publisherPagesAvailable={publisherPagesAvailable}
           onChange={preferences => updateState({ preferences })}

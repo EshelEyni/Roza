@@ -23,6 +23,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
   const popupSuppressed = useRef(false);
   const lookupRequest = useRef(0);
   const selectionDocument = useRef<Document | null>(null);
+  const keyboardSelection = useRef(false);
   const session = useRef<{
     start: string;
     end: string;
@@ -44,6 +45,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
   }, []);
   const closeLookup = useCallback(() => {
     ++version.current;
+    keyboardSelection.current = false;
     popupSuppressed.current = false;
     // Preserve main's mobile dismissal fix: the backdrop cannot clear the iframe range.
     const doc = selectionDocument.current;
@@ -262,7 +264,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
   const onSelectionChange = useCallback((doc: Document) => {
     const text = doc.getSelection()?.toString().trim() || "";
     // Page extension deliberately clears native fragments while keeping its CFI endpoints.
-    if (!text && !session.current && !turning.current) {
+    if (!text && !session.current && !turning.current && !keyboardSelection.current) {
       if (selectionDocument.current === doc) selectionDocument.current = null;
       current.current = null;
       setTextSelection(null);
@@ -272,6 +274,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
   const select = useCallback(
     (cfi: string, contents: Contents) => {
       if (turning.current || !contents.document) return;
+      keyboardSelection.current = false;
       const range = contents.range(cfi);
       const text = range.toString().trim();
       if (text) beforeSelection.current?.();
@@ -321,7 +324,10 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
   );
   const openLookup = useCallback((cfi?: string, contents?: Contents) => {
     popupSuppressed.current = false;
-    if (cfi && contents) select(cfi, contents);
+    if (cfi && contents) {
+      select(cfi, contents);
+      keyboardSelection.current = !contents.document.getSelection()?.toString().trim();
+    }
     if (current.current) {
       current.current = { ...current.current, suppressTooltip: false, lookupRequest: ++lookupRequest.current };
       setTextSelection(current.current);

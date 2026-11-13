@@ -1,19 +1,30 @@
+import { useState } from "react";
+import type { ReaderKeyboardSettings } from "../../../../shared/types/readerKeyboardSettings";
 import { ReaderColorSelect } from "./ReaderColorSelect";
 import { useTranslation } from "react-i18next";
 import { ReaderPreferences } from "../../../../shared/types/reader";
 
 type ReaderSettingsProps = {
+  keyboardSettings?: ReaderKeyboardSettings;
+  onKeyboardChange?: (settings: ReaderKeyboardSettings) => void;
+  keyboardSaveStatus?: "loading" | "saving" | "saved" | "error";
+  onKeyboardRetry?: () => void;
   preferences: ReaderPreferences;
   onChange: (preferences: ReaderPreferences) => void;
   publisherPagesAvailable: boolean | null;
 };
 
 export function ReaderSettings({
+  keyboardSettings,
+  onKeyboardChange,
+  keyboardSaveStatus,
+  onKeyboardRetry,
   preferences,
   onChange,
   publisherPagesAvailable,
 }: ReaderSettingsProps) {
   const { t } = useTranslation();
+  const [countDraft, setCountDraft] = useState<string | null>(null);
   function update(changes: Partial<ReaderPreferences>) {
     onChange({ ...preferences, ...changes });
   }
@@ -134,6 +145,24 @@ export function ReaderSettings({
               : "reader.noBookPages",
         )}
       </p>
+      {keyboardSettings && onKeyboardChange && <fieldset className="reader-mark-color-group reader-keyboard-settings">
+        <legend>{t("reader.keyboard.title")}</legend>
+        <label>{t("reader.keyboard.unit")}
+          <select value={keyboardSettings.unit} onChange={event => onKeyboardChange({ ...keyboardSettings, unit: event.target.value as ReaderKeyboardSettings["unit"] })}>
+            <option value="words">{t("reader.keyboard.words")}</option>
+            <option value="sentences">{t("reader.keyboard.sentences")}</option>
+          </select>
+        </label>
+        <label>{t("reader.keyboard.count")}
+          <input type="number" min={1} step={1} value={countDraft ?? keyboardSettings.count}
+            onChange={event => { setCountDraft(event.target.value); const count = Number(event.target.value); if (Number.isSafeInteger(count) && count >= 1) onKeyboardChange({ ...keyboardSettings, count }); }}
+            onBlur={() => setCountDraft(null)} />
+        </label>
+        <p className="reader-hint">{t("reader.keyboard.hint")}</p>
+        <p role="status" className="reader-hint">{t("reader.keyboard." + (keyboardSaveStatus || "saved"))}
+          {keyboardSaveStatus === "error" && <button type="button" className="reader-button" onClick={onKeyboardRetry}>{t("reader.retry")}</button>}
+        </p>
+      </fieldset>}
       <div className="reader-color-settings">
         {colorRow("backgroundColor")}
         {([

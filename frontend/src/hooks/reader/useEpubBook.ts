@@ -235,8 +235,8 @@ export function useEpubBook(
           const nativeSelectionActive = (
             rendition?.getContents() as unknown as Contents[] | undefined
           )?.some(contents => !!contents.document.getSelection()?.toString().trim());
-          if (!isExtending() && !nativeSelectionActive) closeLookup();
           words.relocated();
+          if (!isExtending() && !nativeSelectionActive && !words.hasVisibleHighlight()) closeLookup();
           clearLimitNotice();
           setLocation(location);
           const start = location.start;

@@ -68,6 +68,10 @@ export function EpubReader({
       />
       <div className="reader-workspace">
         <ReaderPanels
+          keyboardSettings={reader.keyboardSettings}
+          updateKeyboardSettings={reader.updateKeyboardSettings}
+          keyboardSaveStatus={reader.keyboardSaveStatus}
+          retryKeyboardSettings={reader.retryKeyboardSettings}
           annotations={reader.annotations}
           describeLocation={reader.describeLocation}
           totalPages={reader.totalPages}

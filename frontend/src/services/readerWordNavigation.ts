@@ -1,16 +1,30 @@
 import { EpubCFI, type Contents, type Location } from "epubjs";
+import { defaultReaderKeyboardSettings } from "./readerKeyboardSettings";
+import { readerSentenceSpans } from "./readerSentenceSpans";
 import { ReaderPassageMarker } from "./readerPassageMarker";
 import { selectionEndpoints } from "./readerSelectionRange";
 import type { EpubRuntime } from "../hooks/reader/useEpubRuntime";
 import type { ReaderSelection } from "../hooks/reader/useReaderSelection";
 
-type Word = { cfi: string; contents: Contents; range: Range; index: number };
+type Word = {
+  cfi: string;
+  contents: Contents;
+  range: Range;
+  index: number;
+  offset: number;
+  sentence: number;
+  sentenceRange?: Range;
+};
+type Direction = "next" | "prev";
 /** Keyboard focus is independent of native selection and lookup state. */
 export function createReaderWordNavigation(
   runtime: EpubRuntime,
   selection: Pick<ReaderSelection, "closeLookup" | "openLookup">,
 ) {
   let active: Word | undefined;
+  let group: { first: Word; last: Word; range: Range } | undefined;
+  let pending: { direction: Direction; remaining: number } | undefined;
+  let settingsKey = "";
   const chapters = new WeakMap<Document, Word[]>();
   const marker = new ReaderPassageMarker(
     () => runtime.renditionRef.current,
@@ -27,9 +41,11 @@ export function createReaderWordNavigation(
   const clearPaint = () => {
     marker.clear();
     active = undefined;
+    group = undefined;
   };
   const clear = () => {
     ++version;
+    pending = undefined;
     clearPaint();
   };
   const contents = () =>
@@ -43,6 +59,9 @@ export function createReaderWordNavigation(
     const words: Word[] = [];
     const walker = doc.createTreeWalker(doc.body, 4);
     let node: Node | null;
+    let text = "";
+    let previousBlock: Element | null = null;
+    const nodes: { node: Node; start: number; end: number }[] = [];
     while ((node = walker.nextNode())) {
       if (
         node.parentElement?.closest(
@@ -50,6 +69,15 @@ export function createReaderWordNavigation(
         )
       )
         continue;
+      const block =
+        node.parentElement?.closest(
+          "p, li, blockquote, h1, h2, h3, h4, h5, h6, div, td, pre",
+        ) || null;
+      if (nodes.length && block !== previousBlock) text += "\u2029";
+      previousBlock = block;
+      const offset = text.length;
+      text += node.textContent || "";
+      nodes.push({ node, start: offset, end: text.length });
       for (const match of (node.textContent || "").matchAll(
         /[\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*/gu,
       )) {
@@ -61,11 +89,36 @@ export function createReaderWordNavigation(
           range,
           contents: content,
           index: words.length,
+          offset: offset + match.index!,
+          sentence: 0,
           get cfi() {
             return (cfi ??= content.cfiFromRange(range));
           },
         });
       }
+    }
+    const spans = readerSentenceSpans(text, doc.documentElement.lang || "en");
+    let sentence = 0;
+    const sentenceRanges: Range[] = [];
+    // Both the text nodes and sentence offsets are ordered, so map them in one pass.
+    let nodeIndex = 0;
+    for (const span of spans) {
+      while (nodeIndex < nodes.length - 1 && nodes[nodeIndex].end <= span.start)
+        nodeIndex++;
+      const first = nodes[nodeIndex];
+      const range = doc.createRange();
+      range.setStart(first.node, Math.max(0, span.start - first.start));
+      while (nodeIndex < nodes.length - 1 && nodes[nodeIndex].end < span.end)
+        nodeIndex++;
+      const last = nodes[nodeIndex];
+      range.setEnd(last.node, Math.min(last.end, span.end) - last.start);
+      sentenceRanges.push(range);
+    }
+    for (const word of words) {
+      while (sentence < spans.length - 1 && word.offset >= spans[sentence].end)
+        sentence++;
+      word.sentence = sentence;
+      word.sentenceRange = sentenceRanges[sentence];
     }
     chapters.set(doc, words);
     return words;
@@ -87,11 +140,13 @@ export function createReaderWordNavigation(
     );
   };
   const adjacentWord = (direction: "next" | "prev"): Word | undefined => {
-    if (!active) return;
-    const words = chapters.get(active.contents.document);
-    if (words?.[active.index] !== active) return;
+    const edge =
+      direction === "next" ? group?.last || active : group?.first || active;
+    if (!edge) return;
+    const words = chapters.get(edge.contents.document);
+    if (words?.[edge.index] !== edge) return;
     const offset = direction === "next" ? 1 : -1;
-    for (let index = active.index + offset; words[index]; index += offset) {
+    for (let index = edge.index + offset; words[index]; index += offset) {
       const word = words[index];
       // Skip text hidden by the publisher without skipping onto another page.
       if (
@@ -131,31 +186,93 @@ export function createReaderWordNavigation(
     cached = { documents, layout, words };
     return words;
   };
-  const highlight = async (word: Word) => {
+  const highlight = async (word: Word, direction: Direction) => {
+    const settings =
+      runtime.keyboardRef?.current || defaultReaderKeyboardSettings;
+    const words = chapterWords(word.contents);
+    const offset = direction === "next" ? 1 : -1;
+    let remaining =
+      pending?.direction === direction ? pending.remaining : settings.count;
+    const selected: Word[] = [];
+    let cursor: Word | undefined = word;
+    while (cursor && isVisible(cursor)) {
+      selected.push(cursor);
+      const next: Word | undefined = words[cursor.index + offset];
+      if (
+        settings.unit === "words" ||
+        !next ||
+        next.sentence !== cursor.sentence
+      )
+        remaining--;
+      if (remaining <= 0) break;
+      cursor = next;
+      while (
+        cursor &&
+        !Array.from(cursor.range.getClientRects()).some(
+          (rect) => rect.width > 0 && rect.height > 0,
+        )
+      )
+        cursor = words[cursor.index + offset];
+    }
+    if (!selected.length) return;
+    pending = remaining > 0 ? { direction, remaining } : undefined;
+    const first =
+      direction === "next" ? selected[0] : selected[selected.length - 1];
+    const last =
+      direction === "next" ? selected[selected.length - 1] : selected[0];
+    const range = first.range.cloneRange();
+    range.setEnd(last.range.endContainer, last.range.endOffset);
+    if (settings.unit === "sentences") {
+      if (
+        (!words[first.index - 1] ||
+          words[first.index - 1].sentence !== first.sentence) &&
+        first.sentenceRange
+      )
+        range.setStart(
+          first.sentenceRange.startContainer,
+          first.sentenceRange.startOffset,
+        );
+      if (
+        (!words[last.index + 1] ||
+          words[last.index + 1].sentence !== last.sentence) &&
+        last.sentenceRange
+      )
+        range.setEnd(
+          last.sentenceRange.endContainer,
+          last.sentenceRange.endOffset,
+        );
+    }
     clearPaint();
     selection.closeLookup();
-    contents().forEach((content) =>
-      content.document.getSelection()?.removeAllRanges(),
-    );
-    active = word;
+    contents().forEach((content) => {
+      const native = content.document.getSelection();
+      if (native?.rangeCount) native.removeAllRanges();
+    });
+    active = direction === "next" ? last : first;
+    group = { first, last, range };
     if (turning) word.contents.document.defaultView?.focus();
-    await marker.show(
-      { cfi: word.cfi, text: word.range.toString() },
-      "blue",
-      async () => [word.cfi],
-    );
+    const cfi = word.contents.cfiFromRange(range);
+    await marker.show({ cfi, text: range.toString() }, "blue", async () => [
+      cfi,
+    ]);
   };
   const step = async (direction: "next" | "prev", request: number) => {
     const rendition = runtime.renditionRef.current;
     if (!rendition || request !== version || runtime.changingLayout.current)
       return;
+    const settings =
+      runtime.keyboardRef?.current || defaultReaderKeyboardSettings;
+    const key = settings.unit + ":" + settings.count;
+    if (settingsKey !== key || pending?.direction !== direction)
+      pending = undefined;
+    settingsKey = key;
     const native = contents().find(
       (content) => !!content.document.getSelection()?.toString().trim(),
     );
     if (active && !native) {
       const word = adjacentWord(direction);
       if (word && isVisible(word)) {
-        await highlight(word);
+        await highlight(word, direction);
         return;
       }
     }
@@ -165,8 +282,10 @@ export function createReaderWordNavigation(
       isVisible(active) &&
       chapters.get(active.contents.document)?.[active.index] === active;
     let words = continuing ? [] : visibleWords();
-    const index = active
-      ? words.findIndex((word) => word.cfi === active!.cfi)
+    const edge =
+      direction === "next" ? group?.last || active : group?.first || active;
+    const index = edge
+      ? words.findIndex((word) => word === edge || word.cfi === edge.cfi)
       : -1;
     let next =
       index < 0
@@ -219,7 +338,7 @@ export function createReaderWordNavigation(
         )?.index ?? -1;
     }
     if (words[next]) {
-      await highlight(words[next]);
+      await highlight(words[next], direction);
       return;
     }
     // Skip empty pages, including image-only sections, until a word or book boundary.
@@ -240,14 +359,14 @@ export function createReaderWordNavigation(
           return;
         const adjacent = adjacentWord(direction);
         if (adjacent && isVisible(adjacent)) {
-          await highlight(adjacent);
+          await highlight(adjacent, direction);
           return;
         }
         if (adjacent?.range.startContainer.isConnected) continue;
         words = visibleWords();
         const word = direction === "next" ? words[0] : words[words.length - 1];
         if (word) {
-          await highlight(word);
+          await highlight(word, direction);
           return;
         }
       }
@@ -287,7 +406,10 @@ export function createReaderWordNavigation(
         selection.openLookup(native.cfiFromRange(range), native);
       } else if (active) {
         if (isVisible(active))
-          selection.openLookup(active.cfi, active.contents);
+          selection.openLookup(
+            group ? active.contents.cfiFromRange(group.range) : active.cfi,
+            active.contents,
+          );
       } else selection.openLookup();
       return true;
     }
@@ -310,6 +432,7 @@ export function createReaderWordNavigation(
   };
   return {
     onKey,
+    hasVisibleHighlight: () => !!active && isVisible(active),
     clear,
     relocated: () => {
       cached = undefined;

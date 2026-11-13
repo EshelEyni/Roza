@@ -130,3 +130,24 @@ test("new native selection clears locator marks before publishing the range", ()
   setup(() => cleared++);
   assert.equal(cleared, 1);
 });
+
+test("keyboard lookup survives empty native-selection events and still dismisses normally", () => {
+  const s = setup();
+  s.changeSelection("");
+  s.selection.openLookup("keyboard-cfi", {
+    document: s.doc,
+    range: () => ({ toString: () => "two words", getBoundingClientRect: () => ({ left: 0, bottom: 10 }) }),
+  });
+  assert.equal(s.states[0].text, "two words");
+  s.changeSelection("");
+  assert.equal(s.states[0].text, "two words");
+  s.selection.closeLookup();
+  assert.equal(s.states[0], null);
+  s.changeSelection("native word");
+  s.selection.select("native-cfi", {
+    document: s.doc,
+    range: () => ({ toString: () => "native word", getBoundingClientRect: () => ({ left: 0, bottom: 10 }) }),
+  });
+  s.changeSelection("");
+  assert.equal(s.states[0], null);
+});
