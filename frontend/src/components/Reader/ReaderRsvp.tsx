@@ -7,7 +7,7 @@ import {
   FiPause,
 } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
 import { ReaderDictionary } from "./ReaderDictionary";
 import type { ReaderTextSelection } from "../../types/reader";
@@ -22,6 +22,7 @@ export function ReaderRsvp({
   const { t } = useTranslation();
   const rsvp = reader.rsvp;
   const [selection, setSelection] = useState<ReaderTextSelection | null>(null);
+  const [autoTranslate, setAutoTranslate] = useState(false);
   const stageRef = useRef<HTMLDivElement>(null);
   const wordRef = useRef<HTMLButtonElement>(null);
   useLayoutEffect(() => {
@@ -53,28 +54,11 @@ export function ReaderRsvp({
       document.fonts.removeEventListener("loadingdone", fit);
     };
   }, [rsvp.word?.text, rsvp.busy, reader.state.preferences.fontFamily]);
-  useEffect(() => {
-    if (reader.mobile) return;
-    const onKey = (event: KeyboardEvent) => {
-      const target = event.target as Element | null;
-      if (event.defaultPrevented || event.altKey || event.metaKey || event.shiftKey ||
-          rsvp.busy || !rsvp.word || selection ||
-          target?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false]), [role=slider], [role=dialog]")) return;
-      if (event.code === "Space" && !event.ctrlKey) {
-        event.preventDefault();
-        if (!event.repeat) rsvp.play();
-      } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-        event.preventDefault();
-        rsvp.skip(event.key === "ArrowRight" ? 1 : -1, event.ctrlKey);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [reader.mobile, rsvp, selection]);
-  function lookup(event: React.MouseEvent<HTMLButtonElement>) {
-    if (!rsvp.word) return;
+  const lookup = useCallback((translateImmediately = false) => {
+    if (!rsvp.word || !wordRef.current) return;
+    setAutoTranslate(translateImmediately);
     rsvp.pause();
-    const rect = event.currentTarget.getBoundingClientRect();
+    const rect = wordRef.current.getBoundingClientRect();
     const candidate = rsvp.word.text.replace(/^[“"‘(]+|[”"’.,;:!?)]+$/g, "");
     const word =
       /^[a-zA-Z]+(?:['’‘-][a-zA-Z]+)*$/.test(candidate) &&
@@ -88,7 +72,28 @@ export function ReaderRsvp({
       x: rect.left + rect.width / 2,
       y: rect.bottom + 8,
     });
-  }
+  }, [rsvp]);
+  useEffect(() => {
+    if (reader.mobile) return;
+    const onKey = (event: KeyboardEvent) => {
+      const target = event.target as Element | null;
+      if (event.defaultPrevented || event.altKey || event.metaKey || event.shiftKey ||
+          rsvp.busy || !rsvp.word || selection ||
+          target?.closest("input, textarea, select, [contenteditable]:not([contenteditable=false]), [role=slider], [role=dialog]")) return;
+      if (event.ctrlKey && event.code === "KeyT") {
+        event.preventDefault();
+        if (!event.repeat) lookup(true);
+      } else if (event.code === "Space" && !event.ctrlKey) {
+        event.preventDefault();
+        if (!event.repeat) rsvp.play();
+      } else if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
+        event.preventDefault();
+        rsvp.skip(event.key === "ArrowRight" ? 1 : -1, event.ctrlKey);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [reader.mobile, rsvp, selection, lookup]);
   return (
     <section
       className="reader-rsvp"
@@ -98,6 +103,7 @@ export function ReaderRsvp({
       {selection && (
         <ReaderDictionary
           selection={selection}
+          autoLookup={autoTranslate}
           bookId={bookId}
           getLookupPage={reader.getLookupPage}
           onClose={() => {
@@ -120,7 +126,8 @@ export function ReaderRsvp({
           ref={wordRef}
           className="reader-rsvp-word"
           disabled={!rsvp.word || rsvp.busy}
-          onClick={lookup}
+          onClick={() => lookup()}
+          aria-keyshortcuts="Control+t"
           aria-label={
             rsvp.word
               ? t("reader.rsvp.translate", { word: rsvp.word.text })

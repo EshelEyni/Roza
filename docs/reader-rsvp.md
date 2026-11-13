@@ -23,3 +23,5 @@ Existing browser regression failures were reproduced with the baseline reader ho
 RSVP words are measured in the selected font before painting and reduced only as needed to fit the stage on one line, including punctuation. ResizeObserver and font-loading events recalculate sizing. Regression coverage includes boardinghouse, a 45-letter token, and a synthetic 200-character token at desktop, mobile, and 320px widths.
 
 Desktop keyboard shortcuts while RSVP is open: Space toggles playback; Left/Right move one word; Ctrl+Left/Right move one sentence. Navigation pauses playback, matching the controls. Shortcuts do not intercept input fields, the speed slider, or an open translation popup. Holding Space does not repeatedly toggle playback.
+
+Ctrl+T pauses RSVP and immediately opens the existing dictionary lookup for the current word. Closing translation leaves playback paused. Browsers that reserve Ctrl+T for a new tab can intercept the shortcut before the page receives it.

@@ -24,6 +24,7 @@ export type { ReaderTextSelection } from "../../types/reader";
 import type { ReaderTextSelection } from "../../types/reader";
 
 export function ReaderDictionary({
+  autoLookup = false,
   onAnnotate,
   annotationBusy,
   onCopyFeedback,
@@ -40,6 +41,7 @@ export function ReaderDictionary({
   atStart,
   atEnd,
 }: {
+  autoLookup?: boolean;
   onAnnotate?: (note: boolean) => void;
   annotationBusy?: boolean;
   onCopyFeedback?: (message: string) => void;
@@ -154,6 +156,12 @@ export function ReaderDictionary({
       if (mounted.current) setLookups(current => ({ ...current, [provider]: { ...current[provider], loading: false } }));
     }
   }
+
+  const initialLookup = useRef(lookup);
+  initialLookup.current = lookup;
+  useEffect(() => {
+    if (autoLookup) void initialLookup.current();
+  }, [autoLookup]);
 
   function pronounce() {
     if (!selection.word) return;

@@ -206,6 +206,16 @@ test(
               await page.keyboard.press("Space");
               assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.playing), false);
             }
+            if (!mobile) {
+              await page.keyboard.press("Space");
+              const translatedCfi = await page.evaluate(() => window.rsvpTest.reader.rsvp.word.cfi);
+              await page.keyboard.press("Control+t");
+              await page.getByText("שלום", {exact:true}).first().waitFor();
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.playing), false);
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.word.cfi), translatedCfi);
+              await page.getByRole("button", {name:/close/i}).last().click();
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.playing), false);
+            }
             const extraction = await page.evaluate(async () => {
               const { reader, service } = window.rsvpTest;
               const section = reader.searchBook.spine.get(0);
