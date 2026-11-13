@@ -32,4 +32,5 @@ export interface ReaderTextSelection {
   y: number;
   endCfi?: string;
   suppressTooltip?: boolean;
+  lookupRequest?: number;
 }

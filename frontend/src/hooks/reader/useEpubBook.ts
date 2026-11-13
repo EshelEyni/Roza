@@ -16,6 +16,7 @@ import { applyPreferences } from "../../services/readerPreferences";
 import readerApiService from "../../services/readerApiService";
 import { protectReaderDocument } from "../../services/readerContentSecurity";
 import { bindReaderContents } from "../../services/bindReaderContents";
+import { createReaderWordNavigation } from "../../services/readerWordNavigation";
 import { observeReaderLayout } from "../../services/observeReaderLayout";
 import type { ReaderSelection } from "./useReaderSelection";
 import type { EpubRuntime } from "./useEpubRuntime";
@@ -40,6 +41,7 @@ export function useEpubBook(
     beginSelection,
     isPageTurnBlocked,
     select,
+    openLookup,
     isExtending,
     copySelection,
     extend,
@@ -82,7 +84,10 @@ export function useEpubBook(
     let ready = false;
     let hasLocations = false;
     const element = host.current!;
+    const words = createReaderWordNavigation(runtime, { closeLookup, openLookup });
     const onKey = (event: KeyboardEvent) => {
+      if (words.onKey(event)) return;
+      if (event.key === "Escape") words.clear();
       if (event.key === "Escape") closeLookup();
       const target = event.target as HTMLElement | null;
       if (isPageTurnBlocked() && ["ArrowRight", "ArrowLeft", "PageDown", "PageUp"].includes(event.key) &&
@@ -121,9 +126,11 @@ export function useEpubBook(
       const selection = target?.ownerDocument?.getSelection();
       if (selection && !selection.isCollapsed) return;
       if (event.key === "ArrowRight" || event.key === "PageDown") {
+        words.clear();
         event.preventDefault();
         void rendition?.next().catch(() => undefined);
       } else if (event.key === "ArrowLeft" || event.key === "PageUp") {
+        words.clear();
         event.preventDefault();
         void rendition?.prev().catch(() => undefined);
       }
@@ -196,6 +203,7 @@ export function useEpubBook(
         renditionRef.current = rendition;
         applyPreferences(rendition, preferences);
         rendition.hooks.content.register((contents: Contents) => {
+          touchCleanups.push(words.bind(contents));
           touchCleanups.push(
             bindReaderContents(
               contents,
@@ -228,6 +236,7 @@ export function useEpubBook(
             rendition?.getContents() as unknown as Contents[] | undefined
           )?.some(contents => !!contents.document.getSelection()?.toString().trim());
           if (!isExtending() && !nativeSelectionActive) closeLookup();
+          words.relocated();
           clearLimitNotice();
           setLocation(location);
           const start = location.start;
@@ -296,6 +305,7 @@ export function useEpubBook(
     const opening = start();
     return () => {
       cancelled = true;
+      words.clear();
       closeLookup();
       controller.abort();
       clearTimeout(pendingResize.current);
@@ -326,6 +336,7 @@ export function useEpubBook(
     beginSelection,
     isPageTurnBlocked,
     select,
+    openLookup,
     isExtending,
     copySelection,
     extend,

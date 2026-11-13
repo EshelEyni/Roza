@@ -21,6 +21,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
   );
   const current = useRef<ReaderTextSelection | null>(null);
   const popupSuppressed = useRef(false);
+  const lookupRequest = useRef(0);
   const selectionDocument = useRef<Document | null>(null);
   const session = useRef<{
     start: string;
@@ -318,7 +319,16 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
     },
     [t, publishRange],
   );
+  const openLookup = useCallback((cfi?: string, contents?: Contents) => {
+    popupSuppressed.current = false;
+    if (cfi && contents) select(cfi, contents);
+    if (current.current) {
+      current.current = { ...current.current, suppressTooltip: false, lookupRequest: ++lookupRequest.current };
+      setTextSelection(current.current);
+    }
+  }, [select]);
   return {
+    openLookup,
     textSelection,
     closeLookup,
     clearLimitNotice,

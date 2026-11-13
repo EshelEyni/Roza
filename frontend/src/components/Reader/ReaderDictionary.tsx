@@ -155,6 +155,12 @@ export function ReaderDictionary({
     }
   }
 
+  const keyboardLookup = useRef(lookup);
+  keyboardLookup.current = lookup;
+  useEffect(() => {
+    if (selection.lookupRequest && selection.word) void keyboardLookup.current();
+  }, [selection.lookupRequest, selection.cfi, selection.word]);
+
   function pronounce() {
     if (!selection.word) return;
     setSpeechError(false);

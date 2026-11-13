@@ -13,6 +13,7 @@ export class ReaderPassageMarker {
     private currentRendition: () => Rendition | null | undefined,
     private markerColor?: (color: "blue" | "yellow") => string | undefined,
     private markerTextColor?: (color: "blue" | "yellow") => string | undefined,
+    private markerClass?: string,
   ) {}
   clear = () => {
     ++this.version;
@@ -53,7 +54,7 @@ export class ReaderPassageMarker {
         cfi,
         {},
         undefined,
-        "reader-locator-" + color,
+        this.markerClass || "reader-locator-" + color,
         {
           fill: background,
           "fill-opacity": "1",
