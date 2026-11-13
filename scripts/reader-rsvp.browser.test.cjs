@@ -183,6 +183,29 @@ test(
               return label.x < title.x && title.x < close.x;
             });
             assert.ok(headerOrder, "RSVP label, chapter, and close button retain left-to-right order");
+            if (!mobile) {
+              await page.keyboard.press("ArrowRight");
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.word.text), "reading");
+              await page.keyboard.press("ArrowLeft");
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.word.text), "Hello,");
+              await page.keyboard.press("Control+ArrowRight");
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.word.text), "Next");
+              await page.keyboard.press("Control+ArrowLeft");
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.word.text), "Hello,");
+              await page.keyboard.press("Space");
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.playing), true);
+              await page.keyboard.press("Space");
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.playing), false);
+              await page.getByRole("slider", {name:"Reading speed in words per minute"}).focus();
+              const before = await page.evaluate(() => window.rsvpTest.reader.rsvp.word.cfi);
+              await page.keyboard.press("ArrowRight");
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.word.cfi), before);
+              await page.locator(".reader-rsvp-word").focus();
+              await page.keyboard.press("Space");
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.playing), true);
+              await page.keyboard.press("Space");
+              assert.equal(await page.evaluate(() => window.rsvpTest.reader.rsvp.playing), false);
+            }
             const extraction = await page.evaluate(async () => {
               const { reader, service } = window.rsvpTest;
               const section = reader.searchBook.spine.get(0);

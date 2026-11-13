@@ -21,3 +21,5 @@ Verification results: production frontend build passed; all 30 targeted reader u
 Existing browser regression failures were reproduced with the baseline reader hooks from commit `0d9fd2b`: navigation preview reports page 51 but lands on page 52; desktop selection expects an unavailable “Next page or section” control; mobile selection also has existing assertion/translation-control failures. No unrelated fixes were made. A physical iPhone Safari check remains manual.
 
 RSVP words are measured in the selected font before painting and reduced only as needed to fit the stage on one line, including punctuation. ResizeObserver and font-loading events recalculate sizing. Regression coverage includes boardinghouse, a 45-letter token, and a synthetic 200-character token at desktop, mobile, and 320px widths.
+
+Desktop keyboard shortcuts while RSVP is open: Space toggles playback; Left/Right move one word; Ctrl+Left/Right move one sentence. Navigation pauses playback, matching the controls. Shortcuts do not intercept input fields, the speed slider, or an open translation popup. Holding Space does not repeatedly toggle playback.
