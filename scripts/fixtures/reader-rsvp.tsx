@@ -1,3 +1,5 @@
+import { MemoryRouter } from "react-router-dom";
+import { ReaderToolbar } from "../../frontend/src/components/Reader/ReaderToolbar";
 import React, { useEffect } from "react";
 import { createRoot } from "react-dom/client";
 import i18next from "i18next";
@@ -43,12 +45,18 @@ function Fixture() {
   }, [reader]);
   return (
     <div className="reader-shell reader-theme-sepia" ref={reader.shell}>
-      <button
-        onClick={() => void reader.rsvp.toggle()}
-        disabled={reader.loading || reader.rsvp.busy}
-      >
-        RSVP Mode
-      </button>
+      <ReaderToolbar
+        book={book}
+        rsvp={reader.rsvp}
+        panel={reader.panel}
+        togglePanel={reader.togglePanel}
+        loading={reader.loading}
+        error={reader.error}
+        mobile={reader.mobile}
+        fullscreen={reader.fullscreen}
+        toggleFullscreen={reader.toggleFullscreen}
+        reload={reader.reload}
+      />
       <div
         className={"reader-workspace" + (reader.rsvp.active ? " is-rsvp" : "")}
       >
@@ -68,4 +76,8 @@ function Fixture() {
     </div>
   );
 }
-createRoot(document.getElementById("root")!).render(<Fixture />);
+createRoot(document.getElementById("root")!).render(
+  <MemoryRouter>
+    <Fixture />
+  </MemoryRouter>,
+);

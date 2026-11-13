@@ -165,6 +165,12 @@
   "words": "Words",
   "reader": {
     "rsvp": {
+      "exit": "Exit RSVP mode",
+      "focus": "Focus on one word",
+      "readingSpeed": "Reading speed",
+      "chapter": "Chapter",
+      "wordProgress": "Word {{current}} of {{total}}",
+      "chapterProgress": "Chapter progress",
       "mode": "RSVP Mode",
       "title": "RSVP reading",
       "translate": "Translate {{word}}",

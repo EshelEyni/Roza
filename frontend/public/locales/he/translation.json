@@ -166,6 +166,12 @@
   "words": "מילים",
   "reader": {
     "rsvp": {
+      "exit": "יציאה ממצב RSVP",
+      "focus": "מתמקדים במילה אחת",
+      "readingSpeed": "מהירות קריאה",
+      "chapter": "פרק",
+      "wordProgress": "מילה {{current}} מתוך {{total}}",
+      "chapterProgress": "התקדמות בפרק",
       "mode": "מצב RSVP",
       "title": "קריאה מהירה RSVP",
       "translate": "תרגום {{word}}",

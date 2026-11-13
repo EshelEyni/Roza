@@ -55,6 +55,7 @@ test(
     const aliases = [
       "react",
       "react-dom",
+    "react-router-dom",
       "epubjs",
       "react-icons",
       "i18next",

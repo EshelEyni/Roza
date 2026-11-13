@@ -154,6 +154,8 @@ export function useReaderRsvp(runtime: EpubRuntime, unavailable: boolean) {
     word,
     wpm,
     boundary,
+    wordNumber: words.length ? index + 1 : 0,
+    wordCount: words.length,
     toggle,
     canPreviousChapter: adjacent(-1) !== null,
     canNextChapter: adjacent(1) !== null,
