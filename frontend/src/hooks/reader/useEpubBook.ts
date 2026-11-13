@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import ePub, {
+  EpubCFI,
   type Book,
   type Contents,
   type Location,
@@ -83,6 +84,7 @@ export function useEpubBook(
     let hasLocations = false;
     const element = host.current!;
     const onKey = (event: KeyboardEvent) => {
+      if (runtime.rsvpActive.current) return;
       if (event.key === "Escape") closeLookup();
       const target = event.target as HTMLElement | null;
       if (isPageTurnBlocked() && ["ArrowRight", "ArrowLeft", "PageDown", "PageUp"].includes(event.key) &&
@@ -221,7 +223,7 @@ export function useEpubBook(
           select(cfi, contents);
         });
         rendition.on("relocated", (location: Location) => {
-          if (cancelled || !ready || changingLayout.current) return;
+          if (cancelled || !ready || changingLayout.current || runtime.rsvpActive.current) return;
           // Native selection can scroll the iframe into view and emit relocation.
           // Explicit navigation already dismisses selection; a layout report must not erase it.
           const nativeSelectionActive = (
@@ -239,13 +241,24 @@ export function useEpubBook(
           setChapter(
             entry?.label || t("reader.section", { number: start.index + 1 }),
           );
+          // Retain an exact RSVP anchor while its page remains visible.
+          // A genuine page/chapter turn clears it and resumes normal tracking.
+          let savedCfi = start.cfi;
+          const anchor = runtime.rsvpLocation.current;
+          if (anchor) {
+            const point = new EpubCFI(anchor);
+            point.collapse(true);
+            const compare = new EpubCFI().compare;
+            if (compare(start.cfi, point.toString()) <= 0 && compare(point.toString(), location.end.cfi) <= 0) savedCfi = anchor;
+            else runtime.rsvpLocation.current = "";
+          }
           const progress =
             hasLocations && epub?.locations.length()
-              ? epub.locations.percentageFromCfi(start.cfi)
+              ? epub.locations.percentageFromCfi(savedCfi)
               : stateRef.current.progress;
           updateRef.current({
-            location: start.cfi,
-            progress: location.atEnd
+            location: savedCfi,
+            progress: location.atEnd && !runtime.rsvpLocation.current
               ? 1
               : Math.min(
                   1,

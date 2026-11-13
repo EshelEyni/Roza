@@ -10,6 +10,8 @@ export function useEpubRuntime(
   panel: ReaderPanel | null,
   selection: ReaderTextSelection | null,
 ) {
+  const rsvpLocation = useRef(state.location.includes(",") ? state.location : "");
+  const rsvpActive = useRef(false);
   const host = useRef<HTMLDivElement>(null);
   const shell = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
@@ -36,6 +38,8 @@ export function useEpubRuntime(
   const linkObserver = useRef<(() => void) | undefined>();
   return useMemo(
     () => ({
+      rsvpLocation,
+      rsvpActive,
       host,
       shell,
       stateRef,

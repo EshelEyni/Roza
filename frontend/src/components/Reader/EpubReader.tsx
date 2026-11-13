@@ -1,3 +1,4 @@
+import { ReaderRsvp } from "./ReaderRsvp";
 import { useEffect, useState } from "react";
 import { ReaderPassageMarks } from "./ReaderPassageMarks";
 import { readerAiLimits } from "../../services/readerAiLimits";
@@ -56,6 +57,7 @@ export function EpubReader({
         />
       )}
       <ReaderToolbar
+        rsvp={reader.rsvp}
         book={book}
         panel={reader.panel}
         togglePanel={reader.togglePanel}
@@ -66,8 +68,9 @@ export function EpubReader({
         toggleFullscreen={reader.toggleFullscreen}
         reload={reader.reload}
       />
-      <div className="reader-workspace">
-        <ReaderPanels
+      <div className={"reader-workspace" + (reader.rsvp.active ? " is-rsvp" : "")}>
+        {reader.rsvp.active && <ReaderRsvp reader={reader} bookId={book.id} />}
+        {!reader.rsvp.active && <ReaderPanels
           annotations={reader.annotations}
           describeLocation={reader.describeLocation}
           totalPages={reader.totalPages}
@@ -85,8 +88,8 @@ export function EpubReader({
           state={reader.state}
           updateState={reader.updateState}
           publisherPagesAvailable={reader.publisherPagesAvailable}
-        />
-        <ReaderViewport
+        />}
+        <ReaderViewport rsvpActive={reader.rsvp.active}
           width={reader.state.preferences.width}
           loading={reader.loading}
           error={reader.error}
@@ -103,7 +106,7 @@ export function EpubReader({
         retrySave={reader.retrySave}
         notice={reader.notice}
       />
-      <ReaderFooter
+      {!reader.rsvp.active && <ReaderFooter
         remainingSectionPages={reader.remainingSectionPages}
         remainingBookPages={reader.remainingBookPages}
         state={reader.state}
@@ -122,7 +125,7 @@ export function EpubReader({
         togglePageNumbering={reader.togglePageNumbering}
         saveStatus={reader.saveStatus}
         retrySave={reader.retrySave}
-      />
+      />}
     </div>
     </ReaderPassageMarks.Provider>
   );

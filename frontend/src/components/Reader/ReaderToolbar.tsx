@@ -23,9 +23,10 @@ type Props = Pick<
   | "fullscreen"
   | "toggleFullscreen"
   | "reload"
-> & { book: ReaderBook };
+> & { book: ReaderBook; rsvp?: EpubReaderController["rsvp"] };
 export function ReaderToolbar({
   book,
+  rsvp,
   panel,
   togglePanel,
   loading,
@@ -46,11 +47,12 @@ export function ReaderToolbar({
       >
         <FiArrowLeft />
       </Link>
+      {rsvp && <button className="reader-icon-button" aria-label={t("reader.rsvp.mode")} title={t("reader.rsvp.mode")} aria-pressed={rsvp.active} disabled={loading || rsvp.busy} onClick={() => void rsvp.toggle()}>RSVP</button>}
       <div className="reader-toolbar-title">
         <h1>{book.title}</h1>
         <p>{book.author || t("reader.unknownAuthor")}</p>
       </div>
-      <button className={"reader-icon-button " + (panel === "annotations" ? "is-active" : "")}
+      {!rsvp?.active && <><button className={"reader-icon-button " + (panel === "annotations" ? "is-active" : "")}
         onClick={() => togglePanel("annotations")} aria-label={t("reader.annotations.title")}
         title={t("reader.annotations.title")} aria-expanded={panel === "annotations"}>
         <FiEdit3 />
@@ -120,6 +122,7 @@ export function ReaderToolbar({
           {fullscreen ? <FiMinimize /> : <FiMaximize />}
         </button>
       )}
+      </>}
     </header>
   );
 }

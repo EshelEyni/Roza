@@ -1,3 +1,4 @@
+import { useReaderRsvp } from "./useReaderRsvp";
 import {useTranslation} from "react-i18next";
 import { useCallback, useRef, useState } from "react";
 import type { ReaderBook } from "../../../../shared/types/reader";
@@ -56,6 +57,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     setError,
     setNotice,
   );
+  const rsvp = useReaderRsvp(runtime, engine.loading || !!panel || !!selection.textSelection);
   const pagination = useReaderPagination(
     runtime.host,
     engine.paginationFile,
@@ -115,6 +117,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     retry();
   }
   return {
+    rsvp: { ...rsvp, toggle: () => { selection.closeLookup(); closePanel(); return rsvp.toggle(); } },
     annotations,
     mobile,
     state,

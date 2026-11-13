@@ -5,9 +5,10 @@ import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
 type Props = Pick<
   EpubReaderController,
   "loading" | "error" | "retry" | "move" | "atStart" | "atEnd" | "host"
-> & { width: ReaderPreferences["width"] };
+> & { width: ReaderPreferences["width"]; rsvpActive?: boolean };
 export function ReaderViewport({
   width,
+  rsvpActive = false,
   loading,
   error,
   retry,
@@ -18,7 +19,7 @@ export function ReaderViewport({
 }: Props) {
   const { t } = useTranslation();
   return (
-    <div className={"reader-paper reader-width-" + width}>
+    <div className={"reader-paper reader-width-" + width} aria-hidden={rsvpActive || undefined} {...(rsvpActive ? { inert: "" } : {})}>
       {loading && (
         <div className="reader-overlay" role="status">
           {t("reader.opening")}
