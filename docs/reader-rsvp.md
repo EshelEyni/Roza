@@ -6,7 +6,7 @@ The EPUB renderer stays mounted beneath the RSVP view. While RSVP is active, ren
 
 Playback defaults to 300 WPM, supports 100–1,000 WPM, and adds comma (1.5x), sentence (2x), and paragraph (2.5x) delays. It pauses at section boundaries and when the page becomes hidden. Chapter navigation loads the next/previous linear spine item and remains paused. Word and sentence navigation also pause playback.
 
-Tap the word to pause and open the existing dictionary controls, including the dictionary and Google Translate providers. The optional resume checkbox starts playback when the popup closes. Normal reader appearance and preferences are preserved; RSVP also reuses the theme and font family. Speed is an optional local preference.
+Tap the word to pause and open the existing dictionary controls, including the dictionary and Google Translate providers. Closing translation keeps playback paused until Play is pressed. Normal reader appearance and preferences are preserved; RSVP also reuses the theme and font family. Speed is an optional local preference.
 
 Validation commands:
 
@@ -16,6 +16,8 @@ Validation commands:
 
 The browser suite requires Playwright via `PLAYWRIGHT_MODULE` (or normal module resolution). It uses installed Edge by default; set `RSVP_WEBKIT=1` and, if needed, `PLAYWRIGHT_BROWSERS_PATH` to run WebKit. Tests generate a real EPUB and mock server responses, including translation responses; they do not call a paid translation service. Mobile browser emulation does not replace a final check on a physical iPhone.
 
-Verification results: production frontend build passed; all 30 targeted reader unit checks passed; the RSVP browser suite passed on Edge and WebKit, each with desktop and mobile touch viewports. Coverage includes CFI round trips, inline markup and line breaks, speed limits and punctuation delays, pause/resume, both translation providers (mocked), optional resume, chapter boundaries and non-linear section skipping, resizing, mode switching, server persistence, cache clearance, and reopening.
+Verification results: production frontend build passed; all 30 targeted reader unit checks passed; the RSVP browser suite passed on Edge and WebKit, each with desktop and mobile touch viewports. Coverage includes CFI round trips, inline markup and line breaks, speed limits and punctuation delays, pause/resume, both translation providers (mocked), paused translation dismissal, chapter boundaries and non-linear section skipping, resizing, mode switching, server persistence, cache clearance, and reopening.
 
 Existing browser regression failures were reproduced with the baseline reader hooks from commit `0d9fd2b`: navigation preview reports page 51 but lands on page 52; desktop selection expects an unavailable “Next page or section” control; mobile selection also has existing assertion/translation-control failures. No unrelated fixes were made. A physical iPhone Safari check remains manual.
+
+RSVP words are measured in the selected font before painting and reduced only as needed to fit the stage on one line, including punctuation. ResizeObserver and font-loading events recalculate sizing. Regression coverage includes boardinghouse, a 45-letter token, and a synthetic 200-character token at desktop, mobile, and 320px widths.

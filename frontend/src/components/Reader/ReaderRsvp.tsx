@@ -7,7 +7,7 @@ import {
   FiPause,
 } from "react-icons/fi";
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
 import { ReaderDictionary } from "./ReaderDictionary";
 import type { ReaderTextSelection } from "../../types/reader";
@@ -22,7 +22,37 @@ export function ReaderRsvp({
   const { t } = useTranslation();
   const rsvp = reader.rsvp;
   const [selection, setSelection] = useState<ReaderTextSelection | null>(null);
-  const [resume, setResume] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
+  const wordRef = useRef<HTMLButtonElement>(null);
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    const button = wordRef.current;
+    if (!stage || !button) return;
+    let disposed = false;
+    const fit = () => {
+      if (disposed) return;
+      // Measure the real glyphs in the selected font, including punctuation.
+      // Reset to the preferred size so a short word grows again after a long one.
+      button.style.removeProperty("font-size");
+      const preferred = parseFloat(getComputedStyle(button).fontSize);
+      const text = button.firstElementChild;
+      const width = text?.getBoundingClientRect().width || 0;
+      const available = Math.max(1, stage.clientWidth - 16);
+      if (width > available)
+        button.style.fontSize =
+          Math.floor(((preferred * available) / width) * 100) / 100 + "px";
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(stage);
+    void document.fonts.ready.then(fit);
+    document.fonts.addEventListener("loadingdone", fit);
+    return () => {
+      disposed = true;
+      observer.disconnect();
+      document.fonts.removeEventListener("loadingdone", fit);
+    };
+  }, [rsvp.word?.text, rsvp.busy, reader.state.preferences.fontFamily]);
   function lookup(event: React.MouseEvent<HTMLButtonElement>) {
     if (!rsvp.word) return;
     rsvp.pause();
@@ -54,7 +84,6 @@ export function ReaderRsvp({
           getLookupPage={reader.getLookupPage}
           onClose={() => {
             setSelection(null);
-            if (resume) rsvp.play();
           }}
           onAskAi={() => {
             setSelection(null);
@@ -68,8 +97,9 @@ export function ReaderRsvp({
         />
       )}
       <p className="reader-rsvp-eyebrow">{t("reader.rsvp.focus")}</p>
-      <div className="reader-rsvp-stage">
+      <div className="reader-rsvp-stage" ref={stageRef}>
         <button
+          ref={wordRef}
           className="reader-rsvp-word"
           disabled={!rsvp.word || rsvp.busy}
           onClick={lookup}
@@ -80,9 +110,11 @@ export function ReaderRsvp({
           }
           style={{ fontFamily: reader.state.preferences.fontFamily }}
         >
-          {rsvp.busy
-            ? t("reader.rsvp.loading")
-            : rsvp.word?.text || t("reader.rsvp.empty")}
+          <span>
+            {rsvp.busy
+              ? t("reader.rsvp.loading")
+              : rsvp.word?.text || t("reader.rsvp.empty")}
+          </span>
         </button>
       </div>
       <div className="reader-rsvp-controls">
@@ -172,14 +204,6 @@ export function ReaderRsvp({
             value={rsvp.wpm}
             onChange={(event) => rsvp.speed(Number(event.target.value))}
           />
-        </label>
-        <label className="reader-rsvp-resume">
-          <input
-            type="checkbox"
-            checked={resume}
-            onChange={(event) => setResume(event.target.checked)}
-          />{" "}
-          {t("reader.rsvp.resume")}
         </label>
         <div className="reader-rsvp-chapters">
           <button

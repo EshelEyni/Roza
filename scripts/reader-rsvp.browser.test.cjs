@@ -28,7 +28,7 @@ async function epub() {
   );
   zip.file(
     "b.xhtml",
-    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>B</title></head><body><p>Second chapter starts here.</p></body></html>',
+    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>B</title></head><body><p>Second chapter starts here. boardinghouse. pneumonoultramicroscopicsilicovolcanoconiosis WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW</p></body></html>',
   );
   return zip.generateAsync({ type: "nodebuffer" });
 }
@@ -55,7 +55,7 @@ test(
     const aliases = [
       "react",
       "react-dom",
-    "react-router-dom",
+      "react-router-dom",
       "epubjs",
       "react-icons",
       "i18next",
@@ -263,12 +263,16 @@ test(
             assert.ok(lookups.some((lookup) => lookup.provider === "auto"));
             // Dismiss the existing dictionary popup with its accessible close control.
             await page.getByRole("button", { name: /close/i }).last().click();
-            await page.getByLabel("Resume after closing translation").check();
+            assert.equal(await page.getByRole("checkbox").count(), 0);
             await page.getByRole("button", { name: /Translate / }).click();
             await page.getByRole("button", { name: /close/i }).last().click();
-            await page.waitForFunction(
-              () => window.rsvpTest.reader.rsvp.playing,
+            assert.equal(
+              await page.evaluate(() => window.rsvpTest.reader.rsvp.playing),
+              false,
             );
+            await page
+              .getByRole("button", { name: "Play", exact: true })
+              .click();
             await page.waitForFunction(
               () => window.rsvpTest.reader.rsvp.boundary,
             );
@@ -282,6 +286,49 @@ test(
             await page.waitForFunction(
               () => window.rsvpTest.reader.rsvp.word?.text === "Second",
             );
+            // Exercise actual long tokens, including an unusually wide synthetic token.
+            const fitWord = async () => {
+              const fits = await page
+                .locator(".reader-rsvp-word")
+                .evaluate((button) => {
+                  const text = button.firstElementChild.getBoundingClientRect();
+                  const stage = button.parentElement.getBoundingClientRect();
+                  return (
+                    getComputedStyle(button).whiteSpace === "nowrap" &&
+                    text.width <= stage.width &&
+                    text.left >= stage.left - 1 &&
+                    text.right <= stage.right + 1
+                  );
+                });
+              assert.ok(
+                fits,
+                "Every word must remain on one line within the stage",
+              );
+            };
+            for (let i = 0; i < 4; i++)
+              await page
+                .getByRole("button", { name: "Next word", exact: true })
+                .click();
+            await fitWord(); // boardinghouse.
+            await page
+              .getByRole("button", { name: "Next word", exact: true })
+              .click();
+            await fitWord(); // 45-letter word
+            await page
+              .getByRole("button", { name: "Next word", exact: true })
+              .click();
+            await fitWord(); // 200 wide characters
+            await page.setViewportSize({ width: 320, height: 740 });
+            await page.waitForTimeout(150);
+            await fitWord();
+            await page.setViewportSize({
+              width: mobile ? 390 : 1280,
+              height: 844,
+            });
+            for (let i = 0; i < 6; i++)
+              await page
+                .getByRole("button", { name: "Previous word", exact: true })
+                .click();
             await page
               .getByRole("button", { name: "Next word", exact: true })
               .click();

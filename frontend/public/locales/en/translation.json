@@ -186,7 +186,6 @@
       "nextSentence": "Next sentence",
       "speed": "Speed: {{wpm}} WPM",
       "speedLabel": "Reading speed in words per minute",
-      "resume": "Resume after closing translation",
       "previousChapter": "Previous chapter",
       "nextChapter": "Next chapter",
       "normal": "Normal reading",
