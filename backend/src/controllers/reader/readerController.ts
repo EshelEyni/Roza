@@ -131,7 +131,7 @@ const updateReaderState = asyncErrorCatcher(async (req: Request, res: Response) 
     typeof preferences !== "object" ||
     !Number.isFinite(preferences.fontSize) ||
     preferences.fontSize < 14 ||
-    preferences.fontSize > 36 ||
+    preferences.fontSize > 56 ||
     !Number.isFinite(preferences.lineHeight) ||
     preferences.lineHeight < 1.2 ||
     preferences.lineHeight > 2.4 ||

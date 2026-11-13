@@ -17,7 +17,7 @@ const readerBookSchema = new Schema<IReaderBook>(
       progress: { type: Number, default: 0, min: 0, max: 1 },
       savedAt: { type: Number, default: 0 },
       preferences: {
-        fontSize: { type: Number, default: 20, min: 14, max: 36 },
+        fontSize: { type: Number, default: 20, min: 14, max: 56 },
         fontFamily: { type: String, enum: ["serif", "sans-serif"], default: "serif" },
         lineHeight: { type: Number, default: 1.7, min: 1.2, max: 2.4 },
         width: { type: String, enum: ["comfortable", "wide"], default: "comfortable" },

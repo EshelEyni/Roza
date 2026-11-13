@@ -118,7 +118,7 @@ describe("Reader access and isolation", () => {
     expect(ReaderBookModel.findOne).toHaveBeenCalledWith({ _id: id, userId: mockUserId });
   });
 
-  it("validates state and persists only approved fields with a stale-save guard", async () => {
+  it.each(Array.from({ length: 43 }, (_, index) => index + 14))("validates state and persists font size %spx with a stale-save guard", async fontSize => {
     const existing = { _id: id, state: { location: "", progress: 0 } };
     (ReaderBookModel.findOne as jest.Mock).mockReturnValue({
       select: jest.fn().mockResolvedValue(existing),
@@ -128,12 +128,12 @@ describe("Reader access and isolation", () => {
       location: "epubcfi(/6/2!/4/2/1:0)",
       progress: 0.2,
       savedAt: Date.now(),
-      preferences: defaultReaderPreferences,
+      preferences: { ...defaultReaderPreferences, fontSize },
     };
     const invalid = await request(app)
       .patch("/api/reader/" + id + "/state")
       .set("Authorization", "test")
-      .send({ ...state, preferences: { ...defaultReaderPreferences, fontSize: 900 } });
+      .send({ ...state, preferences: { ...defaultReaderPreferences, fontSize: 57 } });
     expect(invalid.status).toBe(400);
     expect(ReaderBookModel.findOneAndUpdate).not.toHaveBeenCalled();
     const valid = await request(app)

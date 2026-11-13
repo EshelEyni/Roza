@@ -53,7 +53,7 @@ export function ReaderSettings({
         <input
           type="range"
           min={14}
-          max={36}
+          max={56}
           step={1}
           value={preferences.fontSize}
           onChange={event => update({ fontSize: Number(event.target.value) })}
