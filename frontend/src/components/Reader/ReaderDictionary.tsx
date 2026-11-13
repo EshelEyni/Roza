@@ -22,6 +22,7 @@ export type { ReaderTextSelection } from "../../types/reader";
 import type { ReaderTextSelection } from "../../types/reader";
 
 export function ReaderDictionary({
+  autoLookup = false,
   onAnnotate,
   annotationBusy,
   onCopyFeedback,
@@ -35,6 +36,7 @@ export function ReaderDictionary({
   extending,
   busy,
 }: {
+  autoLookup?: boolean;
   onAnnotate?: (note: boolean) => void;
   annotationBusy?: boolean;
   onCopyFeedback?: (message: string) => void;
@@ -151,8 +153,8 @@ export function ReaderDictionary({
   const keyboardLookup = useRef(lookup);
   keyboardLookup.current = lookup;
   useEffect(() => {
-    if (selection.lookupRequest && selection.word) void keyboardLookup.current();
-  }, [selection.lookupRequest, selection.cfi, selection.word]);
+    if ((autoLookup || selection.lookupRequest) && selection.word) void keyboardLookup.current();
+  }, [autoLookup, selection.lookupRequest, selection.cfi, selection.word]);
 
   function pronounce() {
     if (!selection.word) return;

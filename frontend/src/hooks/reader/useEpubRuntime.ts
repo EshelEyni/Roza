@@ -12,6 +12,8 @@ export function useEpubRuntime(
   selection: ReaderTextSelection | null,
 ) {
   const keyboardRef = useRef(defaultReaderKeyboardSettings);
+  const rsvpLocation = useRef(state.location.includes(",") ? state.location : "");
+  const rsvpActive = useRef(false);
   const host = useRef<HTMLDivElement>(null);
   const shell = useRef<HTMLDivElement>(null);
   const stateRef = useRef(state);
@@ -39,6 +41,8 @@ export function useEpubRuntime(
   return useMemo(
     () => ({
       keyboardRef,
+      rsvpLocation,
+      rsvpActive,
       host,
       shell,
       stateRef,
