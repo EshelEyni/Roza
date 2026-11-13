@@ -1,7 +1,7 @@
 // Browser fixture: production selection hooks and epub.js, without the API server.
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
-import ePub, { EpubCFI, type Contents, type Location } from "epubjs";
+import ePub, { EpubCFI, type Contents } from "epubjs";
 import JSZip from "jszip";
 import i18next from "i18next";
 import { initReactI18next } from "react-i18next";
@@ -17,6 +17,7 @@ import type { ReaderPassage } from "../../shared/types/readerChat";
 import { ReaderSettings } from "../../frontend/src/components/Reader/ReaderSettings";
 import { applyPreferences } from "../../frontend/src/services/readerPreferences";
 import type { ReaderPreferences } from "../../shared/types/reader";
+import { ReaderViewport } from "../../frontend/src/components/Reader/ReaderViewport";
 import { ReaderFooter } from "../../frontend/src/components/Reader/ReaderFooter";
 import { useEpubPageTurns } from "../../frontend/src/hooks/reader/useEpubPageTurns";
 import { ReaderDictionary } from "../../frontend/src/components/Reader/ReaderDictionary";
@@ -220,13 +221,11 @@ function Fixture() {
       book.destroy();
     };
   }, []);
-  const location = runtime.current.renditionRef.current?.location as
-    | Location
-    | undefined;
   return (
     <ReaderPassageMarks.Provider value={passageMarks}>
     <div className="reader-shell reader-theme-light">
-      <div ref={host} style={{ width: "100%", height: 300 }} />
+      <div style={{ height: 300, display: "flex" }}><ReaderViewport width="comfortable" loading={false} error=""
+        retry={() => {}} move={move} atStart={false} atEnd={false} host={host} /></div>
       <details><summary>Test reader settings</summary><ReaderSettings preferences={preferences} onChange={setPreferences} publisherPagesAvailable={false} /></details>
       <ReaderFooter state={{ location: "", progress: 0, savedAt: 0, preferences }} locationsReady={false}
         loading={false} onProgressNavigate={async () => {}} move={move} atStart={false} atEnd={false}
@@ -237,6 +236,8 @@ function Fixture() {
         <ReaderDictionary
           key={selection.textSelection.cfi}
           selection={selection.textSelection}
+          onAnnotate={note => Object.assign(window, { annotatedSelection: latest.current.textSelection, annotationNote: note })}
+          getLookupPage={async cfi => cfi}
           bookId="test"
           onClose={selection.closeLookup}
           onAskAi={() =>
@@ -245,11 +246,8 @@ function Fixture() {
           aiDisabled={
             selection.busy || selection.textSelection.text.length > 20000
           }
-          onExtend={(direction) => selection.extend(runtime.current, direction)}
           extending={selection.extending}
           busy={selection.busy}
-          atStart={!!location?.atStart}
-          atEnd={!!location?.atEnd}
         />
       )}
     </div>

@@ -43,7 +43,11 @@ export function bindReaderContents(
   cleanups.push(() =>
     contents.document.removeEventListener("selectionchange", onSelectionChange),
   );
+  let selectionClickStart: { x: number; y: number } | undefined;
+  let selectionClickMoved = false;
   const onPointerDown = (event: PointerEvent) => {
+    selectionClickStart = { x: event.clientX, y: event.clientY };
+    selectionClickMoved = false;
     if (event.button === 2 && (event.buttons & 1) && dragging && dragButton === 1) {
       return;
     }
@@ -148,6 +152,8 @@ export function bindReaderContents(
     stopEdge();
   };
   const onMouseMove = (event: MouseEvent) => {
+    if (selectionClickStart && Math.hypot(event.clientX - selectionClickStart.x,
+      event.clientY - selectionClickStart.y) > 4) selectionClickMoved = true;
     if (dragging && event.buttons === 0) {
       onMouseUp();
       return;
@@ -236,6 +242,9 @@ export function bindReaderContents(
   );
   // Never navigate the app or open remote links from an uploaded document.
   const onClick = (event: MouseEvent) => {
+    // A plain click dismisses a persistent cross-page range; native drags stay native.
+    if (!mobileRef.current && !selectionClickMoved && selection.isExtending?.() &&
+      !contents.document.getSelection()?.toString().trim()) selection.closeLookup();
     const anchor = (event.target as Element | null)?.closest?.("a");
     if (
       anchor &&

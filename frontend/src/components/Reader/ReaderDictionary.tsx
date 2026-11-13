@@ -8,8 +8,6 @@ import {
   FiVolume2,
   FiX,
   FiCopy,
-  FiArrowLeft,
-  FiArrowRight,
 } from "react-icons/fi";
 import { ReaderSheet } from "./ReaderSheet";
 import { useReaderMobile } from "../../hooks/useReaderMobile";
@@ -34,11 +32,8 @@ export function ReaderDictionary({
   onTranslationDismiss,
   onAskAi,
   aiDisabled = false,
-  onExtend,
   extending,
   busy,
-  atStart,
-  atEnd,
 }: {
   onAnnotate?: (note: boolean) => void;
   annotationBusy?: boolean;
@@ -50,11 +45,8 @@ export function ReaderDictionary({
   onTranslationDismiss?: (selection: ReaderTextSelection) => void;
   onAskAi: (autoSubmit?: boolean) => void;
   aiDisabled?: boolean;
-  onExtend: (direction: "next" | "prev") => Promise<void>;
   extending: boolean;
   busy: boolean;
-  atStart: boolean;
-  atEnd: boolean;
 }) {
   const { t } = useTranslation();
   const mobile = useReaderMobile();
@@ -95,7 +87,8 @@ export function ReaderDictionary({
       if (
         !(mobile && opened) &&
         event.target instanceof Node &&
-        !dialog.current?.contains(event.target)
+        !dialog.current?.contains(event.target) &&
+        !(event.target instanceof Element && event.target.closest("[data-reader-page-turn]"))
       )
         onClose();
     };
@@ -202,7 +195,7 @@ export function ReaderDictionary({
       onCopyFeedback?.(t("reader.selectionCopyError"));
     }
   }
-  const actionCount = 5 + (selection.word ? 1 : 0) + (onAnnotate ? 1 : 0);
+  const actionCount = 2 + (selection.word ? 1 : 0) + (onAnnotate ? 1 : 0);
   // Match the icon widths, gaps, 6px padding, and 1px border on each side.
   const actionWidth = actionCount * (mobile ? 44 : 38) +
     (actionCount - 1) * (mobile ? 4 : 2) + 14;
@@ -229,7 +222,8 @@ export function ReaderDictionary({
       setMobilePosition({
         width: popupWidth,
         left: left + (width - popupWidth) / 2,
-        top: Math.max(top + 12, top + height - Math.min(element.scrollHeight + 2, maxHeight) - 8),
+        top: Math.max(top + 12, top + height - Math.min(element.scrollHeight + 2, maxHeight) -
+          (document.querySelector(".reader-footer")?.getBoundingClientRect().height || 0) - 8),
         maxHeight,
         visibility: "visible",
       });
@@ -268,7 +262,8 @@ export function ReaderDictionary({
           !mobile &&
           !opened &&
           !extending &&
-          !event.currentTarget.contains(event.relatedTarget)
+          !event.currentTarget.contains(event.relatedTarget) &&
+          !(event.relatedTarget instanceof Element && event.relatedTarget.closest("[data-reader-page-turn]"))
         )
           onClose();
       }}
@@ -316,47 +311,21 @@ export function ReaderDictionary({
             >
               <FiMessageSquare aria-hidden="true" />
             </button>
-            <button
-              className="reader-icon-button"
-              disabled={busy}
-              onClick={() => void copy()}
-              aria-label={t("reader.selectionCopy")}
-              title={t("reader.selectionCopy")}
-            >
-              <FiCopy aria-hidden="true" />
-            </button>
-            <button
-              className="reader-icon-button"
-              disabled={busy || atStart}
-              onClick={() => void onExtend("prev")}
-              aria-label={t("reader.selectionPrevious")}
-              title={t("reader.selectionPrevious")}
-            >
-              <FiArrowLeft aria-hidden="true" />
-            </button>
-            <button
-              className="reader-icon-button"
-              disabled={busy || atEnd}
-              onClick={() => void onExtend("next")}
-              aria-label={t("reader.selectionNext")}
-              title={t("reader.selectionNext")}
-            >
-              <FiArrowRight aria-hidden="true" />
-            </button>
             {onAnnotate && <>
-              <button className="reader-icon-button" disabled={busy || annotationBusy}
+              <button className="reader-icon-button reader-selection-annotate" disabled={busy || annotationBusy}
                 onClick={() => onAnnotate(true)} aria-label={t("reader.annotations.addNote")}
                 title={t("reader.annotations.addNote")}>
                 <FiEdit3 aria-hidden="true" />
               </button>
             </>}
             <button
-              className="reader-icon-button"
-              onClick={onClose}
-              aria-label={t("reader.close")}
-              title={t("reader.close")}
+              className="reader-icon-button reader-selection-copy"
+              disabled={busy}
+              onClick={() => void copy()}
+              aria-label={t("reader.selectionCopy")}
+              title={t("reader.selectionCopy")}
             >
-              <FiX aria-hidden="true" />
+              <FiCopy aria-hidden="true" />
             </button>
           </div>
           {extending && (

@@ -1201,6 +1201,10 @@
   align-items: center;
   gap: 2px;
 }
+.reader-dictionary-actions:dir(rtl) {
+  .reader-selection-copy { order: 1; }
+  .reader-selection-annotate { order: 2; }
+}
 .reader-selection-help {
   margin: 4px;
   font-size: 12px;
@@ -1933,7 +1937,7 @@
 .reader-color-preview { margin: 0; padding: 8px 10px; border-radius: 4px; font: 14px/1.5 Georgia, serif; }
 
 .reader-progress-destination { white-space: nowrap; max-width: min(280px, 85vw); overflow: hidden; text-overflow: ellipsis; z-index: 10; }
-.reader-return-button { flex-shrink: 0; max-width: 190px; border: 0; border-radius: 5px; padding: 5px 8px; font: inherit; font-size: 11px; color: inherit; background: #a389611a; cursor: pointer; }
+.reader-return-button { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; align-self: center; text-align: center; line-height: 1.3; white-space: nowrap; flex-shrink: 0; max-width: 190px; border: 0; border-radius: 5px; padding: 5px 8px; font: inherit; font-size: 11px; color: inherit; background: #a389611a; cursor: pointer; }
 .reader-return-button:hover { background: #a3896130; }
 .reader-return-button:focus-visible { outline: 2px solid #b18b55; outline-offset: 2px; }
 @media (max-width: 1024px) { .reader-return-button { max-width: 140px; font-size: 10px; } }

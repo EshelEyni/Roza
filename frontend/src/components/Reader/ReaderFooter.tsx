@@ -59,6 +59,8 @@ export function ReaderFooter({
       </div>
       <button
         className="reader-icon-button"
+        data-reader-page-turn
+        onPointerDown={event => event.preventDefault()}
         onClick={() => move("prev")}
         disabled={loading || atStart}
         aria-label={t("reader.previous")}
@@ -67,7 +69,10 @@ export function ReaderFooter({
         <FiArrowLeft />
       </button>
       {returnPoint && goBack && <button type="button" className="reader-return-button" disabled={loading}
-        onClick={() => void goBack()}>{t("reader.goBackPage",{page:returnPoint.label})}</button>}
+        onClick={() => void goBack()} aria-label={t("reader.goBackPage",{page:returnPoint.label})}>
+        <span>{t("reader.goBackTo")}</span>
+        <span>{t("reader.goBackPageLine",{page:returnPoint.label})}</span>
+      </button>}
       <div className="reader-footer-center">
         <p>{chapter || t("reader.reading")}</p>
         <ReaderProgress
@@ -112,6 +117,8 @@ export function ReaderFooter({
       </div>
       <button
         className="reader-icon-button"
+        data-reader-page-turn
+        onPointerDown={event => event.preventDefault()}
         onClick={() => move("next")}
         disabled={loading || atEnd}
         aria-label={t("reader.next")}

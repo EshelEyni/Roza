@@ -37,6 +37,8 @@ export function ReaderViewport({
           "reader-page-turn-area" +
           (loading || !!error || atStart ? " is-disabled" : "")
         }
+        data-reader-page-turn
+        onPointerDown={event => event.preventDefault()}
         onClick={() => {
           if (!loading && !error && !atStart) move("prev");
         }}
@@ -56,6 +58,8 @@ export function ReaderViewport({
           "reader-page-turn-area" +
           (loading || !!error || atEnd ? " is-disabled" : "")
         }
+        data-reader-page-turn
+        onPointerDown={event => event.preventDefault()}
         onClick={() => {
           if (!loading && !error && !atEnd) move("next");
         }}

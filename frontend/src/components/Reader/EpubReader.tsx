@@ -48,11 +48,8 @@ export function EpubReader({
             reader.textSelection.text.length > readerAiLimits.passage
           }
           onAskAi={reader.askAi}
-          onExtend={reader.extendSelection}
           extending={reader.selectionExtending}
           busy={reader.selectionBusy}
-          atStart={reader.atStart}
-          atEnd={reader.atEnd}
         />
       )}
       <ReaderToolbar

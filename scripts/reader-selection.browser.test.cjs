@@ -235,7 +235,7 @@ test(
             }
             }
             await run(() => window.selectionTest.setPanel(null));
-            const edge = await page.locator('.reader-shell').evaluate(shell => shell.getBoundingClientRect().right - 5);
+            const edge = await page.locator('.reader-viewport').evaluate(host => host.getBoundingClientRect().right - 5);
             const position = () => run(() => window.selectionTest.rendition.currentLocation().start.cfi);
             await page.mouse.move(points[0].x, points[0].y);
             await page.mouse.down({ button: 'left' });
@@ -336,9 +336,35 @@ test(
             assert.equal(await position(), rightLocked);
             await run(() => window.selectionTest.display(0));
           }
+          // Ticket #27: compact actions and shared navigation preserve native ranges.
+          await run(() => window.selectionTest.select(0, 7));
+          const actions = page.locator('.reader-dictionary-actions');
+          await actions.waitFor();
+          assert.deepEqual(await actions.getByRole('button').evaluateAll(buttons => buttons.map(b => b.getAttribute('aria-label'))),
+            ['Look up in Hebrew', 'Ask AI', 'Add Note', 'Copy selected text']);
+          for (const direction of ['ltr', 'rtl']) {
+            await actions.evaluate((row, dir) => row.setAttribute('dir', dir), direction);
+            const pencil = await actions.getByRole('button', {name: 'Add Note', exact: true}).boundingBox();
+            const copy = await actions.getByRole('button', {name: 'Copy selected text', exact: true}).boundingBox();
+            assert.ok(pencil.x + pencil.width <= copy.x + 1, 'Pencil stays immediately left of Copy in ' + direction);
+          }
+          await actions.evaluate(row => row.removeAttribute('dir'));
+          await page.getByRole('button', { name: 'Copy selected text', exact: true })[mobile ? 'tap' : 'click']();
+          assert.equal(await run(() => navigator.clipboard.readText()), 'chapter');
+          await page.getByRole('button', { name: 'Add Note', exact: true })[mobile ? 'tap' : 'click']();
+          assert.equal(await run(() => window.annotationNote), true);
+          assert.equal(await run(() => window.annotatedSelection.text), 'chapter');
+          assert.equal(await run(() => window.selectionTest.rendition.getContents()[0].document.getSelection().toString()), 'chapter');
+          await page.locator('.reader-shell').click({ position: { x: 2, y: 305 } });
+          await page.waitForFunction(() => !window.selectionTest.selected);
+          const beforeNormal = await run(() => window.selectionTest.rendition.currentLocation().start.cfi);
+          await page.getByRole('button', { name: 'Next page or section', exact: true })[mobile ? 'tap' : 'click']();
+          await page.waitForFunction(previous => window.selectionTest.rendition.currentLocation().start.cfi !== previous, beforeNormal);
+          assert.equal(await run(() => window.selectionTest.selected), null);
+          await run(() => window.selectionTest.display(0));
           await run(() => window.selectionTest.select(0, 13));
           await page
-            .getByRole("button", { name: "Extend selection to the next page" })
+            .getByRole("button", { name: "Next page or section" })
             [mobile ? "tap" : "click"]();
           await page.waitForFunction(
             () => window.selectionTest.extending && !window.selectionTest.busy,
@@ -359,6 +385,27 @@ test(
             await run(() => window.selectionTest.clipboard()),
             await run(() => window.selectionTest.selected.text),
           );
+
+          await page.getByRole('button', {name: 'Add Note', exact: true})[mobile ? 'tap' : 'click']();
+          assert.equal(await run(() => window.annotatedSelection.text), await run(() => window.selectionTest.selected.text));
+          const nextPosition = await run(() => window.selectionTest.rendition.currentLocation().start.cfi);
+          await page.getByRole('button', {name: 'Previous page or section', exact: true})[mobile ? 'tap' : 'click']();
+          await page.waitForFunction(previous => !window.selectionTest.busy && window.selectionTest.rendition.currentLocation().start.cfi !== previous, nextPosition);
+          assert.ok(await run(() => window.selectionTest.extending && !!window.selectionTest.selected.text));
+          await page.getByRole('button', {name: 'Next page or section', exact: true})[mobile ? 'tap' : 'click']();
+          await page.waitForFunction(() => !window.selectionTest.busy);
+          const viewport = await page.locator('.reader-viewport').boundingBox();
+          if (mobile) {
+            const toolbar = await page.locator('.reader-dictionary').boundingBox();
+            const footer = await page.locator('.reader-footer').boundingBox();
+            assert.ok(toolbar.y + toolbar.height <= footer.y, 'Selection actions leave footer controls accessible');
+            await page.touchscreen.tap(viewport.x + viewport.width / 2, viewport.y + viewport.height - 4);
+          } else await page.mouse.click(viewport.x + viewport.width / 2, viewport.y + viewport.height - 4);
+          await page.waitForFunction(() => !window.selectionTest.selected);
+          await run(() => window.selectionTest.display(0));
+          await run(() => window.selectionTest.select(0, 13));
+          await page.getByRole('button', {name: 'Next page or section', exact: true})[mobile ? 'tap' : 'click']();
+          await page.waitForFunction(() => window.selectionTest.extending && !window.selectionTest.busy);
 
           // Skip no content when extending repeatedly over multiple chapter iframes.
           await run(async () => {
@@ -457,7 +504,7 @@ test(
                 y: frame.top + rect.top + 8,
                 edge:
                   document
-                    .querySelector(".reader-shell")
+                    .querySelector(".reader-viewport")
                     .getBoundingClientRect().right - 5,
               };
             });
@@ -487,7 +534,7 @@ test(
             api.select(api.texts[0].length - 30, api.texts[0].length - 10);
           });
           await page
-            .getByRole("button", { name: "Extend selection to the next page" })
+            .getByRole("button", { name: "Next page or section" })
             [mobile ? "tap" : "click"]();
           await page.waitForFunction(
             () =>
@@ -552,7 +599,7 @@ test(
             .getByRole("button", { name: "Look up in Hebrew" })
             [mobile ? "tap" : "click"]();
           await page
-            .getByRole("button", { name: "Translate with Google" })
+            .getByRole("button", { name: "Google", exact: true })
             [mobile ? "tap" : "click"]();
           await page
             .locator('.reader-dictionary-meanings[lang="he-x-mtfrom-en"]')
