@@ -212,8 +212,29 @@ test(
                 () => !!window.annotationTest.reader.textSelection,
               );
               await page
-                .getByRole("button", { name: "Highlight", exact: true })
+                .getByRole("button", { name: "Add Note", exact: true })
                 .click();
+              assert.equal(await page.getByRole("button", {name:"Highlight",exact:true}).count(), 0);
+              assert.equal(await page.getByRole("button", {name:"None",exact:true}).getAttribute("aria-pressed"), "true");
+              assert.equal(await page.getByRole("button", {name:"Remove",exact:true}).count(), 0);
+              await page.getByLabel("Personal note").fill("Unsaved note");
+              assert.equal(await page.getByRole("button", {name:"Remove note",exact:true}).count(), 0);
+              await page.getByLabel("Personal note").fill("");
+              await page.getByRole("button", {name:"Yellow",exact:true}).click();
+              await page.waitForSelector('.reader-saved-annotation[data-color="yellow"] rect');
+              assert.equal(await page.evaluate(()=>window.annotationTest.reader.annotations.items.length),0);
+              assert.equal((saved.get(owner + ':annotations') || []).length,0);
+              await page.getByRole("button", {name:"Cancel",exact:true}).click();
+              await page.waitForFunction(()=>!window.annotationTest.reader.annotations.draft);
+              assert.equal(await page.locator('.reader-saved-annotation').count(),0);
+              await page.evaluate(p=>window.annotationTest.reader.annotations.select(p,true),passage);
+              await page.getByRole("button", {name:"Yellow",exact:true}).click();
+              await page.getByRole("button", {name:"Save",exact:true}).click();
+              await page.evaluate(()=>window.annotationTest.reader.closePanel());
+              await page.waitForFunction(before=>{
+                const doc=window.annotationTest.reader.host.current.querySelector('iframe')?.contentDocument;
+                return !!doc && doc.documentElement.scrollWidth===before.width && doc.body.scrollHeight===before.height;
+              },before);
               await page.waitForFunction(
                 () =>
                   window.annotationTest.reader.annotations.items.length === 1,
@@ -261,10 +282,11 @@ test(
               await page
                 .locator(".reader-saved-annotation")
                 .evaluate((el) => el.dispatchEvent(new MouseEvent("click")));
-              await page.getByLabel("Personal note").fill("A personal note");
               await page
                 .getByRole("button", { name: "Pink", exact: true })
                 .click();
+              await page.getByLabel("Personal note").fill("A personal note");
+              assert.equal(await page.getByRole("group", { name: "Highlight color" }).count(), 1);
               await page
                 .getByRole("button", { name: "Save", exact: true })
                 .click();
@@ -273,8 +295,10 @@ test(
                   window.annotationTest.reader.annotations.items[0]?.note ===
                   "A personal note",
               );
+              await page.waitForSelector('.reader-saved-annotation[data-note="true"] rect');
+              assert.equal(await page.locator('.reader-saved-annotation[data-note="true"] rect').first().evaluate(el => getComputedStyle(el).fill), "rgb(245, 164, 204)");
               await page
-                .getByRole("button", { name: "Edit / Add note", exact: true })
+                .getByRole("button", { name: "Edit", exact: true })
                 .click();
               await page.getByLabel("Personal note").fill("Edited note");
               await page
@@ -285,6 +309,48 @@ test(
                   window.annotationTest.reader.annotations.items[0]?.note ===
                   "Edited note",
               );
+              await page.waitForFunction(() => /Page \d+/.test(document.querySelector('.reader-annotation-page')?.textContent || ''));
+              if (mobile) await page.evaluate(()=>window.annotationTest.reader.closePanel());
+              await page.waitForFunction(()=>window.annotationTest.reader.remainingSectionPages !== null && window.annotationTest.reader.remainingBookPages !== null);
+              const progressIndicator = page.locator('.reader-reading-remaining:visible');
+              assert.match(await progressIndicator.textContent(), /%$/);
+              await progressIndicator.click();
+              const remaining = await page.evaluate(()=>({section:window.annotationTest.reader.remainingSectionPages,book:window.annotationTest.reader.remainingBookPages}));
+              assert.equal(await progressIndicator.textContent(), 'Section: '+remaining.section+' left');
+              await progressIndicator.click();
+              assert.equal(await progressIndicator.textContent(), 'Book: '+remaining.book+' left');
+              await progressIndicator.click();
+              assert.match(await progressIndicator.textContent(), /%$/);
+              if (mobile) {
+                await page.getByRole("button", {name:"Annotations",exact:true}).click();
+                await page.waitForFunction(()=>/Page \d+/.test(document.querySelector(".reader-annotation-page")?.textContent || ""));
+              }
+              const readingCfi = await page.evaluate(()=>window.annotationTest.reader.location.start.cfi);
+              const search = page.getByRole('searchbox', {name:'Search annotations'});
+              await search.fill('EDITED NOTE');
+              assert.equal(await page.locator('.reader-annotation-card').count(),1);
+              await search.fill('chapter0word1');
+              assert.equal(await page.locator('.reader-annotation-card').count(),1);
+              await search.fill('no-such-passage-or-note');
+              assert.equal(await page.locator('.reader-annotation-card').count(),0);
+              await page.getByRole('button',{name:'Reset filters',exact:true}).click();
+              assert.equal(await page.getByRole('slider',{name:'From page',exact:true}).isVisible(),false);
+              await page.locator('.reader-annotation-page-filter > summary').click();
+              const from = page.getByRole('slider',{name:'From page',exact:true});
+              const to = page.getByRole('slider',{name:'To page',exact:true});
+              await from.waitFor();
+              await page.waitForFunction(()=>!document.querySelector('[aria-label="From page"]').disabled);
+              await from.focus(); await from.press('End');
+              assert.equal(await page.locator('.reader-annotation-card').count(),0);
+              await from.press('Home');
+              assert.equal(await page.locator('.reader-annotation-card').count(),1);
+              await to.focus(); await to.press('Home');
+              assert.equal(await to.inputValue(),'1');
+              assert.equal(await page.locator('.reader-annotation-card').count(),1);
+              await page.getByRole('button',{name:'Reset filters',exact:true}).click();
+              assert.equal(await page.evaluate(()=>window.annotationTest.reader.location.start.cfi),readingCfi);
+              const arrows = await page.locator('.reader-footer > .reader-icon-button').evaluateAll(elements=>elements.map(el=>getComputedStyle(el).display));
+              assert.ok(arrows.every(display=>mobile ? display !== 'none' : display === 'none'));
               await page.evaluate(() =>
                 window.annotationTest.reader.closePanel(),
               );
@@ -338,11 +404,11 @@ test(
                 .getByRole("button", { name: "Annotations", exact: true })
                 .click();
               await page
-                .getByRole("button", { name: "Edit / Add note", exact: true })
+                .getByRole("button", { name: "Edit", exact: true })
                 .click();
-              await page
-                .getByRole("button", { name: "Remove note", exact: true })
-                .click();
+              assert.equal(await page.getByRole("button", {name:"Remove",exact:true}).count(), 1);
+              assert.equal(await page.getByRole("button", {name:"Remove note",exact:true}).count(), 0);
+              await page.getByLabel("Personal note").fill("");
               await page
                 .getByRole("button", { name: "Save", exact: true })
                 .click();
@@ -374,6 +440,9 @@ test(
                   window.annotationTest.reader.annotations.select(p, false),
                 overlap,
               );
+              await page.getByRole("button", {name:"Yellow",exact:true}).click();
+              await page.getByRole("button", {name:"Save",exact:true}).click();
+              await page.evaluate(()=>window.annotationTest.reader.closePanel());
               await page.waitForFunction(
                 () =>
                   window.annotationTest.reader.annotations.items.length === 2,
@@ -417,6 +486,9 @@ test(
                   window.annotationTest.reader.annotations.select(p, false),
                 extended,
               );
+              await page.getByRole("button", {name:"Yellow",exact:true}).click();
+              await page.getByRole("button", {name:"Save",exact:true}).click();
+              await page.evaluate(()=>window.annotationTest.reader.closePanel());
               await page.waitForFunction(
                 () =>
                   window.annotationTest.reader.annotations.items.length === 2,
@@ -469,7 +541,7 @@ test(
                 .getByRole("button", { name: "Annotations", exact: true })
                 .click();
               await page
-                .getByRole("button", { name: "Delete annotation", exact: true })
+                .getByRole("button", { name: "Remove", exact: true })
                 .click();
               await page.waitForFunction(
                 () =>

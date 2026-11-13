@@ -87,6 +87,9 @@ export function useReaderPagination(
   return {
     renderingPreferences: visualPreferences,
     describeLocation,
+    totalPages: pageCount?.total || 0,
+    remainingSectionPages: pageCount?.sectionRemaining ?? null,
+    remainingBookPages: pageCount ? Math.max(0, pageCount.total - pageCount.page) : null,
     pageLabel,
     showPublisherPages,
     togglePageNumbering,

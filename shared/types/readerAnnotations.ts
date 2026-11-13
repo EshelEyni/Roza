@@ -1,4 +1,4 @@
-export const annotationColors = ["yellow", "green", "blue", "pink"] as const;
+export const annotationColors = ["none", "yellow", "green", "blue", "pink"] as const;
 export type AnnotationColor = (typeof annotationColors)[number];
 export interface ReaderAnnotationInput {
   cfi: string;

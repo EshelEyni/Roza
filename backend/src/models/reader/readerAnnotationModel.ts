@@ -7,7 +7,7 @@ const schema = new Schema(
     endCfi: { type: String, maxlength: 4096, default: "" },
     text: { type: String, required: true, maxlength: 100000 },
     chapter: { type: String, maxlength: 1000, default: "" },
-    color: { type: String, enum: ["yellow", "green", "blue", "pink"], required: true },
+    color: { type: String, enum: ["none", "yellow", "green", "blue", "pink"], required: true },
     note: { type: String, maxlength: 10000, default: "" },
   },
   {

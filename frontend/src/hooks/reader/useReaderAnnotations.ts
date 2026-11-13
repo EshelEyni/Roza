@@ -16,6 +16,7 @@ export function useReaderAnnotations(
   chapter: string,
   openPanel: () => void,
   closeLookup: () => void,
+  previewing = false,
 ) {
   const [items, setItems] = useState<ReaderAnnotation[]>([]);
   const [draft, setDraft] = useState<
@@ -62,7 +63,11 @@ export function useReaderAnnotations(
     const ranges = new Map<string, ReaderAnnotation[]>();
     const added: string[] = [];
     const draw = async () => {
-      for (const item of items) {
+      const visible: ReaderAnnotation[] = draft && previewing
+        ? [...items.filter(item => item.id !== draft.id), { ...draft, id: draft.id || "__preview" }]
+        : items;
+      for (const item of visible) {
+        if (item.color === "none" && !item.note.trim()) continue;
         try {
           const pieces = item.endCfi
             ? (
@@ -100,6 +105,7 @@ export function useReaderAnnotations(
                 )
               )
                 return;
+              if (item.id === "__preview") return;
               closeLookup();
               setDraft(item);
               openPanel();
@@ -118,7 +124,7 @@ export function useReaderAnnotations(
       active = false;
       for (const cfi of added) rendition.annotations.remove(cfi, "underline");
     };
-  }, [rendition, items, runtime, closeLookup, openPanel]);
+  }, [rendition, items, draft, previewing, runtime, closeLookup, openPanel]);
 
   function select(selection: ReaderTextSelection, note: boolean) {
     if (loading || error === "loadError") {
@@ -130,6 +136,11 @@ export function useReaderAnnotations(
         item.cfi === selection.cfi &&
         (item.endCfi || "") === (selection.endCfi || ""),
     );
+    closeLookup();
+    if (existing && !note) {
+      void remove(existing.id);
+      return;
+    }
     const book = runtime.epubRef.current;
     const section = book?.spine.get(selection.cfi);
     const title = section
@@ -140,11 +151,10 @@ export function useReaderAnnotations(
       endCfi: selection.endCfi || "",
       text: selection.text,
       chapter: title,
-      color: "yellow" as const,
+      color: "none" as const,
       note: "",
     };
-    closeLookup();
-    if (note || existing) {
+    if (note || !existing) {
       setDraft(next);
       openPanel();
     } else {
@@ -154,6 +164,11 @@ export function useReaderAnnotations(
   }
   async function save(value: ReaderAnnotationInput) {
     if (pending.current) return;
+    if (value.color === "none" && !value.note.trim()) {
+      const existing = items.find(item => item.cfi === value.cfi && (item.endCfi || "") === (value.endCfi || ""));
+      if (existing) await remove(existing.id);
+      return;
+    }
     pending.current = true;
     setBusy(true);
     setError("");
@@ -186,7 +201,10 @@ export function useReaderAnnotations(
       setItems((current) => current.filter((item) => item.id !== id));
       setDraft(null);
     } catch {
-      if (currentScope.current === scope) setError("saveError");
+      if (currentScope.current === scope) {
+        setError("saveError");
+        openPanel();
+      }
     } finally {
       pending.current = false;
       setBusy(false);

@@ -15,7 +15,7 @@ function Fixture(){
  useEffect(()=>{Object.assign(window,{navigationTest:{reader}})},[reader]);
  return <div className="reader-shell reader-theme-sepia" ref={reader.shell}>
  <div className="reader-workspace"><ReaderViewport width="comfortable" loading={reader.loading} error={reader.error} retry={reader.retry} move={reader.move} atStart={reader.atStart} atEnd={reader.atEnd} host={reader.host}/></div>
- <ReaderFooter state={reader.state} locationsReady={reader.locationsReady} loading={reader.loading} onProgressNavigate={reader.onProgressNavigate} getProgressDestination={reader.getProgressDestination} returnPoint={reader.returnPoint} goBack={reader.goBack} move={reader.move} atStart={reader.atStart} atEnd={reader.atEnd} chapter={reader.chapter} showPublisherPages={reader.showPublisherPages} pageLabel={reader.pageLabel} togglePageNumbering={reader.togglePageNumbering} saveStatus={reader.saveStatus} retrySave={reader.retrySave}/>
+ <ReaderFooter remainingSectionPages={reader.remainingSectionPages} remainingBookPages={reader.remainingBookPages} state={reader.state} locationsReady={reader.locationsReady} loading={reader.loading} onProgressNavigate={reader.onProgressNavigate} getProgressDestination={reader.getProgressDestination} returnPoint={reader.returnPoint} goBack={reader.goBack} move={reader.move} atStart={reader.atStart} atEnd={reader.atEnd} chapter={reader.chapter} showPublisherPages={reader.showPublisherPages} pageLabel={reader.pageLabel} togglePageNumbering={reader.togglePageNumbering} saveStatus={reader.saveStatus} retrySave={reader.retrySave}/>
  </div>;
 }
 createRoot(document.getElementById('root')!).render(<Fixture/>);

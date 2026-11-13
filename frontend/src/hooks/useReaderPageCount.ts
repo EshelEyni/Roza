@@ -8,7 +8,7 @@ import {
   PublisherPage,
 } from "../services/readerPublisherPages";
 
-type PageCount = { page: number; total: number };
+type PageCount = { page: number; total: number; sectionRemaining?: number };
 
 /** Measure actual screen pages in a separate rendition, never seek the visible reader. */
 export function useReaderPageCount(
@@ -153,6 +153,7 @@ export function useReaderPageCount(
               section.offset + Math.min(section.pages, Math.max(1, page)),
             ),
             total,
+            sectionRemaining: Math.max(0, section.pages - Math.max(1, Math.min(section.pages, page))),
           });
       } while (pending && !cancelled);
       running = false;

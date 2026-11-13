@@ -66,7 +66,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   );
   const openAnnotations = useCallback(() => setPanel("annotations"), [setPanel]);
   const annotations = useReaderAnnotations(runtime, book.id, userId, engine.chapter,
-    openAnnotations, selection.closeLookup);
+    openAnnotations, selection.closeLookup, panel === "annotations");
   const {describeLocation} = pagination;
   useEpubPreferences(
     runtime,

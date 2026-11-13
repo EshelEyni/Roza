@@ -62,8 +62,8 @@ export function ReaderWorkspace({ chat, onClose, onPassageNavigate }: Props) {
     <header className="reader-groups-heading"><div><h2>{t("reader.groups.title")}</h2>
       <span>{t(split ? "reader.groups.two" : "reader.groups.one")}</span></div>
       <div className="reader-groups-actions">
-        <button className="reader-button" type="button" onClick={() => void chat.loadHistory()}><FiList />{t("reader.groups.all")}</button>
-        <button className="reader-button" type="button" onClick={() => split ? chat.mergeGroups() : chat.splitGroup()}><FiColumns />{t(split ? "reader.groups.merge" : "reader.groups.split")}</button>
+        <button className="reader-button reader-compact-action" type="button" aria-label={t("reader.groups.all")} title={t("reader.groups.all")} onClick={() => void chat.loadHistory()}><FiList aria-hidden="true" /><span className="reader-action-label">{t("reader.groups.all")}</span></button>
+        <button className="reader-button reader-compact-action" type="button" aria-label={t(split ? "reader.groups.merge" : "reader.groups.split")} title={t(split ? "reader.groups.merge" : "reader.groups.split")} onClick={() => split ? chat.mergeGroups() : chat.splitGroup()}><FiColumns aria-hidden="true" /><span className="reader-action-label">{t(split ? "reader.groups.merge" : "reader.groups.split")}</span></button>
         <button className="reader-icon-button" type="button" aria-label={t("reader.chat.settings.title")} title={t("reader.chat.settings.title")}
           onClick={() => setAiSettings(value => !value)}><FiSettings /></button>
       </div>

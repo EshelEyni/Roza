@@ -1,3 +1,5 @@
+import { execFileSync } from "node:child_process";
+import path from "node:path";
 import express, { Request, Response, NextFunction } from "express";
 import request from "supertest";
 import readerRouter from "./readerRouter";
@@ -82,7 +84,7 @@ describe("saved reader annotations", () => {
     expect(ReaderAnnotationModel.findOneAndUpdate).not.toHaveBeenCalled();
     expect(ReaderAnnotationModel.findOneAndDelete).not.toHaveBeenCalled();
   });
-  it.each(["yellow", "green", "blue", "pink"])(
+  it.each(["none", "yellow", "green", "blue", "pink"])(
     "saves and edits %s highlights and notes without accepting ownership fields",
     async color => {
       const value = { ...data, color, note: "My note" };
@@ -153,4 +155,12 @@ describe("saved reader annotations", () => {
       expect.any(Object),
     );
   });
+});
+
+// Jest transpiles shared files itself, so route tests alone miss ESM/CJS loader errors.
+it("loads annotations with the real development CommonJS loader", () => {
+  expect(() => execFileSync(process.execPath, [
+    "-r", "ts-node/register/transpile-only", "-e",
+    "require('./src/controllers/reader/readerAnnotationController'); process.exit(0)",
+  ], { cwd: path.resolve(__dirname, "../../.."), timeout: 15000, stdio: "pipe" })).not.toThrow();
 });

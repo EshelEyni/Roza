@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { ReaderProgress } from "./ReaderProgress";
@@ -17,9 +18,11 @@ type Props = Pick<
   | "togglePageNumbering"
   | "saveStatus"
   | "retrySave"
-> & { getProgressDestination?: (progress: number) => Promise<string | null>; returnPoint?: {label:string} | null; goBack?: () => Promise<void> };
+> & { remainingSectionPages?: number | null; remainingBookPages?: number | null; getProgressDestination?: (progress: number) => Promise<string | null>; returnPoint?: {label:string} | null; goBack?: () => Promise<void> };
 export function ReaderFooter({
   state,
+  remainingSectionPages,
+  remainingBookPages,
   locationsReady,
   loading,
   onProgressNavigate,
@@ -35,10 +38,17 @@ export function ReaderFooter({
   retrySave,
 }: Props) {
   const { t } = useTranslation();
+  const [remainingMode, setRemainingMode] = useState(0);
+  const indicator = remainingMode === 0
+    ? Math.round(state.progress * 100) + "%"
+    : remainingMode === 1
+      ? (remainingSectionPages == null ? t("reader.countingPages") : t("reader.sectionPagesRemaining", { count: remainingSectionPages }))
+      : (remainingBookPages == null ? t("reader.countingPages") : t("reader.bookPagesRemaining", { count: remainingBookPages }));
+  const toggleRemaining = () => setRemainingMode(mode => (mode + 1) % 3);
   return (
     <footer className="reader-footer">
       <div className="reader-mobile-progress">
-        <span>{Math.round(state.progress * 100)}%</span>
+        <button type="button" className="reader-reading-remaining" onClick={toggleRemaining} title={t("reader.toggleRemainingPages")}>{indicator}</button>
         <ReaderProgress
           progress={state.progress}
           ready={locationsReady && !loading}
@@ -97,9 +107,7 @@ export function ReaderFooter({
               t(saveStatus === "saving" ? "reader.saving" : "reader.saved")
             )}
           </span>
-          <span className="reader-percent">
-            {Math.round(state.progress * 100)}%
-          </span>
+          <button type="button" className="reader-percent reader-reading-remaining" onClick={toggleRemaining} title={t("reader.toggleRemainingPages")}>{indicator}</button>
         </div>
       </div>
       <button

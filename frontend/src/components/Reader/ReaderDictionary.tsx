@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 import {
   FiBookOpen,
   FiEdit3,
-  FiEdit2,
   FiGlobe,
   FiMessageSquare,
   FiVolume2,
@@ -27,6 +26,7 @@ import type { ReaderTextSelection } from "../../types/reader";
 export function ReaderDictionary({
   onAnnotate,
   annotationBusy,
+  onCopyFeedback,
   selection,
   bookId,
   getLookupPage,
@@ -42,6 +42,7 @@ export function ReaderDictionary({
 }: {
   onAnnotate?: (note: boolean) => void;
   annotationBusy?: boolean;
+  onCopyFeedback?: (message: string) => void;
   selection: ReaderTextSelection;
   bookId: string;
   getLookupPage: (cfi: string) => Promise<string>;
@@ -65,7 +66,6 @@ export function ReaderDictionary({
   const { result, loading, error } = lookups[lookupProvider] || {};
   const [speechError, setSpeechError] = useState(false);
   const [speaking, setSpeaking] = useState(false);
-  const [copyStatus, setCopyStatus] = useState("");
   const requestId = useRef<Partial<Record<ReaderLookupProvider, string>>>({});
   const button = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
@@ -87,7 +87,6 @@ export function ReaderDictionary({
     closePopup();
     if (mark) onTranslationDismiss?.(lastSelection.current);
   }, [closePopup, onTranslationDismiss]);
-  useEffect(() => setCopyStatus(""), [selection.text]);
 
   useEffect(() => {
     mounted.current = true;
@@ -192,18 +191,15 @@ export function ReaderDictionary({
   async function copy() {
     try {
       await navigator.clipboard.writeText(selection.text);
-      setCopyStatus(t("reader.selectionCopied"));
+      onCopyFeedback?.(t("reader.selectionCopied"));
     } catch {
-      setCopyStatus(t("reader.selectionCopyError"));
+      onCopyFeedback?.(t("reader.selectionCopyError"));
     }
   }
-  const actionWidth = selection.word
-    ? mobile
-      ? 320
-      : 272
-    : mobile
-      ? 268
-      : 228;
+  const actionCount = 5 + (selection.word ? 1 : 0) + (onAnnotate ? 1 : 0);
+  // Match the icon widths, gaps, 6px padding, and 1px border on each side.
+  const actionWidth = actionCount * (mobile ? 44 : 38) +
+    (actionCount - 1) * (mobile ? 4 : 2) + 14;
   // CSS viewport units keep these bounds current when the window is resized.
   const popupWidth = opened ? 360 : actionWidth;
   const popupTop = `clamp(12px, ${selection.y}px, max(12px, calc(100dvh - ${opened ? 442 : 152}px)))`;
@@ -292,7 +288,7 @@ export function ReaderDictionary({
       )}
       {!opened ? (
         <>
-          <div className="reader-dictionary-actions" aria-busy={busy}>
+          <div className={"reader-dictionary-actions" + (onAnnotate ? " reader-dictionary-icon-row" : "")} aria-busy={busy}>
             {selection.word && (
               <button
                 ref={button}
@@ -341,6 +337,13 @@ export function ReaderDictionary({
             >
               <FiArrowRight aria-hidden="true" />
             </button>
+            {onAnnotate && <>
+              <button className="reader-icon-button" disabled={busy || annotationBusy}
+                onClick={() => onAnnotate(true)} aria-label={t("reader.annotations.addNote")}
+                title={t("reader.annotations.addNote")}>
+                <FiEdit3 aria-hidden="true" />
+              </button>
+            </>}
             <button
               className="reader-icon-button"
               onClick={onClose}
@@ -355,11 +358,7 @@ export function ReaderDictionary({
               {t("reader.selectionExtendHelp")}
             </p>
           )}
-          {onAnnotate && <div className="reader-dictionary-actions">
-            <button className="reader-button" disabled={busy || annotationBusy} onClick={() => onAnnotate(false)}><FiEdit2 /> {t("reader.annotations.highlight")}</button>
-            <button className="reader-button" disabled={busy || annotationBusy} onClick={() => onAnnotate(true)}><FiEdit3 /> {t("reader.annotations.addNote")}</button>
-          </div>}
-          {copyStatus && <p role="status">{copyStatus}</p>}
+
         </>
       ) : (
         <>

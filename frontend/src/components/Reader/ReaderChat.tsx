@@ -332,12 +332,14 @@ export function ReaderChat({
             <div className="reader-chat-compose-footer">
               <span>{t("reader.chat.contextNote")}</span>
               <button
-                className="reader-button"
+                className="reader-button reader-compact-action"
+                aria-label={t("reader.chat.send")}
+                title={t("reader.chat.send")}
                 type="submit"
                 disabled={disabled || chat.unavailable || !!chat.pending || (!question.trim() && !chat.passage?.text.trim())}
               >
-                <FiSend />
-                {t("reader.chat.send")}
+                <FiSend aria-hidden="true" />
+                <span className="reader-action-label">{t("reader.chat.send")}</span>
               </button>
             </div>
           </form>

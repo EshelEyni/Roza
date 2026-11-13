@@ -80,7 +80,7 @@ function Fixture() {
           host={reader.host}
         />
       </div>
-      <ReaderFooter
+      <ReaderFooter remainingSectionPages={reader.remainingSectionPages} remainingBookPages={reader.remainingBookPages}
         state={reader.state}
         locationsReady={reader.locationsReady}
         loading={reader.loading}

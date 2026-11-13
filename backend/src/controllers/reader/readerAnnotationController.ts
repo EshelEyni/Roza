@@ -4,7 +4,10 @@ import { ReaderBookModel } from "../../models/reader/readerBookModel";
 import { ReaderAnnotationModel } from "../../models/reader/readerAnnotationModel";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
-import { annotationColors } from "../../../../shared/types/readerAnnotations";
+import type { AnnotationColor } from "../../../../shared/types/readerAnnotations";
+
+// Shared types are ESM; keep runtime validation local to the CommonJS backend.
+const annotationColors: readonly AnnotationColor[] = ["none", "yellow", "green", "blue", "pink"];
 
 async function scope(req: Request) {
   const userId = getLoggedInUserIdFromReq();

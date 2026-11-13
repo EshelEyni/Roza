@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { ReaderPassageMarks } from "./ReaderPassageMarks";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import type { ReaderBook } from "../../../../shared/types/reader";
@@ -17,6 +18,12 @@ export function EpubReader({
   userId: string;
 }) {
   const reader = useEpubReader(book, userId);
+  const [copyToast, setCopyToast] = useState<{ message: string; id: number } | null>(null);
+  useEffect(() => {
+    if (!copyToast) return;
+    const timer = window.setTimeout(() => setCopyToast(null), 2200);
+    return () => window.clearTimeout(timer);
+  }, [copyToast]);
   return (
     <ReaderPassageMarks.Provider value={reader.passageMarks}>
     <div
@@ -24,10 +31,12 @@ export function EpubReader({
       style={{ background: reader.state.preferences.backgroundColor }}
       ref={reader.shell}
     >
+      {copyToast && <div key={copyToast.id} className="reader-copy-toast" role="status" aria-live="polite">{copyToast.message}</div>}
       {reader.textSelection && !reader.textSelection.suppressTooltip && (
         <ReaderDictionary
           key={reader.textSelection.cfi}
           selection={reader.textSelection}
+          onCopyFeedback={message => setCopyToast(current => ({ message, id: (current?.id || 0) + 1 }))}
           onAnnotate={note => reader.annotations.select(reader.textSelection!, note)}
           annotationBusy={reader.annotations.busy || reader.annotations.loading}
           bookId={book.id}
@@ -60,6 +69,8 @@ export function EpubReader({
       <div className="reader-workspace">
         <ReaderPanels
           annotations={reader.annotations}
+          describeLocation={reader.describeLocation}
+          totalPages={reader.totalPages}
           panel={reader.panel}
           closePanel={reader.closePanel}
           toc={reader.toc}
@@ -93,6 +104,8 @@ export function EpubReader({
         notice={reader.notice}
       />
       <ReaderFooter
+        remainingSectionPages={reader.remainingSectionPages}
+        remainingBookPages={reader.remainingBookPages}
         state={reader.state}
         locationsReady={reader.locationsReady}
         loading={reader.loading}

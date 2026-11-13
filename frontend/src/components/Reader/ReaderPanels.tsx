@@ -13,6 +13,8 @@ type Props = Pick<
   EpubReaderController,
   | "panel"
   | "annotations"
+  | "describeLocation"
+  | "totalPages"
   | "closePanel"
   | "toc"
   | "href"
@@ -29,6 +31,8 @@ type Props = Pick<
 >;
 export function ReaderPanels({
   annotations,
+  describeLocation,
+  totalPages,
   panel,
   closePanel,
   toc,
@@ -77,7 +81,7 @@ export function ReaderPanels({
     >
       {panel !== "chat" && <ReaderPanelResize width={chat.workspace.panelWidth}
         onWidthChange={chat.setPanelWidth} />}
-      {panel === "annotations" ? <ReaderAnnotations annotations={annotations} onNavigate={onNavigate} /> : panel === "contents" ? (
+      {panel === "annotations" ? <ReaderAnnotations annotations={annotations} onNavigate={onNavigate} getPage={describeLocation} totalPages={totalPages} /> : panel === "contents" ? (
         <ReaderContents
           items={toc}
           currentHref={href}
