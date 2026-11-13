@@ -2066,4 +2066,22 @@
   .reader-mobile-progress .reader-reading-remaining { text-align: start; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 }
 .reader-keyboard-settings { margin: 4px 0 20px; }
-.reader-keyboard-settings input[type="number"] { width: 100%; padding: 9px 10px; border: 1px solid #9b876755; border-radius: 7px; background: transparent; color: inherit; font: inherit; }
+
+
+.reader-keyboard-settings .reader-keyboard-field { min-width: 0; }
+.reader-keyboard-settings .reader-keyboard-field > label { margin-bottom: 10px; }
+.reader-select { position: relative; width: 100%; }
+.reader-select > button, .reader-number-control { width: 100%; min-height: 42px; border: 1px solid #9b876766; border-radius: 7px; background: var(--reader-surface, #fbf6ed); color: inherit; font: inherit; }
+.reader-select > button { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; text-align: start; cursor: pointer; }
+.reader-select > button:hover { border-color: #a88758; background: #a3896114; }
+.reader-select > button:focus-visible, .reader-number-control:focus-within { outline: 2px solid #a88758; outline-offset: 2px; }
+.reader-select-options { position: absolute; inset-inline: 0; top: calc(100% + 6px); z-index: 20; padding: 5px; border: 1px solid #9b876766; border-radius: 8px; background: var(--reader-surface, #fbf6ed); color: inherit; box-shadow: 0 8px 24px #392e2426; }
+.reader-select-options [role=option] { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border-radius: 5px; cursor: pointer; font-size: 13px; }
+.reader-select-options [role=option].is-active { background: #a3896130; }
+.reader-select-options [aria-selected=true] { font-weight: 600; }
+.reader-number-control { display: flex; align-items: center; padding: 3px; }
+.reader-number-control .reader-icon-button { width: 34px; height: 34px; border: 0; background: transparent; font-size: 16px; cursor: pointer; }
+.reader-number-control .reader-icon-button:hover:not(:disabled) { background: #a3896130; }
+.reader-number-control .reader-icon-button:disabled { cursor: default; }
+.reader-keyboard-settings .reader-number-control input { appearance: textfield; -moz-appearance: textfield; width: 100%; min-width: 0; padding: 6px; border: 0; background: transparent; color: inherit; font: inherit; text-align: center; outline: none; }
+.reader-number-control input::-webkit-inner-spin-button, .reader-number-control input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }

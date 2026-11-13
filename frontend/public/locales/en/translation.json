@@ -165,6 +165,8 @@
   "words": "Words",
   "reader": {
     "keyboard": {
+      "increase": "Increase group size",
+      "decrease": "Decrease group size",
       "title": "Keyboard highlighting",
       "unit": "Select by",
       "words": "Words",

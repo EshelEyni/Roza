@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { FiMinus, FiPlus } from "react-icons/fi";
+import { ReaderSelect } from "./ReaderSelect";
+import { useId, useState } from "react";
 import type { ReaderKeyboardSettings } from "../../../../shared/types/readerKeyboardSettings";
 import { ReaderColorSelect } from "./ReaderColorSelect";
 import { useTranslation } from "react-i18next";
@@ -24,6 +26,7 @@ export function ReaderSettings({
   publisherPagesAvailable,
 }: ReaderSettingsProps) {
   const { t } = useTranslation();
+  const keyboardId = useId();
   const [countDraft, setCountDraft] = useState<string | null>(null);
   function update(changes: Partial<ReaderPreferences>) {
     onChange({ ...preferences, ...changes });
@@ -147,17 +150,24 @@ export function ReaderSettings({
       </p>
       {keyboardSettings && onKeyboardChange && <fieldset className="reader-mark-color-group reader-keyboard-settings">
         <legend>{t("reader.keyboard.title")}</legend>
-        <label>{t("reader.keyboard.unit")}
-          <select value={keyboardSettings.unit} onChange={event => onKeyboardChange({ ...keyboardSettings, unit: event.target.value as ReaderKeyboardSettings["unit"] })}>
-            <option value="words">{t("reader.keyboard.words")}</option>
-            <option value="sentences">{t("reader.keyboard.sentences")}</option>
-          </select>
-        </label>
-        <label>{t("reader.keyboard.count")}
-          <input type="number" min={1} step={1} value={countDraft ?? keyboardSettings.count}
-            onChange={event => { setCountDraft(event.target.value); const count = Number(event.target.value); if (Number.isSafeInteger(count) && count >= 1) onKeyboardChange({ ...keyboardSettings, count }); }}
-            onBlur={() => setCountDraft(null)} />
-        </label>
+        <div className="reader-keyboard-field">
+          <label id={keyboardId + "-unit-label"} htmlFor={keyboardId + "-unit"}>{t("reader.keyboard.unit")}</label>
+          <ReaderSelect id={keyboardId + "-unit"} labelId={keyboardId + "-unit-label"} value={keyboardSettings.unit}
+            options={[{ value: "words", label: t("reader.keyboard.words") }, { value: "sentences", label: t("reader.keyboard.sentences") }]}
+            onChange={unit => onKeyboardChange({ ...keyboardSettings, unit })} />
+        </div>
+        <div className="reader-keyboard-field">
+          <label htmlFor={keyboardId + "-count"}>{t("reader.keyboard.count")}</label>
+          <div className="reader-number-control">
+            <button type="button" className="reader-icon-button" aria-label={t("reader.keyboard.decrease")} disabled={keyboardSettings.count <= 1}
+              onClick={() => { setCountDraft(null); onKeyboardChange({ ...keyboardSettings, count: keyboardSettings.count - 1 }); }}><FiMinus aria-hidden="true" /></button>
+            <input id={keyboardId + "-count"} type="number" inputMode="numeric" min={1} step={1} value={countDraft ?? keyboardSettings.count}
+              onChange={event => { setCountDraft(event.target.value); const count = Number(event.target.value); if (Number.isSafeInteger(count) && count >= 1) onKeyboardChange({ ...keyboardSettings, count }); }}
+              onBlur={() => setCountDraft(null)} />
+            <button type="button" className="reader-icon-button" aria-label={t("reader.keyboard.increase")} disabled={keyboardSettings.count >= Number.MAX_SAFE_INTEGER}
+              onClick={() => { setCountDraft(null); onKeyboardChange({ ...keyboardSettings, count: keyboardSettings.count + 1 }); }}><FiPlus aria-hidden="true" /></button>
+          </div>
+        </div>
         <p className="reader-hint">{t("reader.keyboard.hint")}</p>
         <p role="status" className="reader-hint">{t("reader.keyboard." + (keyboardSaveStatus || "saved"))}
           {keyboardSaveStatus === "error" && <button type="button" className="reader-button" onClick={onKeyboardRetry}>{t("reader.retry")}</button>}

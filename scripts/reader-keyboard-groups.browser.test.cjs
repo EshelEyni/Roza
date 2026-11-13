@@ -215,7 +215,13 @@ test(
             .click();
         await page
           .getByRole("combobox", { name: "Select by", exact: true })
-          .selectOption(unit);
+          .click();
+        await page
+          .getByRole("option", {
+            name: unit === "words" ? "Words" : "Sentences",
+            exact: true,
+          })
+          .click();
         await page
           .getByRole("spinbutton", { name: "Number per group" })
           .fill(String(count));
@@ -236,6 +242,54 @@ test(
         await page.evaluate(() => window.navigationTest.reader.closePanel());
         await page.waitForTimeout(400);
       };
+      await page.getByRole("button", { name: "Open side settings" }).click();
+      const unitPicker = page.getByRole("combobox", {
+        name: "Select by",
+        exact: true,
+      });
+      await unitPicker.click();
+      if (process.env.KEYBOARD_SETTINGS_SCREENSHOT)
+        await page
+          .locator(".reader-keyboard-settings")
+          .screenshot({
+            path: process.env.KEYBOARD_SETTINGS_SCREENSHOT.replace(
+              /\.png$/,
+              "-open.png",
+            ),
+          });
+      assert.equal(
+        await page.getByRole("listbox").getByRole("option").count(),
+        2,
+      );
+      await unitPicker.press("ArrowDown");
+      await unitPicker.press("Enter");
+      await page.waitForFunction(
+        () =>
+          window.navigationTest.reader.keyboardSettings.unit === "sentences",
+      );
+      await unitPicker.press("Home");
+      await unitPicker.press("Enter");
+      await page.waitForFunction(
+        () => window.navigationTest.reader.keyboardSettings.unit === "words",
+      );
+      const decrease = page.getByRole("button", {
+        name: "Decrease group size",
+      });
+      assert.equal(await decrease.isDisabled(), true);
+      await page.getByRole("button", { name: "Increase group size" }).click();
+      await page.waitForFunction(
+        () => window.navigationTest.reader.keyboardSettings.count === 2,
+      );
+      await decrease.click();
+      await page.waitForFunction(
+        () => window.navigationTest.reader.keyboardSettings.count === 1,
+      );
+      assert.equal(
+        await page
+          .getByRole("spinbutton", { name: "Number per group" })
+          .evaluate((input) => getComputedStyle(input).appearance),
+        "textfield",
+      );
       await configure("words", 5);
       // A saved setting applies after reload, across books, and only to its owner.
       const baseUrl = server.resolvedUrls.local[0] + "word-test";
