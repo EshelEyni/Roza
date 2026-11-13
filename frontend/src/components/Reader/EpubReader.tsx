@@ -32,6 +32,7 @@ export function EpubReader({
       style={{ background: reader.state.preferences.backgroundColor }}
       ref={reader.shell}
     >
+      <span className="app-header-status-surface" aria-hidden="true" />
       {copyToast && <div key={copyToast.id} className="reader-copy-toast" role="status" aria-live="polite">{copyToast.message}</div>}
       {reader.textSelection && !reader.textSelection.suppressTooltip && (
         <ReaderDictionary
