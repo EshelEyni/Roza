@@ -1,3 +1,5 @@
+import { useTranslation } from "react-i18next";
+import { readerSentenceWordRange } from "../../services/readerSentenceWordRange";
 import { useEffect, useRef, useState } from "react";
 import {
   FiChevronLeft,
@@ -39,6 +41,9 @@ export function ReaderSentenceMode({
   reader: EpubReaderController;
   bookId: string;
 }) {
+  const { t } = useTranslation();
+  const [flagging, setFlagging] = useState(false);
+  const flagPending = useRef(false);
   const mode = reader.sentenceMode;
   const [lookup, setLookup] = useState<{
     selection: ReaderTextSelection;
@@ -65,6 +70,61 @@ export function ReaderSentenceMode({
       x: rect?.left || 12,
       y: (rect?.top || 0) + 30,
     };
+  };
+  const flagSelection = async () => {
+    const current = selection();
+    const book = reader.searchBook;
+    if (
+      !current ||
+      !book ||
+      blocked ||
+      !reader.flags.ready ||
+      flagPending.current
+    )
+      return;
+    let index = wordIndex;
+    const native = window.getSelection();
+    if (native?.rangeCount && native.toString().trim()) {
+      const range = native.getRangeAt(0);
+      const words = [
+        ...(stage.current?.querySelectorAll("[data-sentence-word]") || []),
+      ];
+      const selectedIndex = words.findIndex(
+        (word) =>
+          word.contains(range.startContainer) &&
+          word.contains(range.endContainer),
+      );
+      if (selectedIndex >= 0) index = selectedIndex;
+    }
+    flagPending.current = true;
+    setFlagging(true);
+    try {
+      if (index >= 0) {
+        const range = readerSentenceWordRange(
+          await book.getRange(current.cfi),
+          index,
+        );
+        const section = book.spine.get(current.cfi);
+        if (!range || !section) throw new Error("Word range unavailable");
+        const text = range.toString();
+        await reader.flags.save(
+          {
+            ...current,
+            text,
+            word: text,
+            cfi: section.cfiFromRange(range),
+            endCfi: undefined,
+          },
+          false,
+          current.text,
+        );
+      } else await reader.flags.save(current);
+    } catch {
+      setFeedback(t("reader.review.saveError"));
+    } finally {
+      flagPending.current = false;
+      setFlagging(false);
+    }
   };
   useEffect(() => {
     stage.current?.scrollTo(0, 0);
@@ -100,6 +160,28 @@ export function ReaderSentenceMode({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as Element | null;
+      if (
+        event.ctrlKey &&
+        event.key.toLowerCase() === "s" &&
+        !event.defaultPrevented &&
+        !event.isComposing &&
+        !event.altKey &&
+        !event.metaKey &&
+        !event.shiftKey &&
+        !blocked &&
+        sentence &&
+        reader.flags.ready &&
+        !target?.closest(
+          "input,textarea,select,[contenteditable]:not([contenteditable=false]),[role=dialog],[role=textbox],[role=slider]",
+        )
+      ) {
+        event.preventDefault();
+        if (!event.repeat)
+          actions.current
+            ?.querySelector<HTMLButtonElement>('[data-shortcut="f"]')
+            ?.click();
+        return;
+      }
       if (
         event.defaultPrevented ||
         event.isComposing ||
@@ -152,7 +234,15 @@ export function ReaderSentenceMode({
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [mode, blocked, reader.mobile, sentence, wordCount, wordIndex]);
+  }, [
+    mode,
+    blocked,
+    reader.mobile,
+    sentence,
+    wordCount,
+    wordIndex,
+    reader.flags.ready,
+  ]);
   const openLookup = (translate: boolean) => {
     const current = selection();
     if (current) setLookup({ selection: current, translate });
@@ -173,6 +263,9 @@ export function ReaderSentenceMode({
           bookId={bookId}
           getLookupPage={reader.getLookupPage}
           onClose={() => setLookup(null)}
+          onFlag={() => void reader.flags.save(lookup.selection, true)}
+          flagged={!!reader.flags.has(lookup.selection)}
+          flagReady={reader.flags.ready}
           onCopyFeedback={setFeedback}
           onTranslationDismiss={reader.markTranslation}
           onAnnotate={(note) => {
@@ -211,6 +304,13 @@ export function ReaderSentenceMode({
                       <span
                         key={index}
                         data-sentence-word=""
+                        onClick={() => {
+                          if (!window.getSelection()?.toString().trim())
+                            setWordFocus({
+                              cfi: sentence.cfi,
+                              index: (index - 1) / 2,
+                            });
+                        }}
                         className={
                           wordIndex === (index - 1) / 2
                             ? "reader-sentence-word-active"
@@ -346,10 +446,13 @@ export function ReaderSentenceMode({
             <span>Annotate</span>
           </button>
           <button
-            disabled
+            disabled={blocked || !sentence || !reader.flags.ready || flagging}
             data-shortcut="f"
-            title="Flag (F) — Save for Later requires Ticket #25"
-            aria-label="Flag — Save for Later requires Ticket #25"
+            aria-keyshortcuts="f Control+s"
+            title={t("reader.review.flag") + " · F"}
+            aria-label="Flag"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => void flagSelection()}
           >
             <FiFlag />
             <span>Flag</span>

@@ -41,7 +41,11 @@ export function useReaderFlags(
   }, [message]);
   const has = (s: ReaderTextSelection) =>
     items.find((f) => f.cfi === s.cfi && f.endCfi === (s.endCfi || ""));
-  async function save(s: ReaderTextSelection, toggle = false) {
+  async function save(
+    s: ReaderTextSelection,
+    toggle = false,
+    contextText?: string,
+  ) {
     if (!ready) {
       setMessage(t("reader.review.notReady"));
       return;
@@ -59,13 +63,16 @@ export function useReaderFlags(
       else {
         const book = runtime.epubRef.current;
         const section = book?.spine.get(s.cfi);
-        let context = s.text;
-        try {
-          const range = await book?.getRange(s.cfi);
-          context =
-            range?.startContainer.parentElement?.textContent?.trim() || s.text;
-        } catch {
-          /* selected text remains available */
+        let context = contextText || s.text;
+        if (!contextText) {
+          try {
+            const range = await book?.getRange(s.cfi);
+            context =
+              range?.startContainer.parentElement?.textContent?.trim() ||
+              s.text;
+          } catch {
+            /* selected text remains available */
+          }
         }
         const flag = await api.request<ReaderFlag>(
           "PUT",

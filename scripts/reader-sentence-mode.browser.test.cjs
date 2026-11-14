@@ -53,6 +53,8 @@ test(
     const saves = [];
     const lookups = [];
     const annotations = [];
+    const flags = [];
+    let flagWrites = 0;
     const aliases = [
       "react",
       "react-dom",
@@ -76,7 +78,17 @@ test(
       plugins: [react()],
       resolve: { alias: aliases },
       optimizeDeps: { entries: ["scripts/fixtures/reader-rsvp.tsx"] },
-      server: { host: "127.0.0.1", port: 0, fs: { allow: [root] } },
+      server: {
+        host: "127.0.0.1",
+        port: await new Promise((resolve) => {
+          const probe = require("node:net").createServer();
+          probe.listen(0, "127.0.0.1", () => {
+            const port = probe.address().port;
+            probe.close(() => resolve(port));
+          });
+        }),
+        fs: { allow: [root] },
+      },
     });
     server.middlewares.use("/rsvp-state", (_, res) => {
       res.setHeader("Content-Type", "application/json");
@@ -93,6 +105,28 @@ test(
         if (body && req.url.includes("/state")) saves.push(body);
         if (req.url.includes("dictionary")) lookups.push(JSON.parse(body));
         res.setHeader("Content-Type", "application/json");
+        if (req.url.includes("/flags")) {
+          let saved;
+          if (req.method === "PUT") {
+            flagWrites++;
+            const input = JSON.parse(body);
+            saved = flags.find(
+              (f) => f.cfi === input.cfi && f.endCfi === input.endCfi,
+            );
+            if (!saved) {
+              saved = {
+                ...input,
+                id: String(flags.length + 1),
+                bookId: "rsvp",
+                reviewed: false,
+                createdAt: new Date().toISOString(),
+              };
+              flags.push(saved);
+            }
+          }
+          res.end(JSON.stringify({ status: "success", data: saved || flags }));
+          return;
+        }
         if (req.url.includes("/annotations")) {
           const item = body ? { ...JSON.parse(body), id: "note-1" } : null;
           if (item) annotations.push(item);
@@ -175,6 +209,9 @@ test(
               () =>
                 window.rsvpTest.reader.sentenceMode.sentence?.text ===
                 "Hello, reading world.",
+            );
+            await page.waitForFunction(
+              () => window.rsvpTest.reader.flags.ready,
             );
             const extraction = await page.evaluate(async () => {
               const { reader, sentenceService } = window.rsvpTest;
@@ -268,12 +305,58 @@ test(
                 .isDisabled(),
               true,
             );
+            if (mobile) {
+              const lookupsBeforeFlag = lookups.length;
+              await page.locator("[data-sentence-word]").nth(2).tap();
+              await page
+                .getByRole("button", { name: "Flag", exact: true })
+                .tap();
+              await page.waitForFunction(() =>
+                window.rsvpTest.reader.flags.items.some(
+                  (f) => f.text === "world",
+                ),
+              );
+              assert.equal(
+                await page
+                  .locator(".reader-sentence-word-active")
+                  .textContent(),
+                "world",
+              );
+              assert.equal(lookups.length, lookupsBeforeFlag);
+            }
             if (!mobile) {
               const activeWord = page.locator(".reader-sentence-word-active");
               await page.keyboard.press("ArrowDown");
               assert.equal(await activeWord.textContent(), "Hello");
               await page.keyboard.press("ArrowDown");
               assert.equal(await activeWord.textContent(), "reading");
+              const lookupsBeforeFlag = lookups.length;
+              await page.keyboard.press("Control+s");
+              await page.waitForFunction(() =>
+                window.rsvpTest.reader.flags.items.some(
+                  (f) => f.text === "reading",
+                ),
+              );
+              assert.equal(await activeWord.textContent(), "reading");
+              assert.equal(
+                await page.evaluate(async () => {
+                  const { reader } = window.rsvpTest;
+                  const flag = reader.flags.items.find(
+                    (f) => f.text === "reading",
+                  );
+                  return (
+                    await reader.searchBook.getRange(flag.cfi)
+                  ).toString();
+                }),
+                "reading",
+              );
+              assert.equal(flags.find(f => f.text === "reading").context, "Hello, reading world.");
+              const writes = flagWrites;
+              await page.keyboard.press("f");
+              await page.waitForTimeout(100);
+              assert.equal(flagWrites, writes);
+              assert.equal(flags.filter((f) => f.text === "reading").length, 1);
+              assert.equal(lookups.length, lookupsBeforeFlag);
               await page.keyboard.press("ArrowUp");
               assert.equal(await activeWord.textContent(), "Hello");
               await page.keyboard.press("ArrowUp");
@@ -425,10 +508,28 @@ test(
             await page.waitForFunction(
               () => window.rsvpTest.reader.panel === "chat",
             );
-            await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
-            assert.equal(await page.evaluate(() => document.activeElement?.matches('textarea[id^="reader-chat-question"]')), true, 'Ask AI focuses the question input instead of the close button');
-            await page.keyboard.type('Explain this sentence');
-            assert.equal(await page.locator('textarea[id^="reader-chat-question"]:focus').inputValue(), 'Explain this sentence');
+            await page.evaluate(
+              () =>
+                new Promise((resolve) =>
+                  requestAnimationFrame(() => requestAnimationFrame(resolve)),
+                ),
+            );
+            assert.equal(
+              await page.evaluate(() =>
+                document.activeElement?.matches(
+                  'textarea[id^="reader-chat-question"]',
+                ),
+              ),
+              true,
+              "Ask AI focuses the question input instead of the close button",
+            );
+            await page.keyboard.type("Explain this sentence");
+            assert.equal(
+              await page
+                .locator('textarea[id^="reader-chat-question"]:focus')
+                .inputValue(),
+              "Explain this sentence",
+            );
             assert.equal(
               await page.evaluate(
                 () => window.rsvpTest.reader.chat.passage.text,
