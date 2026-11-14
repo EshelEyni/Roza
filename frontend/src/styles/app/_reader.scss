@@ -2259,3 +2259,6 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 .reader-vocabulary-translation small { display: block; font-size: 10px; line-height: 1.5; margin-top: 8px; }
 .reader-review-card.is-vocabulary .reader-review-actions { padding: 12px 0 16px; margin-inline: 20px; border-radius: 0; background: transparent; }
 .reader-review-card.is-vocabulary .reader-review-actions .reader-button { padding-inline: 6px; }
+
+.reader-book-title-field { display: grid; gap: 8px; margin-top: 16px; }
+.reader-book-title-field input { box-sizing: border-box; width: 100%; min-width: 0; padding: 10px; border: 1px solid #b7a58a; border-radius: 8px; background: transparent; color: inherit; font: inherit; }

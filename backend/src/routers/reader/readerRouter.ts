@@ -12,6 +12,8 @@ import {
   getReaderFile,
   updateReaderState,
   updateReaderBookArchive,
+  renameReaderBook,
+  deleteReaderBook,
 } from "../../controllers/reader/readerController";
 
 import {
@@ -86,5 +88,7 @@ router.get("/:id/file", getReaderFile);
 router.get("/:id", getReaderBook);
 router.patch("/:id/state", updateReaderState);
 router.patch("/:id/archive", updateReaderBookArchive);
+router.patch("/:id/title", renameReaderBook);
+router.delete("/:id", deleteReaderBook);
 
 export default router;

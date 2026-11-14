@@ -557,6 +557,14 @@
       "loadError": "Could not load annotations.",
       "saveError": "Could not save changes. Please try again.",
       "restoreError": "A saved passage could not be displayed. You can still view it here."
-    }
+    },
+    "renameBook": "Rename",
+    "deletePermanently": "Delete Permanently",
+    "confirmPermanentDelete": "Permanently delete “{{title}}”? This is irreversible. The book, reading progress, annotations, flags, vocabulary history, and AI conversations belonging exclusively to this book will be deleted.",
+    "saveTitle": "Save title",
+    "bookSaving": "Saving…",
+    "bookTitle": "Book title",
+    "titleRequired": "Enter a title.",
+    "bookManagementError": "Unable to update this book. Please try again."
   }
 }

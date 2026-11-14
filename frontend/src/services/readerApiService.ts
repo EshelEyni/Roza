@@ -106,6 +106,8 @@ export default {
   query: (archived = false) => request<ReaderBook[]>("GET", archived ? "?archived=true" : ""),
   setArchived: (id: string, archived: boolean) =>
     request<ReaderBook>("PATCH", "/" + id + "/archive", { archived }),
+  rename: (id: string, title: string) => request<ReaderBook>("PATCH", "/" + id + "/title", { title }),
+  deletePermanently: (id: string) => request<null>("DELETE", "/" + id),
   getById: (id: string) => request<ReaderBook>("GET", "/" + id),
   updateState: (id: string, state: ReaderState) =>
     request<ReaderState>("PATCH", "/" + id + "/state", state),

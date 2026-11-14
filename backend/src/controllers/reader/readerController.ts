@@ -10,6 +10,7 @@ import {
   saveReaderFile,
   removeReaderFile,
 } from "../../services/reader/readerStorageService";
+import { permanentlyDeleteReaderBook } from "../../services/reader/readerBookManagementService";
 import { defaultReaderPreferences } from "../../services/reader/readerUtilService";
 
 const getReaderAccess = asyncErrorCatcher(async (_req: Request, res: Response) => {
@@ -90,6 +91,24 @@ const updateReaderBookArchive = asyncErrorCatcher(async (req: Request, res: Resp
   );
   if (!updated) throw new AppError("Book not found.", 404);
   res.json({ status: "success", data: updated });
+});
+
+const renameReaderBook = asyncErrorCatcher(async (req: Request, res: Response) => {
+  const title = typeof req.body.title === "string" ? req.body.title.trim() : "";
+  if (!title || title.length > 500) throw new AppError("Enter a title between 1 and 500 characters.", 400);
+  const book = await findReaderBook(req);
+  const updated = await ReaderBookModel.findOneAndUpdate(
+    { _id: book._id, userId: getLoggedInUserIdFromReq() },
+    { $set: { title } }, { new: true, runValidators: true },
+  );
+  if (!updated) throw new AppError("Book not found.", 404);
+  res.json({ status: "success", data: updated });
+});
+
+const deleteReaderBook = asyncErrorCatcher(async (req: Request, res: Response) => {
+  if (!mongoose.isValidObjectId(req.params.id)) throw new AppError("Book not found.", 404);
+  await permanentlyDeleteReaderBook(req.params.id, getLoggedInUserIdFromReq());
+  res.json({ status: "success", data: null });
 });
 
 const getReaderBook = asyncErrorCatcher(async (req: Request, res: Response) => {
@@ -182,4 +201,6 @@ export {
   getReaderFile,
   updateReaderState,
   updateReaderBookArchive,
+  renameReaderBook,
+  deleteReaderBook,
 };
