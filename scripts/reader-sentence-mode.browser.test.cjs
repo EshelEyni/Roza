@@ -187,6 +187,12 @@ test(
               hasTouch: mobile,
             });
             const page = await context.newPage();
+            await page.addInitScript(() =>
+              localStorage.setItem(
+                "roza-sentence-word-steps",
+                JSON.stringify({ ArrowRight: 9, ArrowLeft: 9 }),
+              ),
+            );
             const errors = [];
             page.on("pageerror", (e) => errors.push(e.message));
             await page.goto(server.resolvedUrls.local[0] + "rsvp-test");
@@ -582,16 +588,22 @@ test(
                 "Hello, reading57 world.58",
               );
               await page.keyboard.down("ArrowLeft");
-              await page.keyboard.down("ArrowLeft");
-              assert.equal(await activeWord.textContent(), "reading");
+              assert.equal(
+                await activeWord.textContent(),
+                "reading",
+                "Left moves on keydown before release",
+              );
               await page.keyboard.down("ArrowLeft");
               assert.equal(await activeWord.textContent(), "Hello");
               await page.keyboard.down("ArrowLeft");
               await page.keyboard.up("ArrowLeft");
               assert.equal(await activeWord.textContent(), "Hello");
               await page.keyboard.down("ArrowRight");
-              await page.keyboard.down("ArrowRight");
-              assert.equal(await activeWord.textContent(), "reading");
+              assert.equal(
+                await activeWord.textContent(),
+                "reading",
+                "Right moves on keydown before release",
+              );
               await page.keyboard.down("ArrowRight");
               assert.equal(await activeWord.textContent(), "world");
               await page.keyboard.down("ArrowRight");
@@ -642,95 +654,25 @@ test(
               await page.keyboard.press("Control+ArrowLeft");
               await page.keyboard.press("ArrowLeft");
               assert.equal(await activeWord.textContent(), "world");
-              const chord = async (arrow, digit) => {
-                await page.keyboard.down(arrow);
-                await page.keyboard.press(digit);
-                await page.keyboard.down(arrow); // Repeats after configuration must not move.
-                await page.keyboard.up(arrow);
-              };
-              await page.keyboard.press("Control+ArrowLeft"); // Clear the word mark at book start.
-              await chord("ArrowRight", "2");
-              assert.equal(
-                await activeWord.count(),
-                0,
-                "Setting the step does not create or move a mark",
-              );
-              await page.keyboard.press("ArrowRight");
-              assert.equal(await activeWord.textContent(), "reading");
-              await page.keyboard.press("ArrowRight");
-              assert.equal(await activeWord.textContent(), "world");
-              assert.equal(
-                await page.evaluate(
-                  () => window.rsvpTest.reader.sentenceMode.sentence.cfi,
-                ),
-                cfi,
-              );
-              await page.evaluate(() =>
-                document.dispatchEvent(
-                  new KeyboardEvent("keydown", {
-                    key: "ArrowRight",
-                    repeat: true,
-                    bubbles: true,
-                  }),
-                ),
-              );
-              assert.equal(
-                await page.evaluate(
-                  () => window.rsvpTest.reader.sentenceMode.sentence.cfi,
-                ),
-                cfi,
-                "Auto-repeat cannot bypass the last-word stop",
-              );
-              await page.keyboard.press("ArrowRight");
-              assert.equal(await activeWord.textContent(), "Next");
-              await page.keyboard.press("ArrowRight");
-              assert.equal(await activeWord.textContent(), "sentence");
-              await chord("ArrowLeft", "6");
-              assert.equal(
-                await activeWord.textContent(),
-                "sentence",
-                "Setting Up does not move the current mark",
-              );
-              await page.keyboard.press("ArrowLeft");
-              assert.equal(await activeWord.textContent(), "Next");
-              assert.equal(
-                await page.evaluate(
-                  () => window.rsvpTest.reader.sentenceMode.sentence.text,
-                ),
-                "Next sentence!",
-              );
-              await page.keyboard.press("ArrowLeft");
-              assert.equal(await activeWord.textContent(), "world");
-              await page.keyboard.press("ArrowLeft");
-              assert.equal(await activeWord.textContent(), "Hello");
-              assert.equal(
-                await page.evaluate(
-                  () =>
-                    JSON.parse(localStorage.getItem("roza-sentence-word-steps"))
-                      .ArrowRight,
-                ),
-                2,
-                "Changing Up leaves Down unchanged",
-              );
-              assert.equal(
-                await page.evaluate(
-                  () =>
-                    JSON.parse(localStorage.getItem("roza-sentence-word-steps"))
-                      .ArrowLeft,
-                ),
-                6,
-              );
               await page.keyboard.press("Control+ArrowLeft");
-              await page.keyboard.press("ArrowLeft");
+              await page.keyboard.down("ArrowRight");
+              assert.equal(await activeWord.textContent(), "Hello");
+              await page.keyboard.press("6");
               assert.equal(
                 await activeWord.textContent(),
-                "world",
-                "Up starts at the final word when nothing is highlighted, even with step six",
+                "Hello",
+                "Numbers do not alter the mark or configure navigation",
+              );
+              await page.keyboard.down("ArrowRight");
+              assert.equal(await activeWord.textContent(), "reading");
+              await page.keyboard.up("ArrowRight");
+              assert.equal(
+                await activeWord.textContent(),
+                "reading",
+                "Release does not add another step",
               );
               await page.keyboard.press("ArrowLeft");
               assert.equal(await activeWord.textContent(), "Hello");
-              await chord("ArrowRight", "1");
-              await chord("ArrowLeft", "1");
               const markedText = async () =>
                 page.evaluate(() => {
                   const native = window.getSelection();
@@ -822,13 +764,6 @@ test(
               await page.keyboard.press("Shift+ArrowLeft");
               assert.equal(await markedText(), "reading world");
               await page.keyboard.press("Shift+ArrowRight");
-              assert.equal(await markedText(), "world");
-              // Number-first chords also configure only, preserving a selected phrase.
-              await page.keyboard.down("2");
-              await page.keyboard.press("ArrowRight");
-              await page.keyboard.up("2");
-              assert.equal(await markedText(), "world");
-              await chord("ArrowRight", "1");
               assert.equal(await markedText(), "world");
             }
             await page.keyboard.press("Control+ArrowRight");

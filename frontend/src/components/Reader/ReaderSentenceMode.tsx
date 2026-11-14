@@ -75,41 +75,6 @@ export function ReaderSentenceMode({
     backward?: boolean;
   } | null>(null);
   const [wordFocus, setWordFocus] = useState({ cfi: "", index: -1 });
-  const [wordSteps, setWordSteps] = useState(() => {
-    try {
-      const stored = JSON.parse(
-        localStorage.getItem("roza-sentence-word-steps") || "{}",
-      );
-      const valid = (n: unknown) =>
-        typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 9
-          ? n
-          : 1;
-      return {
-        ArrowRight: valid(stored.ArrowRight ?? stored.ArrowDown),
-        ArrowLeft: valid(stored.ArrowLeft ?? stored.ArrowUp),
-      };
-    } catch {
-      return { ArrowRight: 1, ArrowLeft: 1 };
-    }
-  });
-  const heldArrow = useRef<{
-    key: "ArrowRight" | "ArrowLeft";
-    cfi: string;
-    index: number;
-    commit?: () => void;
-    configured?: boolean;
-  } | null>(null);
-  const heldDigit = useRef<number | null>(null);
-  useEffect(() => {
-    try {
-      localStorage.setItem(
-        "roza-sentence-word-steps",
-        JSON.stringify(wordSteps),
-      );
-    } catch {
-      /* optional preference */
-    }
-  }, [wordSteps]);
   const extendedSelection = useRef<{
     cfi: string;
     anchor: number;
@@ -117,14 +82,8 @@ export function ReaderSentenceMode({
   } | null>(null);
   const verticalX = useRef<number | null>(null);
   const visualLines = useRef<SentenceVisualLine[] | null>(null);
-  const pendingVertical = useRef<{
-    cfi: string;
-    direction: number;
-    x: number;
-  } | null>(null);
   const resetVertical = () => {
     verticalX.current = null;
-    pendingVertical.current = null;
   };
   const getVisualLines = () =>
     (visualLines.current ??= sentenceText.current
@@ -490,23 +449,7 @@ export function ReaderSentenceMode({
     setFeedback("");
     const pending = pendingWord.current;
     pendingWord.current = null;
-    const vertical = pendingVertical.current;
-    if (vertical && sentence && vertical.cfi !== sentence.cfi) {
-      pendingVertical.current = null;
-      pendingWord.current = null;
-      const frame = requestAnimationFrame(() => {
-        const lines = getVisualLines();
-        const line =
-          vertical.direction > 0 ? lines[0] : lines[lines.length - 1];
-        if (line)
-          setWordFocus({
-            cfi: sentence.cfi,
-            index: closestSentenceWord(line, vertical.x),
-          });
-      });
-      return () => cancelAnimationFrame(frame);
-    }
-    if (!vertical) verticalX.current = null;
+    resetVertical();
     const count = Math.floor(
       (sentence?.text.split(/([\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*)/gu)
         .length || 0) / 2,
@@ -600,7 +543,6 @@ export function ReaderSentenceMode({
         )
       ) {
         event.preventDefault();
-        heldArrow.current = null;
         resetVertical();
         clearTextSelection();
         setWordFocus({ cfi: "", index: -1 });
@@ -651,19 +593,13 @@ export function ReaderSentenceMode({
       if (event.shiftKey && ["ArrowRight", "ArrowLeft"].includes(event.key)) {
         if (!reader.mobile && sentence && wordCount) {
           event.preventDefault();
-          heldArrow.current = null;
           const key = event.key as "ArrowRight" | "ArrowLeft";
           resetVertical();
-          extendWords(key === "ArrowRight" ? 1 : -1, wordSteps[key]);
+          extendWords(key === "ArrowRight" ? 1 : -1, 1);
         }
         return;
       }
-      const moveWords = (
-        direction: number,
-        count: number,
-        origin: number,
-        repeat = false,
-      ) => {
+      const moveWords = (direction: number, origin: number, repeat = false) => {
         if (!sentence || !wordCount) return;
         const atEdge =
           origin >= 0 &&
@@ -677,34 +613,12 @@ export function ReaderSentenceMode({
           return;
         }
         const next =
-          origin < 0
-            ? direction > 0
-              ? count - 1
-              : wordCount - 1
-            : origin + direction * count;
+          origin < 0 ? (direction > 0 ? 0 : wordCount - 1) : origin + direction;
         setWordFocus({
           cfi: sentence.cfi,
           index: Math.max(0, Math.min(wordCount - 1, next)),
         });
       };
-      if (!reader.mobile && /^[1-9]$/.test(event.key)) {
-        heldDigit.current = Number(event.key);
-        const held = heldArrow.current;
-        if (held && sentence && !event.repeat) {
-          event.preventDefault();
-          const count = Number(event.key);
-          setWordSteps((current) => ({ ...current, [held.key]: count }));
-          setFeedback(
-            (held.key === "ArrowRight" ? "Right" : "Left") +
-              ": " +
-              count +
-              (count === 1 ? " word per press" : " words per press"),
-          );
-          held.commit = undefined;
-          held.configured = true;
-        }
-        return;
-      }
       const action = actionKey
         ? actions.current?.querySelector<HTMLButtonElement>(
             '[data-shortcut="' + actionKey + '"]',
@@ -721,7 +635,6 @@ export function ReaderSentenceMode({
         wordCount
       ) {
         event.preventDefault();
-        heldArrow.current = null;
         const direction = event.key === "ArrowDown" ? 1 : -1;
         const lines = getVisualLines();
         let origin = wordNavigationOrigin(direction);
@@ -751,8 +664,8 @@ export function ReaderSentenceMode({
           });
         } else if (direction > 0 ? mode.canNext : mode.canBack) {
           clearTextSelection();
-          pendingWord.current = null;
-          pendingVertical.current = { cfi: sentence.cfi, direction, x };
+          resetVertical();
+          pendingWord.current = { cfi: sentence.cfi, direction };
           mode.move(direction);
         }
       } else if (
@@ -761,70 +674,15 @@ export function ReaderSentenceMode({
         ["ArrowRight", "ArrowLeft"].includes(event.key)
       ) {
         event.preventDefault();
-        const key = event.key as "ArrowRight" | "ArrowLeft";
-        if (event.repeat) {
-          const held = heldArrow.current;
-          if (
-            !held ||
-            held.key !== key ||
-            held.cfi !== sentence.cfi ||
-            held.configured
-          )
-            return;
-          held.commit = undefined;
-          const origin = wordNavigationOrigin(key === "ArrowRight" ? 1 : -1);
-          resetVertical();
-          clearTextSelection();
-          moveWords(
-            key === "ArrowRight" ? 1 : -1,
-            wordSteps[key],
-            origin,
-            true,
-          );
-          return;
-        }
-        const count = heldDigit.current || wordSteps[key];
-        const origin = wordNavigationOrigin(key === "ArrowRight" ? 1 : -1);
-        heldArrow.current = { key, cfi: sentence.cfi, index: origin };
-        if (heldDigit.current) {
-          heldArrow.current.configured = true;
-          setWordSteps((current) => ({ ...current, [key]: count }));
-          setFeedback(
-            (key === "ArrowRight" ? "Right" : "Left") +
-              ": " +
-              count +
-              (count === 1 ? " word per press" : " words per press"),
-          );
-        } else {
-          // Wait for release so an arrow+number chord can configure without moving.
-          heldArrow.current.commit = () => {
-            resetVertical();
-            clearTextSelection();
-            moveWords(key === "ArrowRight" ? 1 : -1, count, origin);
-          };
-        }
+        const direction = event.key === "ArrowRight" ? 1 : -1;
+        const origin = wordNavigationOrigin(direction);
+        resetVertical();
+        clearTextSelection();
+        moveWords(direction, origin, event.repeat);
       }
-    };
-    const release = (event: KeyboardEvent) => {
-      if (heldArrow.current?.key === event.key) {
-        const held = heldArrow.current;
-        heldArrow.current = null;
-        if (!blocked && held.cfi === sentence?.cfi) held.commit?.();
-      }
-      if (/^[1-9]$/.test(event.key)) heldDigit.current = null;
-    };
-    const clearHeld = () => {
-      heldArrow.current = null;
-      heldDigit.current = null;
     };
     document.addEventListener("keydown", onKey);
-    document.addEventListener("keyup", release);
-    window.addEventListener("blur", clearHeld);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      document.removeEventListener("keyup", release);
-      window.removeEventListener("blur", clearHeld);
-    };
+    return () => document.removeEventListener("keydown", onKey);
   }, [
     mode,
     blocked,
@@ -834,7 +692,6 @@ export function ReaderSentenceMode({
     wordIndex,
     reader.flags.ready,
     actionTarget,
-    wordSteps,
   ]);
   const openLookup = (translate: boolean) => {
     const current = selection(true);
