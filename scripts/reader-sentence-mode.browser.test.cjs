@@ -198,6 +198,67 @@ test(
               "break.",
             ]);
             assert.deepEqual(extraction.mapped, extraction.texts);
+            await page.keyboard.press("Escape");
+            assert.equal(
+              await page.evaluate(
+                () => window.rsvpTest.reader.sentenceMode.active,
+              ),
+              true,
+            );
+            await page.keyboard.press("f");
+            assert.equal(
+              await page.evaluate(() => window.rsvpTest.reader.panel),
+              null,
+            );
+            const reflow = await page.evaluate(() => {
+              const text =
+                "Janis’s questioning of her mother’s conformity intensified as she sought knowledge and affirmation from this older iconoclastic group.";
+              const paragraph = document.createElement("div");
+              paragraph.className = "reader-sentence-text";
+              paragraph.style.cssText =
+                "position:absolute;left:-10000px;top:0;max-width:none";
+              const parts = text.split(
+                /([\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*)/gu,
+              );
+              parts.forEach((part, index) => {
+                if (index % 2 === 0)
+                  paragraph.append(document.createTextNode(part));
+                else {
+                  const word = document.createElement("span");
+                  word.textContent = part;
+                  paragraph.append(word);
+                }
+              });
+              document.body.append(paragraph);
+              const words = [...paragraph.querySelectorAll("span")];
+              const positions = () =>
+                words.map((word) => {
+                  const rect = word.getBoundingClientRect();
+                  return [rect.x, rect.y, rect.width, rect.height];
+                });
+              const changed = [];
+              for (const width of [650, 620, 580, 390, 320])
+                for (const fontSize of [28, 43]) {
+                  paragraph.style.width = width + "px";
+                  paragraph.style.fontSize = fontSize + "px";
+                  const before = JSON.stringify(positions());
+                  for (const word of words) {
+                    word.className = "reader-sentence-word-active";
+                    word.style.backgroundColor = "#cbb4ed";
+                    if (JSON.stringify(positions()) !== before)
+                      changed.push({ width, fontSize, word: word.textContent });
+                    word.className = "";
+                    word.style.backgroundColor = "";
+                  }
+                }
+              paragraph.remove();
+              return changed;
+            });
+            assert.deepEqual(
+              reflow,
+              [],
+              "Word highlighting must preserve every word position and line break",
+            );
             const cfi = await page.evaluate(
               () => window.rsvpTest.reader.sentenceMode.sentence.cfi,
             );
@@ -274,25 +335,40 @@ test(
               await page.locator(".reader-sentence-word-active").count(),
               0,
             );
-            await page
-              .getByRole("button", { name: "Copy", exact: true })
-              .click();
+            if (!mobile) await page.keyboard.press("c");
+            else
+              await page
+                .getByRole("button", { name: "Copy", exact: true })
+                .click();
             assert.equal(
               await page.evaluate(() => window.copied),
               "Hello, reading world.",
             );
-            await page
-              .getByRole("button", { name: "Translate", exact: true })
-              .click();
+            if (!mobile) await page.keyboard.press("t");
+            else
+              await page
+                .getByRole("button", { name: "Translate", exact: true })
+                .click();
             await page.getByText("שלום", { exact: true }).first().waitFor();
             assert.equal(lookups.at(-1).word, "Hello, reading world.");
             assert.equal(lookups.at(-1).passage, true);
             assert.equal(lookups.at(-1).provider, "google");
             assert.equal(lookups.at(-1).location, cfi);
-            await page.getByRole("button", { name: /close/i }).last().click();
-            await page
-              .getByRole("button", { name: "Annotate", exact: true })
-              .click();
+            await page.keyboard.press("Escape");
+            await page.waitForFunction(
+              () => !document.querySelector(".reader-dictionary"),
+            );
+            assert.equal(
+              await page.evaluate(
+                () => window.rsvpTest.reader.sentenceMode.active,
+              ),
+              true,
+            );
+            if (!mobile) await page.keyboard.press("n");
+            else
+              await page
+                .getByRole("button", { name: "Annotate", exact: true })
+                .click();
             await page.waitForFunction(
               () => window.rsvpTest.reader.panel === "annotations",
             );
@@ -308,6 +384,16 @@ test(
               ),
               cfi,
             );
+            await page.locator("#reader-annotation-note").fill("tacnf");
+            assert.equal(
+              await page.evaluate(() => window.rsvpTest.reader.panel),
+              "annotations",
+            );
+            assert.equal(await page.locator(".reader-dictionary").count(), 0);
+            assert.equal(
+              await page.locator("#reader-annotation-note").inputValue(),
+              "tacnf",
+            );
             await page.locator("#reader-annotation-note").fill("Sentence note");
             await page
               .locator(".reader-annotation-actions button[type=submit]")
@@ -317,19 +403,32 @@ test(
             );
             assert.equal(annotations.at(-1).text, "Hello, reading world.");
             assert.equal(annotations.at(-1).cfi, cfi);
-            await page.evaluate(() => window.rsvpTest.reader.closePanel());
+            await page.keyboard.press("Escape");
+            await page.waitForFunction(() => !window.rsvpTest.reader.panel);
+            assert.equal(
+              await page.evaluate(
+                () => window.rsvpTest.reader.sentenceMode.active,
+              ),
+              true,
+            );
             assert.equal(
               await page
                 .getByRole("button", { name: "More", exact: true })
                 .count(),
               0,
             );
-            await page
-              .getByRole("button", { name: "Ask AI", exact: true })
-              .click();
+            if (!mobile) await page.keyboard.press("a");
+            else
+              await page
+                .getByRole("button", { name: "Ask AI", exact: true })
+                .click();
             await page.waitForFunction(
               () => window.rsvpTest.reader.panel === "chat",
             );
+            await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+            assert.equal(await page.evaluate(() => document.activeElement?.matches('textarea[id^="reader-chat-question"]')), true, 'Ask AI focuses the question input instead of the close button');
+            await page.keyboard.type('Explain this sentence');
+            assert.equal(await page.locator('textarea[id^="reader-chat-question"]:focus').inputValue(), 'Explain this sentence');
             assert.equal(
               await page.evaluate(
                 () => window.rsvpTest.reader.chat.passage.text,

@@ -137,7 +137,9 @@ export function useEpubReader(book: ReaderBook, userId: string) {
         if (autoSubmit) chat.forTab(key).send("What does this sentence mean in this context?");
         setPanel("chat");
       });
-      if (!autoSubmit) runtime.shell.current?.querySelector<HTMLTextAreaElement>("#reader-chat-question")?.focus({ preventScroll: true });
+      if (!autoSubmit) runtime.shell.current?.querySelector<HTMLTextAreaElement>(
+        '[data-focused-group="true"] textarea[id^="reader-chat-question-"], #reader-chat-question',
+      )?.focus({ preventScroll: true });
     },
     annotations,
     mobile,

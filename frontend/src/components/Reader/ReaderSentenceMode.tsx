@@ -49,6 +49,7 @@ export function ReaderSentenceMode({
   const pendingWord = useRef<{ cfi: string; direction: number } | null>(null);
   const highlightedWord = useRef<HTMLSpanElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  const actions = useRef<HTMLDivElement>(null);
   const sentence = mode.sentence;
   const parts =
     sentence?.text.split(/([\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*)/gu) || [];
@@ -101,16 +102,27 @@ export function ReaderSentenceMode({
       const target = event.target as Element | null;
       if (
         event.defaultPrevented ||
+        event.isComposing ||
         event.altKey ||
         event.ctrlKey ||
         event.metaKey ||
         event.shiftKey ||
         blocked ||
         target?.closest(
-          "input,textarea,select,[contenteditable=true],[role=dialog]",
+          "input,textarea,select,[contenteditable]:not([contenteditable=false]),[role=dialog],[role=textbox],[role=slider]",
         )
       )
         return;
+      const action = actions.current?.querySelector<HTMLButtonElement>(
+        '[data-shortcut="' +
+          event.key.toLowerCase().replace(/[^a-z]/g, "") +
+          '"]',
+      );
+      if (action && !action.disabled) {
+        event.preventDefault();
+        if (!event.repeat) action.click();
+        return;
+      }
       if (["ArrowRight", "ArrowLeft"].includes(event.key)) {
         event.preventDefault();
         pendingWord.current = null;
@@ -136,9 +148,6 @@ export function ReaderSentenceMode({
             mode.move(direction);
           }
         } else setWordFocus({ cfi: sentence.cfi, index: next });
-      } else if (event.key === "Escape") {
-        event.preventDefault();
-        void mode.toggle();
       }
     };
     document.addEventListener("keydown", onKey);
@@ -277,9 +286,12 @@ export function ReaderSentenceMode({
             <FiChevronRight />
           </button>
         </div>
-        <div className="reader-sentence-actions">
+        <div className="reader-sentence-actions" ref={actions}>
           <button
             disabled={blocked || aiDisabled}
+            data-shortcut="t"
+            aria-keyshortcuts="t"
+            title="Translate (T)"
             onClick={() => openLookup(true)}
           >
             <FiGlobe />
@@ -287,6 +299,9 @@ export function ReaderSentenceMode({
           </button>
           <button
             disabled={blocked || aiDisabled}
+            data-shortcut="a"
+            aria-keyshortcuts="a"
+            title="Ask AI (A)"
             onClick={() => {
               const current = selection();
               if (current) reader.askSentenceAi(current);
@@ -297,6 +312,9 @@ export function ReaderSentenceMode({
           </button>
           <button
             disabled={blocked || !sentence}
+            data-shortcut="c"
+            aria-keyshortcuts="c"
+            title="Copy sentence (C)"
             onClick={async () => {
               try {
                 await navigator.clipboard.writeText(sentence.text);
@@ -310,6 +328,9 @@ export function ReaderSentenceMode({
             <span>Copy</span>
           </button>
           <button
+            data-shortcut="n"
+            aria-keyshortcuts="n"
+            title="Annotate (N)"
             disabled={
               blocked ||
               !sentence ||
@@ -326,7 +347,8 @@ export function ReaderSentenceMode({
           </button>
           <button
             disabled
-            title="Save for Later requires Ticket #25"
+            data-shortcut="f"
+            title="Flag (F) — Save for Later requires Ticket #25"
             aria-label="Flag — Save for Later requires Ticket #25"
           >
             <FiFlag />

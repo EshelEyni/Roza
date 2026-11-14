@@ -123,8 +123,8 @@ export function ReaderSheet({
     document.addEventListener("keydown", onKey);
     // Keep touch focus in the EPUB so native selection handles survive.
     if (
-      !mobile ||
-      (fullScreen && !panel.current?.contains(document.activeElement))
+      (!mobile || fullScreen) &&
+      !panel.current?.contains(document.activeElement)
     )
       (closeButton.current || panel.current)?.focus({ preventScroll: true });
     return () => document.removeEventListener("keydown", onKey);
