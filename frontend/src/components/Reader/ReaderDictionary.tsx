@@ -219,13 +219,10 @@ export function ReaderDictionary({
       const width = viewport?.width || window.innerWidth;
       const height = viewport?.height || window.innerHeight;
       const popupWidth = Math.min(actionWidth, Math.max(0, width - 24));
-      // Safari can pan or resize the visual viewport independently of the reader.
-      // Use the footer's actual edge and a small gap to avoid lifting the dock
-      // unnecessarily into the last line of EPUB text.
-      const footer = document.querySelector(".reader-footer")?.getBoundingClientRect();
-      const bottom = Math.min(top + height - 12, footer ? footer.top - 4 : top + height - 8);
+      // Dock 10px above Safari's visible viewport, including over the footer.
+      const bottom = top + height - 10;
       const maxHeight = Math.max(0, bottom - (top + 12));
-      // Dock above the reader footer instead of following Safari's selection menu.
+      // Keep the content-sized controls within the visible viewport.
       setMobilePosition({
         width: popupWidth,
         left: left + (width - popupWidth) / 2,
