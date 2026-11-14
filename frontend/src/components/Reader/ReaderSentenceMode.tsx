@@ -1,9 +1,13 @@
 import { useTranslation } from "react-i18next";
 import { EpubCFI } from "epubjs";
-import { readerSentenceSelectionRange } from "../../services/readerSentenceSelectionRange";
+import {
+  readerSentenceSelectionRange,
+  readerSentenceSelectionOffsets,
+} from "../../services/readerSentenceSelectionRange";
 import {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -120,6 +124,62 @@ export function ReaderSentenceMode({
     partOffset += part.length;
     return start;
   });
+  const translatedRanges = useMemo(() => {
+    if (!sentence || !reader.searchBook) return [];
+    const section = reader.searchBook.spine.get(sentence.cfi);
+    if (!section?.document) return [];
+    const source = new EpubCFI(sentence.cfi).toRange(section.document);
+    return reader.translatedPassages.flatMap((passage) => {
+      try {
+        const first = new EpubCFI(passage.cfi);
+        const last = passage.endCfi ? new EpubCFI(passage.endCfi) : first;
+        if (section.index < first.spinePos || section.index > last.spinePos)
+          return [];
+        const mark =
+          section.index === first.spinePos
+            ? first.toRange(section.document)
+            : source.cloneRange();
+        if (passage.endCfi) {
+          const end =
+            section.index === last.spinePos
+              ? last.toRange(section.document)
+              : source;
+          mark.setEnd(end.endContainer, end.endOffset);
+        }
+        const offsets = readerSentenceSelectionOffsets(source, mark);
+        return offsets && offsets.end > offsets.start ? [offsets] : [];
+      } catch {
+        return [];
+      }
+    });
+  }, [sentence?.cfi, reader.searchBook, reader.translatedPassages]);
+  const renderTranslated = (text: string, offset: number): ReactNode => {
+    const end = offset + text.length;
+    const cuts = [
+      ...new Set([
+        offset,
+        end,
+        ...translatedRanges
+          .flatMap((range) => [
+            Math.max(offset, range.start),
+            Math.min(end, range.end),
+          ])
+          .filter((point) => point > offset && point < end),
+      ]),
+    ].sort((a, b) => a - b);
+    return cuts.slice(0, -1).map((start, index) => {
+      const value = text.slice(start - offset, cuts[index + 1] - offset);
+      return translatedRanges.some(
+        (range) => range.start <= start && range.end >= cuts[index + 1],
+      ) ? (
+        <mark key={start} className="reader-sentence-translated">
+          {value}
+        </mark>
+      ) : (
+        value
+      );
+    });
+  };
   const renderPart = (part: string, index: number): ReactNode => {
     const start = partOffsets[index];
     const end = start + part.length;
@@ -130,12 +190,14 @@ export function ReaderSentenceMode({
           (note.offset < end ||
             (index === parts.length - 1 && note.offset === end)),
       ) || [];
-    if (!notes.length) return part;
+    if (!notes.length) return renderTranslated(part, start);
     const content: ReactNode[] = [];
     let cursor = 0;
     notes.forEach((note, noteIndex) => {
       const offset = note.offset - start;
-      content.push(part.slice(cursor, offset));
+      content.push(
+        renderTranslated(part.slice(cursor, offset), start + cursor),
+      );
       content.push(
         <sup
           key={noteIndex}
@@ -155,7 +217,7 @@ export function ReaderSentenceMode({
       );
       cursor = offset;
     });
-    content.push(part.slice(cursor));
+    content.push(renderTranslated(part.slice(cursor), start + cursor));
     return content;
   };
   const wordCount = Math.floor(parts.length / 2);
@@ -349,23 +411,29 @@ export function ReaderSentenceMode({
         : null,
     );
   };
-  const selection = (): ReaderTextSelection | null => {
-    if (!sentence || !actionTarget) return null;
+  const selection = (requireMarked = false): ReaderTextSelection | null => {
+    if (!sentence) return null;
+    const chosen =
+      actionTarget ||
+      (!requireMarked
+        ? { start: 0, end: sentence.text.length, text: sentence.text }
+        : null);
+    if (!chosen) return null;
     const rect = stage.current?.getBoundingClientRect();
     try {
       const section = reader.searchBook?.spine.get(sentence.cfi);
       if (!section?.document) throw new Error("Section unavailable");
       const range = readerSentenceSelectionRange(
         new EpubCFI(sentence.cfi).toRange(section.document),
-        actionTarget.start,
-        actionTarget.end,
+        chosen.start,
+        chosen.end,
       );
       if (!range) throw new Error("Selection unavailable");
       return {
-        text: actionTarget.text,
-        word: actionTarget.text,
+        text: chosen.text,
+        word: chosen.text,
         cfi:
-          actionTarget.start === 0 && actionTarget.end === sentence.text.length
+          chosen.start === 0 && chosen.end === sentence.text.length
             ? sentence.cfi
             : section.cfiFromRange(range),
         x: rect?.left || 12,
@@ -456,9 +524,14 @@ export function ReaderSentenceMode({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target instanceof Element ? event.target : null;
+      const actionKey = /^Key[TACNF]$/.test(event.code)
+        ? event.code.slice(3).toLowerCase()
+        : /^[tacnf]$/i.test(event.key)
+          ? event.key.toLowerCase()
+          : null;
       if (
         event.ctrlKey &&
-        event.key.toLowerCase() === "s" &&
+        (event.code === "KeyS" || event.key.toLowerCase() === "s") &&
         !event.defaultPrevented &&
         !event.isComposing &&
         !event.altKey &&
@@ -467,7 +540,6 @@ export function ReaderSentenceMode({
         !blocked &&
         sentence &&
         reader.flags.ready &&
-        actionTarget &&
         !target?.closest(
           "input,textarea,select,[contenteditable]:not([contenteditable=false]),[role=dialog],[role=textbox],[role=slider]",
         )
@@ -485,14 +557,16 @@ export function ReaderSentenceMode({
         event.altKey ||
         event.ctrlKey ||
         event.metaKey ||
-        (event.shiftKey && !["ArrowRight", "ArrowLeft"].includes(event.key)) ||
+        (event.shiftKey &&
+          !["ArrowRight", "ArrowLeft"].includes(event.key) &&
+          !actionKey) ||
         blocked ||
         target?.closest(
           "input,textarea,select,[contenteditable]:not([contenteditable=false]),[role=dialog],[role=textbox],[role=slider]",
         )
       )
         return;
-      if (event.shiftKey) {
+      if (event.shiftKey && ["ArrowRight", "ArrowLeft"].includes(event.key)) {
         if (!reader.mobile && sentence && wordCount) {
           event.preventDefault();
           heldArrow.current = null;
@@ -548,11 +622,11 @@ export function ReaderSentenceMode({
         }
         return;
       }
-      const action = actions.current?.querySelector<HTMLButtonElement>(
-        '[data-shortcut="' +
-          event.key.toLowerCase().replace(/[^a-z]/g, "") +
-          '"]',
-      );
+      const action = actionKey
+        ? actions.current?.querySelector<HTMLButtonElement>(
+            '[data-shortcut="' + actionKey + '"]',
+          )
+        : null;
       if (action && !action.disabled) {
         event.preventDefault();
         if (!event.repeat) action.click();
@@ -645,11 +719,14 @@ export function ReaderSentenceMode({
     wordSteps,
   ]);
   const openLookup = (translate: boolean) => {
-    const current = selection();
+    const current = selection(true);
     if (current) setLookup({ selection: current, translate });
   };
-  const aiDisabled =
+  const translateDisabled =
     !actionTarget || actionTarget.text.length > readerAiLimits.passage;
+  const aiDisabled =
+    !sentence ||
+    (actionTarget?.text || sentence.text).length > readerAiLimits.passage;
   return (
     <section
       className="reader-sentence-mode"
@@ -661,6 +738,10 @@ export function ReaderSentenceMode({
             reader.state.preferences.selectionColor || "#719bd8",
           "--sentence-selection-text-color":
             reader.state.preferences.selectionTextColor || "#28231e",
+          "--sentence-translation-color":
+            reader.state.preferences.translationColor || "#a3c2ff",
+          "--sentence-translation-text-color":
+            reader.state.preferences.translationTextColor || "#28231e",
         } as CSSProperties
       }
     >
@@ -680,7 +761,25 @@ export function ReaderSentenceMode({
           flagged={!!reader.flags.has(lookup.selection)}
           flagReady={reader.flags.ready}
           onCopyFeedback={setFeedback}
-          onTranslationDismiss={reader.markTranslation}
+          onTranslationDismiss={(passage) => {
+            const cursor =
+              extendedSelection.current ||
+              (sentence && actionTarget
+                ? {
+                    cfi: sentence.cfi,
+                    anchor: textTarget?.backward
+                      ? actionTarget.end
+                      : actionTarget.start,
+                    focus: textTarget?.backward
+                      ? actionTarget.start
+                      : actionTarget.end,
+                  }
+                : null);
+            clearTextSelection();
+            setWordFocus({ cfi: "", index: -1 });
+            extendedSelection.current = cursor;
+            reader.markTranslation(passage);
+          }}
           onAnnotate={(note) => {
             const current = lookup.selection;
             setLookup(null);
@@ -810,7 +909,7 @@ export function ReaderSentenceMode({
           onMouseDown={(event) => event.preventDefault()}
         >
           <button
-            disabled={blocked || aiDisabled}
+            disabled={blocked || translateDisabled}
             data-shortcut="t"
             aria-label="Translate"
             aria-keyshortcuts="t"
@@ -835,11 +934,11 @@ export function ReaderSentenceMode({
             <span>Ask AI</span>
           </button>
           <button
-            disabled={blocked || !actionTarget}
+            disabled={blocked || !sentence}
             data-shortcut="c"
             aria-label="Copy"
             aria-keyshortcuts="c"
-            title="Copy selected text (C)"
+            title="Copy selected text or sentence (C)"
             onClick={async () => {
               try {
                 const current = selection();
@@ -861,7 +960,7 @@ export function ReaderSentenceMode({
             title="Annotate (N)"
             disabled={
               blocked ||
-              !actionTarget ||
+              !sentence ||
               reader.annotations.busy ||
               reader.annotations.loading
             }
@@ -874,9 +973,7 @@ export function ReaderSentenceMode({
             <span>Annotate</span>
           </button>
           <button
-            disabled={
-              blocked || !actionTarget || !reader.flags.ready || flagging
-            }
+            disabled={blocked || !sentence || !reader.flags.ready || flagging}
             data-shortcut="f"
             aria-keyshortcuts="f Control+s"
             title={t("reader.review.flag") + " · F"}

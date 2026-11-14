@@ -27,7 +27,8 @@ test('translation page tracking mounts before the EPUB manager exists and clears
     '../../services/readerChatPresentation':{readerPassageKey:p=>p.cfi},
     '../../services/readerSelectionRange':{},
   });
-  const marker = useReaderPassageMarker({renditionRef:{current:rendition},stateRef:{current:{preferences:{}}}});
+  const rsvpActive = {current:false};
+  const marker = useReaderPassageMarker({rsvpActive,renditionRef:{current:rendition},stateRef:{current:{preferences:{}}}});
   const cleanups = effects.map(effect=>effect());
   const page = {start:{cfi:'page-one-start'},end:{cfi:'page-one-end'}};
   listeners.get('relocated')(page);
@@ -35,6 +36,10 @@ test('translation page tracking mounts before the EPUB manager exists and clears
   assert.equal(added.length,1);
   listeners.get('relocated')(page);
   assert.equal(removed.length,0);
+  rsvpActive.current = true;
+  listeners.get('relocated')({start:{cfi:'page-two-start'},end:{cfi:'page-two-end'}});
+  assert.equal(removed.length,0,'Hidden rendition relocation cannot clear Sentence Mode translation marks');
+  rsvpActive.current = false;
   listeners.get('relocated')({start:{cfi:'page-two-start'},end:{cfi:'page-two-end'}});
   assert.deepEqual(removed,[['word','highlight']]);
   cleanups.forEach(cleanup=>cleanup?.());

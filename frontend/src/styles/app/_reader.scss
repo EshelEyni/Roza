@@ -2271,3 +2271,6 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
   color: var(--sentence-selection-text-color, #28231e);
   text-shadow: none;
 }
+
+.reader-sentence-translated { background-color: var(--sentence-translation-color, #a3c2ff); color: var(--sentence-translation-text-color, #28231e); border-radius: 3px; padding: 0; }
+.reader-sentence-word-active .reader-sentence-translated { background-color: transparent; color: inherit; }
