@@ -64,3 +64,5 @@ Arrow binding update: Up/Down now navigate previous/next sentences. Left/Right m
 Native mouse and Shift multiword selections use the same custom selection background and text colors as single-word marks. The palette is applied through paint-only ::selection rules, preserving text layout and EPUB ranges.
 
 Held Left/Right keys now repeatedly move the word mark using the configured directional count. Releasing after repeats does not add an extra movement, and repeats stop at sentence edges. A numeric configuration chord suppresses movement for the remainder of that hold; the next separate press uses the new count.
+
+Selection cursor fix: after a mouse or Shift phrase selection, ordinary and held Left/Right navigation resumes at the active selection end. Releasing Shift or the arrows does not reset that position; forward and backward selections retain their respective active edge.
