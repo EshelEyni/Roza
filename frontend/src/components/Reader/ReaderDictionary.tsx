@@ -330,11 +330,6 @@ export function ReaderDictionary({
               <FiCopy aria-hidden="true" />
             </button>
           </div>
-          {extending && (
-            <p className="reader-selection-help">
-              {t("reader.selectionExtendHelp")}
-            </p>
-          )}
 
         </>
       ) : (

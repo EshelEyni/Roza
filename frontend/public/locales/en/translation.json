@@ -246,7 +246,6 @@
     "selectionCopyError": "Could not copy. Try the browser Copy command.",
     "selectionPrevious": "Extend selection to the previous page",
     "selectionNext": "Extend selection to the next page",
-    "selectionExtendHelp": "Use the Reader page arrows to extend across pages. Select text on this page to adjust the endpoint. Click or tap outside the selection to start a new selection.",
     "selectionError": "Could not extend the selection. Please try again.",
     "nav": "Reader",
     "eyebrow": "A little space to get lost in a book",
