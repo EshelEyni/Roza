@@ -165,6 +165,7 @@
   "words": "Words",
   "reader": {
     "review": {
+      "heading": "Flags",
       "title": "Review later",
       "flag": "Flag for review (Ctrl+S)",
       "removeFlag": "Remove flag",

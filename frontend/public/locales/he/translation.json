@@ -166,6 +166,7 @@
   "words": "מילים",
   "reader": {
     "review": {
+      "heading": "סימונים",
       "title": "סקירה בהמשך",
       "flag": "סימון לסקירה (Ctrl+S)",
       "removeFlag": "הסרת סימון",

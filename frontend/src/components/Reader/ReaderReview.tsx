@@ -79,6 +79,8 @@ export function ReaderReview({
     void refetch();
   }, [revision, refetch]);
   const [filter, setFilter] = useState("pending");
+  const list = useRef<HTMLDivElement>(null);
+  useEffect(() => { list.current?.scrollTo({ top: 0 }); }, [filter]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
   const [translations, setTranslations] = useState<
@@ -140,158 +142,169 @@ export function ReaderReview({
   }
   return (
     <section className="reader-review" aria-label={t("reader.review.title")}>
-      <div className="reader-review-filter">
-        <label className="reader-sr-only" id={filterId + "-label"} htmlFor={filterId}>
-          {t("reader.review.show")}
-        </label>
-        <ReaderSelect
-          id={filterId}
-          labelId={filterId + "-label"}
-          value={filter}
-          options={[
-            { value: "pending", label: t("reader.review.pending") },
-            { value: "vocabulary", label: t("reader.review.vocabulary") },
-            { value: "reviewed", label: t("reader.review.reviewed") },
-          ]}
-          onChange={setFilter}
-        />
+      <div className="reader-search-heading reader-review-heading">
+        <h2>{t("reader.review.heading")}</h2>
+        <div className="reader-review-filter">
+          <label
+            className="reader-sr-only"
+            id={filterId + "-label"}
+            htmlFor={filterId}
+          >
+            {t("reader.review.show")}
+          </label>
+          <ReaderSelect
+            id={filterId}
+            labelId={filterId + "-label"}
+            value={filter}
+            options={[
+              { value: "pending", label: t("reader.review.pending") },
+              { value: "vocabulary", label: t("reader.review.vocabulary") },
+              { value: "reviewed", label: t("reader.review.reviewed") },
+            ]}
+            onChange={setFilter}
+          />
+        </div>
       </div>
-      {data.isLoading && <p role="status">{t("reader.review.loading")}</p>}
-      {data.isError && (
-        <p role="alert">
-          {t("reader.review.loadError")}{" "}
-          <button onClick={() => void data.refetch()}>
-            {t("reader.review.retry")}
-          </button>
-        </p>
-      )}
-      {error && <p role="alert">{error}</p>}
-      <div className="reader-review-list">
-        {filter === "vocabulary"
-          ? data.data?.vocabulary.map((v) => (
-              <article key={v.id}>
-                <h2>{v.headword}</h2>
-                <Translation entry={v.entry} />
-                <div className="reader-review-actions">
-                  {v.books.map((b) => (
-                    <button
-                      key={b.bookId}
-                      className="reader-button"
-                      disabled={!b.location}
-                      onClick={() => onNavigate(b.location)}
-                    >
-                      {t("reader.review.open")}
-                    </button>
-                  ))}
-
-                  <button
-                    className="reader-button"
-                    disabled={!!busy}
-                    onClick={() => void updateVocabulary(v.id, !v.reviewed)}
-                  >
-                    {v.reviewed
-                      ? t("reader.review.markPending")
-                      : t("reader.review.markReviewed")}
-                  </button>
-                  <button
-                    className="reader-button"
-                    disabled={!!busy}
-                    onClick={() =>
-                      void updateVocabulary(v.id, !!v.reviewed, true)
-                    }
-                  >
-                    {t("reader.review.removeVocabulary")}
-                  </button>
-                </div>
-              </article>
-            ))
-          : data.data?.flags
-              .filter((f) => f.reviewed === (filter === "reviewed"))
-              .map((f) => {
-                const word =
-                  /^[a-zA-Z]+(?:['’-][a-zA-Z]+)*$/.test(
-                    f.text.replace(/^[“"‘(]+|[”"’.,;:!?)]+$/g, ""),
-                  ) && f.text.length <= 80;
-                const existing = data.data.vocabulary.find(
-                  (v) =>
-                    normalizeWord(v.headword) === normalizeWord(f.text) ||
-                    normalizeWord(v.entry.word) === normalizeWord(f.text),
-                );
-                return (
-                  <article key={f.id}>
-                    <p className="reader-eyebrow">
-                      {data.data.books.find((b) => b.id === f.bookId)?.title} ·{" "}
-                      {f.chapter}
-                    </p>
-                    <h2 dir="auto">{f.text}</h2>
-                    {f.context !== f.text && (
-                      <details>
-                        <summary>{t("reader.review.context")}</summary>
-                        <p dir="auto">{f.context}</p>
-                      </details>
-                    )}
-                    <small>{new Date(f.createdAt).toLocaleDateString()}</small>
-                    <Translation
-                      entry={translations[f.id] || existing?.entry}
-                    />
-                    <div className="reader-review-actions">
+      <div className="reader-review-body" ref={list}>
+        {data.isLoading && <p role="status">{t("reader.review.loading")}</p>}
+        {data.isError && (
+          <p role="alert">
+            {t("reader.review.loadError")}{" "}
+            <button onClick={() => void data.refetch()}>
+              {t("reader.review.retry")}
+            </button>
+          </p>
+        )}
+        {error && <p role="alert">{error}</p>}
+        <div className="reader-review-list">
+          {filter === "vocabulary"
+            ? data.data?.vocabulary.map((v) => (
+                <article key={v.id}>
+                  <h2>{v.headword}</h2>
+                  <Translation entry={v.entry} />
+                  <div className="reader-review-actions">
+                    {v.books.map((b) => (
                       <button
+                        key={b.bookId}
                         className="reader-button"
-                        onClick={() => void onPassageNavigate(f)}
+                        disabled={!b.location}
+                        onClick={() => onNavigate(b.location)}
                       >
                         {t("reader.review.open")}
                       </button>
-                      {word ? (
+                    ))}
+
+                    <button
+                      className="reader-button"
+                      disabled={!!busy}
+                      onClick={() => void updateVocabulary(v.id, !v.reviewed)}
+                    >
+                      {v.reviewed
+                        ? t("reader.review.markPending")
+                        : t("reader.review.markReviewed")}
+                    </button>
+                    <button
+                      className="reader-button"
+                      disabled={!!busy}
+                      onClick={() =>
+                        void updateVocabulary(v.id, !!v.reviewed, true)
+                      }
+                    >
+                      {t("reader.review.removeVocabulary")}
+                    </button>
+                  </div>
+                </article>
+              ))
+            : data.data?.flags
+                .filter((f) => f.reviewed === (filter === "reviewed"))
+                .map((f) => {
+                  const word =
+                    /^[a-zA-Z]+(?:['’-][a-zA-Z]+)*$/.test(
+                      f.text.replace(/^[“"‘(]+|[”"’.,;:!?)]+$/g, ""),
+                    ) && f.text.length <= 80;
+                  const existing = data.data.vocabulary.find(
+                    (v) =>
+                      normalizeWord(v.headword) === normalizeWord(f.text) ||
+                      normalizeWord(v.entry.word) === normalizeWord(f.text),
+                  );
+                  return (
+                    <article key={f.id}>
+                      <p className="reader-eyebrow">
+                        {data.data.books.find((b) => b.id === f.bookId)?.title}{" "}
+                        · {f.chapter}
+                      </p>
+                      <h2 dir="auto">{f.text}</h2>
+                      {f.context !== f.text && (
+                        <details>
+                          <summary>{t("reader.review.context")}</summary>
+                          <p dir="auto">{f.context}</p>
+                        </details>
+                      )}
+                      <small>
+                        {new Date(f.createdAt).toLocaleDateString()}
+                      </small>
+                      <Translation
+                        entry={translations[f.id] || existing?.entry}
+                      />
+                      <div className="reader-review-actions">
+                        <button
+                          className="reader-button"
+                          onClick={() => void onPassageNavigate(f)}
+                        >
+                          {t("reader.review.open")}
+                        </button>
+                        {word ? (
+                          <button
+                            className="reader-button"
+                            disabled={!!busy}
+                            onClick={() => void translate(f)}
+                          >
+                            {t("reader.review.translate")}
+                          </button>
+                        ) : f.text.length > readerAiLimits.passage ? (
+                          <button
+                            className="reader-button"
+                            disabled
+                            title={t("reader.chat.selectionLimit")}
+                          >
+                            {t("reader.review.askAi")}
+                          </button>
+                        ) : (
+                          <button
+                            className="reader-button"
+                            onClick={() => onAskAi(f)}
+                          >
+                            {t("reader.review.askAi")}
+                          </button>
+                        )}
                         <button
                           className="reader-button"
                           disabled={!!busy}
-                          onClick={() => void translate(f)}
+                          onClick={() => void update(f, false)}
                         >
-                          {t("reader.review.translate")}
+                          {f.reviewed
+                            ? t("reader.review.markPending")
+                            : t("reader.review.markReviewed")}
                         </button>
-                      ) : f.text.length > readerAiLimits.passage ? (
                         <button
                           className="reader-button"
-                          disabled
-                          title={t("reader.chat.selectionLimit")}
+                          disabled={!!busy}
+                          onClick={() => void update(f, true)}
                         >
-                          {t("reader.review.askAi")}
+                          {t("reader.review.remove")}
                         </button>
-                      ) : (
-                        <button
-                          className="reader-button"
-                          onClick={() => onAskAi(f)}
-                        >
-                          {t("reader.review.askAi")}
-                        </button>
-                      )}
-                      <button
-                        className="reader-button"
-                        disabled={!!busy}
-                        onClick={() => void update(f, false)}
-                      >
-                        {f.reviewed
-                          ? t("reader.review.markPending")
-                          : t("reader.review.markReviewed")}
-                      </button>
-                      <button
-                        className="reader-button"
-                        disabled={!!busy}
-                        onClick={() => void update(f, true)}
-                      >
-                        {t("reader.review.remove")}
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
+                      </div>
+                    </article>
+                  );
+                })}
+        </div>
+        {data.isSuccess &&
+          !(filter === "vocabulary"
+            ? data.data.vocabulary.length
+            : data.data.flags.filter(
+                (f) => f.reviewed === (filter === "reviewed"),
+              ).length) && <p>{t("reader.review.empty")}</p>}
       </div>
-      {data.isSuccess &&
-        !(filter === "vocabulary"
-          ? data.data.vocabulary.length
-          : data.data.flags.filter(
-              (f) => f.reviewed === (filter === "reviewed"),
-            ).length) && <p>{t("reader.review.empty")}</p>}
     </section>
   );
 }

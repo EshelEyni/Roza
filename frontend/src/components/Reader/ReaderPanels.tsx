@@ -83,7 +83,7 @@ export function ReaderPanels({
       )}
       onClose={closePanel}
       className={"reader-resizable-panel " + (
-        panel === "search"
+        panel === "review" ? "reader-review-panel" : panel === "search"
           ? "reader-search-panel"
           : panel === "chat"
             ? (desktop ? "reader-groups-panel reader-chat-panel" : "reader-chat-panel")
