@@ -1,6 +1,9 @@
+import { ItemMenu } from "../WritingStudio/ItemMenu";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  FiMoreHorizontal,
+  FiBookOpen,
   FiMapPin,
   FiChevronDown,
   FiChevronRight,
@@ -12,6 +15,7 @@ import { readerFlagContext } from "../../services/readerFlagContext";
 
 export function ReaderReviewCard({
   text,
+  vocabulary = false,
   location,
   date,
   status,
@@ -27,6 +31,7 @@ export function ReaderReviewCard({
   aiDisabled,
 }: {
   text: string;
+  vocabulary?: boolean;
   location: string;
   date?: string;
   status: string;
@@ -44,25 +49,52 @@ export function ReaderReviewCard({
   const { t, i18n } = useTranslation();
   const excerpt = context ? readerFlagContext(context, text) : null;
   return (
-    <article className={"reader-review-card" + (passage ? " is-passage" : "")}>
+    <article
+      className={
+        "reader-review-card" +
+        (passage ? " is-passage" : "") +
+        (vocabulary ? " is-vocabulary" : "")
+      }
+    >
       <div className="reader-review-card-content">
-        <header className="reader-review-card-meta">
-          <span>
-            <FiMapPin aria-hidden="true" />
-            {location}
-          </span>
-          {date && (
-            <time dateTime={date}>
-              {t("reader.review.savedOn", {
-                date: new Date(date).toLocaleDateString(i18n.language, {
-                  year: "numeric",
-                  month: "short",
-                  day: "numeric",
-                }),
-              })}
-            </time>
-          )}
-        </header>
+        {vocabulary && (
+          <div className="reader-vocabulary-menu">
+            <ItemMenu>
+              <summary role="button"
+                className="reader-icon-button"
+                aria-label={t("reader.review.vocabularyActions")}
+                title={t("reader.review.vocabularyActions")}
+              >
+                <FiMoreHorizontal aria-hidden="true" />
+              </summary>
+              <div className="reader-book-menu-popover">
+                <button onClick={onRemove} disabled={busy}>
+                  <FiTrash2 aria-hidden="true" />
+                  {t("reader.review.remove")}
+                </button>
+              </div>
+            </ItemMenu>
+          </div>
+        )}
+        {!vocabulary && (
+          <header className="reader-review-card-meta">
+            <span>
+              <FiMapPin aria-hidden="true" />
+              {location}
+            </span>
+            {date && (
+              <time dateTime={date}>
+                {t("reader.review.savedOn", {
+                  date: new Date(date).toLocaleDateString(i18n.language, {
+                    year: "numeric",
+                    month: "short",
+                    day: "numeric",
+                  }),
+                })}
+              </time>
+            )}
+          </header>
+        )}
         <h2 className="reader-review-card-title" dir="auto">
           {text}
         </h2>
@@ -99,7 +131,11 @@ export function ReaderReviewCard({
           onClick={onOpen}
           disabled={!onOpen}
         >
-          <FiChevronRight aria-hidden="true" />
+          {vocabulary ? (
+            <FiBookOpen aria-hidden="true" />
+          ) : (
+            <FiChevronRight aria-hidden="true" />
+          )}
           {t("reader.review.open")}
         </button>
         <button className="reader-button" onClick={onReview} disabled={busy}>
@@ -110,15 +146,17 @@ export function ReaderReviewCard({
               : "reader.review.markReviewed",
           )}
         </button>
-        <button
-          className="reader-icon-button reader-review-card-remove"
-          onClick={onRemove}
-          disabled={busy}
-          aria-label={t("reader.review.remove")}
-          title={t("reader.review.remove")}
-        >
-          <FiTrash2 aria-hidden="true" />
-        </button>
+        {!vocabulary && (
+          <button
+            className="reader-icon-button reader-review-card-remove"
+            onClick={onRemove}
+            disabled={busy}
+            aria-label={t("reader.review.remove")}
+            title={t("reader.review.remove")}
+          >
+            <FiTrash2 aria-hidden="true" />
+          </button>
+        )}
       </footer>
     </article>
   );

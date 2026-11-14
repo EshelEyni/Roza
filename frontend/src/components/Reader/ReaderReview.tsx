@@ -11,13 +11,27 @@ import type {
 } from "../../../../shared/types/readerReview";
 import type { ReaderDictionaryEntry } from "../../../../shared/types/readerDictionary";
 import type { ReaderPassage } from "../../../../shared/types/readerChat";
-function Translation({ entry }: { entry?: ReaderDictionaryEntry | null }) {
+function Translation({
+  entry,
+  vocabulary = false,
+}: {
+  entry?: ReaderDictionaryEntry | null;
+  vocabulary?: boolean;
+}) {
+  const { t } = useTranslation();
   return entry ? (
-    <div>
+    <div className={vocabulary ? "reader-vocabulary-translation" : undefined}>
+      {vocabulary && (
+        <span className="reader-vocabulary-translation-label">
+          {t("reader.review.hebrewTranslation")}
+        </span>
+      )}
       {entry.senses.map((s) => (
         <p key={s.id} dir="auto">
           {s.meanings.join("; ")}
-          {s.definition && " — " + s.definition}
+          {(!vocabulary || !s.meanings.length) &&
+            s.definition &&
+            " — " + s.definition}
         </p>
       ))}
       {entry.attribution && (
@@ -167,10 +181,11 @@ export function ReaderReview({
                 return (
                   <ReaderReviewCard
                     key={v.id}
+                    vocabulary
                     text={v.headword}
                     location={book?.title || t("reader.review.location")}
-                    status={t("reader.review.translatedWord")}
-                    translation={<Translation entry={v.entry} />}
+                    status={t("reader.review.savedVocabulary")}
+                    translation={<Translation entry={v.entry} vocabulary />}
                     reviewed={!!v.reviewed}
                     busy={!!busy}
                     onOpen={

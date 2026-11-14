@@ -165,6 +165,9 @@
   "words": "Words",
   "reader": {
     "review": {
+      "savedVocabulary": "Saved vocabulary",
+      "hebrewTranslation": "Hebrew translation",
+      "vocabularyActions": "Vocabulary actions",
       "location": "Location",
       "savedOn": "Saved {{date}}",
       "readContext": "Read passage context",

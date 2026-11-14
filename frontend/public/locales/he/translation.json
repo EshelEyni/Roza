@@ -166,6 +166,9 @@
   "words": "מילים",
   "reader": {
     "review": {
+      "savedVocabulary": "אוצר מילים שמור",
+      "hebrewTranslation": "תרגום לעברית",
+      "vocabularyActions": "פעולות למילה",
       "location": "מיקום",
       "savedOn": "נשמר ב־{{date}}",
       "readContext": "קריאת הקשר הקטע",

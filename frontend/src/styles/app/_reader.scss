@@ -2190,3 +2190,21 @@
 .reader-review-card .reader-review-actions .reader-review-card-open:hover { background: #4e3b29; }
 .reader-review-card .reader-review-card-remove { align-self: stretch; width: 38px; height: auto; min-height: 40px; border: 1px solid #c7a77e; border-radius: 10px; color: #a14b37; background: transparent; }
 @container (max-width: 360px) { .reader-review-actions .reader-button > svg { display: none; } }
+
+.reader-review-card.is-vocabulary { position: relative; --review-card-bg: #fbf4e8; }
+.reader-theme-dark .reader-review-card.is-vocabulary { --review-card-bg: #2b2d28; }
+.reader-theme-light .reader-review-card.is-vocabulary { --review-card-bg: #fffefa; }
+.reader-review-card.is-vocabulary .reader-review-card-title { margin-top: 0; padding-inline-end: 26px; }
+.reader-review-card.is-vocabulary .reader-review-card-status { margin-bottom: 26px; }
+.reader-vocabulary-menu { position: absolute; inset-block-start: 20px; inset-inline-end: 20px; z-index: 2; }
+.reader-vocabulary-menu .ws-item-menu { position: relative; }
+.reader-vocabulary-menu summary { display: flex; align-items: center; justify-content: center; list-style: none; cursor: pointer; width: 28px; height: 28px; color: #8c7967; }
+.reader-vocabulary-menu summary::-webkit-details-marker { display: none; }
+.reader-vocabulary-menu .reader-book-menu-popover { z-index: 3; }
+.reader-vocabulary-menu .reader-book-menu-popover button { font-size: 13px; color: #a14b37; }
+.reader-vocabulary-translation { border-inline-start: 3px solid #c5a17a; padding-inline-start: 16px; margin-bottom: 26px; }
+.reader-vocabulary-translation-label { display: block; text-transform: uppercase; letter-spacing: .09em; font: 400 10px/1.5 Arial, sans-serif; opacity: .7; }
+.reader-vocabulary-translation p { font: 400 24px/1.5 Georgia, serif; margin: 10px 0 0; text-align: match-parent; }
+.reader-vocabulary-translation small { display: block; font-size: 10px; line-height: 1.5; margin-top: 8px; }
+.reader-review-card.is-vocabulary .reader-review-actions { display: flex; justify-content: flex-start; padding: 16px 0 20px; margin-inline: 24px; border-radius: 0; background: transparent; }
+.reader-review-card.is-vocabulary .reader-review-actions .reader-button { flex: 0 1 auto; padding-inline: 14px; }
