@@ -1,3 +1,6 @@
+import { ReaderSentenceMode } from "../../frontend/src/components/Reader/ReaderSentenceMode";
+import { ReaderPanels } from "../../frontend/src/components/Reader/ReaderPanels";
+import * as sentenceService from "../../frontend/src/services/readerSentences";
 import { MemoryRouter } from "react-router-dom";
 import { ReaderToolbar } from "../../frontend/src/components/Reader/ReaderToolbar";
 import React, { useEffect } from "react";
@@ -41,12 +44,13 @@ if (saved) book.state = saved;
 function Fixture() {
   const reader = useEpubReader(book, "fixture");
   useEffect(() => {
-    Object.assign(window, { rsvpTest: { reader, service } });
+    Object.assign(window, { rsvpTest: { reader, service, sentenceService } });
   }, [reader]);
   return (
     <div className="reader-shell reader-theme-sepia" ref={reader.shell}>
       <ReaderToolbar
         book={book}
+        sentenceMode={reader.sentenceMode}
         rsvp={reader.rsvp}
         panel={reader.panel}
         togglePanel={reader.togglePanel}
@@ -58,11 +62,13 @@ function Fixture() {
         reload={reader.reload}
       />
       <div
-        className={"reader-workspace" + (reader.rsvp.active ? " is-rsvp" : "")}
+        className={"reader-workspace" + (reader.rsvp.active || reader.sentenceMode.active ? " is-rsvp" : "")}
       >
+        <ReaderPanels {...reader} />
+        {reader.sentenceMode.active && <ReaderSentenceMode reader={reader} bookId="rsvp" />}
         {reader.rsvp.active && <ReaderRsvp reader={reader} bookId="rsvp" />}
         <ReaderViewport
-          rsvpActive={reader.rsvp.active}
+          rsvpActive={reader.rsvp.active || reader.sentenceMode.active}
           width="comfortable"
           loading={reader.loading}
           error={reader.error}

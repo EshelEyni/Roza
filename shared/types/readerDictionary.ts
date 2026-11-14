@@ -1,6 +1,7 @@
 export type ReaderLookupProvider = "auto" | "google";
 
 export interface ReaderDictionaryLookup {
+  passage?: boolean;
   word: string;
   location: string;
   requestId: string;

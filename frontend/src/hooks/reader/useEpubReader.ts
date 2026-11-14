@@ -1,8 +1,11 @@
+import { readerAiLimits } from "../../services/readerAiLimits";
 import { useReaderProgressSettings } from "./useReaderProgressSettings";
 import { useReaderKeyboardSettings } from "./useReaderKeyboardSettings";
+import { useReaderSentenceMode } from "./useReaderSentenceMode";
 import { useReaderRsvp } from "./useReaderRsvp";
 import {useTranslation} from "react-i18next";
 import { useCallback, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { ReaderBook } from "../../../../shared/types/reader";
 import { useReaderState } from "../useReaderState";
 import { useReaderMobile } from "../useReaderMobile";
@@ -62,6 +65,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     setError,
     setNotice,
   );
+  const sentenceMode = useReaderSentenceMode(runtime);
   const rsvp = useReaderRsvp(runtime, engine.loading || !!panel || !!selection.textSelection);
   const pagination = useReaderPagination(
     runtime.host,
@@ -125,6 +129,18 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     ...keyboard,
     ...progressSettings,
     rsvp: { ...rsvp, toggle: () => { selection.closeLookup(); closePanel(); return rsvp.toggle(); } },
+    sentenceMode: { ...sentenceMode, toggle: () => { selection.closeLookup(); closePanel(); return sentenceMode.toggle(); } },
+    askSentenceAi: (passage: ReaderPassage, autoSubmit = false) => {
+      if (passage.text.length > readerAiLimits.passage) return;
+      flushSync(() => {
+        const key = chat.start(passage);
+        if (autoSubmit) chat.forTab(key).send("What does this sentence mean in this context?");
+        setPanel("chat");
+      });
+      if (!autoSubmit) runtime.shell.current?.querySelector<HTMLTextAreaElement>(
+        '[data-focused-group="true"] textarea[id^="reader-chat-question-"], #reader-chat-question',
+      )?.focus({ preventScroll: true });
+    },
     annotations,
     mobile,
     state,
@@ -163,6 +179,17 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     ...engine,
     ...pagination,
     ...navigation,
+    onNavigate: (target: string) => {
+      if (!sentenceMode.active) return navigation.onNavigate(target);
+      void sentenceMode.toggle().then(() => { if (!runtime.rsvpActive.current) navigation.onNavigate(target); });
+    },
+    onPassageNavigate: async (passage: ReaderPassage) => {
+      if (sentenceMode.active) {
+        await sentenceMode.toggle();
+        if (runtime.rsvpActive.current) return;
+      }
+      await navigation.onPassageNavigate(passage);
+    },
     ...display,
     ...panelActions,
   };

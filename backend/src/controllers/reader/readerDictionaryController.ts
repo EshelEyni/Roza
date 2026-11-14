@@ -1,3 +1,4 @@
+import { translateReaderWord } from "../../services/reader/googleTranslateService";
 import { Request, Response } from "express";
 import { createHash } from "crypto";
 import mongoose from "mongoose";
@@ -15,13 +16,14 @@ import {
 
 export const lookupReaderDictionary = asyncErrorCatcher(async (req: Request, res: Response) => {
   res.setHeader("Cache-Control", "private, no-store");
-  const { word, requestId, location = "", pageLocation, provider = "auto" } = req.body;
+  const { word, requestId, location = "", pageLocation, provider = "auto", passage = false } = req.body;
   if (provider !== "auto" && provider !== "google")
     throw new AppError("Invalid dictionary provider.", 400);
   if (
     typeof word !== "string" ||
-    word.length > 80 ||
-    !/^[a-zA-Z]+(?:['’‘-][a-zA-Z]+)*$/.test(word.trim()) ||
+    typeof passage !== "boolean" ||
+    (passage ? !word.trim() || word.length > 20000 || provider !== "google" :
+      word.length > 80 || !/^[a-zA-Z]+(?:['’‘-][a-zA-Z]+)*$/.test(word.trim())) ||
     typeof requestId !== "string" ||
     !/^[a-zA-Z0-9-]{16,80}$/.test(requestId) ||
     (pageLocation !== undefined &&
@@ -40,6 +42,11 @@ export const lookupReaderDictionary = asyncErrorCatcher(async (req: Request, res
     !(await ReaderBookModel.exists({ _id: req.params.id, userId }))
   ) {
     throw new AppError("Book not found.", 404);
+  }
+  if (passage) {
+    const entry = await translateReaderWord(word, true);
+    res.json({ status: "success", data: { entry } });
+    return;
   }
   const entry = await lookupReaderWordWithTranslation(word, provider);
   if (!entry) {

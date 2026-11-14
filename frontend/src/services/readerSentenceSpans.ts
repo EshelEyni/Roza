@@ -24,6 +24,7 @@ export function readerSentenceSpans(
   const spans: { start: number; end: number }[] = [];
   let offset = 0;
   for (const paragraph of text.split("\u2029")) {
+    const paragraphStart = spans.length;
     const segments: Iterable<Segment> = segmenter
       ? segmenter.segment(paragraph)
       : Array.from(
@@ -34,7 +35,12 @@ export function readerSentenceSpans(
       const leading = segment.length - segment.trimStart().length;
       const end = offset + index + segment.trimEnd().length;
       const start = offset + index + leading;
-      if (end > start) spans.push({ start, end });
+      if (end > start) {
+        const previous = spans.length > paragraphStart ? spans[spans.length - 1] : undefined;
+        // ICU can split English honorifics from a name. Never merge across paragraphs.
+        if (previous && /\b(?:Mr|Mrs|Ms|Dr|Prof|Sr|Jr|St|vs|e\.g|i\.e)\.$/iu.test(text.slice(previous.start, previous.end))) previous.end = end;
+        else spans.push({ start, end });
+      }
     }
     offset += paragraph.length + 1;
   }

@@ -52,3 +52,9 @@ test("older engines still split punctuation and paragraph boundaries", () => {
   );
   assert.deepEqual(spans(" \u2029\n "), []);
 });
+
+test("honorifics, decimal numbers, quotations and paragraph ends keep their boundaries", () => {
+  assert.deepEqual(spans('Dr. Smith paid 3.14 dollars. “Really?”\u2029Mr.\u2029Jones left.'), [
+    'Dr. Smith paid 3.14 dollars.', '“Really?”', 'Mr.', 'Jones left.',
+  ]);
+});
