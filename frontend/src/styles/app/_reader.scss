@@ -2264,3 +2264,10 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 .reader-book-title-field input { box-sizing: border-box; width: 100%; min-width: 0; padding: 10px; border: 1px solid #b7a58a; border-radius: 8px; background: transparent; color: inherit; font: inherit; }
 
 .reader-sentence-note { font-size: .55em; line-height: 0; vertical-align: super; opacity: .45; cursor: default; user-select: none; -webkit-user-select: none; text-decoration: none; }
+
+// Native drag/Shift selections share the reader's single-word highlight palette.
+.reader-sentence-text::selection, .reader-sentence-text *::selection {
+  background-color: var(--sentence-selection-color, #719bd8);
+  color: var(--sentence-selection-text-color, #28231e);
+  text-shadow: none;
+}

@@ -310,6 +310,30 @@ test(
               semantics[0].notes.map((n) => n.text),
               ["9"],
             );
+            const rangeMapping = await page.evaluate(async () => {
+              const { readerSentenceSelectionRange } = await import(
+                "/frontend/src/services/readerSentenceSelectionRange.ts"
+              );
+              const doc = new DOMParser().parseFromString(
+                '<p>A  <em>word</em><a role="doc-noteref" href="#n57">57</a>\n\tphrase.</p>',
+                "text/html",
+              );
+              const range = doc.createRange();
+              range.selectNodeContents(doc.querySelector("p"));
+              return [
+                readerSentenceSelectionRange(range, 2, 13)?.toString(),
+                readerSentenceSelectionRange(range, 3, 5)?.toString(),
+                readerSentenceSelectionRange(range, 2, 6)?.toString(),
+                readerSentenceSelectionRange(range, 0, 100),
+              ];
+            });
+            assert.deepEqual(rangeMapping, [
+              "word57\n\tphrase",
+              "or",
+              "word",
+              null,
+            ]);
+
             await page.keyboard.press("Escape");
             assert.equal(
               await page.evaluate(
@@ -317,6 +341,33 @@ test(
               ),
               true,
             );
+            assert.equal(
+              await page
+                .getByRole("button", { name: "Translate", exact: true })
+                .isDisabled(),
+              true,
+            );
+            assert.equal(
+              await page
+                .getByRole("button", { name: "Copy", exact: true })
+                .isDisabled(),
+              true,
+            );
+            const selectSentence = async () => {
+              await page.evaluate(() => {
+                const root = document.querySelector(".reader-sentence-text");
+                const range = document.createRange();
+                range.selectNodeContents(root);
+                const native = window.getSelection();
+                native.removeAllRanges();
+                native.addRange(range);
+                document.dispatchEvent(new Event("selectionchange"));
+              });
+              await page.waitForFunction(
+                () => !document.querySelector('[data-shortcut="c"]').disabled,
+              );
+            };
+            await selectSentence();
             await page.keyboard.press("f");
             assert.equal(
               await page.evaluate(() => window.rsvpTest.reader.panel),
@@ -408,9 +459,9 @@ test(
             }
             if (!mobile) {
               const activeWord = page.locator(".reader-sentence-word-active");
-              await page.keyboard.press("ArrowDown");
+              await page.keyboard.press("ArrowRight");
               assert.equal(await activeWord.textContent(), "Hello");
-              await page.keyboard.press("ArrowDown");
+              await page.keyboard.press("ArrowRight");
               assert.equal(await activeWord.textContent(), "reading");
               const lookupsBeforeFlag = lookups.length;
               await page.keyboard.press("Control+s");
@@ -443,21 +494,21 @@ test(
               assert.equal(flagWrites, writes);
               assert.equal(flags.filter((f) => f.text === "reading").length, 1);
               assert.equal(lookups.length, lookupsBeforeFlag);
-              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("ArrowLeft");
               assert.equal(await activeWord.textContent(), "Hello");
-              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("ArrowLeft");
               assert.equal(await activeWord.textContent(), "Hello");
-              await page.keyboard.press("ArrowDown");
-              await page.keyboard.press("ArrowDown");
+              await page.keyboard.press("ArrowRight");
+              await page.keyboard.press("ArrowRight");
               assert.equal(await activeWord.textContent(), "world");
-              await page.keyboard.press("ArrowDown");
+              await page.keyboard.press("ArrowRight");
               await page.waitForFunction(
                 () =>
                   window.rsvpTest.reader.sentenceMode.sentence.text ===
                   "Next sentence!",
               );
               assert.equal(await activeWord.textContent(), "Next");
-              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("ArrowLeft");
               await page.waitForFunction(
                 () =>
                   window.rsvpTest.reader.sentenceMode.sentence.text ===
@@ -474,15 +525,45 @@ test(
                 await page.locator(".reader-sentence-text").textContent(),
                 "Hello, reading57 world.58",
               );
+              await page.keyboard.down("ArrowLeft");
+              await page.keyboard.down("ArrowLeft");
+              assert.equal(await activeWord.textContent(), "reading");
+              await page.keyboard.down("ArrowLeft");
+              assert.equal(await activeWord.textContent(), "Hello");
+              await page.keyboard.down("ArrowLeft");
+              await page.keyboard.up("ArrowLeft");
+              assert.equal(await activeWord.textContent(), "Hello");
+              await page.keyboard.down("ArrowRight");
+              await page.keyboard.down("ArrowRight");
+              assert.equal(await activeWord.textContent(), "reading");
+              await page.keyboard.down("ArrowRight");
+              assert.equal(await activeWord.textContent(), "world");
+              await page.keyboard.down("ArrowRight");
+              await page.keyboard.up("ArrowRight");
+              assert.equal(await activeWord.textContent(), "world");
+              assert.equal(
+                await page.evaluate(
+                  () => window.rsvpTest.reader.sentenceMode.sentence.cfi,
+                ),
+                cfi,
+                "Holding a word arrow stops at the sentence edge",
+              );
               const chord = async (arrow, digit) => {
                 await page.keyboard.down(arrow);
                 await page.keyboard.press(digit);
+                await page.keyboard.down(arrow); // Repeats after configuration must not move.
                 await page.keyboard.up(arrow);
               };
-              await page.keyboard.press("ArrowLeft"); // Clear the word mark at book start.
-              await chord("ArrowDown", "2");
+              await page.keyboard.press("ArrowUp"); // Clear the word mark at book start.
+              await chord("ArrowRight", "2");
+              assert.equal(
+                await activeWord.count(),
+                0,
+                "Setting the step does not create or move a mark",
+              );
+              await page.keyboard.press("ArrowRight");
               assert.equal(await activeWord.textContent(), "reading");
-              await page.keyboard.press("ArrowDown");
+              await page.keyboard.press("ArrowRight");
               assert.equal(await activeWord.textContent(), "world");
               assert.equal(
                 await page.evaluate(
@@ -493,7 +574,7 @@ test(
               await page.evaluate(() =>
                 document.dispatchEvent(
                   new KeyboardEvent("keydown", {
-                    key: "ArrowDown",
+                    key: "ArrowRight",
                     repeat: true,
                     bubbles: true,
                   }),
@@ -506,11 +587,17 @@ test(
                 cfi,
                 "Auto-repeat cannot bypass the last-word stop",
               );
-              await page.keyboard.press("ArrowDown");
+              await page.keyboard.press("ArrowRight");
               assert.equal(await activeWord.textContent(), "Next");
-              await page.keyboard.press("ArrowDown");
+              await page.keyboard.press("ArrowRight");
               assert.equal(await activeWord.textContent(), "sentence");
-              await chord("ArrowUp", "6");
+              await chord("ArrowLeft", "6");
+              assert.equal(
+                await activeWord.textContent(),
+                "sentence",
+                "Setting Up does not move the current mark",
+              );
+              await page.keyboard.press("ArrowLeft");
               assert.equal(await activeWord.textContent(), "Next");
               assert.equal(
                 await page.evaluate(
@@ -518,15 +605,15 @@ test(
                 ),
                 "Next sentence!",
               );
-              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("ArrowLeft");
               assert.equal(await activeWord.textContent(), "world");
-              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("ArrowLeft");
               assert.equal(await activeWord.textContent(), "Hello");
               assert.equal(
                 await page.evaluate(
                   () =>
                     JSON.parse(localStorage.getItem("roza-sentence-word-steps"))
-                      .ArrowDown,
+                      .ArrowRight,
                 ),
                 2,
                 "Changing Up leaves Down unchanged",
@@ -535,23 +622,115 @@ test(
                 await page.evaluate(
                   () =>
                     JSON.parse(localStorage.getItem("roza-sentence-word-steps"))
-                      .ArrowUp,
+                      .ArrowLeft,
                 ),
                 6,
               );
-              await page.keyboard.press("ArrowLeft");
               await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("ArrowLeft");
               assert.equal(
                 await activeWord.textContent(),
                 "world",
                 "Up starts at the final word when nothing is highlighted, even with step six",
               );
-              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("ArrowLeft");
               assert.equal(await activeWord.textContent(), "Hello");
-              await chord("ArrowDown", "1");
-              await chord("ArrowUp", "1");
+              await chord("ArrowRight", "1");
+              await chord("ArrowLeft", "1");
+              const markedText = async () =>
+                page.evaluate(() => {
+                  const native = window.getSelection();
+                  if (!native?.rangeCount || native.isCollapsed) return "";
+                  const fragment = native.getRangeAt(0).cloneContents();
+                  fragment
+                    .querySelectorAll(".reader-sentence-note")
+                    .forEach((note) => note.remove());
+                  return fragment.textContent.trim();
+                });
+              await page.keyboard.press("Shift+ArrowRight");
+              assert.equal(await markedText(), "Hello, reading");
+              const styleBefore = await page
+                .locator("[data-sentence-word]")
+                .evaluateAll((words) =>
+                  words.map((word) => {
+                    const r = word.getBoundingClientRect();
+                    return [r.x, r.y, r.width, r.height];
+                  }),
+                );
+              await page.evaluate(() => {
+                const reader = window.rsvpTest.reader;
+                reader.updateState({
+                  preferences: {
+                    ...reader.state.preferences,
+                    selectionColor: "#cbb4ed",
+                    selectionTextColor: "#302b26",
+                  },
+                });
+              });
+              const multiwordStyle = await page
+                .locator("[data-sentence-word]")
+                .first()
+                .evaluate((word) => {
+                  const style = getComputedStyle(word, "::selection");
+                  return {
+                    background: style.backgroundColor,
+                    text: style.color,
+                  };
+                });
+              assert.deepEqual(multiwordStyle, {
+                background: "rgb(203, 180, 237)",
+                text: "rgb(48, 43, 38)",
+              });
+              assert.equal(await markedText(), "Hello, reading");
+              assert.deepEqual(
+                await page
+                  .locator("[data-sentence-word]")
+                  .evaluateAll((words) =>
+                    words.map((word) => {
+                      const r = word.getBoundingClientRect();
+                      return [r.x, r.y, r.width, r.height];
+                    }),
+                  ),
+                styleBefore,
+                "Selection colors do not change word positions",
+              );
+
+              assert.equal(await page.locator(".reader-dictionary").count(), 0);
+              await page.keyboard.press("c");
+              assert.equal(
+                await page.evaluate(() => window.copied),
+                "Hello, reading",
+              );
+              await page.keyboard.press("Shift+ArrowRight");
+              assert.equal(await markedText(), "Hello, reading world");
+              await page.keyboard.press("Shift+ArrowLeft");
+              assert.equal(await markedText(), "Hello, reading");
+              await page.keyboard.press("Shift+ArrowLeft");
+              assert.equal(await markedText(), "Hello,");
+              await page.keyboard.press("Shift+ArrowLeft");
+              assert.equal(await markedText(), "");
+              assert.equal(
+                await page
+                  .getByRole("button", { name: "Copy", exact: true })
+                  .isDisabled(),
+                true,
+              );
+              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("ArrowLeft");
+              assert.equal(await activeWord.textContent(), "world");
+              await page.keyboard.press("Shift+ArrowLeft");
+              assert.equal(await markedText(), "reading world");
+              await page.keyboard.press("Shift+ArrowRight");
+              assert.equal(await markedText(), "world");
+              // Number-first chords also configure only, preserving a selected phrase.
+              await page.keyboard.down("2");
+              await page.keyboard.press("ArrowRight");
+              await page.keyboard.up("2");
+              assert.equal(await markedText(), "world");
+              await chord("ArrowRight", "1");
+              assert.equal(await markedText(), "world");
             }
-            await page.keyboard.press("ArrowRight");
+            await page.keyboard.press("ArrowDown");
             await page.waitForFunction(
               () =>
                 window.rsvpTest.reader.sentenceMode.sentence.text ===
@@ -562,7 +741,7 @@ test(
               0,
             );
             if (!mobile) {
-              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("ArrowLeft");
               assert.equal(
                 await page
                   .locator(".reader-sentence-word-active")
@@ -570,7 +749,7 @@ test(
                 "sentence",
               );
             }
-            await page.keyboard.press("ArrowLeft");
+            await page.keyboard.press("ArrowUp");
             await page.waitForFunction(
               () =>
                 window.rsvpTest.reader.sentenceMode.sentence.text ===
@@ -580,6 +759,96 @@ test(
               await page.locator(".reader-sentence-word-active").count(),
               0,
             );
+            assert.equal(
+              await page
+                .getByRole("button", { name: "Copy", exact: true })
+                .isDisabled(),
+              true,
+              "Changing sentence clears the selected range",
+            );
+            if (!mobile) {
+              const words = page.locator("[data-sentence-word]");
+              await words.nth(1).dblclick();
+              await page.waitForFunction(
+                () => !document.querySelector('[data-shortcut="t"]').disabled,
+              );
+              assert.equal(
+                await page.locator(".reader-dictionary").count(),
+                0,
+                "Mouse selection does not open lookup",
+              );
+              await page
+                .getByRole("button", { name: "Translate", exact: true })
+                .click();
+              await page.getByText("שלום", { exact: true }).first().waitFor();
+              assert.equal(lookups.at(-1).word, "reading");
+              assert.equal(lookups.at(-1).passage, false);
+              await page.keyboard.press("Escape");
+              const first = await words.nth(1).boundingBox();
+              const last = await words.nth(2).boundingBox();
+              await page.mouse.move(first.x + 0.5, first.y + first.height / 2);
+              await page.mouse.down();
+              await page.mouse.move(
+                last.x + last.width - 0.5,
+                last.y + last.height / 2,
+                { steps: 12 },
+              );
+              await page.mouse.up();
+              await page.waitForFunction(
+                () => !document.querySelector('[data-shortcut="c"]').disabled,
+              );
+              assert.equal(await page.locator(".reader-dictionary").count(), 0);
+              await page
+                .getByRole("button", { name: "Copy", exact: true })
+                .click();
+              assert.equal(
+                await page.evaluate(() => window.copied),
+                "reading world",
+              );
+              await page
+                .getByRole("button", { name: "Flag", exact: true })
+                .click();
+              await page.waitForFunction(() =>
+                window.rsvpTest.reader.flags.items.some(
+                  (f) => f.text === "reading world",
+                ),
+              );
+              const phraseRange = await page.evaluate(async () => {
+                const { reader } = window.rsvpTest;
+                const flag = reader.flags.items.find(
+                  (f) => f.text === "reading world",
+                );
+                return (await reader.searchBook.getRange(flag.cfi)).toString();
+              });
+              assert.equal(phraseRange, "reading57 world");
+              await page
+                .getByRole("button", { name: "Annotate", exact: true })
+                .click();
+              await page.waitForFunction(
+                () => window.rsvpTest.reader.panel === "annotations",
+              );
+              assert.equal(
+                await page.evaluate(
+                  () => window.rsvpTest.reader.annotations.draft.text,
+                ),
+                "reading world",
+              );
+              await page.keyboard.press("Escape");
+              await page
+                .getByRole("button", { name: "Ask AI", exact: true })
+                .click();
+              await page.waitForFunction(
+                () => window.rsvpTest.reader.panel === "chat",
+              );
+              assert.equal(
+                await page.evaluate(
+                  () => window.rsvpTest.reader.chat.passage.text,
+                ),
+                "reading world",
+              );
+              await page.keyboard.press("Escape");
+            }
+            await selectSentence();
             if (!mobile) await page.keyboard.press("c");
             else
               await page
@@ -685,7 +954,9 @@ test(
               true,
               "Ask AI focuses the question input instead of the close button",
             );
-            await page.keyboard.type("Explain this sentence");
+            await page
+              .locator('textarea[id^="reader-chat-question"]:focus')
+              .fill("Explain this sentence");
             assert.equal(
               await page
                 .locator('textarea[id^="reader-chat-question"]:focus')
