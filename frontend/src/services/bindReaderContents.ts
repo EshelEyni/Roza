@@ -232,9 +232,27 @@ export function bindReaderContents(
   );
   cleanups.push(
     bindReaderTouch(contents.document, {
-      enabled: () => mobileRef.current && enabled(),
+      enabled: () => enabled() && (mobileRef.current ||
+        (contents.document.defaultView?.navigator.maxTouchPoints ?? 0) > 0),
       paginated: () => stateRef.current.preferences.flow === "paginated",
-      blocked: () => !!panelRef.current,
+      blocked: () => !!panelRef.current || !!selection.isPageTurnBlocked?.(),
+      tapPosition: (x, y) => {
+        const frame = contents.document.defaultView?.frameElement?.getBoundingClientRect();
+        const host = runtime.host.current;
+        const bounds = host?.getBoundingClientRect();
+        if (!frame || !bounds || bounds.width <= 0) return;
+        const clientX = frame.left + x;
+        const clientY = frame.top + y;
+        if (clientY < bounds.top || clientY > bounds.bottom) return;
+        // epub.js paints saved annotations in an SVG layer outside the iframe.
+        const marks = host?.querySelectorAll(".reader-saved-annotation rect");
+        if (marks && Array.from(marks).some(element => {
+          const rect = element.getBoundingClientRect();
+          return clientX >= rect.left && clientX <= rect.right &&
+            clientY >= rect.top && clientY <= rect.bottom;
+        })) return;
+        return (clientX - bounds.left) / bounds.width;
+      },
       selected: () => !!selectionRef.current,
       dismissSelection: () => selection.closeLookup(),
       move: direction => move(direction),

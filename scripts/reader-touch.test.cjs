@@ -23,6 +23,7 @@ function setup(overrides = {}) {
     paginated: () => true,
     blocked: () => false,
     selected: () => false,
+    tapPosition: (x) => x / 400,
     dismissSelection: () => calls.push("dismiss"),
     move: (d) => calls.push(d),
     ...overrides,
@@ -229,4 +230,79 @@ test("desktop and blocked reader leave the context menu available", () => {
     s.doc.dispatchEvent(menu);
     assert.equal(menu.defaultPrevented, false);
   }
+});
+test("edge quick taps turn only on release, once per tap including rapid taps", () => {
+  const s = setup();
+  for (const x of [390, 10, 390, 390]) {
+    s.send("touchstart", x);
+    const before = s.calls.length;
+    const end = s.send("touchend", x);
+    assert.equal(s.calls.length, before + 1);
+    assert.equal(end.defaultPrevented, true);
+    s.send("touchend", x);
+    const click = new Event("click", { cancelable: true });
+    click.detail = 1;
+    s.doc.dispatchEvent(click);
+    assert.equal(click.defaultPrevented, true);
+    assert.equal(s.calls.length, before + 1);
+  }
+  assert.deepEqual(s.calls, ["next", "prev", "next", "next"]);
+});
+
+test("zone boundaries and positions outside the visible reader stay native", () => {
+  for (const x of [-1, 100, 200, 300, 401]) {
+    const s = setup();
+    s.send("touchstart", x);
+    assert.equal(s.send("touchend", x).defaultPrevented, false);
+    assert.deepEqual(s.calls, []);
+  }
+});
+
+test("edge holds at 250ms and excursions of 10px cannot become taps", (context) => {
+  let time = 1000;
+  context.mock.method(Date, "now", () => time);
+  const held = setup();
+  held.send("touchstart", 390);
+  time += 250;
+  held.send("touchend", 390);
+  assert.deepEqual(held.calls, []);
+  const dragged = setup();
+  dragged.send("touchstart", 390);
+  dragged.send("touchmove", 380);
+  dragged.send("touchend", 390);
+  assert.deepEqual(dragged.calls, []);
+});
+
+test("edge taps respect selection, sheets, scrolling mode and annotation hit tests", () => {
+  for (const overrides of [
+    { selected: () => true }, { blocked: () => true },
+    { paginated: () => false }, { enabled: () => false },
+    { tapPosition: () => undefined },
+  ]) {
+    const s = setup(overrides);
+    s.send("touchstart", 390);
+    s.send("touchend", 390);
+    assert.ok(!s.calls.includes("next") && !s.calls.includes("prev"));
+  }
+  const s = setup();
+  s.send("touchstart", 390);
+  s.select("a phrase or sentence");
+  s.send("touchend", 390);
+  assert.deepEqual(s.calls, []);
+});
+
+test("scrolling during an edge tap cancels tap recognition", () => {
+  const s = setup();
+  s.send("touchstart", 390);
+  s.doc.dispatchEvent(new Event("scroll"));
+  s.send("touchend", 390);
+  assert.deepEqual(s.calls, []);
+});
+
+test("touches on EPUB links and controls stay with their native handlers", () => {
+  const s = setup();
+  s.doc.closest = () => ({});
+  s.send("touchstart", 390);
+  assert.equal(s.send("touchend", 390).defaultPrevented, false);
+  assert.deepEqual(s.calls, []);
 });

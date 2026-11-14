@@ -3,6 +3,7 @@ interface TouchOptions {
   paginated: () => boolean;
   blocked: () => boolean;
   selected: () => boolean;
+  tapPosition: (x: number, y: number) => number | undefined;
   dismissSelection: () => void;
   move: (direction: "next" | "prev") => void;
 }
@@ -11,6 +12,7 @@ interface TouchOptions {
 export function bindReaderTouch(doc: Document, options: TouchOptions) {
   let gesture:
     | {
+        id: number;
         x: number;
         y: number;
         time: number;
@@ -41,12 +43,13 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
       return;
     if (
       (event.target as Element | null)?.closest?.(
-        "a, button, input, textarea, select",
+        "a, button, input, textarea, select, [contenteditable], [role=button], .reader-saved-annotation",
       )
     )
       return;
     const touch = event.touches[0];
     gesture = {
+      id: touch.identifier,
       x: touch.clientX,
       y: touch.clientY,
       time: Date.now(),
@@ -63,7 +66,8 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
     const touch = event.touches[0];
     const dx = touch.clientX - gesture.x;
     const dy = touch.clientY - gesture.y;
-    if (Math.hypot(dx, dy) > 10) {
+    if (touch.identifier !== gesture.id) { gesture = undefined; return; }
+    if (Math.hypot(dx, dy) >= 10) {
       gesture.moved = true;
       gesture.axis ??= Math.abs(dx) > Math.abs(dy) * 1.5
         ? "horizontal"
@@ -91,6 +95,7 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
       !current ||
       !options.enabled() ||
       options.blocked() ||
+      event.touches.length !== 0 ||
       event.changedTouches.length !== 1
     )
       return;
@@ -98,11 +103,21 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
       if (!current.moved && !hasSelection()) options.dismissSelection();
       return;
     }
-    if (hasSelection()) return;
+    if (hasSelection() || options.selected()) return;
     const touch = event.changedTouches[0];
+    if (touch.identifier !== current.id) return;
     const dx = touch.clientX - current.x;
     const dy = touch.clientY - current.y;
     const elapsed = Date.now() - current.time;
+    if (!current.moved && elapsed < 250 && Math.hypot(dx, dy) < 10 && options.paginated()) {
+      const position = options.tapPosition(touch.clientX, touch.clientY);
+      if (position !== undefined && position >= 0 && position <= 1 &&
+          (position < 0.25 || position > 0.75)) {
+        consume(event);
+        options.move(position < 0.25 ? "prev" : "next");
+      }
+      return;
+    }
     if (
       current.axis !== "vertical" &&
       elapsed < 650 &&
@@ -117,6 +132,8 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
   const cancel = () => {
     gesture = undefined;
   };
+  const scroll = () => { if (gesture) gesture.moved = true; };
+  doc.addEventListener("scroll", scroll, true);
   doc.addEventListener("touchstart", start, { passive: true, capture: true });
   doc.addEventListener("touchmove", move, { passive: false, capture: true });
   doc.addEventListener("touchend", end, { passive: false, capture: true });
@@ -124,6 +141,7 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
   doc.addEventListener("contextmenu", suppressContextMenu, true);
   doc.addEventListener("touchcancel", cancel);
   return () => {
+    doc.removeEventListener("scroll", scroll, true);
     doc.removeEventListener("touchstart", start, true);
     doc.removeEventListener("touchmove", move, true);
     doc.removeEventListener("touchend", end, true);
