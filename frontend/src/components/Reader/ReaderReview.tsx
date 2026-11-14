@@ -1,4 +1,4 @@
-import { readerFlagContext } from "../../services/readerFlagContext";
+import { ReaderReviewCard } from "./ReaderReviewCard";
 import { ReaderSelect } from "./ReaderSelect";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { useTranslation } from "react-i18next";
@@ -162,47 +162,32 @@ export function ReaderReview({
         {error && <p role="alert">{error}</p>}
         <div className="reader-review-list">
           {filter === "vocabulary"
-            ? data.data?.vocabulary.map((v) => (
-                <article key={v.id}>
-                  <h2>{v.headword}</h2>
-                  <Translation entry={v.entry} />
-                  <div className="reader-review-actions">
-                    {v.books.map((b) => (
-                      <button
-                        key={b.bookId}
-                        className="reader-button"
-                        disabled={!b.location}
-                        onClick={() => onNavigate(b.location)}
-                      >
-                        {t("reader.review.open")}
-                      </button>
-                    ))}
-
-                    <button
-                      className="reader-button"
-                      disabled={!!busy}
-                      onClick={() => void updateVocabulary(v.id, !v.reviewed)}
-                    >
-                      {v.reviewed
-                        ? t("reader.review.markPending")
-                        : t("reader.review.markReviewed")}
-                    </button>
-                    <button
-                      className="reader-button"
-                      disabled={!!busy}
-                      onClick={() =>
-                        void updateVocabulary(v.id, !!v.reviewed, true)
-                      }
-                    >
-                      {t("reader.review.removeVocabulary")}
-                    </button>
-                  </div>
-                </article>
-              ))
+            ? data.data?.vocabulary.map((v) => {
+                const book = v.books[0];
+                return (
+                  <ReaderReviewCard
+                    key={v.id}
+                    text={v.headword}
+                    location={book?.title || t("reader.review.location")}
+                    status={t("reader.review.translatedWord")}
+                    translation={<Translation entry={v.entry} />}
+                    reviewed={!!v.reviewed}
+                    busy={!!busy}
+                    onOpen={
+                      book?.location
+                        ? () => onNavigate(book.location)
+                        : undefined
+                    }
+                    onReview={() => void updateVocabulary(v.id, !v.reviewed)}
+                    onRemove={() =>
+                      void updateVocabulary(v.id, !!v.reviewed, true)
+                    }
+                  />
+                );
+              })
             : data.data?.flags
                 .filter((f) => f.reviewed === (filter === "reviewed"))
                 .map((f) => {
-                  const context = readerFlagContext(f.context, f.text);
                   const word =
                     /^[a-zA-Z]+(?:['’-][a-zA-Z]+)*$/.test(
                       f.text.replace(/^[“"‘(]+|[”"’.,;:!?)]+$/g, ""),
@@ -213,68 +198,32 @@ export function ReaderReview({
                       normalizeWord(v.entry.word) === normalizeWord(f.text),
                   );
                   return (
-                    <article key={f.id}>
-                      <p className="reader-eyebrow">
-                        {data.data.books.find((b) => b.id === f.bookId)?.title}{" "}
-                        · {f.chapter}
-                      </p>
-                      <h2 dir="auto">{f.text}</h2>
-                      {f.context !== f.text && (
-                        <details>
-                          <summary>{t("reader.review.context")}</summary>
-                          <p dir="auto">
-                            {context.before}
-                            <mark>{context.marked}</mark>
-                            {context.after}
-                          </p>
-                        </details>
+                    <ReaderReviewCard
+                      key={f.id}
+                      text={f.text}
+                      location={
+                        t("reader.review.location") +
+                        (f.chapter ? " · " + f.chapter : "")
+                      }
+                      date={f.createdAt}
+                      status={t(
+                        word
+                          ? existing
+                            ? "reader.review.translatedWord"
+                            : "reader.review.pendingWord"
+                          : "reader.review.savedPassage",
                       )}
-                      <small>
-                        {new Date(f.createdAt).toLocaleDateString()}
-                      </small>
-                      <Translation entry={existing?.entry} />
-                      <div className="reader-review-actions">
-                        <button
-                          className="reader-button"
-                          onClick={() => void onPassageNavigate(f)}
-                        >
-                          {t("reader.review.open")}
-                        </button>
-                        {!word &&
-                          (f.text.length > readerAiLimits.passage ? (
-                            <button
-                              className="reader-button"
-                              disabled
-                              title={t("reader.chat.selectionLimit")}
-                            >
-                              {t("reader.review.askAi")}
-                            </button>
-                          ) : (
-                            <button
-                              className="reader-button"
-                              onClick={() => onAskAi(f)}
-                            >
-                              {t("reader.review.askAi")}
-                            </button>
-                          ))}
-                        <button
-                          className="reader-button"
-                          disabled={!!busy}
-                          onClick={() => void update(f, false)}
-                        >
-                          {f.reviewed
-                            ? t("reader.review.markPending")
-                            : t("reader.review.markReviewed")}
-                        </button>
-                        <button
-                          className="reader-button"
-                          disabled={!!busy}
-                          onClick={() => void update(f, true)}
-                        >
-                          {t("reader.review.remove")}
-                        </button>
-                      </div>
-                    </article>
+                      passage={!word}
+                      context={f.context}
+                      translation={<Translation entry={existing?.entry} />}
+                      reviewed={f.reviewed}
+                      busy={!!busy}
+                      onOpen={() => void onPassageNavigate(f)}
+                      onReview={() => void update(f, false)}
+                      onRemove={() => void update(f, true)}
+                      onAskAi={!word ? () => onAskAi(f) : undefined}
+                      aiDisabled={f.text.length > readerAiLimits.passage}
+                    />
                   );
                 })}
         </div>

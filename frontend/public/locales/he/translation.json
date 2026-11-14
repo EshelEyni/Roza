@@ -166,6 +166,12 @@
   "words": "מילים",
   "reader": {
     "review": {
+      "location": "מיקום",
+      "savedOn": "נשמר ב־{{date}}",
+      "readContext": "קריאת הקשר הקטע",
+      "pendingWord": "מילה שמורה · ממתינה לתרגום",
+      "translatedWord": "מילה שמורה · תורגמה",
+      "savedPassage": "קטע שמור · ממתין להסבר",
       "heading": "סימונים",
       "title": "סקירה בהמשך",
       "flag": "סימון לסקירה (Ctrl+S)",

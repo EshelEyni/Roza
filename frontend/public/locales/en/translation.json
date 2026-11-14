@@ -165,6 +165,12 @@
   "words": "Words",
   "reader": {
     "review": {
+      "location": "Location",
+      "savedOn": "Saved {{date}}",
+      "readContext": "Read passage context",
+      "pendingWord": "Saved word · Translation pending",
+      "translatedWord": "Saved word · Translated",
+      "savedPassage": "Saved passage · Explanation pending",
       "heading": "Flags",
       "title": "Review later",
       "flag": "Flag for review (Ctrl+S)",

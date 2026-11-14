@@ -500,7 +500,7 @@ test(
           .count(),
         0,
       );
-      await page.getByText("Passage context", { exact: true }).last().click();
+      await page.getByText("Read passage context", { exact: true }).last().click();
       const context = page.locator(".reader-review details").last();
       assert.ok((await context.locator("p").innerText()).length <= 240);
       assert.equal(await context.locator("mark").innerText(), passage);
@@ -530,6 +530,10 @@ test(
         .first()
         .waitFor();
       assert.equal(translated, 0);
+      if (process.env.FLAG_REVIEW_CARD_SCREENSHOT) {
+        await page.getByRole("button", {name:"Expand or collapse panel; drag to resize",exact:true}).click();
+        await page.screenshot({path:process.env.FLAG_REVIEW_CARD_SCREENSHOT,fullPage:true});
+      }
       await selectFilter(page, "Translated vocabulary");
       if (process.env.FLAG_REVIEW_VOCAB_SCREENSHOT)
         await page.screenshot({
@@ -543,7 +547,7 @@ test(
         .getByRole("button", { name: "Mark pending", exact: true })
         .waitFor();
       await page
-        .getByRole("button", { name: "Removed", exact: true })
+        .getByRole("button", { name: "Remove", exact: true })
         .click();
       await page.getByText("No items here yet.").waitFor();
       await selectFilter(page, "Pending flags");
