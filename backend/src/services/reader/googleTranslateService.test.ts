@@ -92,6 +92,15 @@ describe("Google Translate fallback", () => {
     expect(await translate("a".repeat(81))).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it("translates a complete sentence only with explicit passage mode", async () => {
+    const { translateReaderWord } = require("./googleTranslateService") as typeof import("./googleTranslateService");
+    const sentence = '“Dr. Smith,” she said, “read the whole sentence!”';
+    expect((await translateReaderWord(sentence, true))?.word).toBe(sentence);
+    expect(JSON.parse(fetchMock.mock.calls[0][1].body).q).toBe(sentence);
+    expect(await translateReaderWord("a".repeat(20001), true)).toBeNull();
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
   it.each([403, 429, 500])(
     "handles Google status %s without exposing its payload or caching failures",
     async status => {

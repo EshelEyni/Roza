@@ -1,3 +1,4 @@
+import { ReaderSentenceMode } from "./ReaderSentenceMode";
 import { ReaderRsvp } from "./ReaderRsvp";
 import { useEffect, useState } from "react";
 import { ReaderPassageMarks } from "./ReaderPassageMarks";
@@ -55,6 +56,7 @@ export function EpubReader({
         />
       )}
       <ReaderToolbar
+        sentenceMode={reader.sentenceMode}
         rsvp={reader.rsvp}
         book={book}
         panel={reader.panel}
@@ -66,7 +68,8 @@ export function EpubReader({
         toggleFullscreen={reader.toggleFullscreen}
         reload={reader.reload}
       />
-      <div className={"reader-workspace" + (reader.rsvp.active ? " is-rsvp" : "")}>
+      <div className={"reader-workspace" + (reader.rsvp.active || reader.sentenceMode.active ? " is-rsvp" : "")}>
+        {reader.sentenceMode.active && <ReaderSentenceMode reader={reader} bookId={book.id} />}
         {reader.rsvp.active && <ReaderRsvp reader={reader} bookId={book.id} />}
         {!reader.rsvp.active && <ReaderPanels
           progressSettings={reader.progressSettings}
@@ -95,7 +98,7 @@ export function EpubReader({
           updateState={reader.updateState}
           publisherPagesAvailable={reader.publisherPagesAvailable}
         />}
-        <ReaderViewport rsvpActive={reader.rsvp.active}
+        <ReaderViewport rsvpActive={reader.rsvp.active || reader.sentenceMode.active}
           width={reader.state.preferences.width}
           loading={reader.loading}
           error={reader.error}
@@ -112,7 +115,7 @@ export function EpubReader({
         retrySave={reader.retrySave}
         notice={reader.notice}
       />
-      {!reader.rsvp.active && <ReaderFooter
+      {!reader.rsvp.active && !reader.sentenceMode.active && <ReaderFooter
         defaultProgressDisplay={reader.progressSettings.defaultProgressDisplay}
         remainingSectionPages={reader.remainingSectionPages}
         remainingBookPages={reader.remainingBookPages}

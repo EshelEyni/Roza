@@ -12,6 +12,7 @@ export function useEpubRuntime(
   selection: ReaderTextSelection | null,
 ) {
   const keyboardRef = useRef(defaultReaderKeyboardSettings);
+  // RSVP and Sentence Mode share an exact range anchor and suppress hidden rendition input.
   const rsvpLocation = useRef(state.location.includes(",") ? state.location : "");
   const rsvpActive = useRef(false);
   const host = useRef<HTMLDivElement>(null);

@@ -3,6 +3,9 @@ import request from "supertest";
 import { lookupReaderDictionary } from "./readerDictionaryController";
 import { ReaderLookupModel, ReaderVocabularyModel } from "../../models/reader/readerVocabularyModel";
 import { lookupReaderWordWithTranslation } from "../../services/reader/readerDictionaryService";
+import { translateReaderWord } from "../../services/reader/googleTranslateService";
+
+jest.mock("../../services/reader/googleTranslateService", () => ({ translateReaderWord: jest.fn() }));
 
 let mockUser = "507f1f77bcf86cd799439011";
 jest.mock("../../services/ALSService", () => ({ getLoggedInUserIdFromReq: () => mockUser }));
@@ -64,6 +67,25 @@ test("vocabulary write failure preserves the translation", async () => {
   expect(response.status).toBe(200);
   expect(response.body.data.entry.word).toBe(entry.word);
   expect(response.body.data.lookupCount).toBeUndefined();
+});
+
+test("sentence translation uses the existing provider without creating vocabulary events", async () => {
+  (translateReaderWord as jest.Mock).mockResolvedValue({ ...entry, word: "A complete sentence." });
+  const response = await lookup({ passage: true, provider: "google", word: "A complete sentence." });
+  expect(response.status).toBe(200);
+  expect(translateReaderWord).toHaveBeenCalledWith("A complete sentence.", true);
+  expect(ReaderLookupModel.updateOne).not.toHaveBeenCalled();
+  expect(ReaderVocabularyModel.updateOne).not.toHaveBeenCalled();
+});
+
+test("sentence requests enforce explicit provider, content and size limits", async () => {
+  for (const body of [
+    { passage: true, word: "Sentence." },
+    { passage: true, provider: "google", word: " " },
+    { passage: true, provider: "google", word: "a".repeat(20001) },
+    { word: "Two words" },
+  ]) expect((await lookup(body)).status).toBe(400);
+  expect(translateReaderWord).not.toHaveBeenCalled();
 });
 test("a stalled vocabulary write cannot hold the translation indefinitely", async () => {
   (ReaderVocabularyModel.updateOne as jest.Mock).mockImplementation(() => new Promise(() => {}));

@@ -1,3 +1,4 @@
+import { ScanLineIcon } from "./ReaderSentenceMode";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -24,10 +25,11 @@ type Props = Pick<
   | "fullscreen"
   | "toggleFullscreen"
   | "reload"
-> & { book: ReaderBook; rsvp?: EpubReaderController["rsvp"] };
+> & { book: ReaderBook; rsvp?: EpubReaderController["rsvp"]; sentenceMode?: EpubReaderController["sentenceMode"] };
 export function ReaderToolbar({
   book,
   rsvp,
+  sentenceMode,
   panel,
   togglePanel,
   loading,
@@ -38,6 +40,7 @@ export function ReaderToolbar({
   reload,
 }: Props) {
   const { t } = useTranslation();
+  if (sentenceMode?.active) return <header className="reader-toolbar reader-toolbar-sentence"><span><ScanLineIcon />Sentence Mode</span><button className="reader-icon-button" aria-label="Close sentence mode" disabled={sentenceMode.busy} onClick={() => void sentenceMode.toggle()}><FiX /></button></header>;
   if (rsvp?.active)
     return (
       <header className="reader-toolbar reader-toolbar-rsvp">
@@ -119,6 +122,7 @@ export function ReaderToolbar({
             <FiBookOpen />
           </button>
           <div className="reader-mode-controls">
+            {sentenceMode && <button className="reader-icon-button" aria-label="Sentence Mode" title="Sentence Mode" disabled={loading || !!error || sentenceMode.busy} onClick={() => void sentenceMode.toggle()}><ScanLineIcon /></button>}
             {rsvp && (
               <button
                 className="reader-icon-button"

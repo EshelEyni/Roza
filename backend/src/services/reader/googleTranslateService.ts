@@ -1,5 +1,5 @@
 import { createHash } from "crypto";
-import { ReaderDictionaryEntry } from "../../../../shared/types/readerDictionary";
+import type { ReaderDictionaryEntry } from "../../../../shared/types/readerDictionary";
 import { AppError } from "../error/errorService";
 
 const ENDPOINT = "https://translation.googleapis.com/language/translate/v2";
@@ -50,7 +50,7 @@ async function requestTranslation(
       data?: { translations?: { translatedText?: unknown }[] };
     };
     const text = data.data?.translations?.[0]?.translatedText;
-    if (typeof text !== "string" || !text.trim() || text.length > 2048)
+    if (typeof text !== "string" || !text.trim() || text.length > Math.max(2048, word.length * 8))
       throw new AppError("Google Translate returned an invalid response. Try again.", 502);
     const translation = decodeTranslation(text).trim();
     // Unrecognized words are often echoed unchanged. Do not save these as Hebrew meanings.
@@ -79,10 +79,11 @@ async function requestTranslation(
   }
 }
 
-/** Accepts a normalized single English word for fallback or an explicit Google lookup. */
-export async function translateReaderWord(word: string): Promise<ReaderDictionaryEntry | null> {
+/** Word lookups keep their validation; explicit passage requests retain original text. */
+export async function translateReaderWord(word: string, passage = false): Promise<ReaderDictionaryEntry | null> {
   const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY?.trim();
-  if (!apiKey || !/^[a-z]+(?:['-][a-z]+)*$/.test(word) || word.length > 80) return null;
+  if (passage && !apiKey) throw new AppError("Google Translate is not configured.", 503);
+  if (!apiKey || (passage ? !word.trim() || word.length > 20000 : !/^[a-z]+(?:['-][a-z]+)*$/.test(word) || word.length > 80)) return null;
   const key = createHash("sha256").update(apiKey).digest("hex") + ":" + word;
   const cached = cache.get(key);
   if (cached && cached.expiresAt > Date.now()) {
