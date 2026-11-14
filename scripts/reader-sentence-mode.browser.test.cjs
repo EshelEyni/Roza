@@ -459,6 +459,7 @@ test(
             }
             if (!mobile) {
               const activeWord = page.locator(".reader-sentence-word-active");
+              await page.keyboard.press("ArrowUp"); // Explicitly clear the initial whole-sentence selection.
               await page.keyboard.press("ArrowRight");
               assert.equal(await activeWord.textContent(), "Hello");
               await page.keyboard.press("ArrowRight");
@@ -548,6 +549,44 @@ test(
                 cfi,
                 "Holding a word arrow stops at the sentence edge",
               );
+              const selectionText = async () =>
+                page.evaluate(() => {
+                  const native = window.getSelection();
+                  if (!native?.rangeCount || native.isCollapsed) return "";
+                  const fragment = native.getRangeAt(0).cloneContents();
+                  fragment
+                    .querySelectorAll(".reader-sentence-note")
+                    .forEach((note) => note.remove());
+                  return fragment.textContent.trim();
+                });
+              await page.keyboard.press("Shift+ArrowLeft");
+              assert.equal(await selectionText(), "reading world");
+              await page.keyboard.press("ArrowRight");
+              assert.equal(
+                await activeWord.textContent(),
+                "world",
+                "Right resumes at the active end of the backward selection",
+              );
+              await page.keyboard.press("Shift+ArrowLeft");
+              await page.keyboard.press("ArrowLeft");
+              assert.equal(
+                await activeWord.textContent(),
+                "Hello",
+                "Left continues before the active end, instead of restarting at the final word",
+              );
+              await page.keyboard.press("ArrowRight");
+              assert.equal(await activeWord.textContent(), "reading");
+              await page.keyboard.press("Shift+ArrowRight");
+              assert.equal(await selectionText(), "reading world");
+              await page.keyboard.press("ArrowLeft");
+              assert.equal(
+                await activeWord.textContent(),
+                "reading",
+                "Left resumes at the active end of the forward selection",
+              );
+              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("ArrowLeft");
+              assert.equal(await activeWord.textContent(), "world");
               const chord = async (arrow, digit) => {
                 await page.keyboard.down(arrow);
                 await page.keyboard.press(digit);
@@ -667,6 +706,13 @@ test(
                   },
                 });
               });
+              await page.waitForFunction(
+                () =>
+                  getComputedStyle(
+                    document.querySelector("[data-sentence-word]"),
+                    "::selection",
+                  ).backgroundColor === "rgb(203, 180, 237)",
+              );
               const multiwordStyle = await page
                 .locator("[data-sentence-word]")
                 .first()

@@ -173,6 +173,39 @@ export function ReaderSentenceMode({
           text: parts[wordPart],
         }
       : null);
+  const wordNavigationOrigin = (direction: number) => {
+    if (wordIndex >= 0) return wordIndex;
+    const extended =
+      extendedSelection.current?.cfi === sentence?.cfi
+        ? extendedSelection.current
+        : null;
+    const focus =
+      extended?.focus ??
+      (textTarget
+        ? textTarget.backward
+          ? textTarget.start
+          : textTarget.end
+        : undefined);
+    if (focus === undefined) return -1;
+    const anchor =
+      extended?.anchor ??
+      (textTarget?.backward ? textTarget.end : (textTarget?.start ?? focus));
+    const backward = focus < anchor || (focus === anchor && direction < 0);
+    const words = parts.flatMap((part, index) =>
+      index % 2
+        ? [{ start: partOffsets[index], end: partOffsets[index] + part.length }]
+        : [],
+    );
+    // At the active end of a backward selection, continue from its first word;
+    // at the active end of a forward selection, continue from its last word.
+    if (backward) {
+      const index = words.findIndex((word) => word.end > focus);
+      return index < 0 ? words.length - 1 : index;
+    }
+    for (let index = words.length - 1; index >= 0; index--)
+      if (words[index].start < focus) return index;
+    return 0;
+  };
   const clearTextSelection = () => {
     extendedSelection.current = null;
     setSelectedText(null);
@@ -549,17 +582,19 @@ export function ReaderSentenceMode({
           )
             return;
           held.commit = undefined;
+          const origin = wordNavigationOrigin(key === "ArrowRight" ? 1 : -1);
           clearTextSelection();
           moveWords(
             key === "ArrowRight" ? 1 : -1,
             wordSteps[key],
-            wordIndex,
+            origin,
             true,
           );
           return;
         }
         const count = heldDigit.current || wordSteps[key];
-        heldArrow.current = { key, cfi: sentence.cfi, index: wordIndex };
+        const origin = wordNavigationOrigin(key === "ArrowRight" ? 1 : -1);
+        heldArrow.current = { key, cfi: sentence.cfi, index: origin };
         if (heldDigit.current) {
           heldArrow.current.configured = true;
           setWordSteps((current) => ({ ...current, [key]: count }));
@@ -573,7 +608,7 @@ export function ReaderSentenceMode({
           // Wait for release so an arrow+number chord can configure without moving.
           heldArrow.current.commit = () => {
             clearTextSelection();
-            moveWords(key === "ArrowRight" ? 1 : -1, count, wordIndex);
+            moveWords(key === "ArrowRight" ? 1 : -1, count, origin);
           };
         }
       }
