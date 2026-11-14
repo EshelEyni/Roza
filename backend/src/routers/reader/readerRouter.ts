@@ -32,6 +32,7 @@ import { lookupReaderDictionary } from "../../controllers/reader/readerDictionar
 import { getKeyboardSettings, updateKeyboardSettings } from "../../controllers/reader/readerKeyboardSettingsController";
 
 import { getProgressSettings, updateProgressSettings } from "../../controllers/reader/readerProgressSettingsController";
+import { getReview, listFlags, saveFlag, updateFlag, translateFlag, updateVocabularyReview } from "../../controllers/reader/readerReviewController";
 
 const router = express.Router();
 
@@ -40,6 +41,14 @@ router.get("/access", getReaderAccess);
 router.use(checkReaderAccess);
 router.get("/progress-settings", getProgressSettings);
 router.patch("/progress-settings", updateProgressSettings);
+router.get("/:id/review", getReview);
+router.patch("/:id/review/vocabulary/:vocabularyId", updateVocabularyReview);
+router.delete("/:id/review/vocabulary/:vocabularyId", updateVocabularyReview);
+router.get("/:id/flags", listFlags);
+router.put("/:id/flags", saveFlag);
+router.patch("/:id/flags/:flagId", updateFlag);
+router.delete("/:id/flags/:flagId", updateFlag);
+router.post("/:id/flags/:flagId/translation", translateFlag);
 router.get("/keyboard-settings", getKeyboardSettings);
 router.patch("/keyboard-settings", updateKeyboardSettings);
 router.get("/ai-settings", getAiSettings);

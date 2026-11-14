@@ -18,3 +18,6 @@ The backend development runtime uses CommonJS through ts-node/nodemon. The root 
 Use `import type` for shared TypeScript contracts in backend code. Keep runtime defaults, validators, and constants in backend-owned modules, following the existing reader keyboard settings pattern, unless a shared runtime module has explicitly been made compatible with both runtimes. Do not change the root package module type to work around this error.
 
 Ticket #23 reproduced this on 2026-11-14: readerProgressSettingsController.ts imported defaultReaderProgressSettings and isReaderProgressSettings as runtime values from shared/types/readerProgressSettings.ts. TypeScript checks and Jest passed but did not catch the development startup failure. Verify actual backend development runtime module loading as well as compilation and tests. The regression test is scripts/reader-progress-runtime.test.cjs.
+# UI component reuse
+
+Always reuse existing built-in app components and their styles when an appropriate component exists. Before adding a UI control, inspect the existing component library and nearby screens. In the reader, use ReaderSelect for dropdowns and reuse established compact action-button patterns instead of native unstyled selects or oversized custom controls.

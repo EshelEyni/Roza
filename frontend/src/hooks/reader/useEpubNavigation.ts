@@ -9,6 +9,7 @@ export function useEpubNavigation(
     closeLookup,
     closePanel,
     markPassage,
+    locatePassage,
     locationsReady,
     setError,
     setNotice,
@@ -17,6 +18,7 @@ export function useEpubNavigation(
     closePanel: () => void;
     clearMarker: () => void;
     markPassage: (passage: ReaderPassage, color: "blue" | "yellow") => Promise<void>;
+    locatePassage: (passage: ReaderPassage) => Promise<void>;
     locationsReady: boolean;
     setError: (error: string) => void;
     setNotice: (notice: string) => void;
@@ -132,7 +134,7 @@ export function useEpubNavigation(
     }
   }
 
-  async function onPassageNavigate(passage: ReaderPassage) {
+  async function onPassageNavigate(passage: ReaderPassage, locate = false) {
     const rendition = renditionRef.current;
     if (!rendition) return;
     if (mobileRef.current) closePanel();
@@ -141,7 +143,8 @@ export function useEpubNavigation(
       const version = navigationVersion.current;
       await task;
       if (renditionRef.current !== rendition || version !== navigationVersion.current) return;
-      await markPassage(passage, "yellow");
+      if (locate) await locatePassage(passage);
+      else await markPassage(passage, "yellow");
     } catch {
       if (renditionRef.current === rendition) setNotice(t("reader.navigationError"));
     }
@@ -163,5 +166,5 @@ export function useEpubNavigation(
     }
   }
 
-  return { onNavigate, onSearchNavigate, onProgressNavigate, onPassageNavigate, returnTo: navigateTo };
+  return { onFlagNavigate: (passage: ReaderPassage) => onPassageNavigate(passage, true), onNavigate, onSearchNavigate, onProgressNavigate, onPassageNavigate, returnTo: navigateTo };
 }

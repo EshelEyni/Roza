@@ -1,5 +1,6 @@
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { useReaderProgressSettings } from "./useReaderProgressSettings";
+import { useReaderFlags } from "./useReaderFlags";
 import { useReaderKeyboardSettings } from "./useReaderKeyboardSettings";
 import { useReaderSentenceMode } from "./useReaderSentenceMode";
 import { useReaderRsvp } from "./useReaderRsvp";
@@ -44,7 +45,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     selection.textSelection,
   );
   runtime.keyboardRef.current = keyboard.keyboardSettings;
-  const { markPassage, clearMarker, passageMarks } = useReaderPassageMarker(runtime);
+  const { markPassage, locatePassage, clearMarker, passageMarks } = useReaderPassageMarker(runtime);
   const activeSelection = useRef(selection.textSelection);
   activeSelection.current = selection.textSelection;
   const markTranslation = useCallback((passage: ReaderPassage) => {
@@ -66,6 +67,8 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     setNotice,
   );
   const sentenceMode = useReaderSentenceMode(runtime);
+  const flags = useReaderFlags(runtime, book.id, userId, engine.chapter);
+  selection.flagHandler.current = value => { if (!selection.busy) void flags.save(value); };
   const rsvp = useReaderRsvp(runtime, engine.loading || !!panel || !!selection.textSelection);
   const pagination = useReaderPagination(
     runtime.host,
@@ -89,6 +92,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     closeLookup: selection.closeLookup,
     closePanel,
     markPassage,
+    locatePassage,
     clearMarker,
     locationsReady: engine.locationsReady,
     setError,
@@ -126,6 +130,9 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     retry();
   }
   return {
+    flags,
+    review: { bookId: book.id, userId, onPassageNavigate: navigation.onFlagNavigate, revision: flags.items.map(item => item.id).join(","), onFlagsChanged: flags.sync,
+      onAskAi: (passage: ReaderPassage) => { chat.start(passage); selection.closeLookup(); setPanel("chat"); } },
     ...keyboard,
     ...progressSettings,
     rsvp: { ...rsvp, toggle: () => { selection.closeLookup(); closePanel(); return rsvp.toggle(); } },

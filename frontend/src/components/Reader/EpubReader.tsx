@@ -1,6 +1,7 @@
 import { ReaderSentenceMode } from "./ReaderSentenceMode";
+import { useSearchParams } from "react-router-dom";
 import { ReaderRsvp } from "./ReaderRsvp";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ReaderPassageMarks } from "./ReaderPassageMarks";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import type { ReaderBook } from "../../../../shared/types/reader";
@@ -20,6 +21,19 @@ export function EpubReader({
   userId: string;
 }) {
   const reader = useEpubReader(book, userId);
+  const [params] = useSearchParams();
+  const destination = useRef("");
+  useEffect(() => {
+    if (reader.loading || !reader.flags.ready) return;
+    const flag = reader.flags.items.find(f => f.id === params.get("flag"));
+    const location = flag?.cfi || params.get("location");
+    if (!location || destination.current === params.toString()) return;
+    destination.current = params.toString();
+    if (flag) {
+      void reader.onPassageNavigate(flag);
+      if (params.get("action") === "ai" && flag.text.length <= readerAiLimits.passage) { reader.chat.start(flag); reader.togglePanel("chat"); }
+    } else if (location.startsWith("epubcfi(")) reader.onNavigate(location);
+  }, [reader, params]);
   const [copyToast, setCopyToast] = useState<{ message: string; id: number } | null>(null);
   useEffect(() => {
     if (!copyToast) return;
@@ -34,12 +48,16 @@ export function EpubReader({
       ref={reader.shell}
     >
       <span className="app-header-status-surface" aria-hidden="true" />
+      {reader.flags.message && <div className="reader-copy-toast" role="status">{reader.flags.message}</div>}
       {copyToast && <div key={copyToast.id} className="reader-copy-toast" role="status" aria-live="polite">{copyToast.message}</div>}
       {reader.textSelection && !reader.textSelection.suppressTooltip && (
         <ReaderDictionary
           key={reader.textSelection.cfi}
           selection={reader.textSelection}
           onCopyFeedback={message => setCopyToast(current => ({ message, id: (current?.id || 0) + 1 }))}
+          onFlag={() => void reader.flags.save(reader.textSelection!, true)}
+          flagged={!!reader.flags.has(reader.textSelection)}
+          flagReady={reader.flags.ready}
           onAnnotate={note => reader.annotations.select(reader.textSelection!, note)}
           annotationBusy={reader.annotations.busy || reader.annotations.loading}
           bookId={book.id}
@@ -80,6 +98,7 @@ export function EpubReader({
           updateKeyboardSettings={reader.updateKeyboardSettings}
           keyboardSaveStatus={reader.keyboardSaveStatus}
           retryKeyboardSettings={reader.retryKeyboardSettings}
+          review={reader.review}
           annotations={reader.annotations}
           describeLocation={reader.describeLocation}
           totalPages={reader.totalPages}
