@@ -1,6 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { readerSentenceWordRange } from "../../services/readerSentenceWordRange";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -92,6 +98,50 @@ export function ReaderSentenceMode({
   const sentence = mode.sentence;
   const parts =
     sentence?.text.split(/([\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*)/gu) || [];
+  let partOffset = 0;
+  const partOffsets = parts.map((part) => {
+    const start = partOffset;
+    partOffset += part.length;
+    return start;
+  });
+  const renderPart = (part: string, index: number): ReactNode => {
+    const start = partOffsets[index];
+    const end = start + part.length;
+    const notes =
+      sentence?.notes?.filter(
+        (note) =>
+          note.offset >= start &&
+          (note.offset < end ||
+            (index === parts.length - 1 && note.offset === end)),
+      ) || [];
+    if (!notes.length) return part;
+    const content: ReactNode[] = [];
+    let cursor = 0;
+    notes.forEach((note, noteIndex) => {
+      const offset = note.offset - start;
+      content.push(part.slice(cursor, offset));
+      content.push(
+        <sup
+          key={noteIndex}
+          className="reader-sentence-note"
+          role="link"
+          aria-disabled="true"
+          aria-label={"Note " + note.text + " (unavailable in Sentence Mode)"}
+          title="Notes are unavailable in Sentence Mode"
+          onPointerDown={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+          }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          {note.text}
+        </sup>,
+      );
+      cursor = offset;
+    });
+    content.push(part.slice(cursor));
+    return content;
+  };
   const wordCount = Math.floor(parts.length / 2);
   const wordIndex = wordFocus.cfi === sentence?.cfi ? wordFocus.index : -1;
   const blocked = mode.busy || !!lookup || !!reader.panel;
@@ -218,7 +268,7 @@ export function ReaderSentenceMode({
       observer.disconnect();
       document.fonts.removeEventListener("loadingdone", fit);
     };
-  }, [sentence?.text, mode.busy]);
+  }, [sentence?.text, sentence?.notes, mode.busy]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target instanceof Element ? event.target : null;
@@ -425,7 +475,7 @@ export function ReaderSentenceMode({
               : sentence
                 ? parts.map((part, index) =>
                     index % 2 === 0 ? (
-                      part
+                      <span key={index}>{renderPart(part, index)}</span>
                     ) : (
                       <span
                         key={index}
@@ -460,7 +510,7 @@ export function ReaderSentenceMode({
                             : undefined
                         }
                       >
-                        {part}
+                        {renderPart(part, index)}
                       </span>
                     ),
                   )
