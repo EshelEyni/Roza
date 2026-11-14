@@ -1,11 +1,13 @@
 import { useTranslation } from "react-i18next";
-import { readerSentenceWordRange } from "../../services/readerSentenceWordRange";
+import { EpubCFI } from "epubjs";
+import { readerSentenceSelectionRange } from "../../services/readerSentenceSelectionRange";
 import {
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
+  type CSSProperties,
 } from "react";
 import {
   FiChevronLeft,
@@ -56,6 +58,13 @@ export function ReaderSentenceMode({
     translate: boolean;
   } | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [selectedText, setSelectedText] = useState<{
+    cfi: string;
+    start: number;
+    end: number;
+    text: string;
+    backward?: boolean;
+  } | null>(null);
   const [wordFocus, setWordFocus] = useState({ cfi: "", index: -1 });
   const [wordSteps, setWordSteps] = useState(() => {
     try {
@@ -67,17 +76,19 @@ export function ReaderSentenceMode({
           ? n
           : 1;
       return {
-        ArrowDown: valid(stored.ArrowDown),
-        ArrowUp: valid(stored.ArrowUp),
+        ArrowRight: valid(stored.ArrowRight ?? stored.ArrowDown),
+        ArrowLeft: valid(stored.ArrowLeft ?? stored.ArrowUp),
       };
     } catch {
-      return { ArrowDown: 1, ArrowUp: 1 };
+      return { ArrowRight: 1, ArrowLeft: 1 };
     }
   });
   const heldArrow = useRef<{
-    key: "ArrowDown" | "ArrowUp";
+    key: "ArrowRight" | "ArrowLeft";
     cfi: string;
     index: number;
+    commit?: () => void;
+    configured?: boolean;
   } | null>(null);
   const heldDigit = useRef<number | null>(null);
   useEffect(() => {
@@ -90,6 +101,11 @@ export function ReaderSentenceMode({
       /* optional preference */
     }
   }, [wordSteps]);
+  const extendedSelection = useRef<{
+    cfi: string;
+    anchor: number;
+    focus: number;
+  } | null>(null);
   const pendingWord = useRef<{ cfi: string; direction: number } | null>(null);
   const highlightedWord = useRef<HTMLSpanElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -145,64 +161,198 @@ export function ReaderSentenceMode({
   const wordCount = Math.floor(parts.length / 2);
   const wordIndex = wordFocus.cfi === sentence?.cfi ? wordFocus.index : -1;
   const blocked = mode.busy || !!lookup || !!reader.panel;
-  const selection = (): ReaderTextSelection | null => {
-    if (!sentence) return null;
-    const rect = stage.current?.getBoundingClientRect();
-    return {
-      ...sentence,
-      word: sentence.text,
-      x: rect?.left || 12,
-      y: (rect?.top || 0) + 30,
+  const textTarget = selectedText?.cfi === sentence?.cfi ? selectedText : null;
+  const wordPart = wordIndex >= 0 ? wordIndex * 2 + 1 : -1;
+  const actionTarget =
+    textTarget ||
+    (sentence && wordPart >= 0
+      ? {
+          cfi: sentence.cfi,
+          start: partOffsets[wordPart],
+          end: partOffsets[wordPart] + parts[wordPart].length,
+          text: parts[wordPart],
+        }
+      : null);
+  const clearTextSelection = () => {
+    extendedSelection.current = null;
+    setSelectedText(null);
+    const native = window.getSelection();
+    if (native?.anchorNode && sentenceText.current?.contains(native.anchorNode))
+      native.removeAllRanges();
+  };
+  const captureSelection = () => {
+    const element = sentenceText.current;
+    const native = window.getSelection();
+    if (!element || !sentence || !native?.rangeCount) return;
+    const range = native.getRangeAt(0);
+    if (
+      !element.contains(range.startContainer) ||
+      !element.contains(range.endContainer)
+    )
+      return;
+    if (range.collapsed) {
+      setSelectedText(null);
+      return;
+    }
+    const clean = (range: Range) => {
+      const fragment = range.cloneContents();
+      fragment
+        .querySelectorAll(".reader-sentence-note")
+        .forEach((note) => note.remove());
+      return fragment.textContent || "";
     };
+    const prefix = range.cloneRange();
+    prefix.selectNodeContents(element);
+    prefix.setEnd(range.startContainer, range.startOffset);
+    const selected = clean(range);
+    const leading = selected.length - selected.trimStart().length;
+    const text = selected.trim();
+    if (!text) {
+      setSelectedText(null);
+      return;
+    }
+    const start = clean(prefix).length + leading;
+    const backward =
+      native.anchorNode === range.endContainer &&
+      native.anchorOffset === range.endOffset;
+    setSelectedText((current) =>
+      current?.cfi === sentence.cfi &&
+      current.start === start &&
+      current.end === start + text.length &&
+      current.backward === backward
+        ? current
+        : {
+            cfi: sentence.cfi,
+            start,
+            end: start + text.length,
+            text,
+            backward,
+          },
+    );
+    setWordFocus({ cfi: "", index: -1 });
+  };
+  useEffect(() => {
+    document.addEventListener("selectionchange", captureSelection);
+    return () =>
+      document.removeEventListener("selectionchange", captureSelection);
+  });
+  const extendWords = (direction: number, count: number) => {
+    const element = sentenceText.current;
+    if (!sentence || !element || !wordCount) return;
+    const words = parts.flatMap((part, index) =>
+      index % 2
+        ? [{ start: partOffsets[index], end: partOffsets[index] + part.length }]
+        : [],
+    );
+    let range =
+      extendedSelection.current?.cfi === sentence.cfi
+        ? extendedSelection.current
+        : null;
+    if (!range) {
+      if (textTarget)
+        range = {
+          cfi: sentence.cfi,
+          anchor: textTarget.backward ? textTarget.end : textTarget.start,
+          focus: textTarget.backward ? textTarget.start : textTarget.end,
+        };
+      else if (wordIndex >= 0)
+        range = {
+          cfi: sentence.cfi,
+          anchor: direction > 0 ? words[wordIndex].start : words[wordIndex].end,
+          focus: direction > 0 ? words[wordIndex].end : words[wordIndex].start,
+        };
+      else
+        range = {
+          cfi: sentence.cfi,
+          anchor: direction > 0 ? 0 : words[words.length - 1].end,
+          focus: direction > 0 ? 0 : words[words.length - 1].end,
+        };
+    }
+    const candidates =
+      direction > 0
+        ? words.filter((word) => word.end > range!.focus)
+        : words.filter((word) => word.start < range!.focus).reverse();
+    const next = candidates[Math.min(count, candidates.length) - 1];
+    const focus = next ? (direction > 0 ? next.end : next.start) : range.focus;
+    extendedSelection.current = { ...range, focus };
+    const locate = (offset: number) => {
+      const walker = document.createTreeWalker(element, 4);
+      let last: Text | null = null;
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (node.parentElement?.closest(".reader-sentence-note")) continue;
+        const text = node as Text;
+        last = text;
+        if (offset <= text.length) return { node: text, offset };
+        offset -= text.length;
+      }
+      return last ? { node: last, offset: last.length } : null;
+    };
+    const anchorPoint = locate(range.anchor),
+      focusPoint = locate(focus);
+    if (!anchorPoint || !focusPoint) return;
+    window
+      .getSelection()
+      ?.setBaseAndExtent(
+        anchorPoint.node,
+        anchorPoint.offset,
+        focusPoint.node,
+        focusPoint.offset,
+      );
+    const from = Math.min(range.anchor, focus),
+      to = Math.max(range.anchor, focus);
+    const selected = sentence.text.slice(from, to);
+    const text = selected.trim();
+    const start = from + selected.length - selected.trimStart().length;
+    setWordFocus({ cfi: "", index: -1 });
+    setSelectedText(
+      text
+        ? {
+            cfi: sentence.cfi,
+            start,
+            end: start + text.length,
+            text,
+            backward: focus < range.anchor,
+          }
+        : null,
+    );
+  };
+  const selection = (): ReaderTextSelection | null => {
+    if (!sentence || !actionTarget) return null;
+    const rect = stage.current?.getBoundingClientRect();
+    try {
+      const section = reader.searchBook?.spine.get(sentence.cfi);
+      if (!section?.document) throw new Error("Section unavailable");
+      const range = readerSentenceSelectionRange(
+        new EpubCFI(sentence.cfi).toRange(section.document),
+        actionTarget.start,
+        actionTarget.end,
+      );
+      if (!range) throw new Error("Selection unavailable");
+      return {
+        text: actionTarget.text,
+        word: actionTarget.text,
+        cfi:
+          actionTarget.start === 0 && actionTarget.end === sentence.text.length
+            ? sentence.cfi
+            : section.cfiFromRange(range),
+        x: rect?.left || 12,
+        y: (rect?.top || 0) + 30,
+      };
+    } catch {
+      setFeedback(
+        "Could not locate the selected text. Please select it again.",
+      );
+      return null;
+    }
   };
   const flagSelection = async () => {
     const current = selection();
-    const book = reader.searchBook;
-    if (
-      !current ||
-      !book ||
-      blocked ||
-      !reader.flags.ready ||
-      flagPending.current
-    )
+    if (!current || blocked || !reader.flags.ready || flagPending.current)
       return;
-    let index = wordIndex;
-    const native = window.getSelection();
-    if (native?.rangeCount && native.toString().trim()) {
-      const range = native.getRangeAt(0);
-      const words = [
-        ...(stage.current?.querySelectorAll("[data-sentence-word]") || []),
-      ];
-      const selectedIndex = words.findIndex(
-        (word) =>
-          word.contains(range.startContainer) &&
-          word.contains(range.endContainer),
-      );
-      if (selectedIndex >= 0) index = selectedIndex;
-    }
     flagPending.current = true;
     setFlagging(true);
     try {
-      if (index >= 0) {
-        const range = readerSentenceWordRange(
-          await book.getRange(current.cfi),
-          index,
-        );
-        const section = book.spine.get(current.cfi);
-        if (!range || !section) throw new Error("Word range unavailable");
-        const text = range.toString();
-        await reader.flags.save(
-          {
-            ...current,
-            text,
-            word: text,
-            cfi: section.cfiFromRange(range),
-            endCfi: undefined,
-          },
-          false,
-          current.text,
-        );
-      } else await reader.flags.save(current);
+      await reader.flags.save(current, false, sentence?.text);
     } catch {
       setFeedback(t("reader.review.saveError"));
     } finally {
@@ -212,6 +362,7 @@ export function ReaderSentenceMode({
   };
   useEffect(() => {
     stage.current?.scrollTo(0, 0);
+    clearTextSelection();
     setFeedback("");
     const pending = pendingWord.current;
     pendingWord.current = null;
@@ -283,6 +434,7 @@ export function ReaderSentenceMode({
         !blocked &&
         sentence &&
         reader.flags.ready &&
+        actionTarget &&
         !target?.closest(
           "input,textarea,select,[contenteditable]:not([contenteditable=false]),[role=dialog],[role=textbox],[role=slider]",
         )
@@ -300,13 +452,22 @@ export function ReaderSentenceMode({
         event.altKey ||
         event.ctrlKey ||
         event.metaKey ||
-        event.shiftKey ||
+        (event.shiftKey && !["ArrowRight", "ArrowLeft"].includes(event.key)) ||
         blocked ||
         target?.closest(
           "input,textarea,select,[contenteditable]:not([contenteditable=false]),[role=dialog],[role=textbox],[role=slider]",
         )
       )
         return;
+      if (event.shiftKey) {
+        if (!reader.mobile && sentence && wordCount) {
+          event.preventDefault();
+          heldArrow.current = null;
+          const key = event.key as "ArrowRight" | "ArrowLeft";
+          extendWords(key === "ArrowRight" ? 1 : -1, wordSteps[key]);
+        }
+        return;
+      }
       const moveWords = (
         direction: number,
         count: number,
@@ -344,14 +505,13 @@ export function ReaderSentenceMode({
           const count = Number(event.key);
           setWordSteps((current) => ({ ...current, [held.key]: count }));
           setFeedback(
-            (held.key === "ArrowDown" ? "Down" : "Up") +
+            (held.key === "ArrowRight" ? "Right" : "Left") +
               ": " +
               count +
               (count === 1 ? " word per press" : " words per press"),
           );
-          // Recalculate the arrow's original move rather than adding another step.
-          if (held.cfi === sentence.cfi)
-            moveWords(held.key === "ArrowDown" ? 1 : -1, count, held.index);
+          held.commit = undefined;
+          held.configured = true;
         }
         return;
       }
@@ -365,35 +525,65 @@ export function ReaderSentenceMode({
         if (!event.repeat) action.click();
         return;
       }
-      if (["ArrowRight", "ArrowLeft"].includes(event.key)) {
+      if (["ArrowDown", "ArrowUp"].includes(event.key)) {
         event.preventDefault();
         pendingWord.current = null;
+        clearTextSelection();
         setWordFocus({ cfi: "", index: -1 });
-        mode.move(event.key === "ArrowRight" ? 1 : -1);
+        mode.move(event.key === "ArrowDown" ? 1 : -1);
       } else if (
         !reader.mobile &&
         sentence &&
         wordCount &&
-        ["ArrowDown", "ArrowUp"].includes(event.key)
+        ["ArrowRight", "ArrowLeft"].includes(event.key)
       ) {
         event.preventDefault();
-        const key = event.key as "ArrowDown" | "ArrowUp";
-        heldArrow.current = { key, cfi: sentence.cfi, index: wordIndex };
+        const key = event.key as "ArrowRight" | "ArrowLeft";
+        if (event.repeat) {
+          const held = heldArrow.current;
+          if (
+            !held ||
+            held.key !== key ||
+            held.cfi !== sentence.cfi ||
+            held.configured
+          )
+            return;
+          held.commit = undefined;
+          clearTextSelection();
+          moveWords(
+            key === "ArrowRight" ? 1 : -1,
+            wordSteps[key],
+            wordIndex,
+            true,
+          );
+          return;
+        }
         const count = heldDigit.current || wordSteps[key];
+        heldArrow.current = { key, cfi: sentence.cfi, index: wordIndex };
         if (heldDigit.current) {
+          heldArrow.current.configured = true;
           setWordSteps((current) => ({ ...current, [key]: count }));
           setFeedback(
-            (key === "ArrowDown" ? "Down" : "Up") +
+            (key === "ArrowRight" ? "Right" : "Left") +
               ": " +
               count +
               (count === 1 ? " word per press" : " words per press"),
           );
+        } else {
+          // Wait for release so an arrow+number chord can configure without moving.
+          heldArrow.current.commit = () => {
+            clearTextSelection();
+            moveWords(key === "ArrowRight" ? 1 : -1, count, wordIndex);
+          };
         }
-        moveWords(key === "ArrowDown" ? 1 : -1, count, wordIndex, event.repeat);
       }
     };
     const release = (event: KeyboardEvent) => {
-      if (heldArrow.current?.key === event.key) heldArrow.current = null;
+      if (heldArrow.current?.key === event.key) {
+        const held = heldArrow.current;
+        heldArrow.current = null;
+        if (!blocked && held.cfi === sentence?.cfi) held.commit?.();
+      }
       if (/^[1-9]$/.test(event.key)) heldDigit.current = null;
     };
     const clearHeld = () => {
@@ -416,24 +606,37 @@ export function ReaderSentenceMode({
     wordCount,
     wordIndex,
     reader.flags.ready,
+    actionTarget,
     wordSteps,
   ]);
   const openLookup = (translate: boolean) => {
     const current = selection();
     if (current) setLookup({ selection: current, translate });
   };
-  const aiDisabled = !sentence || sentence.text.length > readerAiLimits.passage;
+  const aiDisabled =
+    !actionTarget || actionTarget.text.length > readerAiLimits.passage;
   return (
     <section
       className="reader-sentence-mode"
       aria-label="Sentence Mode"
       dir="ltr"
+      style={
+        {
+          "--sentence-selection-color":
+            reader.state.preferences.selectionColor || "#719bd8",
+          "--sentence-selection-text-color":
+            reader.state.preferences.selectionTextColor || "#28231e",
+        } as CSSProperties
+      }
     >
       {lookup && (
         <ReaderDictionary
           key={lookup.selection.cfi}
           selection={lookup.selection}
-          passage
+          passage={
+            !/^[a-zA-Z]+(?:['’‘-][a-zA-Z]+)*$/.test(lookup.selection.text) ||
+            lookup.selection.text.length > 80
+          }
           autoLookup={lookup.translate}
           bookId={bookId}
           getLookupPage={reader.getLookupPage}
@@ -468,7 +671,11 @@ export function ReaderSentenceMode({
             aria-live="polite"
             aria-busy={mode.busy}
             dir="auto"
-            onPointerDown={() => setWordFocus({ cfi: "", index: -1 })}
+            onPointerDown={() => {
+              clearTextSelection();
+              setWordFocus({ cfi: "", index: -1 });
+            }}
+            onPointerUp={captureSelection}
           >
             {mode.busy
               ? "Loading sentences…"
@@ -562,7 +769,11 @@ export function ReaderSentenceMode({
             <FiChevronRight />
           </button>
         </div>
-        <div className="reader-sentence-actions" ref={actions}>
+        <div
+          className="reader-sentence-actions"
+          ref={actions}
+          onMouseDown={(event) => event.preventDefault()}
+        >
           <button
             disabled={blocked || aiDisabled}
             data-shortcut="t"
@@ -589,15 +800,17 @@ export function ReaderSentenceMode({
             <span>Ask AI</span>
           </button>
           <button
-            disabled={blocked || !sentence}
+            disabled={blocked || !actionTarget}
             data-shortcut="c"
             aria-label="Copy"
             aria-keyshortcuts="c"
-            title="Copy sentence (C)"
+            title="Copy selected text (C)"
             onClick={async () => {
               try {
-                await navigator.clipboard.writeText(sentence.text);
-                setFeedback("Sentence copied");
+                const current = selection();
+                if (!current) return;
+                await navigator.clipboard.writeText(current.text);
+                setFeedback("Selected text copied");
               } catch {
                 setFeedback("Could not copy sentence. Please try again.");
               }
@@ -613,7 +826,7 @@ export function ReaderSentenceMode({
             title="Annotate (N)"
             disabled={
               blocked ||
-              !sentence ||
+              !actionTarget ||
               reader.annotations.busy ||
               reader.annotations.loading
             }
@@ -626,7 +839,9 @@ export function ReaderSentenceMode({
             <span>Annotate</span>
           </button>
           <button
-            disabled={blocked || !sentence || !reader.flags.ready || flagging}
+            disabled={
+              blocked || !actionTarget || !reader.flags.ready || flagging
+            }
             data-shortcut="f"
             aria-keyshortcuts="f Control+s"
             title={t("reader.review.flag") + " · F"}
