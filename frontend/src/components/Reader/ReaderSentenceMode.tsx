@@ -1,3 +1,8 @@
+import {
+  measureSentenceLines,
+  closestSentenceWord,
+  type SentenceVisualLine,
+} from "../../services/readerSentenceGeometry";
 import { useTranslation } from "react-i18next";
 import { EpubCFI } from "epubjs";
 import {
@@ -110,6 +115,21 @@ export function ReaderSentenceMode({
     anchor: number;
     focus: number;
   } | null>(null);
+  const verticalX = useRef<number | null>(null);
+  const visualLines = useRef<SentenceVisualLine[] | null>(null);
+  const pendingVertical = useRef<{
+    cfi: string;
+    direction: number;
+    x: number;
+  } | null>(null);
+  const resetVertical = () => {
+    verticalX.current = null;
+    pendingVertical.current = null;
+  };
+  const getVisualLines = () =>
+    (visualLines.current ??= sentenceText.current
+      ? measureSentenceLines(sentenceText.current)
+      : []);
   const pendingWord = useRef<{ cfi: string; direction: number } | null>(null);
   const highlightedWord = useRef<HTMLSpanElement>(null);
   const stage = useRef<HTMLDivElement>(null);
@@ -153,6 +173,9 @@ export function ReaderSentenceMode({
       }
     });
   }, [sentence?.cfi, reader.searchBook, reader.translatedPassages]);
+  useLayoutEffect(() => {
+    visualLines.current = null;
+  }, [translatedRanges]);
   const renderTranslated = (text: string, offset: number): ReactNode => {
     const end = offset + text.length;
     const cuts = [
@@ -467,6 +490,23 @@ export function ReaderSentenceMode({
     setFeedback("");
     const pending = pendingWord.current;
     pendingWord.current = null;
+    const vertical = pendingVertical.current;
+    if (vertical && sentence && vertical.cfi !== sentence.cfi) {
+      pendingVertical.current = null;
+      pendingWord.current = null;
+      const frame = requestAnimationFrame(() => {
+        const lines = getVisualLines();
+        const line =
+          vertical.direction > 0 ? lines[0] : lines[lines.length - 1];
+        if (line)
+          setWordFocus({
+            cfi: sentence.cfi,
+            index: closestSentenceWord(line, vertical.x),
+          });
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+    if (!vertical) verticalX.current = null;
     const count = Math.floor(
       (sentence?.text.split(/([\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*)/gu)
         .length || 0) / 2,
@@ -488,6 +528,7 @@ export function ReaderSentenceMode({
     let disposed = false;
     // Measure the complete sentence; never hide text just to remove a scrollbar.
     const fit = () => {
+      visualLines.current = null;
       if (disposed || !element.clientWidth || !element.clientHeight) return;
       element.style.removeProperty("font-size");
       element.style.removeProperty("text-wrap");
@@ -513,12 +554,27 @@ export function ReaderSentenceMode({
     fit();
     const observer = new ResizeObserver(fit);
     observer.observe(element);
+    if (stage.current) observer.observe(stage.current);
+    const styles = new MutationObserver(() => {
+      visualLines.current = null;
+    });
+    styles.observe(element, {
+      attributes: true,
+      attributeFilter: ["style", "class"],
+    });
+    const refresh = () => {
+      resetVertical();
+      fit();
+    };
+    window.addEventListener("resize", refresh);
     void document.fonts.ready.then(fit);
-    document.fonts.addEventListener("loadingdone", fit);
+    document.fonts.addEventListener("loadingdone", refresh);
     return () => {
       disposed = true;
       observer.disconnect();
-      document.fonts.removeEventListener("loadingdone", fit);
+      styles.disconnect();
+      document.fonts.removeEventListener("loadingdone", refresh);
+      window.removeEventListener("resize", refresh);
     };
   }, [sentence?.text, sentence?.notes, mode.busy]);
   useEffect(() => {
@@ -529,6 +585,32 @@ export function ReaderSentenceMode({
         : /^[tacnf]$/i.test(event.key)
           ? event.key.toLowerCase()
           : null;
+      if (
+        event.ctrlKey &&
+        ["ArrowLeft", "ArrowRight"].includes(event.key) &&
+        !event.defaultPrevented &&
+        !event.isComposing &&
+        !event.altKey &&
+        !event.metaKey &&
+        !event.shiftKey &&
+        !blocked &&
+        sentence &&
+        !target?.closest(
+          "input,textarea,select,[contenteditable]:not([contenteditable=false]),[role=dialog],[role=textbox],[role=slider]",
+        )
+      ) {
+        event.preventDefault();
+        heldArrow.current = null;
+        resetVertical();
+        clearTextSelection();
+        setWordFocus({ cfi: "", index: -1 });
+        const direction = event.key === "ArrowRight" ? 1 : -1;
+        if (direction > 0 ? mode.canNext : mode.canBack) {
+          pendingWord.current = { cfi: sentence.cfi, direction: 1 };
+          mode.move(direction);
+        }
+        return;
+      }
       if (
         event.ctrlKey &&
         (event.code === "KeyS" || event.key.toLowerCase() === "s") &&
@@ -571,6 +653,7 @@ export function ReaderSentenceMode({
           event.preventDefault();
           heldArrow.current = null;
           const key = event.key as "ArrowRight" | "ArrowLeft";
+          resetVertical();
           extendWords(key === "ArrowRight" ? 1 : -1, wordSteps[key]);
         }
         return;
@@ -632,14 +715,47 @@ export function ReaderSentenceMode({
         if (!event.repeat) action.click();
         return;
       }
-      if (["ArrowDown", "ArrowUp"].includes(event.key)) {
+      if (
+        ["ArrowDown", "ArrowUp"].includes(event.key) &&
+        sentence &&
+        wordCount
+      ) {
         event.preventDefault();
-        pendingWord.current = null;
-        clearTextSelection();
-        setWordFocus({ cfi: "", index: -1 });
-        mode.move(event.key === "ArrowDown" ? 1 : -1);
+        heldArrow.current = null;
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        const lines = getVisualLines();
+        let origin = wordNavigationOrigin(direction);
+        if (origin < 0) {
+          origin = direction > 0 ? 0 : wordCount - 1;
+          clearTextSelection();
+          setWordFocus({ cfi: sentence.cfi, index: origin });
+          return;
+        }
+        const matching = lines.flatMap((line, index) =>
+          line.words.some((word) => word.index === origin) ? [index] : [],
+        );
+        const currentLine =
+          direction > 0 ? matching[matching.length - 1] : matching[0];
+        if (currentLine === undefined) return;
+        const rect = lines[currentLine].words.find(
+          (word) => word.index === origin,
+        )!;
+        const x = verticalX.current ?? (rect.left + rect.right) / 2;
+        verticalX.current = x;
+        const next = lines[currentLine + direction];
+        if (next) {
+          clearTextSelection();
+          setWordFocus({
+            cfi: sentence.cfi,
+            index: closestSentenceWord(next, x),
+          });
+        } else if (direction > 0 ? mode.canNext : mode.canBack) {
+          clearTextSelection();
+          pendingWord.current = null;
+          pendingVertical.current = { cfi: sentence.cfi, direction, x };
+          mode.move(direction);
+        }
       } else if (
-        !reader.mobile &&
         sentence &&
         wordCount &&
         ["ArrowRight", "ArrowLeft"].includes(event.key)
@@ -657,6 +773,7 @@ export function ReaderSentenceMode({
             return;
           held.commit = undefined;
           const origin = wordNavigationOrigin(key === "ArrowRight" ? 1 : -1);
+          resetVertical();
           clearTextSelection();
           moveWords(
             key === "ArrowRight" ? 1 : -1,
@@ -681,6 +798,7 @@ export function ReaderSentenceMode({
         } else {
           // Wait for release so an arrow+number chord can configure without moving.
           heldArrow.current.commit = () => {
+            resetVertical();
             clearTextSelection();
             moveWords(key === "ArrowRight" ? 1 : -1, count, origin);
           };
@@ -806,6 +924,7 @@ export function ReaderSentenceMode({
             aria-busy={mode.busy}
             dir="auto"
             onPointerDown={() => {
+              resetVertical();
               clearTextSelection();
               setWordFocus({ cfi: "", index: -1 });
             }}
@@ -886,6 +1005,7 @@ export function ReaderSentenceMode({
             disabled={blocked || !mode.canBack}
             onClick={() => {
               pendingWord.current = null;
+              resetVertical();
               mode.move(-1);
             }}
           >

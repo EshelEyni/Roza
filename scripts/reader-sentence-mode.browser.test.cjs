@@ -514,7 +514,7 @@ test(
             }
             if (!mobile) {
               const activeWord = page.locator(".reader-sentence-word-active");
-              await page.keyboard.press("ArrowUp"); // Explicitly clear the initial whole-sentence selection.
+              await page.keyboard.press("Control+ArrowLeft"); // Explicitly clear the initial whole-sentence selection.
               await page.keyboard.press("ArrowRight");
               assert.equal(await activeWord.textContent(), "Hello");
               await page.keyboard.press("ArrowRight");
@@ -639,7 +639,7 @@ test(
                 "reading",
                 "Left resumes at the active end of the forward selection",
               );
-              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("Control+ArrowLeft");
               await page.keyboard.press("ArrowLeft");
               assert.equal(await activeWord.textContent(), "world");
               const chord = async (arrow, digit) => {
@@ -648,7 +648,7 @@ test(
                 await page.keyboard.down(arrow); // Repeats after configuration must not move.
                 await page.keyboard.up(arrow);
               };
-              await page.keyboard.press("ArrowUp"); // Clear the word mark at book start.
+              await page.keyboard.press("Control+ArrowLeft"); // Clear the word mark at book start.
               await chord("ArrowRight", "2");
               assert.equal(
                 await activeWord.count(),
@@ -720,7 +720,7 @@ test(
                 ),
                 6,
               );
-              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("Control+ArrowLeft");
               await page.keyboard.press("ArrowLeft");
               assert.equal(
                 await activeWord.textContent(),
@@ -816,7 +816,7 @@ test(
                   .isDisabled(),
                 true,
               );
-              await page.keyboard.press("ArrowUp");
+              await page.keyboard.press("Control+ArrowLeft");
               await page.keyboard.press("ArrowLeft");
               assert.equal(await activeWord.textContent(), "world");
               await page.keyboard.press("Shift+ArrowLeft");
@@ -831,18 +831,18 @@ test(
               await chord("ArrowRight", "1");
               assert.equal(await markedText(), "world");
             }
-            await page.keyboard.press("ArrowDown");
+            await page.keyboard.press("Control+ArrowRight");
             await page.waitForFunction(
               () =>
                 window.rsvpTest.reader.sentenceMode.sentence.text ===
                 "Next sentence!",
             );
             assert.equal(
-              await page.locator(".reader-sentence-word-active").count(),
-              0,
+              await page.locator(".reader-sentence-word-active").textContent(),
+              "Next",
             );
             if (!mobile) {
-              await page.keyboard.press("ArrowLeft");
+              await page.locator("[data-sentence-word]").last().click();
               assert.equal(
                 await page
                   .locator(".reader-sentence-word-active")
@@ -850,7 +850,7 @@ test(
                 "sentence",
               );
             }
-            await page.keyboard.press("ArrowUp");
+            await page.keyboard.press("Control+ArrowLeft");
             await page.waitForFunction(
               () =>
                 window.rsvpTest.reader.sentenceMode.sentence.text ===
