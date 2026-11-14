@@ -15,6 +15,9 @@ function ReaderLibrary() {
   const { t } = useTranslation();
   const [archived, setArchived] = useState(false);
   const books = useGetReaderBooks(true, archived);
+  const loadedBooks = Array.from(new Map(
+    books.data?.pages.flatMap(page => page.books).map(book => [book.id, book]) || [],
+  ).values());
   const client = useQueryClient();
   const archive = useMutation({
     mutationFn: ({ id, archived }: { id: string; archived: boolean }) => readerApiService.setArchived(id, archived),
@@ -43,7 +46,7 @@ function ReaderLibrary() {
           {t("reader.loading")}
         </p>
       )}
-      {books.isError && (
+      {books.isError && !books.isFetchNextPageError && (
         <div className="reader-message" role="alert">
           <p>{t("reader.libraryError")}</p>
           <button
@@ -54,19 +57,28 @@ function ReaderLibrary() {
           </button>
         </div>
       )}
-      {books.isSuccess && !books.data.length && (
+      {books.isSuccess && !loadedBooks.length && (
         <div className="reader-empty">
           <GiBookshelf aria-hidden="true" />
           <h2>{t(archived ? "reader.archiveEmpty" : "reader.emptyTitle")}</h2>
           {!archived && <p>{t("reader.emptyDescription")}</p>}
         </div>
       )}
-      {!!books.data?.length && (
+      {!!loadedBooks.length && (
         <div className="reader-library-meta">
-          {t("reader.bookCount", { count: books.data.length })}
+          {t("reader.bookCount", { count: loadedBooks.length })}
         </div>
       )}
-      <ReaderBookGrid books={books.data || []} archived={archived} pending={archive.isPending} onArchive={onArchive} />
+      <ReaderBookGrid books={loadedBooks} archived={archived} pending={archive.isPending} onArchive={onArchive} />
+      {books.isFetchNextPageError && <p className="reader-message" role="alert">{t("reader.libraryError")}</p>}
+      {books.hasNextPage && (
+        <div className="reader-message">
+          <button type="button" className="reader-button" disabled={books.isFetching}
+            aria-busy={books.isFetchingNextPage} onClick={() => void books.fetchNextPage()}>
+            {t(books.isFetchingNextPage ? "reader.loading" : books.isFetchNextPageError ? "reader.retry" : "reader.loadMore")}
+          </button>
+        </div>
+      )}
     </>
   );
 }

@@ -3,7 +3,7 @@ import {
   ReaderDictionaryLookup,
   ReaderLookupResult,
 } from "../../../shared/types/readerDictionary";
-import { ReaderBook, ReaderState } from "../../../shared/types/reader";
+import { ReaderBook, ReaderBookPage, ReaderState } from "../../../shared/types/reader";
 import { JsendResponse } from "../../../shared/types/system";
 
 const baseUrl = "/api/reader";
@@ -103,7 +103,11 @@ export default {
   lookupWord: (id: string, selection: ReaderDictionaryLookup, signal = AbortSignal.timeout(15000)) =>
     request<ReaderLookupResult>("POST", "/" + id + "/dictionary", selection, signal),
   getAccess: () => request<{ enabled: boolean }>("GET", "/access"),
-  query: (archived = false) => request<ReaderBook[]>("GET", archived ? "?archived=true" : ""),
+  query: (archived = false, cursor: string | null = null, signal?: AbortSignal) => {
+    const params = new URLSearchParams({ archived: String(archived) });
+    if (cursor) params.set("cursor", cursor);
+    return request<ReaderBookPage>("GET", "?" + params, undefined, signal);
+  },
   setArchived: (id: string, archived: boolean) =>
     request<ReaderBook>("PATCH", "/" + id + "/archive", { archived }),
   getById: (id: string) => request<ReaderBook>("GET", "/" + id),

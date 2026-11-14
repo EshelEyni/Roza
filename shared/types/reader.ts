@@ -34,3 +34,5 @@ export type ReaderBook = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type ReaderBookPage = { books: ReaderBook[]; nextCursor: string | null };

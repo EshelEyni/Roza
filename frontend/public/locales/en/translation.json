@@ -307,6 +307,7 @@
     "accessError": "Could not check Reader access.",
     "unavailable": "Reader is not enabled for this account.",
     "retry": "Try again",
+    "loadMore": "Load More",
     "libraryError": "Could not load your library. Check your connection.",
     "emptyTitle": "Your next chapter starts here",
     "emptyDescription": "Upload an EPUB to make yourself at home. Your books and reading position stay private to you.",
