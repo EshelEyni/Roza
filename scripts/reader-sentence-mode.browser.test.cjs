@@ -173,6 +173,8 @@ test(
       for (const mobile of [false, true])
         await t.test(mobile ? "iPhone viewport" : "desktop", async () => {
           saves.length = 0;
+          flags.length = 0;
+          flagWrites = 0;
           const browser = process.env.RSVP_WEBKIT
             ? await webkit.launch()
             : await chromium.launch({
@@ -308,6 +310,13 @@ test(
             if (mobile) {
               const lookupsBeforeFlag = lookups.length;
               await page.locator("[data-sentence-word]").nth(2).tap();
+              assert.equal(
+                await page
+                  .locator(".reader-sentence-word-active")
+                  .textContent(),
+                "world",
+                "Touch focuses the word before flagging",
+              );
               await page
                 .getByRole("button", { name: "Flag", exact: true })
                 .tap();
@@ -350,10 +359,14 @@ test(
                 }),
                 "reading",
               );
-              assert.equal(flags.find(f => f.text === "reading").context, "Hello, reading world.");
+              assert.equal(
+                flags.find((f) => f.text === "reading").context,
+                "Hello, reading world.",
+              );
               const writes = flagWrites;
               await page.keyboard.press("f");
               await page.waitForTimeout(100);
+
               assert.equal(flagWrites, writes);
               assert.equal(flags.filter((f) => f.text === "reading").length, 1);
               assert.equal(lookups.length, lookupsBeforeFlag);
@@ -388,6 +401,82 @@ test(
                 await page.locator(".reader-sentence-text").textContent(),
                 "Hello, reading world.",
               );
+              const chord = async (arrow, digit) => {
+                await page.keyboard.down(arrow);
+                await page.keyboard.press(digit);
+                await page.keyboard.up(arrow);
+              };
+              await page.keyboard.press("ArrowLeft"); // Clear the word mark at book start.
+              await chord("ArrowDown", "2");
+              assert.equal(await activeWord.textContent(), "reading");
+              await page.keyboard.press("ArrowDown");
+              assert.equal(await activeWord.textContent(), "world");
+              assert.equal(
+                await page.evaluate(
+                  () => window.rsvpTest.reader.sentenceMode.sentence.cfi,
+                ),
+                cfi,
+              );
+              await page.evaluate(() =>
+                document.dispatchEvent(
+                  new KeyboardEvent("keydown", {
+                    key: "ArrowDown",
+                    repeat: true,
+                    bubbles: true,
+                  }),
+                ),
+              );
+              assert.equal(
+                await page.evaluate(
+                  () => window.rsvpTest.reader.sentenceMode.sentence.cfi,
+                ),
+                cfi,
+                "Auto-repeat cannot bypass the last-word stop",
+              );
+              await page.keyboard.press("ArrowDown");
+              assert.equal(await activeWord.textContent(), "Next");
+              await page.keyboard.press("ArrowDown");
+              assert.equal(await activeWord.textContent(), "sentence");
+              await chord("ArrowUp", "6");
+              assert.equal(await activeWord.textContent(), "Next");
+              assert.equal(
+                await page.evaluate(
+                  () => window.rsvpTest.reader.sentenceMode.sentence.text,
+                ),
+                "Next sentence!",
+              );
+              await page.keyboard.press("ArrowUp");
+              assert.equal(await activeWord.textContent(), "world");
+              await page.keyboard.press("ArrowUp");
+              assert.equal(await activeWord.textContent(), "Hello");
+              assert.equal(
+                await page.evaluate(
+                  () =>
+                    JSON.parse(localStorage.getItem("roza-sentence-word-steps"))
+                      .ArrowDown,
+                ),
+                2,
+                "Changing Up leaves Down unchanged",
+              );
+              assert.equal(
+                await page.evaluate(
+                  () =>
+                    JSON.parse(localStorage.getItem("roza-sentence-word-steps"))
+                      .ArrowUp,
+                ),
+                6,
+              );
+              await page.keyboard.press("ArrowLeft");
+              await page.keyboard.press("ArrowUp");
+              assert.equal(
+                await activeWord.textContent(),
+                "world",
+                "Up starts at the final word when nothing is highlighted, even with step six",
+              );
+              await page.keyboard.press("ArrowUp");
+              assert.equal(await activeWord.textContent(), "Hello");
+              await chord("ArrowDown", "1");
+              await chord("ArrowUp", "1");
             }
             await page.keyboard.press("ArrowRight");
             await page.waitForFunction(
@@ -612,16 +701,101 @@ test(
                 .isDisabled(),
               true,
             );
+            const assertFits = async () => {
+              const geometry = await page.evaluate(() => {
+                const selectors = [
+                  ".reader-sentence-stage",
+                  ".reader-sentence-text",
+                  ".reader-sentence-mode",
+                ];
+                return selectors.map((selector) => {
+                  const el = document.querySelector(selector);
+                  return {
+                    selector,
+                    height: el.clientHeight,
+                    scrollHeight: el.scrollHeight,
+                    width: el.clientWidth,
+                    scrollWidth: el.scrollWidth,
+                  };
+                });
+              });
+              for (const rect of geometry) {
+                assert.ok(rect.height > 0);
+                assert.ok(
+                  rect.scrollHeight <= rect.height + 1,
+                  JSON.stringify(rect),
+                );
+                assert.ok(
+                  rect.scrollWidth <= rect.width + 1,
+                  JSON.stringify(rect),
+                );
+              }
+            };
+            await assertFits();
+            const controls = await page
+              .locator(".reader-sentence-controls")
+              .evaluate((el) => {
+                const nav = [
+                  ...el.querySelectorAll(".reader-sentence-nav button"),
+                ].map((b) => b.getBoundingClientRect().top);
+                const actions = [
+                  ...el.querySelectorAll(".reader-sentence-actions button"),
+                ].map((b) => b.getBoundingClientRect().top);
+                return {
+                  nav,
+                  actions,
+                  labels: [
+                    ...el.querySelectorAll(".reader-sentence-actions span"),
+                  ].map((e) => getComputedStyle(e).display),
+                };
+              });
             if (mobile) {
+              assert.ok(controls.nav[0] < controls.nav[1]);
+              assert.ok(controls.labels.every((d) => d === "none"));
+            } else {
+              assert.equal(controls.nav[0], controls.nav[1]);
               assert.ok(
-                await page
-                  .locator(".reader-sentence-stage")
-                  .evaluate((el) => el.scrollHeight > el.clientHeight),
+                controls.actions.every((y) => y === controls.actions[0]),
               );
-              await page
-                .locator(".reader-sentence-stage")
-                .evaluate((el) => (el.scrollTop = el.scrollHeight));
             }
+            // Exercise the real component with short, long and very long sentences.
+            const original = await page.evaluate(
+              () => window.rsvpTest.reader.sentenceMode.sentence.text,
+            );
+            let anchored;
+            for (const length of [1, 80, 200]) {
+              await page.evaluate((length) => {
+                const reader = window.rsvpTest.reader;
+                reader.sentenceMode.sentence.text =
+                  Array(length)
+                    .fill(
+                      "A longer sentence needs to remain inside the reading area",
+                    )
+                    .join(", ") + ".";
+                reader.updateState({ progress: reader.state.progress });
+              }, length);
+              await page.evaluate(
+                () =>
+                  new Promise((resolve) =>
+                    requestAnimationFrame(() => requestAnimationFrame(resolve)),
+                  ),
+              );
+              await assertFits();
+              const tops = await page.evaluate(() =>
+                [".reader-sentence-chapter", ".reader-sentence-text"].map(
+                  (selector) =>
+                    document.querySelector(selector).getBoundingClientRect()
+                      .top,
+                ),
+              );
+              if (anchored) assert.deepEqual(tops, anchored);
+              else anchored = tops;
+            }
+            await page.evaluate((original) => {
+              const reader = window.rsvpTest.reader;
+              reader.sentenceMode.sentence.text = original;
+              reader.updateState({ progress: reader.state.progress });
+            }, original);
             const bounds = await page
               .locator(".reader-sentence-controls")
               .evaluate((el) => {
