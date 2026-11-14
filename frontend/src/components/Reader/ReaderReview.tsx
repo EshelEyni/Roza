@@ -141,7 +141,7 @@ export function ReaderReview({
   return (
     <section className="reader-review" aria-label={t("reader.review.title")}>
       <div className="reader-review-filter">
-        <label id={filterId + "-label"} htmlFor={filterId}>
+        <label className="reader-sr-only" id={filterId + "-label"} htmlFor={filterId}>
           {t("reader.review.show")}
         </label>
         <ReaderSelect
