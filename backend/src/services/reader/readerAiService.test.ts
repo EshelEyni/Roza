@@ -156,3 +156,74 @@ describe("Writing edit provider limits", () => {
     await expect(askReaderAi("Copy edit",[],"default","edit")).rejects.toThrow("before finishing");
   });
 });
+
+describe("Bounded book tool orchestration", () => {
+  const originalFetch = global.fetch;
+  const definitions = [{ type: "function" as const, name: "read", description: "Read", strict: true,
+    parameters: { type: "object", properties: {}, required: [], additionalProperties: false } }];
+  const answer = { status: "completed", output: [{ type: "message", content: [{ type: "output_text", text: "Grounded answer" }] }] };
+  const call = (name = "read", args = "{}") => ({ status: "completed", output: [
+    { type: "reasoning", id: "reason1", encrypted_content: "encrypted-reasoning" },
+    { type: "function_call", call_id: "call1", name, arguments: args },
+  ] });
+  const response = (data: unknown) => ({ ok: true, json: async () => data });
+  beforeEach(() => { process.env.OPENAI_API_KEY = "mock-only"; global.fetch = jest.fn(); });
+  afterEach(() => { global.fetch = originalFetch; delete process.env.OPENAI_API_KEY; jest.useRealTimers(); });
+  it("passes function outputs and reasoning through stateless continuation", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce(response(call())).mockResolvedValueOnce(response(answer));
+    const execute = jest.fn(() => ({ text: "book evidence" }));
+    expect(await askReaderAi("", [], "gpt-6.1-terra", "answer", 4000, { definitions, execute })).toBe("Grounded answer");
+    expect(execute).toHaveBeenCalledWith("read", {});
+    const payload = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
+    expect(payload.input[0]).toMatchObject({ type: "reasoning", encrypted_content: "encrypted-reasoning" });
+    expect(payload.input[2]).toMatchObject({ type: "function_call_output", call_id: "call1", output: JSON.stringify({ text: "book evidence" }) });
+    expect(payload.include).toEqual(["reasoning.encrypted_content"]);
+    expect(payload.parallel_tool_calls).toBe(false);
+    expect(payload.store).toBe(false);
+  });
+  it.each([["unknown", "{}"], ["read", "{invalid"]])("rejects unsafe tool dispatch %s/%s without executing", async (name, args) => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce(response(call(name, args))).mockResolvedValueOnce(response(answer));
+    const execute = jest.fn();
+    await askReaderAi("", [], "default", "answer", 4000, { definitions, execute });
+    expect(execute).not.toHaveBeenCalled();
+    const payload = JSON.parse((global.fetch as jest.Mock).mock.calls[1][1].body);
+    expect(JSON.parse(payload.input[2].output)).toHaveProperty("error");
+  });
+  it("forces a final answer after twelve tool calls", async () => {
+    (global.fetch as jest.Mock).mockImplementation(async (_url: string, init: { body: string }) =>
+      response(JSON.parse(init.body).tool_choice === "none" ? answer : call()));
+    const execute = jest.fn(() => ({ text: "short" }));
+    await askReaderAi("", [], "default", "answer", 4000, { definitions, execute });
+    expect(execute).toHaveBeenCalledTimes(12);
+    expect(global.fetch).toHaveBeenCalledTimes(13);
+    expect(JSON.parse((global.fetch as jest.Mock).mock.calls[12][1].body).tool_choice).toBe("none");
+  });
+  it("substitutes a budget error for oversized tool output and requests a final answer", async () => {
+    (global.fetch as jest.Mock).mockResolvedValueOnce(response(call())).mockResolvedValueOnce(response(answer));
+    await askReaderAi("", [], "default", "answer", 4000, { definitions, execute: () => ({ text: "א".repeat(200000) }) });
+    const calls = (global.fetch as jest.Mock).mock.calls;
+    const payload = JSON.parse(calls[1][1].body);
+    expect(payload.tool_choice).toBe("none");
+    expect(JSON.parse(payload.input[2].output).error).toContain("Context budget");
+    expect(calls.every((entry: unknown[]) => Buffer.byteLength((entry[1] as { body: string }).body) <= 240000)).toBe(true);
+  });
+  it("shares one deadline across all tool rounds", async () => {
+    jest.useFakeTimers();
+    (global.fetch as jest.Mock).mockImplementationOnce(async () => {
+      jest.advanceTimersByTime(70000); return response(call());
+    }).mockImplementationOnce(async (_url: string, init: { signal: AbortSignal }) => {
+      jest.advanceTimersByTime(50001);
+      expect(init.signal.aborted).toBe(true);
+      throw new Error("abort");
+    });
+    await expect(askReaderAi("", [], "default", "answer", 4000, { definitions, execute: () => ({}) })).rejects.toThrow("120 seconds");
+  });
+  it("does not expose book tools to summary or editing requests", async () => {
+    (global.fetch as jest.Mock).mockResolvedValue(response(answer));
+    const tools = { definitions, execute: jest.fn() };
+    await askReaderAi("", [], "default", "summary", 4000, tools);
+    await askReaderAi("", [], "default", "edit", 4000, tools);
+    for (const args of (global.fetch as jest.Mock).mock.calls) expect(JSON.parse(args[1].body).tools).toBeUndefined();
+    expect(tools.execute).not.toHaveBeenCalled();
+  });
+});

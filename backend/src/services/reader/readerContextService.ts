@@ -12,7 +12,8 @@ import type { ReaderPassage } from "../../../../shared/types/readerChat";
 
 const MAX_CONTEXT_CHARS = readerAiConfig.maxBookContextChars;
 const MAX_PASSAGE_CHARS = readerAiConfig.maxPassageChars;
-type Section = { href: string; source: string; linear: boolean };
+type Section = { href: string; source: string; linear: boolean; name: string };
+type Chapter = { section: number; start: number; title: string };
 const stopWords = new Set("the and this that what does with from about why how explain book was were has have who when where which their there would could should".split(" "));
 function termsFor(text: string) {
   return (text.normalize("NFKC").toLowerCase().match(/[\p{L}\p{N}]{2,}/gu) || []).filter(term => !stopWords.has(term));
@@ -94,6 +95,8 @@ function offsetAt(document: XmlDocument, offsets: Map<XmlNode, number>, point: s
 
 class ReaderContext {
   private sections: Section[];
+  private navigation: { name: string; fragment: string; title: string }[] = [];
+  private chapters?: Chapter[];
   private index?: { texts: string[]; chunks: { section: number; start: number; end: number }[]; postings: Map<string, Set<number>> };
   get cacheBytes() { return this.sections.reduce((sum, section) => sum + section.source.length * 16, 0); }
   private searchIndex() {
@@ -128,8 +131,30 @@ class ReaderContext {
       const href = manifest.get(item.getAttribute("idref"));
       if (!href) throw new AppError("Book context is unavailable.", 400);
       const name = resolve(root, href);
-      return { href, source: zip.readAsText(name), linear: item.getAttribute("linear") !== "no" };
+      return { href, name, source: zip.readAsText(name), linear: item.getAttribute("linear") !== "no" };
     });
+    // Use EPUB 3 TOC links, or EPUB 2 NCX navigation, rather than assuming file = chapter.
+    const navItem = elements(pkg, "item").find(item => (item.getAttribute("properties") || "").split(/\s+/).includes("nav"));
+    const ncxId = elements(pkg, "spine")[0]?.getAttribute("toc");
+    const ncxItem = elements(pkg, "item").find(item => item.getAttribute("id") === ncxId);
+    const navigationItem = navItem || ncxItem;
+    if (navigationItem) {
+      try {
+        const navPath = resolve(root, navigationItem.getAttribute("href") || "");
+        const nav = parseXml(zip.readAsText(navPath));
+        const toc = elements(nav, "nav").find(node => /(?:^|\s)toc(?:\s|$)/.test(node.getAttribute("epub:type") || node.getAttribute("type") || ""));
+        const links = navItem ? (toc ? Array.from(toc.getElementsByTagNameNS("*", "a")) : []) : elements(nav, "navPoint");
+        for (const link of links) {
+          const href = navItem ? link.getAttribute("href") : link.getElementsByTagNameNS("*", "content")[0]?.getAttribute("src");
+          const title = navItem ? link.textContent : link.getElementsByTagNameNS("*", "text")[0]?.textContent;
+          if (!href) continue;
+          this.navigation.push({ name: resolve(navPath, href), fragment: decodeURIComponent(href.split("#")[1] || ""), title: (title || "").trim().slice(0, 200) });
+        }
+      } catch {
+        // Optional navigation failure must not disable readable spine content.
+        this.navigation = [];
+      }
+    }
   }
   private section(index: number) {
     const section = this.sections[index];
@@ -142,6 +167,121 @@ class ReaderContext {
     }
     return { ...section, document, ...documentText(document) };
   }
+
+  private chapterIndex() {
+    if (this.chapters) return this.chapters;
+    const chapters: Chapter[] = [];
+    this.sections.forEach((section, sectionIndex) => {
+      const document = this.section(sectionIndex);
+      const links = this.navigation.filter(link => link.name === section.name);
+      for (const link of links) {
+        const target = link.fragment ? Array.from(document.document.getElementsByTagName("*")).find(node => node.getAttribute("id") === link.fragment || node.getAttribute("name") === link.fragment) : document.document.documentElement;
+        const start = target ? document.offsets.get(target) : undefined;
+        if (start === undefined || chapters.some(chapter => chapter.section === sectionIndex && chapter.start === start)) continue;
+        chapters.push({ section: sectionIndex, start, title: link.title || "Section " + (sectionIndex + 1) });
+      }
+    });
+    if (!chapters.length) {
+      this.sections.forEach((section, index) => {
+        if (section.linear) chapters.push({ section: index, start: 0, title: "Section " + (index + 1) });
+      });
+    } else {
+      // Chapters may span multiple spine resources. Do not split those at file boundaries.
+      const first = [...chapters].sort((a, b) => a.section - b.section || a.start - b.start)[0];
+      for (let section = 0; section <= first.section; section++) {
+        const text = this.section(section).text.slice(0, section === first.section ? first.start : undefined);
+        if (this.sections[section].linear && text.trim()) chapters.push({ section, start: 0, title: "Section " + (section + 1) });
+      }
+    }
+    return this.chapters = chapters.sort((a, b) => a.section - b.section || a.start - b.start);
+  }
+  private accessiblePosition(currentCfi: string) {
+    const position = parsePosition(currentCfi);
+    const section = this.section(position.index);
+    return { section: position.index, offset: offsetAt(section.document, section.offsets, position.end) };
+  }
+  private chapterAt(section: number, offset: number) {
+    const chapters = this.chapterIndex();
+    let result = 0;
+    chapters.forEach((chapter, index) => {
+      if (chapter.section < section || (chapter.section === section && chapter.start <= offset)) result = index;
+    });
+    return result;
+  }
+  bookContents(currentCfi: string, allow: boolean, start = 0) {
+    const boundary = this.accessiblePosition(currentCfi);
+    const chapters = this.chapterIndex();
+    const current = this.chapterAt(boundary.section, boundary.offset);
+    const visible = chapters.filter(chapter => allow || chapter.section < boundary.section ||
+      (chapter.section === boundary.section && chapter.start < boundary.offset));
+    return {
+      currentChapter: "chapter-" + (current + 1),
+      spoilerRestricted: !allow,
+      note: "Chapter IDs follow EPUB navigation with spine-section fallbacks; they are not printed chapter numbers. Only accessible entries are listed.",
+      chapters: visible.slice(start, start + 60).map(chapter => ({
+        id: "chapter-" + (chapters.indexOf(chapter) + 1), title: chapter.title,
+      })),
+      nextStart: start + 60 < visible.length ? start + 60 : null,
+    };
+  }
+  readChapter(currentCfi: string, allow: boolean, chapterId: string, start = 0, maxChars = 24000) {
+    const boundary = this.accessiblePosition(currentCfi);
+    const chapters = this.chapterIndex();
+    const current = this.chapterAt(boundary.section, boundary.offset);
+    const chapterIndex = chapterId === "current" ? current : chapterId === "next" ? current + 1 :
+      chapterId === "previous" ? current - 1 : /^chapter-[1-9][0-9]*$/.test(chapterId) ? Number(chapterId.slice(8)) - 1 : -1;
+    const chapter = chapters[chapterIndex];
+    if (!chapter) return { error: "That chapter is unavailable in this edition." };
+    // Check before exposing future titles, resource names, lengths, or text.
+    if (!allow && (chapter.section > boundary.section || (chapter.section === boundary.section && chapter.start >= boundary.offset)))
+      return { error: "This chapter is beyond the reading boundary. Enable spoilers to read it." };
+    const end = chapters[chapterIndex + 1];
+    const texts = this.searchIndex().texts;
+    const excerpts: { label: string; text: string }[] = [];
+    let skip = start;
+    let remaining = maxChars;
+    let accessibleLength = 0;
+    let restricted = false;
+    for (let section = chapter.section; section < texts.length; section++) {
+      if (end && (section > end.section || (section === end.section && end.start === 0))) break;
+      const from = section === chapter.section ? chapter.start : 0;
+      const chapterEnd = end && section === end.section ? end.start : texts[section].length;
+      let to = chapterEnd;
+      if (!allow && section >= boundary.section) {
+        to = section === boundary.section ? Math.min(to, boundary.offset) : 0;
+        if (to < chapterEnd) restricted = true;
+      }
+      const length = Math.max(0, to - from);
+      accessibleLength += length;
+      const offset = from + Math.min(skip, length);
+      skip = Math.max(0, skip - length);
+      if (remaining && offset < to) {
+        const last = Math.min(to, offset + remaining);
+        excerpts.push({ label: "Section " + (section + 1) + ": " + this.sections[section].href + " [characters " + offset + "-" + last + "]", text: texts[section].slice(offset, last) });
+        remaining -= last - offset;
+      }
+      if (end && section === end.section) break;
+    }
+    const consumed = maxChars - remaining;
+    return { chapter: "chapter-" + (chapterIndex + 1), title: chapter.title, excerpts,
+      nextStart: start + consumed < accessibleLength ? start + consumed : null,
+      complete: start === 0 && consumed === accessibleLength && !restricted,
+      restricted, note: restricted ? "Only the already-read portion is available; do not summarize the unread remainder." : undefined };
+  }
+  readBook(currentCfi: string, allow: boolean, chapterId: string, start = 0) {
+    const page = this.readChapter(currentCfi, allow, chapterId, start);
+    if (!page.chapter) return { ...page, next: null };
+    const chapters = this.chapterIndex();
+    const nextIndex = Number(page.chapter!.slice(8));
+    const boundary = this.accessiblePosition(currentCfi);
+    const next = chapters[nextIndex];
+    const accessible = next && (allow || next.section < boundary.section ||
+      (next.section === boundary.section && next.start < boundary.offset));
+    return { ...page, next: page.nextStart !== null ? { chapter: page.chapter, start: page.nextStart } :
+      accessible ? { chapter: "chapter-" + (nextIndex + 1), start: 0 } : null,
+      coverage: "This is one paginated chapter of the book. Follow next to read sequentially. Never claim full-book coverage until all accessible chapters and pages have been read." };
+  }
+
   isAtOrBefore(earlier: string, current: string) {
     try {
       return this.comparePositions(earlier, current);
