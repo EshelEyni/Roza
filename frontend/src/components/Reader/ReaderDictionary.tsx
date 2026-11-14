@@ -218,15 +218,15 @@ export function ReaderDictionary({
       const top = viewport?.offsetTop || 0;
       const width = viewport?.width || window.innerWidth;
       const height = viewport?.height || window.innerHeight;
-      const popupWidth = Math.min(actionWidth, Math.max(0, width - 24));
-      // Dock 10px above Safari's visible viewport, including over the footer.
-      const bottom = top + height - 10;
+      const popupWidth = width;
+      // Replace the footer at the bottom of Safari's visible viewport.
+      const bottom = top + height;
       const maxHeight = Math.max(0, bottom - (top + 12));
       // Keep the content-sized controls within the visible viewport.
       setMobilePosition({
         width: popupWidth,
-        left: left + (width - popupWidth) / 2,
-        top: Math.max(top + 12, bottom - Math.min(element.scrollHeight + 2, maxHeight)),
+        left,
+        top: Math.max(top + 12, bottom - Math.min(element.scrollHeight + 1, maxHeight)),
         maxHeight,
         visibility: "visible",
       });
@@ -331,7 +331,7 @@ export function ReaderDictionary({
               <FiCopy aria-hidden="true" />
             </button>
           </div>
-          {extending && (
+          {extending && !mobile && (
             <p className="reader-selection-help">
               {t("reader.selectionExtendHelp")}
             </p>
