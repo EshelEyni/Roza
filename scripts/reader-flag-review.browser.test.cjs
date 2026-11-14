@@ -543,7 +543,7 @@ test(
         .getByRole("button", { name: "Mark pending", exact: true })
         .waitFor();
       await page
-        .getByRole("button", { name: "Remove from review", exact: true })
+        .getByRole("button", { name: "Removed", exact: true })
         .click();
       await page.getByText("No items here yet.").waitFor();
       await selectFilter(page, "Pending flags");
