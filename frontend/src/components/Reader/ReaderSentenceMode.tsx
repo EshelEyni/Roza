@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { readerSentenceWordRange } from "../../services/readerSentenceWordRange";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   FiChevronLeft,
   FiChevronRight,
@@ -51,9 +51,43 @@ export function ReaderSentenceMode({
   } | null>(null);
   const [feedback, setFeedback] = useState("");
   const [wordFocus, setWordFocus] = useState({ cfi: "", index: -1 });
+  const [wordSteps, setWordSteps] = useState(() => {
+    try {
+      const stored = JSON.parse(
+        localStorage.getItem("roza-sentence-word-steps") || "{}",
+      );
+      const valid = (n: unknown) =>
+        typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 9
+          ? n
+          : 1;
+      return {
+        ArrowDown: valid(stored.ArrowDown),
+        ArrowUp: valid(stored.ArrowUp),
+      };
+    } catch {
+      return { ArrowDown: 1, ArrowUp: 1 };
+    }
+  });
+  const heldArrow = useRef<{
+    key: "ArrowDown" | "ArrowUp";
+    cfi: string;
+    index: number;
+  } | null>(null);
+  const heldDigit = useRef<number | null>(null);
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        "roza-sentence-word-steps",
+        JSON.stringify(wordSteps),
+      );
+    } catch {
+      /* optional preference */
+    }
+  }, [wordSteps]);
   const pendingWord = useRef<{ cfi: string; direction: number } | null>(null);
   const highlightedWord = useRef<HTMLSpanElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  const sentenceText = useRef<HTMLDivElement>(null);
   const actions = useRef<HTMLDivElement>(null);
   const sentence = mode.sentence;
   const parts =
@@ -146,20 +180,48 @@ export function ReaderSentenceMode({
     const timer = window.setTimeout(() => setFeedback(""), 2400);
     return () => window.clearTimeout(timer);
   }, [feedback]);
-  useEffect(() => {
-    const word = highlightedWord.current;
-    const container = stage.current;
-    if (!word || !container) return;
-    const bounds = word.getBoundingClientRect();
-    const viewport = container.getBoundingClientRect();
-    if (bounds.top < viewport.top)
-      container.scrollTop += bounds.top - viewport.top - 8;
-    else if (bounds.bottom > viewport.bottom)
-      container.scrollTop += bounds.bottom - viewport.bottom + 8;
-  }, [wordIndex, sentence?.cfi]);
+  useLayoutEffect(() => {
+    const element = sentenceText.current;
+    if (!element) return;
+    let disposed = false;
+    // Measure the complete sentence; never hide text just to remove a scrollbar.
+    const fit = () => {
+      if (disposed || !element.clientWidth || !element.clientHeight) return;
+      element.style.removeProperty("font-size");
+      element.style.removeProperty("text-wrap");
+      const preferred = parseFloat(getComputedStyle(element).fontSize);
+      const fits = () =>
+        element.scrollHeight <= element.clientHeight &&
+        element.scrollWidth <= element.clientWidth;
+      if (fits()) return;
+      // Balancing thousands of words on every measurement is costly in WebKit.
+      // Normal wrapping also makes the fit search predictable for long sentences.
+      element.style.setProperty("text-wrap", "wrap");
+      if (fits()) return;
+      let low = 0.5;
+      let high = preferred;
+      for (let i = 0; i < 14; i++) {
+        const size = (low + high) / 2;
+        element.style.fontSize = size + "px";
+        if (fits()) low = size;
+        else high = size;
+      }
+      element.style.fontSize = Math.floor(low * 100) / 100 + "px";
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(element);
+    void document.fonts.ready.then(fit);
+    document.fonts.addEventListener("loadingdone", fit);
+    return () => {
+      disposed = true;
+      observer.disconnect();
+      document.fonts.removeEventListener("loadingdone", fit);
+    };
+  }, [sentence?.text, mode.busy]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
-      const target = event.target as Element | null;
+      const target = event.target instanceof Element ? event.target : null;
       if (
         event.ctrlKey &&
         event.key.toLowerCase() === "s" &&
@@ -195,6 +257,54 @@ export function ReaderSentenceMode({
         )
       )
         return;
+      const moveWords = (
+        direction: number,
+        count: number,
+        origin: number,
+        repeat = false,
+      ) => {
+        if (!sentence || !wordCount) return;
+        const atEdge =
+          origin >= 0 &&
+          (direction > 0 ? origin === wordCount - 1 : origin === 0);
+        if (atEdge) {
+          // Holding a key must not bypass the required extra press at an edge.
+          if (!repeat && (direction > 0 ? mode.canNext : mode.canBack)) {
+            pendingWord.current = { cfi: sentence.cfi, direction };
+            mode.move(direction);
+          }
+          return;
+        }
+        const next =
+          origin < 0
+            ? direction > 0
+              ? count - 1
+              : wordCount - 1
+            : origin + direction * count;
+        setWordFocus({
+          cfi: sentence.cfi,
+          index: Math.max(0, Math.min(wordCount - 1, next)),
+        });
+      };
+      if (!reader.mobile && /^[1-9]$/.test(event.key)) {
+        heldDigit.current = Number(event.key);
+        const held = heldArrow.current;
+        if (held && sentence && !event.repeat) {
+          event.preventDefault();
+          const count = Number(event.key);
+          setWordSteps((current) => ({ ...current, [held.key]: count }));
+          setFeedback(
+            (held.key === "ArrowDown" ? "Down" : "Up") +
+              ": " +
+              count +
+              (count === 1 ? " word per press" : " words per press"),
+          );
+          // Recalculate the arrow's original move rather than adding another step.
+          if (held.cfi === sentence.cfi)
+            moveWords(held.key === "ArrowDown" ? 1 : -1, count, held.index);
+        }
+        return;
+      }
       const action = actions.current?.querySelector<HTMLButtonElement>(
         '[data-shortcut="' +
           event.key.toLowerCase().replace(/[^a-z]/g, "") +
@@ -217,23 +327,37 @@ export function ReaderSentenceMode({
         ["ArrowDown", "ArrowUp"].includes(event.key)
       ) {
         event.preventDefault();
-        const direction = event.key === "ArrowDown" ? 1 : -1;
-        const next =
-          wordIndex < 0
-            ? direction > 0
-              ? 0
-              : wordCount - 1
-            : wordIndex + direction;
-        if (next < 0 || next >= wordCount) {
-          if (direction > 0 ? mode.canNext : mode.canBack) {
-            pendingWord.current = { cfi: sentence.cfi, direction };
-            mode.move(direction);
-          }
-        } else setWordFocus({ cfi: sentence.cfi, index: next });
+        const key = event.key as "ArrowDown" | "ArrowUp";
+        heldArrow.current = { key, cfi: sentence.cfi, index: wordIndex };
+        const count = heldDigit.current || wordSteps[key];
+        if (heldDigit.current) {
+          setWordSteps((current) => ({ ...current, [key]: count }));
+          setFeedback(
+            (key === "ArrowDown" ? "Down" : "Up") +
+              ": " +
+              count +
+              (count === 1 ? " word per press" : " words per press"),
+          );
+        }
+        moveWords(key === "ArrowDown" ? 1 : -1, count, wordIndex, event.repeat);
       }
     };
+    const release = (event: KeyboardEvent) => {
+      if (heldArrow.current?.key === event.key) heldArrow.current = null;
+      if (/^[1-9]$/.test(event.key)) heldDigit.current = null;
+    };
+    const clearHeld = () => {
+      heldArrow.current = null;
+      heldDigit.current = null;
+    };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    document.addEventListener("keyup", release);
+    window.addEventListener("blur", clearHeld);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keyup", release);
+      window.removeEventListener("blur", clearHeld);
+    };
   }, [
     mode,
     blocked,
@@ -242,6 +366,7 @@ export function ReaderSentenceMode({
     wordCount,
     wordIndex,
     reader.flags.ready,
+    wordSteps,
   ]);
   const openLookup = (translate: boolean) => {
     const current = selection();
@@ -289,6 +414,7 @@ export function ReaderSentenceMode({
           <p className="reader-sentence-chapter">{mode.chapterTitle}</p>
           <div
             className="reader-sentence-text"
+            ref={sentenceText}
             aria-live="polite"
             aria-busy={mode.busy}
             dir="auto"
@@ -390,6 +516,7 @@ export function ReaderSentenceMode({
           <button
             disabled={blocked || aiDisabled}
             data-shortcut="t"
+            aria-label="Translate"
             aria-keyshortcuts="t"
             title="Translate (T)"
             onClick={() => openLookup(true)}
@@ -400,6 +527,7 @@ export function ReaderSentenceMode({
           <button
             disabled={blocked || aiDisabled}
             data-shortcut="a"
+            aria-label="Ask AI"
             aria-keyshortcuts="a"
             title="Ask AI (A)"
             onClick={() => {
@@ -413,6 +541,7 @@ export function ReaderSentenceMode({
           <button
             disabled={blocked || !sentence}
             data-shortcut="c"
+            aria-label="Copy"
             aria-keyshortcuts="c"
             title="Copy sentence (C)"
             onClick={async () => {
@@ -429,6 +558,7 @@ export function ReaderSentenceMode({
           </button>
           <button
             data-shortcut="n"
+            aria-label="Annotate"
             aria-keyshortcuts="n"
             title="Annotate (N)"
             disabled={

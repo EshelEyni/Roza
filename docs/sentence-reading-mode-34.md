@@ -4,7 +4,7 @@ Branch: `feat/sentence-reading-mode-34`
 
 Worktree: `C:\dev\Roza-worktrees\ticket-34-sentence-mode`, based on local `main` at `8cdc24b`.
 
-Sentence Mode appears beside RSVP. The scan-line header, pale beige palette, serif sentence, progress row, stacked Back/Next controls and five compact action tiles follow the supplied HTML demo. The text area scrolls independently while the controls remain visible, including at 320 × 568. Left/Right navigate sentences; on desktop Down/Up highlight the next/previous word within the current sentence using the reader selection colors. Down continues from the last word to the next sentence’s first word; Up continues from the first word to the previous sentence’s last word. Without a highlight, Up starts at the current sentence’s final word. Left/Right and button navigation clear the word highlight; Escape only dismisses open side panels and translation popups; the X button exits Sentence Mode.
+Sentence Mode appears beside RSVP. The scan-line header, pale beige palette, serif sentence, progress row, Back/Next controls and five compact action tiles follow the supplied HTML demo. The chapter and sentence start at fixed top positions. Text is measured and shrunk as necessary to fit the available reading area without scrolling or truncation, including at 320 × 568. Desktop controls use a single row; mobile keeps Back above Next with shorter buttons and icon-only actions retaining accessible labels. Very long sentences use smaller text to keep the entire sentence visible. Left/Right navigate sentences; on desktop Down/Up highlight the next/previous word within the current sentence using the reader selection colors. Down continues from the last word to the next sentence’s first word; Up continues from the first word to the previous sentence’s last word. Without a highlight, Up starts at the current sentence’s final word. Left/Right and button navigation clear the word highlight; Escape only dismisses open side panels and translation popups; the X button exits Sentence Mode.
 
 Only the current EPUB spine section is extracted. Inline nodes are joined before sentence segmentation; paragraphs and line breaks remain boundaries. Each sentence retains its original DOM-range CFI. `Intl.Segmenter` and the existing segmentation fallback are reused, with common English honorifics joined when ICU separates them. Nonlinear spine sections and empty sections are skipped when navigating chapters. Sentence Mode shares the exact reading anchor and hidden-rendition input guard with RSVP, without using RSVP timers or speed. Closing displays the sentence CFI and resumes normal chapter/page tracking. The existing reader state saver persists progress.
 
@@ -25,7 +25,7 @@ Ticket #25 is absent from this base. Flag is visibly disabled and labeled as req
 - `frontend/src/components/Reader/EpubReader.tsx`: mode rendering and preserved viewport lifecycle.
 - `frontend/src/components/Reader/ReaderToolbar.tsx`: entry point and close header.
 - `frontend/src/components/Reader/ReaderDictionary.tsx`: explicit passage translation support.
-- `frontend/src/styles/app/_reader.scss`: approved layout, responsive controls and independent scrolling.
+- `frontend/src/styles/app/_reader.scss`: approved layout, responsive controls and no-scroll text fitting.
 - `shared/types/readerDictionary.ts`: optional passage discriminator.
 - `backend/src/controllers/reader/readerDictionaryController.ts`: validated sentence translation using the existing provider without vocabulary writes.
 - `backend/src/services/reader/googleTranslateService.ts`: bounded explicit passage support using existing request/caching infrastructure.
@@ -38,7 +38,7 @@ Ticket #25 is absent from this base. Flag is visibly disabled and labeled as req
 - Local Vite production build and PWA service-worker generation passed. Existing Browserslist and large-chunk warnings remain.
 - Backend dictionary controller and Google Translate suites: 25 tests passed.
 - Sentence segmentation, native selection, chat workspace and backend development runtime: 36 tests passed.
-- Sentence Mode real-EPUB browser fixture: desktop and iPhone touch viewports passed on Edge and WebKit. Covers inline-node CFIs, sentence actions, saved annotation text/range, copy, keyboard navigation, chapter transitions over nonlinear content, exact reopen location, progress after reload, normal-reader chapter synchronization, and long-sentence scrolling with controls visible.
+- Sentence Mode real-EPUB browser fixture: desktop and iPhone touch viewports passed on Edge and WebKit. Covers inline-node CFIs, sentence actions, saved annotation text/range, copy, keyboard navigation, chapter transitions over nonlinear content, exact reopen location, progress after reload, normal-reader chapter synchronization, and long-sentence fitting, fixed top anchors and controls remaining visible.
 - Existing RSVP real-EPUB suite: desktop and mobile touch passed on Edge.
 
 Browser fixtures use intercepted APIs, not live Google/AI calls. WebKit is a desktop automation build with iPhone-sized touch emulation; physical iPhone Safari and an installed iOS PWA still require device verification. PWA packaging was built locally; installed/offline PWA behavior was not exercised. No merge, push, or deployment was performed.
@@ -48,3 +48,7 @@ To run browser tests, set `PLAYWRIGHT_MODULE` to the installed Playwright packag
 Sentence action shortcuts: T translates, A opens Ask AI, C copies the complete sentence, and N opens Annotate. F remains unavailable with the disabled Flag action. Shortcuts use the same button handlers and disabled checks, ignore key repeat, and are inactive inside editable fields, dialogs, and open panels. Escape only dismisses panels/popups.
 
 Highlight layout regression: cloned inline box decoration disabled balanced wrapping in Chromium, shifting line breaks when a word was marked. The highlight now changes only background/text color and corner rounding. A regression uses the reported Janis sentence and checks every word rectangle before/after highlighting each word at five widths and two font sizes.
+
+Fit-layout follow-up validation: TypeScript, Edge desktop/mobile, and WebKit desktop passed. The current WebKit mobile full suite times out during word flagging before the new layout assertions; mobile WebKit layout verification remains outstanding. Temporary diagnostics and speculative flag changes were removed.
+
+Directional word steps: hold Down or Up and press 1–9 to set that direction’s word count (the reverse key order is also supported). Counts are independent, retained across sentences and stored locally across sessions. A move that would overshoot stops at the current sentence’s first/last word; only a fresh subsequent arrow press crosses to the adjacent sentence’s edge word. Holding a key cannot auto-repeat through that boundary. Use arrow + 1 to reset a direction.
