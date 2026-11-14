@@ -20,7 +20,7 @@ async function epub() {
   );
   zip.file(
     "a.xhtml",
-    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>A</title></head><body><p>Hello, <em>read</em>ing world. Next sentence!</p><p>Last paragraph.</p><p>Line<br/>break.</p><p hidden="hidden">Hidden text</p><script>bad()</script></body></html>',
+    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>A</title></head><body><p>Hello, <em>read</em>ing<a role="doc-noteref" href="note.xhtml#n57"><sup>57</sup></a> world.<a role="doc-noteref" href="note.xhtml#n58">58</a> Next sentence!</p><p>Last paragraph.</p><p>Line<br/>break.</p><p hidden="hidden">Hidden text</p><script>bad()</script></body></html>',
   );
   zip.file(
     "note.xhtml",
@@ -236,7 +236,80 @@ test(
               "Line",
               "break.",
             ]);
-            assert.deepEqual(extraction.mapped, extraction.texts);
+            assert.deepEqual(
+              extraction.mapped.map((text) => text.replace(/57|58/g, "")),
+              extraction.texts,
+            );
+            assert.equal(
+              extraction.mapped[0],
+              "Hello, reading57 world.58",
+              "Original EPUB range keeps its source location",
+            );
+            const markers = await page
+              .locator(".reader-sentence-note")
+              .evaluateAll((elements) =>
+                elements.map((el) => ({
+                  text: el.textContent,
+                  tag: el.tagName,
+                  disabled: el.getAttribute("aria-disabled"),
+                  opacity: Number(getComputedStyle(el).opacity),
+                  size: parseFloat(getComputedStyle(el).fontSize),
+                  parentSize: parseFloat(
+                    getComputedStyle(
+                      document.querySelector(".reader-sentence-text"),
+                    ).fontSize,
+                  ),
+                  href: el.getAttribute("href"),
+                })),
+              );
+            assert.deepEqual(
+              markers.map((m) => m.text),
+              ["57", "58"],
+            );
+            assert.ok(
+              markers.every(
+                (m) =>
+                  m.tag === "SUP" &&
+                  m.disabled === "true" &&
+                  m.opacity < 0.6 &&
+                  m.size < m.parentSize &&
+                  m.href === null,
+              ),
+            );
+            assert.deepEqual(
+              await page.locator("[data-sentence-word]").allTextContents(),
+              ["Hello", "reading", "world"],
+            );
+            await page
+              .locator(".reader-sentence-note")
+              .first()
+              .click({ force: true });
+            assert.equal(
+              await page.evaluate(
+                () => window.rsvpTest.reader.sentenceMode.sentence.text,
+              ),
+              "Hello, reading world.",
+            );
+            const semantics = await page.evaluate(() => {
+              const doc = new DOMParser().parseFromString(
+                '<html><body><p>Number <a href="chapter.xhtml#p57">57</a>, formula x<sup>2</sup>, note<a href="#fn9"><sup>9</sup></a> stays.</p></body></html>',
+                "text/html",
+              );
+              return window.rsvpTest.sentenceService
+                .extractReaderSentences({
+                  document: doc,
+                  cfiFromRange: (range) => range.toString(),
+                })
+                .map((s) => ({ text: s.text, notes: s.notes }));
+            });
+            assert.equal(
+              semantics[0].text,
+              "Number 57, formula x2, note stays.",
+            );
+            assert.deepEqual(
+              semantics[0].notes.map((n) => n.text),
+              ["9"],
+            );
             await page.keyboard.press("Escape");
             assert.equal(
               await page.evaluate(
@@ -399,7 +472,7 @@ test(
               );
               assert.equal(
                 await page.locator(".reader-sentence-text").textContent(),
-                "Hello, reading world.",
+                "Hello, reading57 world.58",
               );
               const chord = async (arrow, digit) => {
                 await page.keyboard.down(arrow);

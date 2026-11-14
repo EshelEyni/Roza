@@ -1,3 +1,5 @@
+import { readerNoteReference } from "./readerNoteReference";
+
 /** Map a displayed sentence word back to its EPUB text nodes, including inline markup. */
 export function readerSentenceWordRange(
   sentence: Range,
@@ -10,6 +12,7 @@ export function readerSentenceWordRange(
   const add = (node: Node) => {
     if (
       !sentence.intersectsNode(node) ||
+      readerNoteReference(node) ||
       node.parentElement?.closest(
         "script,style,noscript,svg,[hidden],[aria-hidden='true']",
       )
