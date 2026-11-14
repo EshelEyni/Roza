@@ -1,4 +1,5 @@
-import { useState } from "react";
+import type { ReaderProgressDisplay } from "../../../../shared/types/readerProgressSettings";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { FiArrowLeft, FiArrowRight } from "react-icons/fi";
 import { ReaderProgress } from "./ReaderProgress";
@@ -18,8 +19,9 @@ type Props = Pick<
   | "togglePageNumbering"
   | "saveStatus"
   | "retrySave"
-> & { remainingSectionPages?: number | null; remainingBookPages?: number | null; getProgressDestination?: (progress: number) => Promise<string | null>; returnPoint?: {label:string} | null; goBack?: () => Promise<void> };
+> & { defaultProgressDisplay?: ReaderProgressDisplay; remainingSectionPages?: number | null; remainingBookPages?: number | null; getProgressDestination?: (progress: number) => Promise<string | null>; returnPoint?: {label:string} | null; goBack?: () => Promise<void> };
 export function ReaderFooter({
+  defaultProgressDisplay = "percentage",
   state,
   remainingSectionPages,
   remainingBookPages,
@@ -38,7 +40,9 @@ export function ReaderFooter({
   retrySave,
 }: Props) {
   const { t } = useTranslation();
-  const [remainingMode, setRemainingMode] = useState(0);
+  const defaultMode = defaultProgressDisplay === "section" ? 1 : defaultProgressDisplay === "book" ? 2 : 0;
+  const [remainingMode, setRemainingMode] = useState(defaultMode);
+  useEffect(() => setRemainingMode(defaultMode), [defaultMode]);
   const indicator = remainingMode === 0
     ? Math.round(state.progress * 100) + "%"
     : remainingMode === 1

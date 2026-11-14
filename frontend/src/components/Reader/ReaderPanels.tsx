@@ -11,6 +11,10 @@ import { ReaderAnnotations } from "./ReaderAnnotations";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
 type Props = Pick<
   EpubReaderController,
+  | "progressSettings"
+  | "updateProgressSettings"
+  | "progressSaveStatus"
+  | "retryProgressSettings"
   | "keyboardSettings"
   | "updateKeyboardSettings"
   | "keyboardSaveStatus"
@@ -34,6 +38,7 @@ type Props = Pick<
   | "publisherPagesAvailable"
 >;
 export function ReaderPanels({
+  progressSettings, updateProgressSettings, progressSaveStatus, retryProgressSettings,
   keyboardSettings,
   updateKeyboardSettings,
   keyboardSaveStatus,
@@ -106,6 +111,10 @@ export function ReaderPanels({
         desktop ? <ReaderWorkspace chat={chat} onClose={closePanel} onPassageNavigate={onPassageNavigate} /> : <ReaderChat chat={chat} onClose={closePanel} onPassageNavigate={onPassageNavigate} />
       ) : (
         <ReaderSettings
+          progressSettings={progressSettings}
+          onProgressChange={updateProgressSettings}
+          progressSaveStatus={progressSaveStatus}
+          onProgressRetry={retryProgressSettings}
           keyboardSettings={keyboardSettings}
           onKeyboardChange={updateKeyboardSettings}
           keyboardSaveStatus={keyboardSaveStatus}

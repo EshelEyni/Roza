@@ -31,11 +31,15 @@ import { lookupReaderDictionary } from "../../controllers/reader/readerDictionar
 
 import { getKeyboardSettings, updateKeyboardSettings } from "../../controllers/reader/readerKeyboardSettingsController";
 
+import { getProgressSettings, updateProgressSettings } from "../../controllers/reader/readerProgressSettingsController";
+
 const router = express.Router();
 
 router.use(checkUserAuthentication);
 router.get("/access", getReaderAccess);
 router.use(checkReaderAccess);
+router.get("/progress-settings", getProgressSettings);
+router.patch("/progress-settings", updateProgressSettings);
 router.get("/keyboard-settings", getKeyboardSettings);
 router.patch("/keyboard-settings", updateKeyboardSettings);
 router.get("/ai-settings", getAiSettings);

@@ -1,3 +1,4 @@
+import { useReaderProgressSettings } from "./useReaderProgressSettings";
 import { useReaderKeyboardSettings } from "./useReaderKeyboardSettings";
 import { useReaderRsvp } from "./useReaderRsvp";
 import {useTranslation} from "react-i18next";
@@ -29,6 +30,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     userId,
   );
   const keyboard = useReaderKeyboardSettings(userId);
+  const progressSettings = useReaderProgressSettings(userId);
   const selection = useReaderSelection();
   const { panel, setPanel, closePanel } = useReaderPanels();
   const runtime = useEpubRuntime(
@@ -121,6 +123,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   }
   return {
     ...keyboard,
+    ...progressSettings,
     rsvp: { ...rsvp, toggle: () => { selection.closeLookup(); closePanel(); return rsvp.toggle(); } },
     annotations,
     mobile,

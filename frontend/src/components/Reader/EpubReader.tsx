@@ -69,6 +69,10 @@ export function EpubReader({
       <div className={"reader-workspace" + (reader.rsvp.active ? " is-rsvp" : "")}>
         {reader.rsvp.active && <ReaderRsvp reader={reader} bookId={book.id} />}
         {!reader.rsvp.active && <ReaderPanels
+          progressSettings={reader.progressSettings}
+          updateProgressSettings={reader.updateProgressSettings}
+          progressSaveStatus={reader.progressSaveStatus}
+          retryProgressSettings={reader.retryProgressSettings}
           keyboardSettings={reader.keyboardSettings}
           updateKeyboardSettings={reader.updateKeyboardSettings}
           keyboardSaveStatus={reader.keyboardSaveStatus}
@@ -109,6 +113,7 @@ export function EpubReader({
         notice={reader.notice}
       />
       {!reader.rsvp.active && <ReaderFooter
+        defaultProgressDisplay={reader.progressSettings.defaultProgressDisplay}
         remainingSectionPages={reader.remainingSectionPages}
         remainingBookPages={reader.remainingBookPages}
         state={reader.state}

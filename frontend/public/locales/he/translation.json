@@ -165,6 +165,10 @@
   "showLess": "הצג פחות",
   "words": "מילים",
   "reader": {
+    "defaultProgressDisplay": "תצוגת התקדמות קריאה כברירת מחדל",
+    "progressPercentage": "אחוז הקריאה שהושלם",
+    "progressSection": "עמודים שנותרו בחלק הנוכחי",
+    "progressBook": "עמודים שנותרו בספר",
     "keyboard": {
       "increase": "הגדלת גודל הקבוצה",
       "decrease": "הקטנת גודל הקבוצה",
