@@ -91,6 +91,7 @@ export function EpubReader({
           updateKeyboardSettings={reader.updateKeyboardSettings}
           keyboardSaveStatus={reader.keyboardSaveStatus}
           retryKeyboardSettings={reader.retryKeyboardSettings}
+          review={reader.review}
           annotations={reader.annotations}
           describeLocation={reader.describeLocation}
           totalPages={reader.totalPages}

@@ -84,15 +84,21 @@ export const updateFlag = asyncErrorCatcher(
   },
 );
 export const getReview = asyncErrorCatcher(
-  async (_req: Request, res: Response) => {
-    const userId = getLoggedInUserIdFromReq();
-    const books = await ReaderBookModel.find({ userId }).select("title").lean();
+  async (req: Request, res: Response) => {
+    const { userId, bookId } = await scope(req);
+    const books = await ReaderBookModel.find({ userId, _id: bookId })
+      .select("title")
+      .lean();
     const bookIds = books.map((book) => book._id);
     const [flags, vocabulary, lookups] = await Promise.all([
       ReaderFlagModel.find({ userId, bookId: { $in: bookIds } }).sort({
         createdAt: -1,
       }),
-      ReaderVocabularyModel.find({ userId, reviewHidden: { $ne: true } })
+      ReaderVocabularyModel.find({
+        userId,
+        bookIds: bookId,
+        reviewHiddenBookIds: { $ne: bookId },
+      })
         .sort({ lastLookedUpAt: -1 })
         .lean(),
       ReaderLookupModel.find({ userId, bookId: { $in: bookIds } })
@@ -107,7 +113,8 @@ export const getReview = asyncErrorCatcher(
         books: books.map((b) => ({ id: String(b._id), title: b.title })),
         vocabulary: vocabulary.map((v) => ({
           id: String(v._id),
-          reviewed: v.reviewed,
+          reviewed:
+            v.reviewedBookIds?.some((id) => String(id) === bookId) || false,
           headword: v.headword,
           entry: v.entry,
           books: books
@@ -164,18 +171,21 @@ export const translateFlag = asyncErrorCatcher(
 
 export const updateVocabularyReview = asyncErrorCatcher(
   async (req: Request, res: Response) => {
+    const { userId, bookId } = await scope(req);
     if (!mongoose.isValidObjectId(req.params.vocabularyId))
       throw new AppError("Vocabulary not found.", 404);
     const update =
       req.method === "DELETE"
-        ? { reviewHidden: true }
+        ? { $addToSet: { reviewHiddenBookIds: bookId } }
         : typeof req.body.reviewed === "boolean"
-          ? { reviewed: req.body.reviewed }
+          ? req.body.reviewed
+            ? { $addToSet: { reviewedBookIds: bookId } }
+            : { $pull: { reviewedBookIds: bookId } }
           : null;
     if (!update) throw new AppError("Invalid review status.", 400);
     const item = await ReaderVocabularyModel.findOneAndUpdate(
-      { _id: req.params.vocabularyId, userId: getLoggedInUserIdFromReq() },
-      { $set: update },
+      { _id: req.params.vocabularyId, userId, bookIds: bookId },
+      update,
       { new: true },
     );
     if (!item) throw new AppError("Vocabulary not found.", 404);

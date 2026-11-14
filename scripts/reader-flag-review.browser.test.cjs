@@ -103,7 +103,19 @@ test(
       optimizeDeps: {
         entries: ["scripts/fixtures/reader-flag-review.tsx"],
       },
-      server: { host: "127.0.0.1", port: 0, fs: { allow: [root] }, watch: { ignored: ["**/dist/**", "**/backend/build/**"] } },
+      server: {
+        host: "127.0.0.1",
+        port: await new Promise((resolve) => {
+          const probe = require("node:net").createServer();
+          probe.listen(0, "127.0.0.1", () => {
+            const port = probe.address().port;
+            probe.close(() => resolve(port));
+          });
+        }),
+        strictPort: true,
+        fs: { allow: [root] },
+        watch: { ignored: ["**/dist/**", "**/backend/build/**"] },
+      },
     });
     const lookups = [];
     server.middlewares.use("/api/reader/second/file", (_, res) => {
@@ -178,37 +190,40 @@ test(
     let messages = 0;
     let vocabularyHidden = false;
     let vocabularyReviewed = false;
-    server.middlewares.use("/api/reader/review", async (req, res) => {
-      if (req.method === "DELETE") vocabularyHidden = true;
-      if (req.method === "PATCH") vocabularyReviewed = true;
-      res.setHeader("Content-Type", "application/json");
-      res.end(
-        JSON.stringify({
-          status: "success",
-          data: {
-            flags,
-            books: [{ id: "navigation", title: "Navigation" }],
-            vocabulary: vocabularyHidden
-              ? []
-              : [
-                  {
-                    id: "v1",
-                    headword: "note",
-                    reviewed: vocabularyReviewed,
-                    entry,
-                    books: [
-                      {
-                        bookId: "navigation",
-                        title: "Navigation",
-                        location: flags[0]?.cfi,
-                      },
-                    ],
-                  },
-                ],
-          },
-        }),
-      );
-    });
+    server.middlewares.use(
+      "/api/reader/navigation/review",
+      async (req, res) => {
+        if (req.method === "DELETE") vocabularyHidden = true;
+        if (req.method === "PATCH") vocabularyReviewed = true;
+        res.setHeader("Content-Type", "application/json");
+        res.end(
+          JSON.stringify({
+            status: "success",
+            data: {
+              flags,
+              books: [{ id: "navigation", title: "Navigation" }],
+              vocabulary: vocabularyHidden
+                ? []
+                : [
+                    {
+                      id: "v1",
+                      headword: "note",
+                      reviewed: vocabularyReviewed,
+                      entry,
+                      books: [
+                        {
+                          bookId: "navigation",
+                          title: "Navigation",
+                          location: flags[0]?.cfi,
+                        },
+                      ],
+                    },
+                  ],
+            },
+          }),
+        );
+      },
+    );
     server.middlewares.use("/reader", async (_, res) => {
       res.setHeader("Content-Type", "text/html");
       res.end(
@@ -216,6 +231,30 @@ test(
           "/reader/review",
           '<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body,#root{height:100%;margin:0}*{box-sizing:border-box}.reader-shell{height:100vh}</style></head><body><div id="root"></div><script type="module" src="/scripts/fixtures/reader-review-page.tsx"></script></body></html>',
         ),
+      );
+    });
+    server.middlewares.use("/api/reader/second/flags", (_, res) => {
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ status: "success", data: [] }));
+    });
+    server.middlewares.use("/api/reader/second/review", (_, res) => {
+      res.setHeader("Content-Type", "application/json");
+      res.end(
+        JSON.stringify({
+          status: "success",
+          data: {
+            flags: [],
+            vocabulary: [
+              {
+                id: "second-v",
+                headword: "Only second book",
+                entry,
+                books: [],
+              },
+            ],
+            books: [{ id: "second", title: "Second book" }],
+          },
+        }),
       );
     });
     const savedSettings = new Map();
@@ -396,8 +435,12 @@ test(
         }),
       );
       await page.waitForTimeout(350);
-      await page.evaluate(() => window.navigationTest.reader.returnTo("c4.xhtml"));
-      await page.waitForFunction(() => window.navigationTest.reader.href.includes("c4.xhtml"));
+      await page.evaluate(() =>
+        window.navigationTest.reader.returnTo("c4.xhtml"),
+      );
+      await page.waitForFunction(() =>
+        window.navigationTest.reader.href.includes("c4.xhtml"),
+      );
       await page.evaluate(
         (f) => window.navigationTest.reader.onPassageNavigate(f),
         saved,
@@ -408,7 +451,9 @@ test(
         ),
         saved.text,
       );
-      await page.waitForFunction(() => window.navigationTest.reader.href.includes("c0.xhtml"));
+      await page.waitForFunction(() =>
+        window.navigationTest.reader.href.includes("c0.xhtml"),
+      );
       await page.setViewportSize({ width: 390, height: 844 });
       await page.waitForTimeout(500);
       await page.evaluate(() => window.navigationTest.reader.closeLookup());
@@ -439,10 +484,10 @@ test(
         ),
         passage,
       );
-      await page.goto(server.resolvedUrls.local[0] + "reader/review");
+      await page.goto(server.resolvedUrls.local[0] + "reader/navigation");
       await page
-        .getByRole("heading", { name: "Review later", exact: true })
-        .waitFor();
+        .getByRole("button", { name: "Review later", exact: true })
+        .click();
       await page
         .getByRole("button", { name: "Translate", exact: true })
         .click();
@@ -463,14 +508,17 @@ test(
         .click();
       await page.getByText("No items here yet.").waitFor();
       await page.getByRole("combobox").selectOption("pending");
-      await page.getByRole("link", { name: "Ask AI", exact: true }).click();
+      await page.getByRole("button", { name: "Ask AI", exact: true }).click();
       await page.locator("#reader-chat-question").waitFor();
       await page
         .locator(".reader-chat-quote")
         .filter({ hasText: passage })
         .waitFor();
       assert.equal(messages, 0, "opening AI review never sends automatically");
-      await page.goto(server.resolvedUrls.local[0] + "reader/review");
+      await page.goto(server.resolvedUrls.local[0] + "reader/navigation");
+      await page
+        .getByRole("button", { name: "Review later", exact: true })
+        .click();
       await page
         .getByRole("button", { name: "Mark reviewed", exact: true })
         .first()
@@ -480,24 +528,68 @@ test(
         .getByRole("button", { name: "Mark pending", exact: true })
         .waitFor();
       assert.equal(lookups.length, 0);
-      const phone = await browser.newPage({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1" });
-      phone.on("pageerror", e => errors.push(e.message));
+      const phone = await browser.newPage({
+        viewport: { width: 390, height: 844 },
+        isMobile: true,
+        hasTouch: true,
+        userAgent:
+          "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1",
+      });
+      phone.on("pageerror", (e) => errors.push(e.message));
       await phone.goto(server.resolvedUrls.local[0] + "word-test");
-      await phone.waitForFunction(() => window.navigationTest?.reader.flags.ready && window.navigationTest.reader.locationsReady);
+      await phone.waitForFunction(
+        () =>
+          window.navigationTest?.reader.flags.ready &&
+          window.navigationTest.reader.locationsReady,
+      );
       const count = flags.length;
       await phone.evaluate(() => {
-        const doc = document.querySelector('.reader-viewport iframe').contentDocument;
-        const node = doc.querySelector('p').lastChild;
-        const range = doc.createRange(); range.setStart(node, 110); range.setEnd(node, 145);
-        const selected = doc.getSelection(); selected.removeAllRanges(); selected.addRange(range);
+        const doc = document.querySelector(
+          ".reader-viewport iframe",
+        ).contentDocument;
+        const node = doc.querySelector("p").lastChild;
+        const range = doc.createRange();
+        range.setStart(node, 110);
+        range.setEnd(node, 145);
+        const selected = doc.getSelection();
+        selected.removeAllRanges();
+        selected.addRange(range);
       });
-      await phone.getByRole('button', {name:'Flag for review (Ctrl+S)', exact:true}).tap();
-      await phone.waitForFunction(count => window.navigationTest.reader.flags.items.length === count + 1, count);
+      await phone
+        .getByRole("button", { name: "Flag for review (Ctrl+S)", exact: true })
+        .tap();
+      await phone.waitForFunction(
+        (count) =>
+          window.navigationTest.reader.flags.items.length === count + 1,
+        count,
+      );
       assert.equal(flags.length, count + 1);
-      assert.equal(await phone.evaluate(() => !!window.navigationTest.reader.textSelection?.text), true);
-      await phone.goto(server.resolvedUrls.local[0] + "reader/review");
-      await phone.getByRole('heading', {name:'Review later', exact:true}).waitFor();
-      if (process.env.FLAG_REVIEW_SCREENSHOT) await phone.screenshot({path:process.env.FLAG_REVIEW_SCREENSHOT, fullPage:true});
+      assert.equal(
+        await phone.evaluate(
+          () => !!window.navigationTest.reader.textSelection?.text,
+        ),
+        true,
+      );
+      await phone.goto(server.resolvedUrls.local[0] + "reader/navigation");
+      await phone
+        .getByRole("button", { name: "Review later", exact: true })
+        .tap();
+      await phone.getByRole("combobox").waitFor();
+      if (process.env.FLAG_REVIEW_SCREENSHOT)
+        await phone.screenshot({
+          path: process.env.FLAG_REVIEW_SCREENSHOT,
+          fullPage: true,
+        });
+      await phone.goto(server.resolvedUrls.local[0] + "reader/second");
+      await phone
+        .getByRole("button", { name: "Review later", exact: true })
+        .tap();
+      await phone.getByText("No items here yet.").waitFor();
+      await phone.getByRole("combobox").selectOption("vocabulary");
+      await phone
+        .getByRole("heading", { name: "Only second book", exact: true })
+        .waitFor();
+      assert.equal(await phone.getByText(passage, { exact: true }).count(), 0);
       await phone.close();
       assert.deepEqual(errors, []);
     } finally {

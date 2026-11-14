@@ -32,24 +32,33 @@ const book: ReaderBook = {
   },
 };
 
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useParams } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import ReviewPage from "../../frontend/src/pages/Reader/ReaderReviewPage";
 import { EpubReader } from "../../frontend/src/components/Reader/EpubReader";
 const client = new QueryClient({
   defaultOptions: { queries: { staleTime: Infinity, retry: false } },
 });
 client.setQueryData(["loggedInUser"], { id: "fixture" });
 client.setQueryData(["readerAccess", "fixture"], { enabled: true });
+function BookReader() {
+  const { id = "navigation" } = useParams();
+  return (
+    <EpubReader
+      key={id}
+      book={{
+        ...book,
+        id,
+        title: id === "navigation" ? "Navigation" : "Second book",
+      }}
+      userId="fixture"
+    />
+  );
+}
 createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={client}>
     <BrowserRouter>
       <Routes>
-        <Route path="/reader/review" element={<ReviewPage />} />
-        <Route
-          path="/reader/:id"
-          element={<EpubReader book={book} userId="fixture" />}
-        />
+        <Route path="/reader/:id" element={<BookReader />} />
       </Routes>
     </BrowserRouter>
   </QueryClientProvider>,

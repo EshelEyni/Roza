@@ -124,6 +124,8 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   }
   return {
     flags,
+    review: { bookId: book.id, userId, revision: flags.items.map(item => item.id).join(","), onFlagsChanged: flags.sync,
+      onAskAi: (passage: ReaderPassage) => { chat.start(passage); selection.closeLookup(); setPanel("chat"); } },
     ...keyboard,
     rsvp: { ...rsvp, toggle: () => { selection.closeLookup(); closePanel(); return rsvp.toggle(); } },
     annotations,

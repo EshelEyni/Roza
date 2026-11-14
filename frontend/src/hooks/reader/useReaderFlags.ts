@@ -88,5 +88,5 @@ export function useReaderFlags(
       pending.current.delete(key);
     }
   }
-  return { save, has, ready, message, items };
+  return { save, has, ready, message, items, sync: setItems };
 }

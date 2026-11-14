@@ -1,4 +1,3 @@
-import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { GiBookshelf } from "react-icons/gi";
 import { ReaderAccess } from "../../components/Reader/ReaderAccess";
@@ -67,7 +66,6 @@ function ReaderLibrary() {
           {t("reader.bookCount", { count: books.data.length })}
         </div>
       )}
-      <Link className="reader-button" to="/reader/review">{t("reader.review.title")}</Link>
       <ReaderBookGrid books={books.data || []} archived={archived} pending={archive.isPending} onArchive={onArchive} />
     </>
   );

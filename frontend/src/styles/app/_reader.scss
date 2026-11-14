@@ -2155,3 +2155,9 @@
 .reader-review-list article { padding: 1rem; border: 1px solid #8886; border-radius: .75rem; overflow-wrap: anywhere; }
 .reader-review-list h2 { font-size: 1.15rem; white-space: pre-wrap; }
 .reader-review-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }
+
+.reader-review { padding: 16px; overflow-wrap: anywhere; }
+.reader-review-list h2 { font-size: 1rem; font-weight: 500; }
+@media (max-width: 1024px) {
+  .reader-toolbar:not(.reader-toolbar-rsvp) .reader-icon-button { width: clamp(36px, 9vw, 44px); flex-shrink: 0; }
+}

@@ -1,3 +1,4 @@
+import { LuFlag } from "react-icons/lu";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
@@ -83,6 +84,11 @@ export function ReaderToolbar({
             aria-expanded={panel === "annotations"}
           >
             <FiEdit3 />
+          </button>
+          <button className={"reader-icon-button " + (panel === "review" ? "is-active" : "")}
+            onClick={() => togglePanel("review")} aria-label={t("reader.review.title")}
+            title={t("reader.review.title")} aria-expanded={panel === "review"}>
+            <LuFlag aria-hidden="true" />
           </button>
           <button
             className={

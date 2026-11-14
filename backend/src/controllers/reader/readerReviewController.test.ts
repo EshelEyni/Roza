@@ -43,9 +43,9 @@ jest.mock("../../services/reader/readerDictionaryService", () => ({
 }));
 const app = express();
 app.use(express.json());
-app.get("/review", getReview);
-app.patch("/vocabulary/:vocabularyId", updateVocabularyReview);
-app.delete("/vocabulary/:vocabularyId", updateVocabularyReview);
+app.get("/:id/review", getReview);
+app.patch("/:id/review/vocabulary/:vocabularyId", updateVocabularyReview);
+app.delete("/:id/review/vocabulary/:vocabularyId", updateVocabularyReview);
 app.get("/:id/flags", listFlags);
 app.put("/:id/flags", saveFlag);
 app.patch("/:id/flags/:flagId", updateFlag);
@@ -186,10 +186,13 @@ test("passages cannot trigger word translation", async () => {
 });
 test("vocabulary removal hides review item while preserving history and counts", async () => {
   (ReaderVocabularyModel.findOneAndUpdate as jest.Mock).mockResolvedValue({});
-  expect((await request(app).delete("/vocabulary/" + flagId)).status).toBe(200);
+  expect(
+    (await request(app).delete("/" + id + "/review/vocabulary/" + flagId))
+      .status,
+  ).toBe(200);
   expect(ReaderVocabularyModel.findOneAndUpdate).toHaveBeenCalledWith(
-    { _id: flagId, userId: "owner" },
-    { $set: { reviewHidden: true } },
+    { _id: flagId, userId: "owner", bookIds: id },
+    { $addToSet: { reviewHiddenBookIds: id } },
     { new: true },
   );
   expect(ReaderLookupModel.updateOne).not.toHaveBeenCalled();
@@ -216,7 +219,7 @@ test("review reads existing vocabulary and location history with owner isolation
       lean: async () => [{ bookId: id, headword: "note", location: cfi }],
     }),
   });
-  const response = await request(app).get("/review");
+  const response = await request(app).get("/" + id + "/review");
   expect(response.status).toBe(200);
   expect(response.headers["cache-control"]).toBe("no-store");
   expect(response.body.data.vocabulary[0].entry).toEqual(entry);
@@ -233,8 +236,39 @@ test("review reads existing vocabulary and location history with owner isolation
   });
   expect(ReaderVocabularyModel.find).toHaveBeenCalledWith({
     userId: "owner",
-    reviewHidden: { $ne: true },
+    bookIds: id,
+    reviewHiddenBookIds: { $ne: id },
   });
   expect(ReaderLookupModel.updateOne).not.toHaveBeenCalled();
   expect(ReaderVocabularyModel.updateOne).not.toHaveBeenCalled();
+});
+
+test("book review rejects another user's book before reading history", async () => {
+  (ReaderBookModel.exists as jest.Mock).mockResolvedValue(false);
+  expect((await request(app).get("/" + id + "/review")).status).toBe(404);
+  expect(ReaderVocabularyModel.find).not.toHaveBeenCalled();
+  expect(ReaderFlagModel.find).not.toHaveBeenCalled();
+});
+test("vocabulary review status changes only the current book", async () => {
+  (ReaderVocabularyModel.findOneAndUpdate as jest.Mock).mockResolvedValue({});
+  expect(
+    (
+      await request(app)
+        .patch("/" + id + "/review/vocabulary/" + flagId)
+        .send({ reviewed: true })
+    ).status,
+  ).toBe(200);
+  expect(ReaderVocabularyModel.findOneAndUpdate).toHaveBeenLastCalledWith(
+    { _id: flagId, userId: "owner", bookIds: id },
+    { $addToSet: { reviewedBookIds: id } },
+    { new: true },
+  );
+  await request(app)
+    .patch("/" + id + "/review/vocabulary/" + flagId)
+    .send({ reviewed: false });
+  expect(ReaderVocabularyModel.findOneAndUpdate).toHaveBeenLastCalledWith(
+    { _id: flagId, userId: "owner", bookIds: id },
+    { $pull: { reviewedBookIds: id } },
+    { new: true },
+  );
 });

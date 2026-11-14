@@ -3,8 +3,8 @@ import { Schema } from "mongoose";
 const readerVocabularySchema = new Schema(
   {
     userId: { type: Schema.Types.ObjectId, required: true },
-    reviewHidden: { type: Boolean, default: false },
-    reviewed: { type: Boolean, default: false },
+    reviewHiddenBookIds: [Schema.Types.ObjectId],
+    reviewedBookIds: [Schema.Types.ObjectId],
     headword: { type: String, required: true },
     entry: { type: Schema.Types.Mixed, required: true },
     lookupCount: { type: Number, required: true },

@@ -1,17 +1,14 @@
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { useTranslation } from "react-i18next";
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { ReaderAccess } from "../../components/Reader/ReaderAccess";
-import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
+import { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import api from "../../services/readerApiService";
 import type {
   ReaderReviewData,
   ReaderFlag,
 } from "../../../../shared/types/readerReview";
 import type { ReaderDictionaryEntry } from "../../../../shared/types/readerDictionary";
-import "../../styles/app/_reader.scss";
+import type { ReaderPassage } from "../../../../shared/types/readerChat";
 function Translation({ entry }: { entry?: ReaderDictionaryEntry | null }) {
   return entry ? (
     <div>
@@ -46,17 +43,39 @@ const normalizeWord = (text: string) =>
     .replace(/[’‘]/g, "'")
     .trim()
     .toLowerCase();
-function Review() {
+export function ReaderReview({
+  bookId,
+  userId,
+  revision,
+  onNavigate,
+  onPassageNavigate,
+  onAskAi,
+  onFlagsChanged,
+}: {
+  bookId: string;
+  userId: string;
+  revision: string;
+  onNavigate: (cfi: string) => void;
+  onPassageNavigate: (passage: ReaderPassage) => Promise<void>;
+  onAskAi: (passage: ReaderPassage) => void;
+  onFlagsChanged: (flags: ReaderFlag[]) => void;
+}) {
   const { t } = useTranslation();
-  const { loggedInUser } = useLoginWithToken();
-  const client = useQueryClient();
-  const queryKey = ["readerReview", loggedInUser?.id];
+  const queryKey = ["readerReview", userId, bookId];
   const data = useQuery({
     queryKey,
-    queryFn: () => api.request<ReaderReviewData>("GET", "/review"),
-    enabled: !!loggedInUser,
+    queryFn: () =>
+      api.request<ReaderReviewData>("GET", "/" + bookId + "/review"),
+    enabled: !!userId && !!bookId,
     refetchOnWindowFocus: false,
   });
+  const previousRevision = useRef(revision);
+  const { refetch } = data;
+  useEffect(() => {
+    if (previousRevision.current === revision) return;
+    previousRevision.current = revision;
+    void refetch();
+  }, [revision, refetch]);
   const [filter, setFilter] = useState("pending");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
@@ -72,7 +91,8 @@ function Review() {
         "/" + f.bookId + "/flags/" + f.id,
         { reviewed: !f.reviewed },
       );
-      await client.invalidateQueries({ queryKey });
+      const fresh = await data.refetch();
+      if (fresh.data) onFlagsChanged(fresh.data.flags);
     } catch {
       setError(t("reader.review.updateError"));
     } finally {
@@ -89,10 +109,11 @@ function Review() {
     try {
       await api.request(
         remove ? "DELETE" : "PATCH",
-        "/review/vocabulary/" + id,
+        "/" + bookId + "/review/vocabulary/" + id,
         { reviewed },
       );
-      await client.invalidateQueries({ queryKey });
+      const fresh = await data.refetch();
+      if (fresh.data) onFlagsChanged(fresh.data.flags);
     } catch {
       setError(t("reader.review.updateError"));
     } finally {
@@ -116,11 +137,7 @@ function Review() {
     }
   }
   return (
-    <>
-      <Link className="reader-button" to="/reader">
-        {t("reader.review.library")}
-      </Link>
-      <h1>{t("reader.review.title")}</h1>
+    <section className="reader-review" aria-label={t("reader.review.title")}>
       <label>
         {t("reader.review.show")}{" "}
         <select value={filter} onChange={(e) => setFilter(e.target.value)}>
@@ -147,17 +164,13 @@ function Review() {
                 <Translation entry={v.entry} />
                 {v.books.map((b) => (
                   <p key={b.bookId}>
-                    <Link
-                      to={
-                        "/reader/" +
-                        b.bookId +
-                        (b.location
-                          ? "?location=" + encodeURIComponent(b.location)
-                          : "")
-                      }
+                    <button
+                      className="reader-button"
+                      disabled={!b.location}
+                      onClick={() => onNavigate(b.location)}
                     >
-                      {b.title} · {t("reader.review.open")}
-                    </Link>
+                      {t("reader.review.open")}
+                    </button>
                   </p>
                 ))}
                 <div className="reader-review-actions">
@@ -212,12 +225,12 @@ function Review() {
                       entry={translations[f.id] || existing?.entry}
                     />
                     <div className="reader-review-actions">
-                      <Link
+                      <button
                         className="reader-button"
-                        to={"/reader/" + f.bookId + "?flag=" + f.id}
+                        onClick={() => void onPassageNavigate(f)}
                       >
                         {t("reader.review.open")}
-                      </Link>
+                      </button>
                       {word ? (
                         <button
                           className="reader-button"
@@ -235,18 +248,12 @@ function Review() {
                           {t("reader.review.askAi")}
                         </button>
                       ) : (
-                        <Link
+                        <button
                           className="reader-button"
-                          to={
-                            "/reader/" +
-                            f.bookId +
-                            "?flag=" +
-                            f.id +
-                            "&action=ai"
-                          }
+                          onClick={() => onAskAi(f)}
                         >
                           {t("reader.review.askAi")}
-                        </Link>
+                        </button>
                       )}
                       <button
                         className="reader-button"
@@ -275,15 +282,6 @@ function Review() {
           : data.data.flags.filter(
               (f) => f.reviewed === (filter === "reviewed"),
             ).length) && <p>{t("reader.review.empty")}</p>}
-    </>
-  );
-}
-export default function ReaderReviewPage() {
-  return (
-    <main className="reader-library reader-review">
-      <ReaderAccess>
-        <Review />
-      </ReaderAccess>
-    </main>
+    </section>
   );
 }

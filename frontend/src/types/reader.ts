@@ -22,7 +22,7 @@ export type ReaderSearchSession = {
   sections: ReaderSearchSection[];
 };
 
-export type ReaderPanel = "contents" | "settings" | "search" | "chat" | "annotations";
+export type ReaderPanel = "contents" | "settings" | "search" | "chat" | "annotations" | "review";
 export type ReaderDirection = "next" | "prev";
 export interface ReaderTextSelection {
   text: string;
