@@ -2196,3 +2196,5 @@
 @media(min-width:700px) { .reader-sentence-controls { padding: 22px 38px 28px; gap: 20px; grid-template-columns: 122px minmax(0,1fr); } .reader-sentence-actions { gap: 12px; grid-template-columns: repeat(3,75px); } .reader-sentence-nav button { min-height: 66px; font-size: 15px; } .reader-sentence-stage { padding: 46px 64px; } .reader-sentence-actions span { font-size: 11px; } }
 @media(max-width:1024px) { .reader-shell:has(.reader-sentence-mode) { padding-top: 68px; padding-bottom: 0; } .reader-toolbar-sentence { flex-wrap: nowrap; min-height: 68px; padding: 0 23px; } }
 @media(max-width:380px) { .reader-sentence-controls { padding: 14px 11px max(17px,env(safe-area-inset-bottom)); gap: 10px; grid-template-columns: 88px minmax(0,1fr); } .reader-sentence-nav { gap: 8px; } .reader-sentence-nav button { min-height: 57px; font-size: 11px; gap: 2px; } .reader-sentence-actions { gap: 7px; grid-template-columns: repeat(3,minmax(0,1fr)); } .reader-sentence-actions span { font-size: 9px; } .reader-sentence-stage { padding: 24px 19px 25px; } }
+
+.reader-sentence-word-active { border-radius: 3px; box-decoration-break: clone; -webkit-box-decoration-break: clone; }

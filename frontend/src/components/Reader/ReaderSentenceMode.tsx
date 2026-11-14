@@ -7,7 +7,6 @@ import {
   FiFlag,
   FiGlobe,
   FiMessageSquare,
-  FiMoreHorizontal,
 } from "react-icons/fi";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
 import type { ReaderTextSelection } from "../../types/reader";
@@ -46,8 +45,15 @@ export function ReaderSentenceMode({
     translate: boolean;
   } | null>(null);
   const [feedback, setFeedback] = useState("");
+  const [wordFocus, setWordFocus] = useState({ cfi: "", index: -1 });
+  const pendingWord = useRef<{ cfi: string; direction: number } | null>(null);
+  const highlightedWord = useRef<HTMLSpanElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const sentence = mode.sentence;
+  const parts =
+    sentence?.text.split(/([\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*)/gu) || [];
+  const wordCount = Math.floor(parts.length / 2);
+  const wordIndex = wordFocus.cfi === sentence?.cfi ? wordFocus.index : -1;
   const blocked = mode.busy || !!lookup || !!reader.panel;
   const selection = (): ReaderTextSelection | null => {
     if (!sentence) return null;
@@ -62,12 +68,34 @@ export function ReaderSentenceMode({
   useEffect(() => {
     stage.current?.scrollTo(0, 0);
     setFeedback("");
+    const pending = pendingWord.current;
+    pendingWord.current = null;
+    const count = Math.floor(
+      (sentence?.text.split(/([\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*)/gu)
+        .length || 0) / 2,
+    );
+    setWordFocus(
+      pending && sentence && pending.cfi !== sentence.cfi && count
+        ? { cfi: sentence.cfi, index: pending.direction > 0 ? 0 : count - 1 }
+        : { cfi: "", index: -1 },
+    );
   }, [sentence?.cfi]);
   useEffect(() => {
     if (!feedback) return;
     const timer = window.setTimeout(() => setFeedback(""), 2400);
     return () => window.clearTimeout(timer);
   }, [feedback]);
+  useEffect(() => {
+    const word = highlightedWord.current;
+    const container = stage.current;
+    if (!word || !container) return;
+    const bounds = word.getBoundingClientRect();
+    const viewport = container.getBoundingClientRect();
+    if (bounds.top < viewport.top)
+      container.scrollTop += bounds.top - viewport.top - 8;
+    else if (bounds.bottom > viewport.bottom)
+      container.scrollTop += bounds.bottom - viewport.bottom + 8;
+  }, [wordIndex, sentence?.cfi]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as Element | null;
@@ -83,13 +111,31 @@ export function ReaderSentenceMode({
         )
       )
         return;
-      if (
-        ["ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp"].includes(event.key)
+      if (["ArrowRight", "ArrowLeft"].includes(event.key)) {
+        event.preventDefault();
+        pendingWord.current = null;
+        setWordFocus({ cfi: "", index: -1 });
+        mode.move(event.key === "ArrowRight" ? 1 : -1);
+      } else if (
+        !reader.mobile &&
+        sentence &&
+        wordCount &&
+        ["ArrowDown", "ArrowUp"].includes(event.key)
       ) {
         event.preventDefault();
-        mode.move(
-          event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 : -1,
-        );
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        const next =
+          wordIndex < 0
+            ? direction > 0
+              ? 0
+              : wordCount - 1
+            : wordIndex + direction;
+        if (next < 0 || next >= wordCount) {
+          if (direction > 0 ? mode.canNext : mode.canBack) {
+            pendingWord.current = { cfi: sentence.cfi, direction };
+            mode.move(direction);
+          }
+        } else setWordFocus({ cfi: sentence.cfi, index: next });
       } else if (event.key === "Escape") {
         event.preventDefault();
         void mode.toggle();
@@ -97,7 +143,7 @@ export function ReaderSentenceMode({
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [mode, blocked]);
+  }, [mode, blocked, reader.mobile, sentence, wordCount, wordIndex]);
   const openLookup = (translate: boolean) => {
     const current = selection();
     if (current) setLookup({ selection: current, translate });
@@ -144,10 +190,46 @@ export function ReaderSentenceMode({
             aria-live="polite"
             aria-busy={mode.busy}
             dir="auto"
+            onPointerDown={() => setWordFocus({ cfi: "", index: -1 })}
           >
             {mode.busy
               ? "Loading sentences…"
-              : sentence?.text || "No readable sentences."}
+              : sentence
+                ? parts.map((part, index) =>
+                    index % 2 === 0 ? (
+                      part
+                    ) : (
+                      <span
+                        key={index}
+                        data-sentence-word=""
+                        className={
+                          wordIndex === (index - 1) / 2
+                            ? "reader-sentence-word-active"
+                            : undefined
+                        }
+                        ref={
+                          wordIndex === (index - 1) / 2
+                            ? highlightedWord
+                            : undefined
+                        }
+                        style={
+                          wordIndex === (index - 1) / 2
+                            ? {
+                                backgroundColor:
+                                  reader.state.preferences.selectionColor ||
+                                  "#719bd8",
+                                color:
+                                  reader.state.preferences.selectionTextColor ||
+                                  "#28231e",
+                              }
+                            : undefined
+                        }
+                      >
+                        {part}
+                      </span>
+                    ),
+                  )
+                : "No readable sentences."}
           </div>
         </div>
       </div>
@@ -176,14 +258,20 @@ export function ReaderSentenceMode({
         <div className="reader-sentence-nav">
           <button
             disabled={blocked || !mode.canBack}
-            onClick={() => mode.move(-1)}
+            onClick={() => {
+              pendingWord.current = null;
+              mode.move(-1);
+            }}
           >
             <FiChevronLeft />
             Back
           </button>
           <button
             disabled={blocked || !mode.canNext}
-            onClick={() => mode.move(1)}
+            onClick={() => {
+              pendingWord.current = null;
+              mode.move(1);
+            }}
           >
             Next
             <FiChevronRight />
@@ -243,13 +331,6 @@ export function ReaderSentenceMode({
           >
             <FiFlag />
             <span>Flag</span>
-          </button>
-          <button
-            disabled={blocked || !sentence}
-            onClick={() => openLookup(false)}
-          >
-            <FiMoreHorizontal />
-            <span>More</span>
           </button>
         </div>
       </footer>

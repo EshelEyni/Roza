@@ -207,8 +207,73 @@ test(
                 .isDisabled(),
               true,
             );
+            if (!mobile) {
+              const activeWord = page.locator(".reader-sentence-word-active");
+              await page.keyboard.press("ArrowDown");
+              assert.equal(await activeWord.textContent(), "Hello");
+              await page.keyboard.press("ArrowDown");
+              assert.equal(await activeWord.textContent(), "reading");
+              await page.keyboard.press("ArrowUp");
+              assert.equal(await activeWord.textContent(), "Hello");
+              await page.keyboard.press("ArrowUp");
+              assert.equal(await activeWord.textContent(), "Hello");
+              await page.keyboard.press("ArrowDown");
+              await page.keyboard.press("ArrowDown");
+              assert.equal(await activeWord.textContent(), "world");
+              await page.keyboard.press("ArrowDown");
+              await page.waitForFunction(
+                () =>
+                  window.rsvpTest.reader.sentenceMode.sentence.text ===
+                  "Next sentence!",
+              );
+              assert.equal(await activeWord.textContent(), "Next");
+              await page.keyboard.press("ArrowUp");
+              await page.waitForFunction(
+                () =>
+                  window.rsvpTest.reader.sentenceMode.sentence.text ===
+                  "Hello, reading world.",
+              );
+              assert.equal(await activeWord.textContent(), "world");
+              assert.equal(
+                await page.evaluate(
+                  () => window.rsvpTest.reader.sentenceMode.sentence.cfi,
+                ),
+                cfi,
+              );
+              assert.equal(
+                await page.locator(".reader-sentence-text").textContent(),
+                "Hello, reading world.",
+              );
+            }
             await page.keyboard.press("ArrowRight");
+            await page.waitForFunction(
+              () =>
+                window.rsvpTest.reader.sentenceMode.sentence.text ===
+                "Next sentence!",
+            );
+            assert.equal(
+              await page.locator(".reader-sentence-word-active").count(),
+              0,
+            );
+            if (!mobile) {
+              await page.keyboard.press("ArrowUp");
+              assert.equal(
+                await page
+                  .locator(".reader-sentence-word-active")
+                  .textContent(),
+                "sentence",
+              );
+            }
             await page.keyboard.press("ArrowLeft");
+            await page.waitForFunction(
+              () =>
+                window.rsvpTest.reader.sentenceMode.sentence.text ===
+                "Hello, reading world.",
+            );
+            assert.equal(
+              await page.locator(".reader-sentence-word-active").count(),
+              0,
+            );
             await page
               .getByRole("button", { name: "Copy", exact: true })
               .click();
@@ -253,17 +318,12 @@ test(
             assert.equal(annotations.at(-1).text, "Hello, reading world.");
             assert.equal(annotations.at(-1).cfi, cfi);
             await page.evaluate(() => window.rsvpTest.reader.closePanel());
-            await page
-              .getByRole("button", { name: "More", exact: true })
-              .click();
-            await page
-              .getByRole("button", { name: "Copy selected text", exact: true })
-              .click();
             assert.equal(
-              await page.evaluate(() => window.copied),
-              "Hello, reading world.",
+              await page
+                .getByRole("button", { name: "More", exact: true })
+                .count(),
+              0,
             );
-            await page.keyboard.press("Escape");
             await page
               .getByRole("button", { name: "Ask AI", exact: true })
               .click();
