@@ -1,3 +1,4 @@
+import { useReaderFlags } from "./useReaderFlags";
 import { useReaderKeyboardSettings } from "./useReaderKeyboardSettings";
 import { useReaderRsvp } from "./useReaderRsvp";
 import {useTranslation} from "react-i18next";
@@ -60,6 +61,8 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     setError,
     setNotice,
   );
+  const flags = useReaderFlags(runtime, book.id, userId, engine.chapter);
+  selection.flagHandler.current = value => { if (!selection.busy) void flags.save(value); };
   const rsvp = useReaderRsvp(runtime, engine.loading || !!panel || !!selection.textSelection);
   const pagination = useReaderPagination(
     runtime.host,
@@ -120,6 +123,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     retry();
   }
   return {
+    flags,
     ...keyboard,
     rsvp: { ...rsvp, toggle: () => { selection.closeLookup(); closePanel(); return rsvp.toggle(); } },
     annotations,

@@ -11,6 +11,13 @@ import {
 } from "../../services/readerSelectionRange";
 
 export function useReaderSelection(onBeforeSelection?: () => void) {
+  const flagHandler = useRef<((selection: ReaderTextSelection) => void) | null>(null);
+  const flagSelection = useCallback((cfi?: string, contents?: Contents) => {
+    if (cfi && contents) {
+      const range = contents.range(cfi);
+      flagHandler.current?.({ text: range.toString().trim(), cfi, x: 0, y: 0 });
+    } else if (current.current) flagHandler.current?.(current.current);
+  }, []);
   const beforeSelection = useRef(onBeforeSelection);
   beforeSelection.current = onBeforeSelection;
   const { t } = useTranslation();
@@ -334,6 +341,8 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
     }
   }, [select]);
   return {
+    flagHandler,
+    flagSelection,
     openLookup,
     textSelection,
     closeLookup,

@@ -2150,3 +2150,8 @@
 }
 
 .reader-toolbar-rsvp > .reader-icon-button:last-child { justify-self: end; }
+
+.reader-review-list { display: grid; gap: 1rem; margin-top: 1rem; }
+.reader-review-list article { padding: 1rem; border: 1px solid #8886; border-radius: .75rem; overflow-wrap: anywhere; }
+.reader-review-list h2 { font-size: 1.15rem; white-space: pre-wrap; }
+.reader-review-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1rem; }

@@ -9,6 +9,7 @@ import {
   FiX,
   FiCopy,
 } from "react-icons/fi";
+import { LuFlag } from "react-icons/lu";
 import { ReaderSheet } from "./ReaderSheet";
 import { useReaderMobile } from "../../hooks/useReaderMobile";
 import {
@@ -22,6 +23,9 @@ export type { ReaderTextSelection } from "../../types/reader";
 import type { ReaderTextSelection } from "../../types/reader";
 
 export function ReaderDictionary({
+  onFlag,
+  flagged,
+  flagReady,
   autoLookup = false,
   onAnnotate,
   annotationBusy,
@@ -36,6 +40,9 @@ export function ReaderDictionary({
   extending,
   busy,
 }: {
+  onFlag?: () => void;
+  flagged?: boolean;
+  flagReady?: boolean;
   autoLookup?: boolean;
   onAnnotate?: (note: boolean) => void;
   annotationBusy?: boolean;
@@ -197,7 +204,7 @@ export function ReaderDictionary({
       onCopyFeedback?.(t("reader.selectionCopyError"));
     }
   }
-  const actionCount = 2 + (selection.word ? 1 : 0) + (onAnnotate ? 1 : 0);
+  const actionCount = (onFlag ? 1 : 0) + 2 + (selection.word ? 1 : 0) + (onAnnotate ? 1 : 0);
   // Match the icon widths, gaps, 6px padding, and 1px border on each side.
   const actionWidth = actionCount * (mobile ? 44 : 38) +
     (actionCount - 1) * (mobile ? 4 : 2) + 14;
@@ -313,6 +320,12 @@ export function ReaderDictionary({
             >
               <FiMessageSquare aria-hidden="true" />
             </button>
+            {onFlag && <button className="reader-icon-button" disabled={busy || !flagReady}
+              onMouseDown={event => event.preventDefault()} onClick={onFlag}
+              aria-pressed={flagged} aria-label={t(flagged ? "reader.review.removeFlag" : "reader.review.flag")}
+              title={t(flagged ? "reader.review.removeFlag" : "reader.review.flag")}>
+              <LuFlag aria-hidden="true" fill={flagged ? "currentColor" : "none"} />
+            </button>}
             {onAnnotate && <>
               <button className="reader-icon-button reader-selection-annotate" disabled={busy || annotationBusy}
                 onClick={() => onAnnotate(true)} aria-label={t("reader.annotations.addNote")}

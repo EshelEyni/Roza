@@ -52,7 +52,7 @@ function App() {
   const [isNavigatedToLastPage, setIsNavigatedToLastPage] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const isReaderOpen = !!useMatch("/reader/:id");
+  const isReaderOpen = !!useMatch("/reader/:id") && location.pathname !== "/reader/review";
   const isStudioOpen = location.pathname.startsWith("/book-edit/");
   const isWritingArea =
     isStudioOpen ||

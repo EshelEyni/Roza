@@ -19,7 +19,7 @@ type Direction = "next" | "prev";
 /** Keyboard focus is independent of native selection and lookup state. */
 export function createReaderWordNavigation(
   runtime: EpubRuntime,
-  selection: Pick<ReaderSelection, "closeLookup" | "openLookup">,
+  selection: Pick<ReaderSelection, "closeLookup" | "openLookup" | "flagSelection">,
 ) {
   let active: Word | undefined;
   let group: { first: Word; last: Word; range: Range } | undefined;
@@ -395,6 +395,18 @@ export function createReaderWordNavigation(
       )
     )
       return false;
+    if (event.ctrlKey && event.key.toLowerCase() === "s" && !runtime.panelRef.current &&
+      !document.querySelector('[role="dialog"]:not(.reader-dictionary), .reader-dictionary.is-open')) {
+      const native = contents().find(content => !!content.document.getSelection()?.toString().trim());
+      if (!native && !runtime.selectionRef.current && (!active || !isVisible(active))) return false;
+      event.preventDefault();
+      if (!event.repeat) {
+        if (runtime.selectionRef.current) selection.flagSelection();
+        else if (native) selection.flagSelection(native.cfiFromRange(native.document.getSelection()!.getRangeAt(0)), native);
+        else if (active) selection.flagSelection(group ? active.contents.cfiFromRange(group.range) : active.cfi, active.contents);
+      }
+      return true;
+    }
     if (event.ctrlKey && (event.code === "Space" || event.key === " ")) {
       const native = contents().find(
         (content) => !!content.document.getSelection()?.toString().trim(),

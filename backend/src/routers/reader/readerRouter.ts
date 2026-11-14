@@ -31,11 +31,21 @@ import { lookupReaderDictionary } from "../../controllers/reader/readerDictionar
 
 import { getKeyboardSettings, updateKeyboardSettings } from "../../controllers/reader/readerKeyboardSettingsController";
 
+import { getReview, listFlags, saveFlag, updateFlag, translateFlag, updateVocabularyReview } from "../../controllers/reader/readerReviewController";
+
 const router = express.Router();
 
 router.use(checkUserAuthentication);
 router.get("/access", getReaderAccess);
 router.use(checkReaderAccess);
+router.get("/review", getReview);
+router.patch("/review/vocabulary/:vocabularyId", updateVocabularyReview);
+router.delete("/review/vocabulary/:vocabularyId", updateVocabularyReview);
+router.get("/:id/flags", listFlags);
+router.put("/:id/flags", saveFlag);
+router.patch("/:id/flags/:flagId", updateFlag);
+router.delete("/:id/flags/:flagId", updateFlag);
+router.post("/:id/flags/:flagId/translation", translateFlag);
 router.get("/keyboard-settings", getKeyboardSettings);
 router.patch("/keyboard-settings", updateKeyboardSettings);
 router.get("/ai-settings", getAiSettings);

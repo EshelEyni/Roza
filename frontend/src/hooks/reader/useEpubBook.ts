@@ -43,6 +43,7 @@ export function useEpubBook(
     isPageTurnBlocked,
     select,
     openLookup,
+    flagSelection,
     isExtending,
     copySelection,
     extend,
@@ -85,7 +86,7 @@ export function useEpubBook(
     let ready = false;
     let hasLocations = false;
     const element = host.current!;
-    const words = createReaderWordNavigation(runtime, { closeLookup, openLookup });
+    const words = createReaderWordNavigation(runtime, { closeLookup, openLookup, flagSelection });
     const onKey = (event: KeyboardEvent) => {
       if (runtime.rsvpActive.current) return;
       if (words.onKey(event)) return;
@@ -350,6 +351,7 @@ export function useEpubBook(
     isPageTurnBlocked,
     select,
     openLookup,
+    flagSelection,
     isExtending,
     copySelection,
     extend,
