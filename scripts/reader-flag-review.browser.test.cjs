@@ -557,9 +557,7 @@ test(
       await page
         .getByRole("button", { name: "Mark pending", exact: true })
         .waitFor();
-      await page
-        .getByRole("button", { name: "Vocabulary actions", exact: true })
-        .click();
+
       await page.getByRole("button", { name: "Remove", exact: true }).click();
       await page.getByText("No items here yet.").waitFor();
       await selectFilter(page, "Pending flags");

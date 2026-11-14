@@ -1,8 +1,6 @@
-import { ItemMenu } from "../WritingStudio/ItemMenu";
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  FiMoreHorizontal,
   FiBookOpen,
   FiMapPin,
   FiChevronDown,
@@ -57,25 +55,6 @@ export function ReaderReviewCard({
       }
     >
       <div className="reader-review-card-content">
-        {vocabulary && (
-          <div className="reader-vocabulary-menu">
-            <ItemMenu>
-              <summary role="button"
-                className="reader-icon-button"
-                aria-label={t("reader.review.vocabularyActions")}
-                title={t("reader.review.vocabularyActions")}
-              >
-                <FiMoreHorizontal aria-hidden="true" />
-              </summary>
-              <div className="reader-book-menu-popover">
-                <button onClick={onRemove} disabled={busy}>
-                  <FiTrash2 aria-hidden="true" />
-                  {t("reader.review.remove")}
-                </button>
-              </div>
-            </ItemMenu>
-          </div>
-        )}
         {!vocabulary && (
           <header className="reader-review-card-meta">
             <span>
@@ -146,17 +125,15 @@ export function ReaderReviewCard({
               : "reader.review.markReviewed",
           )}
         </button>
-        {!vocabulary && (
-          <button
-            className="reader-icon-button reader-review-card-remove"
-            onClick={onRemove}
-            disabled={busy}
-            aria-label={t("reader.review.remove")}
-            title={t("reader.review.remove")}
-          >
-            <FiTrash2 aria-hidden="true" />
-          </button>
-        )}
+        <button
+          className="reader-icon-button reader-review-card-remove"
+          onClick={onRemove}
+          disabled={busy}
+          aria-label={t("reader.review.remove")}
+          title={t("reader.review.remove")}
+        >
+          <FiTrash2 aria-hidden="true" />
+        </button>
       </footer>
     </article>
   );
