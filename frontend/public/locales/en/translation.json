@@ -164,6 +164,10 @@
   "showLess": "Show Less",
   "words": "Words",
   "reader": {
+    "defaultProgressDisplay": "Default Reading Progress Display",
+    "progressPercentage": "Percentage completed",
+    "progressSection": "Pages remaining in current section",
+    "progressBook": "Pages remaining in book",
     "keyboard": {
       "increase": "Increase group size",
       "decrease": "Decrease group size",

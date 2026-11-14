@@ -6,7 +6,13 @@ import { ReaderColorSelect } from "./ReaderColorSelect";
 import { useTranslation } from "react-i18next";
 import { ReaderPreferences } from "../../../../shared/types/reader";
 
+import type { ReaderProgressSettings } from "../../../../shared/types/readerProgressSettings";
+
 type ReaderSettingsProps = {
+  progressSettings?: ReaderProgressSettings;
+  onProgressChange?: (settings: ReaderProgressSettings) => void;
+  progressSaveStatus?: "loading" | "saving" | "saved" | "error";
+  onProgressRetry?: () => void;
   keyboardSettings?: ReaderKeyboardSettings;
   onKeyboardChange?: (settings: ReaderKeyboardSettings) => void;
   keyboardSaveStatus?: "loading" | "saving" | "saved" | "error";
@@ -17,6 +23,7 @@ type ReaderSettingsProps = {
 };
 
 export function ReaderSettings({
+  progressSettings, onProgressChange, progressSaveStatus, onProgressRetry,
   keyboardSettings,
   onKeyboardChange,
   keyboardSaveStatus,
@@ -148,6 +155,21 @@ export function ReaderSettings({
               : "reader.noBookPages",
         )}
       </p>
+      {progressSettings && onProgressChange && <>
+        <label>
+          {t("reader.defaultProgressDisplay")}
+          <select value={progressSettings.defaultProgressDisplay} onChange={event => onProgressChange({
+            defaultProgressDisplay: event.target.value as ReaderProgressSettings["defaultProgressDisplay"],
+          })}>
+            <option value="percentage">{t("reader.progressPercentage")}</option>
+            <option value="section">{t("reader.progressSection")}</option>
+            <option value="book">{t("reader.progressBook")}</option>
+          </select>
+        </label>
+        <p className="reader-hint" role="status">{t("reader.keyboard." + (progressSaveStatus || "saved"))}
+          {progressSaveStatus === "error" && <button type="button" className="reader-button" onClick={onProgressRetry}>{t("reader.retry")}</button>}
+        </p>
+      </>}
       {keyboardSettings && onKeyboardChange && <fieldset className="reader-mark-color-group reader-keyboard-settings">
         <legend>{t("reader.keyboard.title")}</legend>
         <div className="reader-keyboard-field">
