@@ -1,6 +1,7 @@
+import { ReaderSelect } from "./ReaderSelect";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { useTranslation } from "react-i18next";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "../../services/readerApiService";
 import type {
@@ -61,6 +62,7 @@ export function ReaderReview({
   onFlagsChanged: (flags: ReaderFlag[]) => void;
 }) {
   const { t } = useTranslation();
+  const filterId = useId();
   const queryKey = ["readerReview", userId, bookId];
   const data = useQuery({
     queryKey,
@@ -138,14 +140,22 @@ export function ReaderReview({
   }
   return (
     <section className="reader-review" aria-label={t("reader.review.title")}>
-      <label>
-        {t("reader.review.show")}{" "}
-        <select value={filter} onChange={(e) => setFilter(e.target.value)}>
-          <option value="pending">{t("reader.review.pending")}</option>
-          <option value="vocabulary">{t("reader.review.vocabulary")}</option>
-          <option value="reviewed">{t("reader.review.reviewed")}</option>
-        </select>
-      </label>
+      <div className="reader-review-filter">
+        <label id={filterId + "-label"} htmlFor={filterId}>
+          {t("reader.review.show")}
+        </label>
+        <ReaderSelect
+          id={filterId}
+          labelId={filterId + "-label"}
+          value={filter}
+          options={[
+            { value: "pending", label: t("reader.review.pending") },
+            { value: "vocabulary", label: t("reader.review.vocabulary") },
+            { value: "reviewed", label: t("reader.review.reviewed") },
+          ]}
+          onChange={setFilter}
+        />
+      </div>
       {data.isLoading && <p role="status">{t("reader.review.loading")}</p>}
       {data.isError && (
         <p role="alert">
@@ -162,18 +172,18 @@ export function ReaderReview({
               <article key={v.id}>
                 <h2>{v.headword}</h2>
                 <Translation entry={v.entry} />
-                {v.books.map((b) => (
-                  <p key={b.bookId}>
+                <div className="reader-review-actions">
+                  {v.books.map((b) => (
                     <button
+                      key={b.bookId}
                       className="reader-button"
                       disabled={!b.location}
                       onClick={() => onNavigate(b.location)}
                     >
                       {t("reader.review.open")}
                     </button>
-                  </p>
-                ))}
-                <div className="reader-review-actions">
+                  ))}
+
                   <button
                     className="reader-button"
                     disabled={!!busy}

@@ -314,6 +314,12 @@ test(
         null,
         { timeout: 45000 },
       );
+      const selectFilter = async (surface, name) => {
+        await surface
+          .getByRole("combobox", { name: "Show", exact: true })
+          .click();
+        await surface.getByRole("option", { name, exact: true }).click();
+      };
       const focus = () =>
         page.evaluate(() =>
           document
@@ -496,7 +502,12 @@ test(
         .first()
         .waitFor();
       assert.equal(translated, 1);
-      await page.getByRole("combobox").selectOption("vocabulary");
+      await selectFilter(page, "Translated vocabulary");
+      if (process.env.FLAG_REVIEW_VOCAB_SCREENSHOT)
+        await page.screenshot({
+          path: process.env.FLAG_REVIEW_VOCAB_SCREENSHOT,
+          fullPage: true,
+        });
       await page
         .getByRole("button", { name: "Mark reviewed", exact: true })
         .click();
@@ -507,7 +518,7 @@ test(
         .getByRole("button", { name: "Remove from review", exact: true })
         .click();
       await page.getByText("No items here yet.").waitFor();
-      await page.getByRole("combobox").selectOption("pending");
+      await selectFilter(page, "Pending flags");
       await page.getByRole("button", { name: "Ask AI", exact: true }).click();
       await page.locator("#reader-chat-question").waitFor();
       await page
@@ -523,7 +534,7 @@ test(
         .getByRole("button", { name: "Mark reviewed", exact: true })
         .first()
         .click();
-      await page.getByRole("combobox").selectOption("reviewed");
+      await selectFilter(page, "Reviewed flags");
       await page
         .getByRole("button", { name: "Mark pending", exact: true })
         .waitFor();
@@ -585,7 +596,7 @@ test(
         .getByRole("button", { name: "Review later", exact: true })
         .tap();
       await phone.getByText("No items here yet.").waitFor();
-      await phone.getByRole("combobox").selectOption("vocabulary");
+      await selectFilter(phone, "Translated vocabulary");
       await phone
         .getByRole("heading", { name: "Only second book", exact: true })
         .waitFor();
