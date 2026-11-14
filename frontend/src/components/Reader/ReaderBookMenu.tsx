@@ -171,7 +171,7 @@ export function ReaderBookMenu({
               onClick={() => openManagement("delete")}
             >
               <FiTrash2 aria-hidden="true" />
-              {t("reader.deletePermanently")}
+              {t("btnDelete")}
             </button>
           )}
           <button

@@ -141,7 +141,7 @@ test(
               await open();
               assert.equal(
                 await page
-                  .getByRole("menuitem", { name: "Delete Permanently" })
+                  .getByRole("menuitem", { name: "Delete" })
                   .count(),
                 0,
               );
@@ -222,7 +222,7 @@ test(
               await open();
               await page
                 .getByRole("menuitem", {
-                  name: "Delete Permanently",
+                  name: "Delete",
                   exact: true,
                 })
                 .click();
@@ -241,7 +241,7 @@ test(
               await open();
               await page
                 .getByRole("menuitem", {
-                  name: "Delete Permanently",
+                  name: "Delete",
                   exact: true,
                 })
                 .click();
