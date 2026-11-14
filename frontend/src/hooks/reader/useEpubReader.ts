@@ -45,7 +45,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     selection.textSelection,
   );
   runtime.keyboardRef.current = keyboard.keyboardSettings;
-  const { markPassage, locatePassage, clearMarker, passageMarks } = useReaderPassageMarker(runtime);
+  const { markPassage, locatePassage, clearMarker, passageMarks, translatedPassages } = useReaderPassageMarker(runtime);
   const activeSelection = useRef(selection.textSelection);
   activeSelection.current = selection.textSelection;
   const markTranslation = useCallback((passage: ReaderPassage) => {
@@ -163,6 +163,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     closeLookup: selection.closeLookup,
     markTranslation,
     passageMarks,
+    translatedPassages,
     getLookupPage: async (cfi: string) => {
       await runtime.lookupLocations.current;
       const locations = runtime.epubRef.current?.locations;

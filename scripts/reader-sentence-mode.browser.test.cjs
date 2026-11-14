@@ -351,8 +351,63 @@ test(
               await page
                 .getByRole("button", { name: "Copy", exact: true })
                 .isDisabled(),
-              true,
+              false,
             );
+            await page
+              .getByRole("button", { name: "Copy", exact: true })
+              .click();
+            assert.equal(
+              await page.evaluate(() => window.copied),
+              "Hello, reading world.",
+            );
+            if (!mobile)
+              await page.evaluate(() =>
+                document.body.dispatchEvent(
+                  new KeyboardEvent("keydown", {
+                    key: "כ",
+                    code: "KeyF",
+                    bubbles: true,
+                    cancelable: true,
+                  }),
+                ),
+              );
+            else
+              await page
+                .getByRole("button", { name: "Flag", exact: true })
+                .click();
+            await page.waitForFunction(() =>
+              window.rsvpTest.reader.flags.items.some(
+                (item) => item.text === "Hello, reading world.",
+              ),
+            );
+            if (!mobile) await page.keyboard.press("Shift+A");
+            else
+              await page
+                .getByRole("button", { name: "Ask AI", exact: true })
+                .click();
+            await page.waitForFunction(
+              () => window.rsvpTest.reader.panel === "chat",
+            );
+            assert.equal(
+              await page.evaluate(
+                () => window.rsvpTest.reader.chat.passage.text,
+              ),
+              "Hello, reading world.",
+            );
+            await page.keyboard.press("Escape");
+            await page
+              .getByRole("button", { name: "Annotate", exact: true })
+              .click();
+            await page.waitForFunction(
+              () => window.rsvpTest.reader.panel === "annotations",
+            );
+            assert.equal(
+              await page.evaluate(
+                () => window.rsvpTest.reader.annotations.draft.text,
+              ),
+              "Hello, reading world.",
+            );
+            await page.keyboard.press("Escape");
             const selectSentence = async () => {
               await page.evaluate(() => {
                 const root = document.querySelector(".reader-sentence-text");
@@ -364,7 +419,7 @@ test(
                 document.dispatchEvent(new Event("selectionchange"));
               });
               await page.waitForFunction(
-                () => !document.querySelector('[data-shortcut="c"]').disabled,
+                () => !document.querySelector('[data-shortcut="t"]').disabled,
               );
             };
             await selectSentence();
@@ -757,7 +812,7 @@ test(
               assert.equal(await markedText(), "");
               assert.equal(
                 await page
-                  .getByRole("button", { name: "Copy", exact: true })
+                  .getByRole("button", { name: "Translate", exact: true })
                   .isDisabled(),
                 true,
               );
@@ -807,13 +862,23 @@ test(
             );
             assert.equal(
               await page
-                .getByRole("button", { name: "Copy", exact: true })
+                .getByRole("button", { name: "Translate", exact: true })
                 .isDisabled(),
               true,
               "Changing sentence clears the selected range",
             );
             if (!mobile) {
               const words = page.locator("[data-sentence-word]");
+              await page.evaluate(() => {
+                const reader = window.rsvpTest.reader;
+                reader.updateState({
+                  preferences: {
+                    ...reader.state.preferences,
+                    translationColor: "#99cc88",
+                    translationTextColor: "#223344",
+                  },
+                });
+              });
               await words.nth(1).dblclick();
               await page.waitForFunction(
                 () => !document.querySelector('[data-shortcut="t"]').disabled,
@@ -823,13 +888,59 @@ test(
                 0,
                 "Mouse selection does not open lookup",
               );
-              await page
-                .getByRole("button", { name: "Translate", exact: true })
-                .click();
+              await page.evaluate(() =>
+                document.body.dispatchEvent(
+                  new KeyboardEvent("keydown", {
+                    key: "א",
+                    code: "KeyT",
+                    shiftKey: true,
+                    bubbles: true,
+                    cancelable: true,
+                  }),
+                ),
+              );
               await page.getByText("שלום", { exact: true }).first().waitFor();
               assert.equal(lookups.at(-1).word, "reading");
               assert.equal(lookups.at(-1).passage, false);
               await page.keyboard.press("Escape");
+              await page.waitForFunction(
+                () =>
+                  document.querySelector(".reader-sentence-translated")
+                    ?.textContent === "reading",
+              );
+              assert.deepEqual(
+                await page
+                  .locator(".reader-sentence-translated")
+                  .first()
+                  .evaluate((el) => {
+                    const s = getComputedStyle(el);
+                    return { background: s.backgroundColor, color: s.color };
+                  }),
+                { background: "rgb(153, 204, 136)", color: "rgb(34, 51, 68)" },
+              );
+              assert.equal(
+                await page
+                  .getByRole("button", { name: "Translate", exact: true })
+                  .isDisabled(),
+                true,
+                "Translated word remains painted while no active selection is required for other actions",
+              );
+              await page.keyboard.press("ArrowRight");
+              assert.equal(
+                await page
+                  .locator(".reader-sentence-word-active")
+                  .textContent(),
+                "world",
+                "Closing translation preserves the selected word cursor",
+              );
+              assert.equal(
+                await page
+                  .locator(".reader-sentence-translated")
+                  .first()
+                  .textContent(),
+                "reading",
+                "Translation marking survives moving the active word",
+              );
               const first = await words.nth(1).boundingBox();
               const last = await words.nth(2).boundingBox();
               await page.mouse.move(first.x + 0.5, first.y + first.height / 2);
@@ -841,7 +952,7 @@ test(
               );
               await page.mouse.up();
               await page.waitForFunction(
-                () => !document.querySelector('[data-shortcut="c"]').disabled,
+                () => !document.querySelector('[data-shortcut="t"]').disabled,
               );
               assert.equal(await page.locator(".reader-dictionary").count(), 0);
               await page

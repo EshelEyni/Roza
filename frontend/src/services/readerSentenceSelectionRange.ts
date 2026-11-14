@@ -1,5 +1,52 @@
 import { readerNoteReference } from "./readerNoteReference";
 
+/** Resolve an existing source mark into normalized display offsets, without note labels. */
+export function readerSentenceSelectionOffsets(
+  sentence: Range,
+  mark: Range,
+): { start: number; end: number } | null {
+  if (
+    sentence.startContainer.ownerDocument !== mark.startContainer.ownerDocument
+  )
+    return null;
+  const first = mark.cloneRange();
+  first.collapse(true);
+  const last = mark.cloneRange();
+  last.collapse(false);
+  const start = sentence.cloneRange();
+  start.collapse(true);
+  const end = sentence.cloneRange();
+  end.collapse(false);
+  if (
+    last.compareBoundaryPoints(0, start) <= 0 ||
+    first.compareBoundaryPoints(0, end) >= 0
+  )
+    return null;
+  const cleanLength = (point: Range) => {
+    const prefix = sentence.cloneRange();
+    prefix.setEnd(point.startContainer, point.startOffset);
+    const fragment = prefix.cloneContents();
+    const doc = sentence.startContainer.ownerDocument!;
+    const walker = doc.createTreeWalker(fragment, 4);
+    let text = "";
+    for (let node = walker.nextNode(); node; node = walker.nextNode())
+      if (
+        !readerNoteReference(node) &&
+        !node.parentElement?.closest(
+          "script,style,noscript,svg,[hidden],[aria-hidden='true']",
+        )
+      )
+        text += node.textContent || "";
+    return text.replace(/\s+/gu, " ").length;
+  };
+  return {
+    start: cleanLength(
+      first.compareBoundaryPoints(0, start) < 0 ? start : first,
+    ),
+    end: cleanLength(last.compareBoundaryPoints(0, end) > 0 ? end : last),
+  };
+}
+
 /** Map normalized, note-free display offsets back to the original EPUB DOM. */
 export function readerSentenceSelectionRange(
   sentence: Range,

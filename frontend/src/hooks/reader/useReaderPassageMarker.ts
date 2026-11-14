@@ -21,8 +21,10 @@ export function useReaderPassageMarker(runtime: EpubRuntime) {
   const clearMarker = useCallback(() => {
     located.current?.marker.clear();
     located.current = null;
+    const hadTranslations = translated.current.size > 0;
     for (const entry of translated.current.values()) entry.marker.clear();
     translated.current.clear();
+    if (hadTranslations) setRevision(value => value + 1);
   }, []);
   const ranges = useCallback(async (selected: ReaderPassage) => {
     if (!selected.endCfi) return [selected.cfi];
@@ -51,7 +53,9 @@ export function useReaderPassageMarker(runtime: EpubRuntime) {
       const key = readerPassageKey(passage);
       let entry = translated.current.get(key);
       if (!entry) { entry = { passage, marker: createMarker() }; translated.current.set(key, entry); }
-      return entry.marker.show(passage, color, ranges);
+      await entry.marker.show(passage, color, ranges);
+      setRevision(value => value + 1);
+      return;
     }
     const entry = passages.current.get(readerPassageKey(passage));
     if (entry?.count && !disabled.current.has(readerPassageKey(passage)))
@@ -89,6 +93,7 @@ export function useReaderPassageMarker(runtime: EpubRuntime) {
     // The renderer manager may not exist yet. Cached location is safe during startup.
     let page = pageKey(rendition.location as Location | undefined);
     const onRelocated = (location: Location) => {
+      if (runtime.rsvpActive.current) return;
       const next = pageKey(location);
       if (page && next && next !== page) clearMarker();
       if (next) page = next;
@@ -117,5 +122,6 @@ export function useReaderPassageMarker(runtime: EpubRuntime) {
       revision,
     };
   }, [register, toggle, revision]);
-  return { markPassage, locatePassage, clearMarker, passageMarks };
+  const translatedPassages = useMemo(() => [...translated.current.values()].map(entry => entry.passage), [revision]);
+  return { markPassage, locatePassage, clearMarker, passageMarks, translatedPassages };
 }
