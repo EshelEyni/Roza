@@ -1485,8 +1485,8 @@
     padding: 6px;
   }
   .reader-dictionary.reader-selection-docked {
-    // Keep the controls above the home indicator without shifting the EPUB range.
-    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    // The footer already clears the home indicator; keep the floating actions compact.
+    padding-block: 6px;
   }
   .reader-selection-docked .reader-dictionary-actions {
     justify-content: center;
