@@ -1484,12 +1484,24 @@
     overflow-y: auto;
     padding: 6px;
   }
+  .reader-shell:has(.reader-dictionary) .reader-footer {
+    // Preserve the page layout while removing footer controls from interaction.
+    visibility: hidden;
+    pointer-events: none;
+  }
   .reader-dictionary.reader-selection-docked {
-    // The footer already clears the home indicator; keep the floating actions compact.
-    padding-block: 6px;
+    max-width: none;
+    border: 0;
+    border-top: 1px solid #b7a58a;
+    box-shadow: none;
+    border-radius: 0;
+    padding-inline: max(6px, env(safe-area-inset-left, 0px))
+      max(6px, env(safe-area-inset-right, 0px));
+    // Keep the controls above the home indicator without shifting the EPUB range.
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
   }
   .reader-selection-docked .reader-dictionary-actions {
-    justify-content: center;
+    justify-content: space-evenly;
   }
   .reader-dictionary-actions {
     gap: 4px;

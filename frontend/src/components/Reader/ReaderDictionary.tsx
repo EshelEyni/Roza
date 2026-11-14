@@ -218,14 +218,15 @@ export function ReaderDictionary({
       const top = viewport?.offsetTop || 0;
       const width = viewport?.width || window.innerWidth;
       const height = viewport?.height || window.innerHeight;
-      const popupWidth = Math.min(actionWidth, Math.max(0, width - 24));
-      const maxHeight = Math.max(0, height - 24);
-      // Dock in the reader footer instead of following Safari's selection menu.
+      const popupWidth = width;
+      // Replace the footer at the bottom of Safari's visible viewport.
+      const bottom = top + height;
+      const maxHeight = Math.max(0, bottom - (top + 12));
+      // Keep the content-sized controls within the visible viewport.
       setMobilePosition({
         width: popupWidth,
-        left: left + (width - popupWidth) / 2,
-        top: Math.max(top + 12, top + height - Math.min(element.scrollHeight + 2, maxHeight) -
-          (document.querySelector(".reader-footer")?.getBoundingClientRect().height || 0) - 8),
+        left,
+        top: Math.max(top + 12, bottom - Math.min(element.scrollHeight + 1, maxHeight)),
         maxHeight,
         visibility: "visible",
       });

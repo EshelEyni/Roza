@@ -4,7 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
 const source = ts.transpileModule(fs.readFileSync(require('node:path').join(__dirname, '../src/components/Reader/ReaderDictionary.tsx'), 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.React } }).outputText;
-function position(bounds, viewport, mobile = true) {
+function position(bounds, viewport, mobile = true, footerTop, toolbarHeight = 60) {
   const effects = [], states = [], refs = [], listeners = {};
   const react = {
     useState: value => { const index = states.length; states.push(value); return [value, next => states[index] = next]; },
@@ -14,7 +14,7 @@ function position(bounds, viewport, mobile = true) {
   };
   const exports = {};
   const window = { visualViewport: { ...viewport, addEventListener: (name, fn) => listeners[name] = fn, removeEventListener() {} }, addEventListener() {}, removeEventListener() {} };
-  const document = { addEventListener() {}, removeEventListener() {} };
+  const document = { querySelector: () => footerTop === undefined ? null : { getBoundingClientRect: () => ({ top: footerTop }) }, addEventListener() {}, removeEventListener() {} };
   vm.runInNewContext(source, { exports, React: react, window, document,
     ResizeObserver: class { observe() {} disconnect() {} },
     requestAnimationFrame: fn => { fn(); return 1; }, cancelAnimationFrame() {},
@@ -27,7 +27,7 @@ function position(bounds, viewport, mobile = true) {
     },
   });
   const tree = exports.ReaderDictionary({ selection: { text: 'word', word: 'word', x: bounds.left, y: bounds.bottom + 8, getBounds: () => bounds }, onClose() {} });
-  tree.props.ref.current = { scrollHeight: 58 };
+  tree.props.ref.current = { scrollHeight: toolbarHeight - 1 };
   const cleanups = effects.map(fn => fn());
   return { value: () => states.at(-1), viewport: window.visualViewport, listeners, tree, cleanups };
 }
@@ -36,7 +36,7 @@ test('word and paragraph selections dock at the same bottom position', () => {
   for (const bounds of [{ left: 20, top: 50, bottom: 72 }, { left: 18, top: 90, bottom: 440 }, { left: 12, top: 0, bottom: 664 }]) {
     const fixture = position(bounds, portrait);
     const p = fixture.value();
-    assert.equal(p.top + 60, portrait.height - 8);
+    assert.equal(p.top + 60, portrait.height);
     assert.equal(p.left, (portrait.width - p.width) / 2);
     assert.equal(p.visibility, 'visible');
     assert.match(fixture.tree.props.className, /reader-selection-docked/);
@@ -51,9 +51,9 @@ test('visual viewport resize and pan keep the dock on screen', () => {
     Object.assign(fixture.viewport, viewport);
     fixture.listeners.resize();
     const p = fixture.value();
-    assert.ok(p.left >= viewport.offsetLeft + 12);
-    assert.ok(p.left + p.width <= viewport.offsetLeft + viewport.width - 12);
-    assert.equal(p.top + 60, viewport.offsetTop + viewport.height - 8);
+    assert.equal(p.left, viewport.offsetLeft);
+    assert.equal(p.width, viewport.width);
+    assert.equal(p.top + 60, viewport.offsetTop + viewport.height);
   }
   fixture.cleanups.forEach(fn => { if (typeof fn === 'function') fn(); });
 });
@@ -62,4 +62,21 @@ test('desktop retains existing CSS positioning', () => {
   assert.equal(fixture.value(), undefined);
   assert.match(fixture.tree.props.style.top, /^clamp/);
   assert.doesNotMatch(fixture.tree.props.className, /reader-selection-docked/);
+});
+
+test('dock sits flush with the bottom of the viewport for top, middle and bottom selections regardless of footer', () => {
+  for (const bounds of [{ left: 20, top: 90, bottom: 110 }, { left: 20, top: 280, bottom: 320 }, { left: 20, top: 480, bottom: 530 }]) {
+    for (const toolbarHeight of [58, 92, 140]) {
+      const p = position(bounds, portrait, true, 650, toolbarHeight).value();
+      assert.equal(p.top + toolbarHeight, 664);
+      assert.ok(p.top >= 12);
+      assert.ok(p.top + toolbarHeight <= portrait.height);
+    }
+  }
+});
+test('a reduced viewport constrains tall controls within the visible viewport', () => {
+  const p = position({ left: 20, top: 50, bottom: 72 }, { ...portrait, offsetTop: 40, height: 180 }, true, 200, 240).value();
+  assert.equal(p.top, 52);
+  assert.equal(p.maxHeight, 168);
+  assert.equal(p.top + p.maxHeight, 220);
 });
