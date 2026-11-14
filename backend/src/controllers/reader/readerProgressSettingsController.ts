@@ -2,7 +2,18 @@ import { Request, Response } from "express";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
 import { ReaderProgressSettingsModel } from "../../models/reader/readerProgressSettingsModel";
-import { defaultReaderProgressSettings, isReaderProgressSettings } from "../../../../shared/types/readerProgressSettings";
+import type { ReaderProgressSettings } from "../../../../shared/types/readerProgressSettings";
+
+// Keep runtime values in the backend: shared source files are in an ESM package.
+const defaultReaderProgressSettings: ReaderProgressSettings = {
+  defaultProgressDisplay: "percentage",
+};
+function isReaderProgressSettings(value: unknown): value is ReaderProgressSettings {
+  const settings = value as ReaderProgressSettings | null;
+  return !!settings && typeof settings === "object" &&
+    ["percentage", "section", "book"].includes(settings.defaultProgressDisplay);
+}
+
 export const getProgressSettings = asyncErrorCatcher(
   async (_req: Request, res: Response) => {
     const saved = await ReaderProgressSettingsModel.findOne({
