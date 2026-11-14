@@ -10,6 +10,9 @@ export function ConfirmDialog({
   icon,
   onCancel,
   onConfirm,
+  children,
+  pending = false,
+  confirmDisabled = false,
 }: {
   heading: string;
   message: string;
@@ -17,6 +20,9 @@ export function ConfirmDialog({
   icon: React.ReactNode;
   onCancel: () => void;
   onConfirm: () => void;
+  children?: React.ReactNode;
+  pending?: boolean;
+  confirmDisabled?: boolean;
 }) {
   const { t } = useTranslation();
   const dialog = useRef<HTMLDialogElement>(null);
@@ -42,21 +48,23 @@ export function ConfirmDialog({
       aria-describedby={descriptionId}
       onCancel={(event) => {
         event.preventDefault();
-        onCancel();
+        if (!pending) onCancel();
       }}
       onKeyDown={(event) => event.stopPropagation()}
       onClick={(event) => {
-        if (event.target === event.currentTarget) onCancel();
+        if (!pending && event.target === event.currentTarget) onCancel();
       }}
     >
       <div className="reader-archive-dialog-content">
         <div className="reader-archive-dialog-icon">{icon}</div>
         <h2 id={headingId}>{heading}</h2>
         <p id={descriptionId}>{message}</p>
+        {children}
         <div className="reader-archive-dialog-actions">
           <button
             type="button"
             className="reader-button"
+            disabled={pending}
             ref={cancel}
             onClick={onCancel}
           >
@@ -65,9 +73,10 @@ export function ConfirmDialog({
           <button
             type="button"
             className="reader-button reader-button-primary"
+            disabled={pending || confirmDisabled}
             onClick={onConfirm}
           >
-            <FiArchive aria-hidden="true" />
+            {icon}
             {confirmLabel}
           </button>
         </div>
