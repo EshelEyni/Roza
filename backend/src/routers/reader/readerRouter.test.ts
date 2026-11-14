@@ -16,6 +16,8 @@ jest.mock("../../middlewares/authGuards/authGuardsMiddleware", () => ({
 }));
 jest.mock("../../models/reader/readerBookModel", () => ({
   ReaderBookModel: {
+    aggregate: jest.fn(),
+    hydrate: (book: any) => ({ toJSON: () => ({ ...book, id: String(book._id) }) }),
     exists: jest.fn(),
     find: jest.fn(),
     findOne: jest.fn(),
@@ -70,18 +72,77 @@ describe("Reader access and isolation", () => {
   });
 
   it("scopes the library to the current owner and forbids caching", async () => {
-    (ReaderBookModel.find as jest.Mock).mockReturnValue({ sort: jest.fn().mockResolvedValue([]) });
+    (ReaderBookModel.aggregate as jest.Mock).mockResolvedValue([]);
     const response = await request(app).get("/api/reader").set("Authorization", "test");
     expect(response.status).toBe(200);
-    expect(ReaderBookModel.find).toHaveBeenCalledWith({ userId: mockUserId, archived: { $ne: true } });
+    expect(ReaderBookModel.aggregate).toHaveBeenCalledWith(expect.arrayContaining([
+      { $match: { userId: expect.anything(), archived: { $ne: true } } }, { $limit: 6 },
+    ]));
     expect(response.headers["cache-control"]).toBe("no-store");
   });
 
   it("lists archived books separately for the current owner", async () => {
-    (ReaderBookModel.find as jest.Mock).mockReturnValue({ sort: jest.fn().mockResolvedValue([]) });
+    (ReaderBookModel.aggregate as jest.Mock).mockResolvedValue([]);
     const response = await request(app).get("/api/reader?archived=true").set("Authorization", "test");
     expect(response.status).toBe(200);
-    expect(ReaderBookModel.find).toHaveBeenCalledWith({ userId: mockUserId, archived: true });
+    expect((ReaderBookModel.aggregate as jest.Mock).mock.calls[0][0][0].$match).toEqual({ userId: expect.anything(), archived: true });
+  });
+
+  it.each([0, 1, 5, 6, 17])("returns five books and an accurate continuation for %s books", async count => {
+    const rows = Array.from({ length: Math.min(count, 6) }, (_, i) => ({
+      _id: (100 - i).toString(16).padStart(24, "0"), activity: 1000 - i, title: "Book " + i,
+    }));
+    (ReaderBookModel.aggregate as jest.Mock).mockResolvedValue(rows);
+    const response = await request(app).get("/api/reader").set("Authorization", "test");
+    expect(response.status).toBe(200);
+    expect(response.body.data.books).toHaveLength(Math.min(count, 5));
+    if (count <= 5) expect(response.body.data.nextCursor).toBeNull();
+    else {
+      const cursor = JSON.parse(Buffer.from(response.body.data.nextCursor, "base64url").toString());
+      expect(cursor).toEqual({ activity: rows[4].activity, id: rows[4]._id });
+      (ReaderBookModel.aggregate as jest.Mock).mockResolvedValue(rows.slice(5));
+      const next = await request(app).get("/api/reader?cursor=" + response.body.data.nextCursor).set("Authorization", "test");
+      expect(next.body.data.books[0].id).toBe(rows[5]._id);
+      const pipeline = (ReaderBookModel.aggregate as jest.Mock).mock.calls[1][0];
+      expect(pipeline[2].$match.$or[0]).toEqual({ activity: { $lt: rows[4].activity } });
+      expect(String(pipeline[2].$match.$or[1]._id.$lt)).toBe(rows[4]._id);
+    }
+    const pipeline = (ReaderBookModel.aggregate as jest.Mock).mock.calls[0][0];
+    expect(pipeline[1]).toEqual({ $addFields: { activity: { $cond: [
+      { $gt: ["$state.savedAt", 0] }, "$state.savedAt", { $toLong: "$createdAt" },
+    ] } } });
+    expect(pipeline[2]).toEqual({ $sort: { activity: -1, _id: -1 } });
+  });
+
+  it("traverses a 17-book library with equal activity timestamps without duplicates", async () => {
+    const rows = Array.from({ length: 17 }, (_, i) => ({
+      _id: (100 - i).toString(16).padStart(24, "0"), activity: 1000, title: "Book " + i,
+    }));
+    (ReaderBookModel.aggregate as jest.Mock).mockImplementation(async pipeline => {
+      const boundary = pipeline.find((stage: any) => stage.$match?.$or)?.$match.$or;
+      const remaining = boundary ? rows.filter(book => book.activity < boundary[0].activity.$lt ||
+        (book.activity === boundary[1].activity && book._id < String(boundary[1]._id.$lt))) : rows;
+      return remaining.slice(0, 6);
+    });
+    const ids: string[] = [];
+    let cursor: string | null = null;
+    const sizes: number[] = [];
+    do {
+      const response: request.Response = await request(app).get("/api/reader" + (cursor ? "?cursor=" + cursor : "")).set("Authorization", "test");
+      expect(response.status).toBe(200);
+      sizes.push(response.body.data.books.length);
+      ids.push(...response.body.data.books.map((book: any) => book.id));
+      cursor = response.body.data.nextCursor;
+    } while (cursor && sizes.length < 10);
+    expect(sizes).toEqual([5, 5, 5, 2]);
+    expect(ids).toEqual(rows.map(book => book._id));
+    expect(new Set(ids).size).toBe(17);
+  });
+
+  it.each(["bad", Buffer.from(JSON.stringify({ activity: -1, id })).toString("base64url")])("rejects invalid cursor %s", async cursor => {
+    const response = await request(app).get("/api/reader?cursor=" + cursor).set("Authorization", "test");
+    expect(response.status).toBe(400);
+    expect(ReaderBookModel.aggregate).not.toHaveBeenCalled();
   });
 
   it.each([true, false])("persists archive status %s without changing book content or reading state", async archived => {

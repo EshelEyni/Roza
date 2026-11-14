@@ -18,11 +18,33 @@ const getReaderAccess = asyncErrorCatcher(async (_req: Request, res: Response) =
 });
 
 const getReaderBooks = asyncErrorCatcher(async (req: Request, res: Response) => {
-  const books = await ReaderBookModel.find({ userId: getLoggedInUserIdFromReq(), archived: req.query.archived === "true" ? true : { $ne: true } }).sort({
-    updatedAt: -1,
-  });
+  let cursor: { activity: number; id: string } | undefined;
+  if (req.query.cursor !== undefined) {
+    try {
+      if (typeof req.query.cursor !== "string") throw new Error();
+      cursor = JSON.parse(Buffer.from(req.query.cursor, "base64url").toString());
+      if (!cursor || !Number.isSafeInteger(cursor.activity) || cursor.activity < 0 || !/^[a-f0-9]{24}$/.test(cursor.id)) throw new Error();
+    } catch { throw new AppError("Invalid library cursor.", 400); }
+  }
+  // Compute reading activity in Mongo, including legacy books without saved state.
+  const books = await ReaderBookModel.aggregate([
+    { $match: { userId: new mongoose.Types.ObjectId(getLoggedInUserIdFromReq()), archived: req.query.archived === "true" ? true : { $ne: true } } },
+    { $addFields: { activity: { $cond: [{ $gt: ["$state.savedAt", 0] }, "$state.savedAt", { $toLong: "$createdAt" }] } } },
+    ...(cursor ? [{ $match: { $or: [
+      { activity: { $lt: cursor.activity } },
+      { activity: cursor.activity, _id: { $lt: new mongoose.Types.ObjectId(cursor.id) } },
+    ] } }] : []),
+    { $sort: { activity: -1, _id: -1 } },
+    { $limit: 6 },
+    { $project: { fileId: 0, originalFileId: 0, userId: 0 } },
+  ]);
+  const page = books.slice(0, 5);
+  const last = page[page.length - 1];
+  const nextCursor = books.length > 5 ? Buffer.from(JSON.stringify({ activity: Number(last.activity), id: String(last._id) })).toString("base64url") : null;
   res.setHeader("Cache-Control", "no-store");
-  res.json({ status: "success", data: books });
+  res.json({ status: "success", data: {
+    books: page.map(({ activity, ...book }) => ReaderBookModel.hydrate(book).toJSON()), nextCursor,
+  } });
 });
 
 const addReaderBook = asyncErrorCatcher(async (req: Request, res: Response) => {
