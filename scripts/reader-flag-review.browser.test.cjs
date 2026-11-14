@@ -494,14 +494,42 @@ test(
       await page
         .getByRole("button", { name: "Review later", exact: true })
         .click();
+      assert.equal(
+        await page
+          .getByRole("button", { name: "Translate", exact: true })
+          .count(),
+        0,
+      );
+      await page.getByText("Passage context", { exact: true }).last().click();
+      const context = page.locator(".reader-review details").last();
+      assert.ok((await context.locator("p").innerText()).length <= 240);
+      assert.equal(await context.locator("mark").innerText(), passage);
       await page
-        .getByRole("button", { name: "Translate", exact: true })
+        .getByRole("button", { name: "Open in book", exact: true })
+        .last()
+        .click();
+      await page.waitForFunction((expected) => {
+        const marker = document.querySelector(".reader-flag-locator");
+        const key = marker?.dataset.readerNativeHighlight;
+        if (!key) return false;
+        return [...document.querySelectorAll(".reader-viewport iframe")].some(
+          (frame) => {
+            const ranges = frame.contentWindow.CSS.highlights.get(key);
+            return (
+              ranges &&
+              [...ranges].some((range) => range.toString().includes(expected))
+            );
+          },
+        );
+      }, passage);
+      await page
+        .getByRole("button", { name: "Review later", exact: true })
         .click();
       await page
         .getByText("translation fixture", { exact: false })
         .first()
         .waitFor();
-      assert.equal(translated, 1);
+      assert.equal(translated, 0);
       await selectFilter(page, "Translated vocabulary");
       if (process.env.FLAG_REVIEW_VOCAB_SCREENSHOT)
         await page.screenshot({

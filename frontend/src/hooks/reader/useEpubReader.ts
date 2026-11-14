@@ -40,7 +40,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     selection.textSelection,
   );
   runtime.keyboardRef.current = keyboard.keyboardSettings;
-  const { markPassage, clearMarker, passageMarks } = useReaderPassageMarker(runtime);
+  const { markPassage, locatePassage, clearMarker, passageMarks } = useReaderPassageMarker(runtime);
   const activeSelection = useRef(selection.textSelection);
   activeSelection.current = selection.textSelection;
   const markTranslation = useCallback((passage: ReaderPassage) => {
@@ -86,6 +86,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     closeLookup: selection.closeLookup,
     closePanel,
     markPassage,
+    locatePassage,
     clearMarker,
     locationsReady: engine.locationsReady,
     setError,
@@ -124,7 +125,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   }
   return {
     flags,
-    review: { bookId: book.id, userId, revision: flags.items.map(item => item.id).join(","), onFlagsChanged: flags.sync,
+    review: { bookId: book.id, userId, onPassageNavigate: navigation.onFlagNavigate, revision: flags.items.map(item => item.id).join(","), onFlagsChanged: flags.sync,
       onAskAi: (passage: ReaderPassage) => { chat.start(passage); selection.closeLookup(); setPanel("chat"); } },
     ...keyboard,
     rsvp: { ...rsvp, toggle: () => { selection.closeLookup(); closePanel(); return rsvp.toggle(); } },

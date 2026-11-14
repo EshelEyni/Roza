@@ -1,3 +1,4 @@
+import { readerFlagContext } from "../../services/readerFlagContext";
 import { ReaderSelect } from "./ReaderSelect";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { useTranslation } from "react-i18next";
@@ -80,12 +81,11 @@ export function ReaderReview({
   }, [revision, refetch]);
   const [filter, setFilter] = useState("pending");
   const list = useRef<HTMLDivElement>(null);
-  useEffect(() => { list.current?.scrollTo({ top: 0 }); }, [filter]);
+  useEffect(() => {
+    list.current?.scrollTo({ top: 0 });
+  }, [filter]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState("");
-  const [translations, setTranslations] = useState<
-    Record<string, ReaderDictionaryEntry | null>
-  >({});
   async function update(f: ReaderFlag, remove: boolean) {
     setBusy(f.id);
     setError("");
@@ -120,22 +120,6 @@ export function ReaderReview({
       if (fresh.data) onFlagsChanged(fresh.data.flags);
     } catch {
       setError(t("reader.review.updateError"));
-    } finally {
-      setBusy("");
-    }
-  }
-  async function translate(f: ReaderFlag) {
-    setBusy(f.id);
-    setError("");
-    try {
-      const entry = await api.request<ReaderDictionaryEntry | null>(
-        "POST",
-        "/" + f.bookId + "/flags/" + f.id + "/translation",
-      );
-      setTranslations((current) => ({ ...current, [f.id]: entry }));
-      if (!entry) setError(t("reader.review.notFound"));
-    } catch {
-      setError(t("reader.review.translateError"));
     } finally {
       setBusy("");
     }
@@ -218,6 +202,7 @@ export function ReaderReview({
             : data.data?.flags
                 .filter((f) => f.reviewed === (filter === "reviewed"))
                 .map((f) => {
+                  const context = readerFlagContext(f.context, f.text);
                   const word =
                     /^[a-zA-Z]+(?:['’-][a-zA-Z]+)*$/.test(
                       f.text.replace(/^[“"‘(]+|[”"’.,;:!?)]+$/g, ""),
@@ -237,15 +222,17 @@ export function ReaderReview({
                       {f.context !== f.text && (
                         <details>
                           <summary>{t("reader.review.context")}</summary>
-                          <p dir="auto">{f.context}</p>
+                          <p dir="auto">
+                            {context.before}
+                            <mark>{context.marked}</mark>
+                            {context.after}
+                          </p>
                         </details>
                       )}
                       <small>
                         {new Date(f.createdAt).toLocaleDateString()}
                       </small>
-                      <Translation
-                        entry={translations[f.id] || existing?.entry}
-                      />
+                      <Translation entry={existing?.entry} />
                       <div className="reader-review-actions">
                         <button
                           className="reader-button"
@@ -253,30 +240,23 @@ export function ReaderReview({
                         >
                           {t("reader.review.open")}
                         </button>
-                        {word ? (
-                          <button
-                            className="reader-button"
-                            disabled={!!busy}
-                            onClick={() => void translate(f)}
-                          >
-                            {t("reader.review.translate")}
-                          </button>
-                        ) : f.text.length > readerAiLimits.passage ? (
-                          <button
-                            className="reader-button"
-                            disabled
-                            title={t("reader.chat.selectionLimit")}
-                          >
-                            {t("reader.review.askAi")}
-                          </button>
-                        ) : (
-                          <button
-                            className="reader-button"
-                            onClick={() => onAskAi(f)}
-                          >
-                            {t("reader.review.askAi")}
-                          </button>
-                        )}
+                        {!word &&
+                          (f.text.length > readerAiLimits.passage ? (
+                            <button
+                              className="reader-button"
+                              disabled
+                              title={t("reader.chat.selectionLimit")}
+                            >
+                              {t("reader.review.askAi")}
+                            </button>
+                          ) : (
+                            <button
+                              className="reader-button"
+                              onClick={() => onAskAi(f)}
+                            >
+                              {t("reader.review.askAi")}
+                            </button>
+                          ))}
                         <button
                           className="reader-button"
                           disabled={!!busy}

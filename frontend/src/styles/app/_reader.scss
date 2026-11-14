@@ -2168,3 +2168,5 @@
 @media (max-width: 1024px) {
   .reader-toolbar:not(.reader-toolbar-rsvp) .reader-icon-button { width: clamp(36px, 9vw, 44px); flex-shrink: 0; }
 }
+
+.reader-review mark { background: var(--reader-passage-color, #e9cb80); color: inherit; border-radius: 2px; padding-inline: 2px; }
