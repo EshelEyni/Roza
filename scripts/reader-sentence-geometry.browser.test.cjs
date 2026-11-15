@@ -128,9 +128,11 @@ test(
           return;
         }
         if (req.url.includes("/annotations")) {
-          const item = body ? { ...JSON.parse(body), id: "note-1" } : null;
-          if (item) annotations.push(item);
-          res.end(JSON.stringify({ status: "success", data: item || [] }));
+          const input = body ? JSON.parse(body) : null;
+          const previous = input && annotations.find(item => item.cfi === input.cfi && item.endCfi === input.endCfi);
+          const item = input ? {...input, id: previous?.id || String(annotations.length + 1)} : null;
+          if (item) { const index = annotations.findIndex(saved => saved.id === item.id); if (index < 0) annotations.push(item); else annotations[index] = item; }
+          res.end(JSON.stringify({ status: "success", data: item || annotations }));
           return;
         }
         res.end(
@@ -198,6 +200,37 @@ test(
             ),
         );
       await settle();
+      const annotationInputs = await page.evaluate(async () => {
+        const r = window.rsvpTest.reader;
+        const section = r.searchBook.spine.get(r.sentenceMode.sentence.cfi);
+        const source = await r.searchBook.getRange(r.sentenceMode.sentence.cfi);
+        const {readerSentenceSelectionRange: clip} = await import('/frontend/src/services/readerSentenceSelectionRange.ts');
+        const sentences = window.rsvpTest.sentenceService.extractReaderSentences(section);
+        const base = {chapter:'A', note:'', endCfi:''};
+        return [
+          {...base, cfi:section.cfiFromRange(clip(source,0,3)), text:'The', color:'yellow'},
+          {...base, cfi:section.cfiFromRange(clip(source,4,16)), text:'quiet reader', color:'pink', note:'Phrase note'},
+          {...base, cfi:section.cfiFromRange(clip(source,r.sentenceMode.sentence.text.length-8,r.sentenceMode.sentence.text.length)), endCfi:sentences[1].cfi, text:'seasons. A short pause.', color:'blue'},
+        ];
+      });
+      for (const input of annotationInputs) {
+        await page.evaluate(input => window.rsvpTest.reader.annotations.save(input), input);
+        await settle();
+      }
+      assert.equal(await page.locator('.reader-sentence-annotation[data-color="yellow"]').allTextContents().then(items=>items.join('')), 'The');
+      assert.equal(await page.locator('.reader-sentence-annotation[data-color="pink"]').allTextContents().then(items=>items.join('')), 'quiet reader');
+      assert.equal(await page.locator('.reader-sentence-annotation[data-color="blue"]').allTextContents().then(items=>items.join('')), 'seasons.');
+      assert.equal(await page.locator('.reader-sentence-annotation[data-color="pink"]').first().evaluate(el=>getComputedStyle(el).getPropertyValue('--annotation-fill').trim()), '#f5a4cc');
+      assert.equal(await page.locator('.reader-sentence-annotation[data-note="true"]').first().evaluate(el=>getComputedStyle(el).textDecorationLine), 'underline');
+      const savedAnnotations = JSON.stringify(annotations);
+      await page.evaluate(() => window.rsvpTest.reader.sentenceMode.move(1)); await settle();
+      assert.equal(await page.locator('.reader-sentence-annotation[data-color="blue"]').allTextContents().then(items=>items.join('')), 'A short pause.');
+      await page.evaluate(() => window.rsvpTest.reader.sentenceMode.move(-1)); await settle();
+      await page.evaluate(() => window.rsvpTest.reader.sentenceMode.toggle());
+      await page.waitForSelector('.reader-saved-annotation[data-color="pink"] rect');
+      await page.evaluate(() => window.rsvpTest.reader.sentenceMode.toggle()); await settle();
+      assert.equal(await page.locator('.reader-sentence-annotation[data-color="pink"]').allTextContents().then(items=>items.join('')), 'quiet reader');
+      assert.equal(JSON.stringify(annotations), savedAnnotations, 'Switching modes never rewrites saved annotation data');
       const lines = async () =>
         page.evaluate(() => {
           const root = document.querySelector(".reader-sentence-text"),

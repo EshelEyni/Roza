@@ -791,16 +791,11 @@ test(
                 window.rsvpTest.reader.sentenceMode.sentence.text ===
                 "Hello, reading world.",
             );
+            await page.waitForFunction(() => document.querySelector('.reader-sentence-word-active')?.textContent === 'Hello');
             assert.equal(
-              await page.locator(".reader-sentence-word-active").count(),
-              0,
-            );
-            assert.equal(
-              await page
-                .getByRole("button", { name: "Translate", exact: true })
-                .isDisabled(),
-              true,
-              "Changing sentence clears the selected range",
+              await page.getByRole("button", { name: "Translate", exact: true }).isDisabled(),
+              false,
+              "Sentence navigation clears the old range and focuses the new sentence start",
             );
             if (!mobile) {
               const words = page.locator("[data-sentence-word]");

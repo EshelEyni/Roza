@@ -1957,7 +1957,7 @@
 
 // Saved annotations use epub.js SVG underlines with filled range rectangles.
 // This keeps their ownership separate from temporary highlight/search overlays.
-.reader-saved-annotation {
+.reader-saved-annotation, .reader-sentence-annotation {
   --annotation-fill: #f5d94e;
   &[data-color="green"] { --annotation-fill: #7ed99a; }
   &[data-color="blue"] { --annotation-fill: #86baff; }
@@ -2274,3 +2274,14 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 
 .reader-sentence-translated { background-color: var(--sentence-translation-color, #a3c2ff); color: var(--sentence-translation-text-color, #28231e); border-radius: 3px; padding: 0; }
 .reader-sentence-word-active .reader-sentence-translated { background-color: transparent; color: inherit; }
+
+.reader-sentence-annotation {
+  background-color: color-mix(in srgb, var(--annotation-fill) 38%, transparent);
+  color: inherit;
+  padding: 0;
+  border-radius: 2px;
+  &[data-color="none"] { background-color: transparent; }
+  &[data-note="true"] { text-decoration: underline; text-decoration-color: #726454; text-underline-offset: 3px; }
+}
+.reader-theme-dark .reader-sentence-annotation[data-note="true"] { text-decoration-color: #e5e4da; }
+.reader-sentence-word-active .reader-sentence-annotation { background-color: transparent; }

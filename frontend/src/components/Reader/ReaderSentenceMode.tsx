@@ -1,3 +1,4 @@
+import { readerSentencePassageOffsets } from "../../services/readerSentencePassageOffsets";
 import {
   measureSentenceLines,
   closestSentenceWord,
@@ -7,7 +8,6 @@ import { useTranslation } from "react-i18next";
 import { EpubCFI } from "epubjs";
 import {
   readerSentenceSelectionRange,
-  readerSentenceSelectionOffsets,
 } from "../../services/readerSentenceSelectionRange";
 import {
   useEffect,
@@ -109,39 +109,35 @@ export function ReaderSentenceMode({
     if (!section?.document) return [];
     const source = new EpubCFI(sentence.cfi).toRange(section.document);
     return reader.translatedPassages.flatMap((passage) => {
-      try {
-        const first = new EpubCFI(passage.cfi);
-        const last = passage.endCfi ? new EpubCFI(passage.endCfi) : first;
-        if (section.index < first.spinePos || section.index > last.spinePos)
-          return [];
-        const mark =
-          section.index === first.spinePos
-            ? first.toRange(section.document)
-            : source.cloneRange();
-        if (passage.endCfi) {
-          const end =
-            section.index === last.spinePos
-              ? last.toRange(section.document)
-              : source;
-          mark.setEnd(end.endContainer, end.endOffset);
-        }
-        const offsets = readerSentenceSelectionOffsets(source, mark);
-        return offsets && offsets.end > offsets.start ? [offsets] : [];
-      } catch {
-        return [];
-      }
+      const offsets = readerSentencePassageOffsets(source, section.index, passage);
+      return offsets ? [offsets] : [];
     });
   }, [sentence?.cfi, reader.searchBook, reader.translatedPassages]);
+  const annotationRanges = useMemo(() => {
+    if (!sentence || !reader.searchBook) return [];
+    const section = reader.searchBook.spine.get(sentence.cfi);
+    if (!section?.document) return [];
+    const source = new EpubCFI(sentence.cfi).toRange(section.document);
+    const draft = reader.annotations.draft;
+    const items = draft && reader.panel === "annotations"
+      ? [...reader.annotations.items.filter(item => item.id !== draft.id), draft]
+      : reader.annotations.items;
+    return items.flatMap(item => {
+      if (item.color === "none" && !item.note.trim()) return [];
+      const offsets = readerSentencePassageOffsets(source, section.index, item);
+      return offsets ? [{ ...offsets, color: item.color, note: !!item.note.trim() }] : [];
+    });
+  }, [sentence?.cfi, reader.searchBook, reader.annotations.items, reader.annotations.draft, reader.panel]);
   useLayoutEffect(() => {
     visualLines.current = null;
-  }, [translatedRanges]);
+  }, [translatedRanges, annotationRanges]);
   const renderTranslated = (text: string, offset: number): ReactNode => {
     const end = offset + text.length;
     const cuts = [
       ...new Set([
         offset,
         end,
-        ...translatedRanges
+        ...[...translatedRanges, ...annotationRanges]
           .flatMap((range) => [
             Math.max(offset, range.start),
             Math.min(end, range.end),
@@ -151,14 +147,18 @@ export function ReaderSentenceMode({
     ].sort((a, b) => a - b);
     return cuts.slice(0, -1).map((start, index) => {
       const value = text.slice(start - offset, cuts[index + 1] - offset);
+      const annotation = annotationRanges.filter(range => range.start <= start && range.end >= cuts[index + 1]).at(-1);
+      const annotated = annotation ? (
+        <mark key={start} className="reader-sentence-annotation" data-color={annotation.color} data-note={String(annotation.note)}>{value}</mark>
+      ) : value;
       return translatedRanges.some(
         (range) => range.start <= start && range.end >= cuts[index + 1],
       ) ? (
         <mark key={start} className="reader-sentence-translated">
-          {value}
+          {annotated}
         </mark>
       ) : (
-        value
+        annotated
       );
     });
   };
