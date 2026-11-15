@@ -71,6 +71,7 @@ export function ReaderDictionary({
   const [speaking, setSpeaking] = useState(false);
   const requestId = useRef<Partial<Record<ReaderLookupProvider, string>>>({});
   const button = useRef<HTMLButtonElement>(null);
+  const audioButton = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const mounted = useRef(true);
   const lastSelection = useRef(selection);
@@ -197,6 +198,21 @@ export function ReaderDictionary({
     setSpeaking(true);
     window.speechSynthesis.speak(utterance);
   }
+
+  useEffect(() => {
+    if (!opened) return;
+    const onPronounceKey = (event: KeyboardEvent) => {
+      const target = event.target as Element | null;
+      if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey ||
+        event.altKey || event.shiftKey || event.key.toLowerCase() !== "t" ||
+        target?.closest?.("input,textarea,select,[contenteditable]:not([contenteditable=false]),[role=textbox]")) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      if (!event.repeat) audioButton.current?.click();
+    };
+    document.addEventListener("keydown", onPronounceKey, true);
+    return () => document.removeEventListener("keydown", onPronounceKey, true);
+  }, [opened]);
 
   const entry = result?.entry;
   async function copy() {
@@ -365,6 +381,8 @@ export function ReaderDictionary({
             </div>
             <button
               className="reader-icon-button"
+              ref={audioButton}
+              aria-keyshortcuts="t"
               onClick={pronounce}
               disabled={speaking}
               aria-label={t("reader.pronounce")}

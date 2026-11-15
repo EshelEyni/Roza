@@ -521,6 +521,39 @@ test(
         closest(geometry[1], (chosen.left + chosen.right) / 2),
         "Font-size changes invalidate geometry",
       );
+      await page.evaluate(() => {
+        window.spoken = [];
+        window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+        Object.defineProperty(window, 'speechSynthesis', { configurable:true, value: {
+          getVoices: () => [{lang:'en-US'}], cancel: () => {},
+          speak: utterance => { window.spoken.push(utterance.text); utterance.onend?.(); }
+        }});
+      });
+      await click(chosen.index);
+      await page.keyboard.press('t');
+      const audio = page.getByRole('button', {name:'Pronounce English word', exact:true});
+      await audio.waitFor();
+      await page.keyboard.press('t');
+      const spokenWord = await page.evaluate(() => window.spoken[0]);
+      assert.ok(spokenWord);
+      await audio.click();
+      await page.keyboard.press('t');
+      assert.deepEqual(await page.evaluate(() => window.spoken), [spokenWord, spokenWord, spokenWord]);
+      await page.getByRole('button', {name:'Google', exact:true}).click();
+      await page.keyboard.press('t');
+      assert.equal(await page.evaluate(() => window.spoken.length), 4);
+      await page.evaluate(() => {
+        const input = document.createElement('input'); input.id='typing-test';
+        document.querySelector('.reader-dictionary').append(input); input.focus();
+      });
+      await page.keyboard.press('t');
+      assert.equal(await page.locator('#typing-test').inputValue(), 't');
+      assert.equal(await page.evaluate(() => window.spoken.length), 4);
+      await page.keyboard.press('Escape');
+      await page.evaluate(() => document.querySelector('#typing-test')?.remove());
+      await page.keyboard.press('t');
+      assert.equal(await page.evaluate(() => window.spoken.length), 4);
+      await page.keyboard.press('Escape');
       const cfi = await page.evaluate(
         () => window.rsvpTest.reader.sentenceMode.sentence.cfi,
       );
