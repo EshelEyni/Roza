@@ -107,6 +107,7 @@ export function EpubReader({
           toc={reader.toc}
           href={reader.href}
           onNavigate={reader.onNavigate}
+          onAnnotationNavigate={reader.onAnnotationNavigate}
           onPassageNavigate={reader.onPassageNavigate}
           loading={reader.loading}
           searchBook={reader.searchBook}

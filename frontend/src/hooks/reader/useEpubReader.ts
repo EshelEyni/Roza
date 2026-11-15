@@ -142,7 +142,12 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   }
   return {
     flags,
-    review: { annotations, bookId: book.id, userId, onPassageNavigate: navigation.onFlagNavigate, revision: flags.items.map(item => item.id).join(","), onFlagsChanged: flags.sync,
+    review: { annotations, onOpenAnnotation: (id: string) => {
+      selection.closeLookup();
+      annotations.setDraft(null);
+      annotations.setFilterId(id);
+      setPanel("annotations");
+    }, bookId: book.id, userId, onPassageNavigate: navigation.onFlagNavigate, revision: flags.items.map(item => item.id).join(","), onFlagsChanged: flags.sync,
       onAskAi: (passage: ReaderPassage) => { chat.start(passage); selection.closeLookup(); setPanel("chat"); } },
     ...keyboard,
     ...progressSettings,
@@ -201,6 +206,13 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     onNavigate: (target: string) => {
       if (!sentenceMode.active) return navigation.onNavigate(target);
       void sentenceMode.toggle().then(() => { if (!runtime.rsvpActive.current) navigation.onNavigate(target); });
+    },
+    onAnnotationNavigate: async (target: string) => {
+      if (sentenceMode.active) {
+        await sentenceMode.toggle();
+        if (runtime.rsvpActive.current) return;
+      }
+      navigation.onAnnotationNavigate(target);
     },
     onPassageNavigate: async (passage: ReaderPassage) => {
       if (sentenceMode.active) {

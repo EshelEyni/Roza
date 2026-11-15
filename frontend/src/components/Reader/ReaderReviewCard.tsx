@@ -23,6 +23,7 @@ export function ReaderReviewCard({
   reviewed,
   busy,
   onOpen,
+  onOpenAnnotation,
   onReview,
   onRemove,
   removeLabel,
@@ -40,6 +41,7 @@ export function ReaderReviewCard({
   reviewed: boolean;
   busy: boolean;
   onOpen?: () => void;
+  onOpenAnnotation?: () => void;
   onReview?: () => void;
   removeLabel?: string;
   onRemove: () => void;
@@ -136,6 +138,9 @@ export function ReaderReviewCard({
         >
           <FiTrash2 aria-hidden="true" />
         </button>
+        {onOpenAnnotation && <button className="reader-button reader-review-card-annotation" onClick={onOpenAnnotation} disabled={busy}>
+          {t("reader.annotations.openAnnotation")}
+        </button>}
       </footer>
     </article>
   );

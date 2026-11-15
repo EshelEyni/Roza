@@ -63,6 +63,7 @@ const normalizeWord = (text: string) =>
 export function ReaderReview({
   bookId,
   annotations,
+  onOpenAnnotation,
   userId,
   revision,
   onNavigate,
@@ -72,6 +73,7 @@ export function ReaderReview({
 }: {
   bookId: string;
   annotations?: EpubReaderController["annotations"];
+  onOpenAnnotation?: (id: string) => void;
   userId: string;
   revision: string;
   onNavigate: (cfi: string) => void;
@@ -186,6 +188,7 @@ export function ReaderReview({
               passage reviewed={false} busy={!!annotations?.busy}
               translation={item.note ? <p dir="auto">{item.note}</p> : undefined}
               onOpen={() => void onPassageNavigate(item)}
+              onOpenAnnotation={onOpenAnnotation ? () => onOpenAnnotation(item.id) : undefined}
               removeLabel={t("reader.review.unflagAnnotation")}
               onRemove={() => void annotations?.save({ ...item, flagged: false })} />
           ))}
@@ -217,6 +220,7 @@ export function ReaderReview({
             : data.data?.flags
                 .filter((f) => f.reviewed === (filter === "reviewed"))
                 .map((f) => {
+                  const annotation = annotations?.items.find(item => item.flagged && item.cfi === f.cfi && (item.endCfi || "") === f.endCfi);
                   const word =
                     /^[a-zA-Z]+(?:['’-][a-zA-Z]+)*$/.test(
                       f.text.replace(/^[“"‘(]+|[”"’.,;:!?)]+$/g, ""),
@@ -248,6 +252,7 @@ export function ReaderReview({
                       reviewed={f.reviewed}
                       busy={!!busy}
                       onOpen={() => void onPassageNavigate(f)}
+                      onOpenAnnotation={annotation && onOpenAnnotation ? () => onOpenAnnotation(annotation.id) : undefined}
                       onReview={() => void update(f, false)}
                       onRemove={() => void update(f, true)}
                       onAskAi={!word ? () => onAskAi(f) : undefined}

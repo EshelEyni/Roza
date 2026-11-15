@@ -9,7 +9,7 @@ const JSZip = require("../frontend/node_modules/jszip");
 const root = path.resolve(__dirname, "..");
 
 test(
-  "saved annotations with real EPUB rendering on desktop and iPhone WebKit",
+  "saved annotations with real EPUB rendering on desktop and mobile",
   { timeout: 180000 },
   async (t) => {
     const { createServer } = await import(
@@ -67,6 +67,7 @@ test(
       server: { host: "127.0.0.1", port: 0, fs: { allow: [root] } },
     });
     const saved = new Map();
+    const independentFlags = new Map();
     let sequence = 0;
     server.middlewares.use("/api/reader", (req, res) => {
       const parts = req.url.split("?")[0].split("/").filter(Boolean);
@@ -83,7 +84,7 @@ test(
       const items = saved.get(key) || [];
       const respond = (data) =>
         res.end(JSON.stringify({ status: "success", data }));
-      if (parts[1] === "review") { respond({ flags: [], vocabulary: [], books: [] }); return; }
+      if (parts[1] === "review") { respond({ flags: independentFlags.get(key) || [], vocabulary: [], books: [] }); return; }
       if (parts[1] !== "annotations") {
         respond(parts[1] === "conversations" ? { items: [] } : {});
         return;
@@ -130,10 +131,10 @@ test(
     try {
       for (const mobile of (process.env.READER_DESKTOP_ONLY ? [false] : [false, true]))
         await t.test(
-          mobile ? "iPhone WebKit" : "desktop Chromium",
+          mobile ? (process.env.READER_MOBILE_CHROMIUM ? "iPhone viewport Chromium" : "iPhone WebKit") : "desktop Chromium",
           async () => {
-            const browser = await (mobile ? webkit : chromium).launch(
-              !mobile && process.env.PLAYWRIGHT_CHANNEL
+            const browser = await (mobile && !process.env.READER_MOBILE_CHROMIUM ? webkit : chromium).launch(
+              (!mobile || process.env.READER_MOBILE_CHROMIUM) && process.env.PLAYWRIGHT_CHANNEL
                 ? { channel: process.env.PLAYWRIGHT_CHANNEL }
                 : {},
             );
@@ -267,6 +268,49 @@ test(
               assert.equal(saved.get(owner + ':annotations')[0].flagged, true);
               await page.reload(); await ready();
               await page.waitForFunction(() => window.annotationTest.reader.annotations.items[0]?.flagged);
+              // Identical display text at another CFI must never substitute for an ID filter.
+              await page.evaluate(async () => {
+                const r = window.annotationTest.reader;
+                const section = r.searchBook.spine.get(1);
+                await section.load(r.searchBook.load.bind(r.searchBook));
+                const range = section.document.createRange();
+                range.setStart(section.document.querySelector('p').firstChild, 0);
+                range.setEnd(section.document.querySelector('p').firstChild, 41);
+                const first = r.annotations.items[0];
+                await r.annotations.save({...first, cfi:section.cfiFromRange(range), color:'green', note:'Same text, different ID', flagged:true});
+              });
+              await page.waitForFunction(() => window.annotationTest.reader.annotations.items.length === 2);
+              const targetId = await page.evaluate(() => window.annotationTest.reader.annotations.items.find(item => item.note === 'Same text, different ID').id);
+              const original = saved.get(owner + ':annotations')[0];
+              independentFlags.set(owner + ':annotations', [{...original, id:'independent', bookId:'annotations', reviewed:false, createdAt:new Date().toISOString(), context:original.text}]);
+              await page.evaluate(() => window.annotationTest.reader.togglePanel('review'));
+              await page.getByRole('button', {name:'Mark reviewed', exact:true}).waitFor();
+              assert.equal(await page.locator('.reader-review-card').count(), 2, 'Independent flags and annotation flags remain deduplicated');
+              const independentCard = page.locator('.reader-review-card').filter({has:page.getByRole('button', {name:'Mark reviewed', exact:true})});
+              await independentCard.getByRole('button', {name:'Open annotation', exact:true}).click();
+              assert.equal(await page.evaluate(() => window.annotationTest.reader.annotations.filterId), original.id);
+              assert.equal(await page.locator('.reader-annotation-card').count(), 1);
+              await page.evaluate(() => window.annotationTest.reader.togglePanel('review'));
+              await page.locator('.reader-review-card').filter({hasText:'Same text, different ID'}).getByRole('button', {name:'Open annotation', exact:true}).click();
+              await page.getByText('Filtered by annotation', {exact:true}).waitFor();
+              assert.equal(await page.locator('.reader-annotation-card').count(), 1);
+              assert.equal(await page.evaluate(() => window.annotationTest.reader.annotations.filterId), targetId);
+              assert.match(await page.locator('.reader-annotation-card').textContent(), /Same text, different ID/);
+              await page.locator('.reader-annotation-passage').click();
+              await page.waitForFunction(() => window.annotationTest.reader.href === 'c1.xhtml');
+              assert.equal(await page.evaluate(() => window.annotationTest.reader.panel), 'annotations');
+              assert.equal(await page.evaluate(() => window.annotationTest.reader.annotations.filterId), targetId);
+              assert.equal(await page.locator('.reader-annotation-card').count(), 1);
+              await page.getByRole('button', {name:'Edit', exact:true}).click();
+              assert.equal(await page.getByLabel('Personal note').inputValue(), 'Same text, different ID');
+              await page.getByRole('button', {name:'Cancel', exact:true}).click();
+              await page.getByRole('button', {name:'Clear filter', exact:true}).click();
+              assert.equal(await page.locator('.reader-annotation-card').count(), 2);
+              assert.equal(await page.getByText('Filtered by annotation', {exact:true}).count(), 0);
+              assert.equal(independentFlags.get(owner + ':annotations')[0].id, 'independent', 'Opening and clearing annotation filters preserves independent flags');
+              independentFlags.delete(owner + ':annotations');
+              await page.evaluate(id => window.annotationTest.reader.annotations.remove(id), targetId);
+              await page.waitForFunction(() => window.annotationTest.reader.annotations.items.length === 1);
               await page.evaluate(() => window.annotationTest.reader.togglePanel('review'));
               await page.getByRole('button', {name:'Unflag annotation'}).waitFor();
               assert.equal(await page.locator('.reader-review-card').count(), 1);
@@ -417,9 +461,7 @@ test(
               await page.waitForSelector(
                 '.reader-saved-annotation[data-note="true"][data-color="pink"] rect',
               );
-              await page
-                .getByRole("button", { name: "Annotations", exact: true })
-                .click();
+              assert.equal(await page.evaluate(() => window.annotationTest.reader.panel), "annotations");
               await page
                 .getByRole("button", { name: "Edit", exact: true })
                 .click();

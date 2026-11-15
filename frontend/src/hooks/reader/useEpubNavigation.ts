@@ -107,6 +107,10 @@ export function useEpubNavigation(
     void navigateTo(target).catch(() => setError(t("reader.navigationError")));
   }
 
+  function onAnnotationNavigate(target: string) {
+    void navigateTo(target).catch(() => setError(t("reader.navigationError")));
+  }
+
   async function onSearchNavigate(cfi: string) {
     const rendition = renditionRef.current;
     if (!rendition) return;
@@ -166,5 +170,5 @@ export function useEpubNavigation(
     }
   }
 
-  return { onFlagNavigate: (passage: ReaderPassage) => onPassageNavigate(passage, true), onNavigate, onSearchNavigate, onProgressNavigate, onPassageNavigate, returnTo: navigateTo };
+  return { onAnnotationNavigate, onFlagNavigate: (passage: ReaderPassage) => onPassageNavigate(passage, true), onNavigate, onSearchNavigate, onProgressNavigate, onPassageNavigate, returnTo: navigateTo };
 }

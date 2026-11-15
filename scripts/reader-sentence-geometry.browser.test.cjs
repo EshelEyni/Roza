@@ -288,6 +288,20 @@ test(
       await page.evaluate(() => window.rsvpTest.reader.sentenceMode.toggle()); await settle();
       assert.equal(await page.locator('.reader-sentence-annotation[data-color="pink"]').allTextContents().then(items=>items.join('')), 'quiet reader');
       assert.equal(JSON.stringify(annotations), savedAnnotations, 'Switching modes never rewrites saved annotation data');
+      await page.evaluate(() => {
+        const r = window.rsvpTest.reader;
+        r.review.onOpenAnnotation(r.annotations.items.find(item => item.color === 'pink').id);
+      });
+      await page.getByText('Filtered by annotation', {exact:true}).waitFor();
+      assert.equal(await page.locator('.reader-annotation-card').count(), 1);
+      await page.locator('.reader-annotation-passage').click();
+      await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.active);
+      assert.equal(await page.evaluate(() => window.rsvpTest.reader.panel), 'annotations', 'Book navigation from Sentence Mode keeps Annotations open');
+      assert.equal(await page.locator('.reader-annotation-card').count(), 1);
+      await page.getByRole('button', {name:'Clear filter', exact:true}).click();
+      assert.equal(await page.locator('.reader-annotation-card').count(), 3);
+      await page.evaluate(() => window.rsvpTest.reader.sentenceMode.toggle()); await settle();
+
       const lines = async () =>
         page.evaluate(() => {
           const root = document.querySelector(".reader-sentence-text"),
