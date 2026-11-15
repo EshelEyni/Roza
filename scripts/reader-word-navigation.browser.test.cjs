@@ -95,7 +95,7 @@ test(
       res.setHeader("Content-Type", "application/epub+zip");
       res.end(file);
     });
-    let keyboardSettings = { unit: "words", count: 1 };
+    let keyboardSettings = { unit: "words", count: 5 };
     server.middlewares.use(
       "/api/reader/keyboard-settings",
       async (req, res) => {
@@ -651,6 +651,17 @@ test(
       await page.waitForFunction(() => !!window.navigationTest.reader.annotations.draft, null, {timeout:5000});
       assert.ok(await page.getByLabel('Personal note').isVisible());
       await page.evaluate(() => { window.navigationTest.reader.annotations.setDraft(null); window.navigationTest.reader.closePanel(); });
+      await page.evaluate(() => window.navigationTest.reader.updateKeyboardSettings({unit:'sentences', count:3}));
+      await page.waitForFunction(() => window.navigationTest.reader.keyboardSettings.unit === 'sentences');
+      await page.evaluate(() => window.navigationTest.reader.returnTo('c0.xhtml'));
+      await key('Escape'); await focus();
+      await key('ArrowRight');
+      assert.equal(await mark(), 'Note', 'Right selects one word with saved sentence grouping');
+      await key('ArrowRight');
+      assert.equal(await mark(), '1', 'Right advances exactly one word with saved sentence grouping');
+      await key('ArrowLeft');
+      assert.equal(await mark(), 'Note', 'Left advances exactly one word with saved sentence grouping');
+      await key('Escape');
       await page.setViewportSize({ width: 390, height: 844 });
       await page.waitForTimeout(500);
       await focus();

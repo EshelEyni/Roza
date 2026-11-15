@@ -227,9 +227,8 @@ export function createReaderWordNavigation(
       if (line) word = words[closestSentenceWord(line, targetX)];
     }
     const selectionAnchor = extending ? anchor || active || word : undefined;
-    const settings = navigationKind === "word" && !extending
-      ? runtime.keyboardRef?.current || defaultReaderKeyboardSettings
-      : { unit: "words" as const, count: 1 };
+    // Plain arrows always focus one word; Shift explicitly extends the selection.
+    const settings: typeof defaultReaderKeyboardSettings = { unit: "words", count: 1 };
     const words = chapterWords(word.contents);
     const offset = direction === "next" ? 1 : -1;
     let remaining =
