@@ -2286,4 +2286,12 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 .reader-theme-dark .reader-sentence-annotation[data-note="true"] { text-decoration-color: #e5e4da; }
 .reader-sentence-word-active .reader-sentence-annotation { background-color: transparent; }
 
-.reader-review-actions .reader-review-card-annotation { grid-column: 1 / -1; }
+.reader-review-actions.has-annotation {
+  .reader-review-card-remove { grid-column: 3; grid-row: 1; }
+  .reader-review-card-review { grid-column: 1 / -1; }
+  .reader-review-card-open, .reader-review-card-annotation {
+    gap: 4px;
+    padding-inline: 4px;
+    > svg { display: block; flex-shrink: 0; width: 12px; height: 12px; }
+  }
+}

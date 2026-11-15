@@ -108,7 +108,7 @@ export function ReaderReviewCard({
           </button>
         )}
       </div>
-      <footer className="reader-review-actions">
+      <footer className={"reader-review-actions" + (onOpenAnnotation ? " has-annotation" : "")}>
         <button
           className="reader-button reader-review-card-open"
           onClick={onOpen}
@@ -121,7 +121,11 @@ export function ReaderReviewCard({
           )}
           {t("reader.review.open")}
         </button>
-        {onReview && <button className="reader-button" onClick={onReview} disabled={busy}>
+        {onOpenAnnotation && <button className="reader-button reader-review-card-annotation" onClick={onOpenAnnotation} disabled={busy}>
+          <FiChevronRight aria-hidden="true" />
+          {t("reader.annotations.openAnnotation")}
+        </button>}
+        {onReview && <button className="reader-button reader-review-card-review" onClick={onReview} disabled={busy}>
           <FiCheck aria-hidden="true" />
           {t(
             reviewed
@@ -138,9 +142,6 @@ export function ReaderReviewCard({
         >
           <FiTrash2 aria-hidden="true" />
         </button>
-        {onOpenAnnotation && <button className="reader-button reader-review-card-annotation" onClick={onOpenAnnotation} disabled={busy}>
-          {t("reader.annotations.openAnnotation")}
-        </button>}
       </footer>
     </article>
   );
