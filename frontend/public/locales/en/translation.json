@@ -533,7 +533,7 @@
     },
     "annotations": {
       "openAnnotation": "Open annotation",
-      "filteredByAnnotation": "Filtered by annotation",
+      "filteredByAnnotation": "Showing selected annotation",
       "clearFilter": "Clear filter",
       "search": "Search annotations",
       "searchPlaceholder": "Search selected text or notes",

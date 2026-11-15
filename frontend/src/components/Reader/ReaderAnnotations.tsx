@@ -1,8 +1,16 @@
-import { FiSearch, FiChevronDown } from "react-icons/fi";
+import { EpubCFI } from "epubjs";
+import { FiSearch, FiChevronDown, FiFilter, FiX, FiEdit3, FiTrash2, FiMapPin } from "react-icons/fi";
 import { useEffect, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { annotationColors } from "../../../../shared/types/readerAnnotations";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
+
+function annotationSection(cfi: string) {
+  try {
+    const index = new EpubCFI(cfi).spinePos;
+    return Number.isInteger(index) && index >= 0 ? index + 1 : "—";
+  } catch { return "—"; }
+}
 
 function previewText(text: string) {
   const normalized = text.trim().replace(/\s+/g, " ");
@@ -142,12 +150,6 @@ export function ReaderAnnotations({
         <>
           <div className="reader-annotation-filters">
             <h2>{t("reader.annotations.title")}</h2>
-            {a.filterId && <div className="reader-annotation-actions">
-              <small role="status">{t("reader.annotations.filteredByAnnotation")}</small>
-              <button className="reader-button" onClick={() => {
-                a.setFilterId(null); setSearch(""); setRange([1, null]);
-              }}>{t("reader.annotations.clearFilter")}</button>
-            </div>}
             <label className="reader-sr-only" htmlFor="reader-annotation-search">{t("reader.annotations.search")}</label>
             <div className="reader-search-form reader-annotation-search-field">
               <input id="reader-annotation-search" type="search" value={search}
@@ -155,6 +157,15 @@ export function ReaderAnnotations({
                 onChange={event => setSearch(event.target.value)} />
               <FiSearch aria-hidden="true" />
             </div>
+            {a.filterId && <div className="reader-annotation-filter-chip" role="group" aria-label={t("reader.annotations.filteredByAnnotation")}>
+              <FiFilter aria-hidden="true" />
+              <span role="status">{t("reader.annotations.filteredByAnnotation")}</span>
+              <button className="reader-icon-button" type="button"
+                aria-label={t("reader.annotations.clearFilter")} title={t("reader.annotations.clearFilter")}
+                onClick={() => { a.setFilterId(null); setSearch(""); setRange([1, null]); }}>
+                <FiX aria-hidden="true" />
+              </button>
+            </div>}
             <details className="reader-annotation-page-filter">
               <summary>{t("reader.annotations.pageRange")}<FiChevronDown aria-hidden="true" /></summary>
               <fieldset disabled={!totalPages || resolving}>
@@ -186,9 +197,11 @@ export function ReaderAnnotations({
                 key={item.id}
                 className={"reader-annotation-card" + (item.color === "none" ? "" : " color-" + item.color)}
               >
-                <div className="reader-annotation-card-heading"><small>
-                  {item.chapter}{item.color !== "none" && <> · {t("reader.annotations." + item.color)}</>}
-                </small><small className="reader-annotation-page">{t("reader.annotations.page", { page: pages[item.id]?.label || "—" })}</small></div>
+                {item.color !== "none" && <span className="reader-annotation-color-indicator" aria-hidden="true" />}
+                <div className="reader-annotation-card-heading" title={item.chapter}>
+                  <FiMapPin aria-hidden="true" />
+                  <small>{t("reader.section", { number: annotationSection(item.cfi) })} · <span className="reader-annotation-page">{t("reader.annotations.page", { page: pages[item.id]?.label || "—" })}</span></small>
+                </div>
                 <button
                   className="reader-annotation-passage"
                   onClick={() => onNavigate(item.cfi)}
@@ -198,18 +211,20 @@ export function ReaderAnnotations({
                 {item.note && <p dir="auto">{previewText(item.note)}</p>}
                 <div className="reader-annotation-actions">
                   <button
-                    className="reader-button"
+                    className="reader-icon-button"
+                    aria-label={t("reader.annotations.edit")} title={t("reader.annotations.edit")}
                     disabled={a.busy}
                     onClick={() => a.setDraft(item)}
                   >
-                    {t("reader.annotations.edit")}
+                    <FiEdit3 aria-hidden="true" />
                   </button>
                   <button
-                    className="reader-button"
+                    className="reader-icon-button reader-annotation-remove"
+                    aria-label={t("reader.annotations.remove")} title={t("reader.annotations.remove")}
                     disabled={a.busy}
                     onClick={() => void a.remove(item.id)}
                   >
-                    {t("reader.annotations.remove")}
+                    <FiTrash2 aria-hidden="true" />
                   </button>
                 </div>
               </li>

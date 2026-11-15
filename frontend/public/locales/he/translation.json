@@ -537,7 +537,7 @@
     },
     "annotations": {
       "openAnnotation": "פתיחת ההערה",
-      "filteredByAnnotation": "מסונן לפי הערה",
+      "filteredByAnnotation": "מוצגת ההערה שנבחרה",
       "clearFilter": "ניקוי הסינון",
       "search": "חיפוש בהערות",
       "searchPlaceholder": "חיפוש בטקסט המסומן או בהערה",

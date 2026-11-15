@@ -1983,7 +1983,28 @@
   .color-pink { --annotation-fill: #f5a4cc; }
   .reader-annotation-color { background: var(--annotation-fill); }
 }
-.reader-annotation-card { border-inline-start: 4px solid var(--annotation-fill); padding: 12px; margin-bottom: 16px; }
+.reader-annotation-card {
+  position: relative;
+  border: 1px solid #c9aa8052;
+  border-radius: 14px;
+  padding: 14px 14px 10px;
+  padding-inline-start: 28px;
+  margin-bottom: 10px;
+  background: color-mix(in srgb, var(--reader-surface, #f3e8d5) 60%, #fffefa);
+}
+.reader-annotation-color-indicator { position: absolute; inset-inline-start: 13px; top: 16px; width: 3px; height: 42px; border-radius: 3px; background: var(--annotation-fill); }
+.reader-annotation-card .reader-annotation-passage { padding: 0; margin-top: 10px; }
+.reader-annotation-card .reader-annotation-passage blockquote { margin: 0; font: 18px/1.5 Georgia, serif; }
+.reader-annotation-card .reader-annotation-passage::after { content: ''; position: absolute; inset: 0; border-radius: 14px; cursor: pointer; }
+.reader-annotation-card .reader-annotation-passage:focus-visible { outline: none; }
+.reader-annotation-card .reader-annotation-passage:focus-visible::after { outline: 2px solid #a88758; outline-offset: 2px; }
+.reader-annotation-card > p { margin: 10px 0 0; font: 13px/1.5 Arial, sans-serif; opacity: .8; }
+.reader-annotation-card .reader-annotation-actions { position: relative; z-index: 1; width: fit-content; margin-inline-start: auto; margin-top: 6px; gap: 2px; }
+.reader-annotation-card .reader-icon-button { width: 44px; height: 44px; font-size: 17px; border: 0; background: transparent; cursor: pointer; }
+.reader-annotation-card .reader-icon-button:hover:not(:disabled) { background: #a3896120; }
+.reader-annotation-card .reader-annotation-remove { color: #9b513e; }
+.reader-theme-dark .reader-annotation-card { background: #2b2d28; }
+.reader-theme-dark .reader-annotation-card .reader-annotation-remove { color: #e1a08a; }
 .reader-annotation-passage { text-align: start; color: inherit; background: transparent; border: 0; width: 100%; cursor: pointer; }
 .reader-annotation-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
 
@@ -1997,7 +2018,7 @@
 
 .reader-saved-annotation[data-color="none"] rect { fill: none !important; }
 .reader-annotations .reader-annotation-color.color-none { background: transparent; border: 1px solid currentColor; }
-.reader-annotation-card > .reader-annotation-actions .reader-button { padding: 5px 12px; min-height: 32px; font-size: 13px; }
+
 
 .reader-copy-toast {
   position: fixed;
@@ -2046,9 +2067,23 @@
 .reader-annotations fieldset { display: flex; flex-wrap: wrap; gap: 6px; }
 .reader-annotations .reader-annotation-color { margin: 0; }
 
-.reader-annotation-card-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.reader-annotation-card-heading { display: flex; align-items: center; gap: 6px; color: inherit; opacity: .75; }
+.reader-annotation-card-heading > svg { width: 13px; height: 13px; flex-shrink: 0; }
+.reader-annotation-card-heading small { font: 600 12px/1.5 Arial, sans-serif; }
 .reader-annotation-page { white-space: nowrap; flex-shrink: 0; opacity: .8; }
-.reader-annotation-filters { margin-bottom: 20px; }
+.reader-annotation-filters { margin-bottom: 14px; }
+.reader-annotation-filter-chip {
+  display: flex; align-items: center; gap: 8px; width: fit-content; max-width: 100%;
+  margin-top: 10px; padding-inline-start: 12px; border: 1px solid #d8bd94; border-radius: 22px;
+  background: #ead7b8; color: #66513b; font: 600 13px/1.35 Arial, sans-serif;
+  > svg { width: 14px; height: 14px; flex-shrink: 0; }
+  > span { min-width: 0; padding-block: 6px; }
+  > .reader-icon-button { position: relative; width: 44px; height: 44px; border-radius: 22px; font-size: 15px; border: 0; background: transparent; color: inherit; cursor: pointer; }
+  > .reader-icon-button > svg { stroke-width: 2; transition: stroke-width 180ms ease; }
+  > .reader-icon-button:hover > svg { stroke-width: 3; }
+  > .reader-icon-button::before { content: ''; position: absolute; inset-inline-start: 0; top: 12px; bottom: 12px; width: 1px; background: #bca17b; }
+}
+.reader-theme-dark .reader-annotation-filter-chip { background: #40392e; color: #eadcc5; border-color: #7b694d; }
 .reader-annotation-filters > input { width: 100%; margin: 6px 0 14px; padding: 8px 10px; border: 1px solid #b7a58a; border-radius: 8px; background: transparent; color: inherit; }
 .reader-annotation-filters fieldset { display: block; border: 0; padding: 0; min-width: 0; }
 .reader-annotation-range-labels { display: flex; justify-content: space-between; font-size: 12px; margin-top: 6px; }
