@@ -56,7 +56,7 @@ for (const platform of ['Win32', 'MacIntel']) test(`${platform}: Sentence panel 
     assert.equal(await page.evaluate(() => document.activeElement.id), 'outside');
     await page.evaluate(() => {
       const form = document.createElement('form');
-      form.innerHTML = '<input id="single"><button type="submit">Submit</button><input id="range" type="range" value="50">';
+      form.innerHTML = '<input id="single"><textarea id="multi"></textarea><button type="submit">Submit</button><input id="range" type="range" value="50">';
       form.onsubmit = event => { event.preventDefault(); window.submits = (window.submits || 0) + 1; };
       document.querySelector('#panel').append(form);
     });
@@ -67,9 +67,17 @@ for (const platform of ['Win32', 'MacIntel']) test(`${platform}: Sentence panel 
     assert.equal(await page.evaluate(() => window.submits || 0), 0);
     await page.$eval('form button', el => { el.disabled = false; });
     await page.keyboard.press('Enter');
-    assert.equal(await page.evaluate(() => window.submits || 0), 0);
-    await page.keyboard.press(`${modifier}+Enter`);
-    assert.equal(await page.evaluate(() => window.submits), 1);
+    assert.equal(await page.evaluate(() => window.submits || 0), 1);
+    await page.keyboard.press(modifier + '+Enter');
+    assert.equal(await page.evaluate(() => window.submits), 2);
+    await page.focus('#multi');
+    await page.keyboard.type('First line');
+    await page.keyboard.press('Shift+Enter');
+    await page.keyboard.type('Second line');
+    assert.equal(await page.inputValue('#multi'), ['First line', 'Second line'].join(String.fromCharCode(10)));
+    assert.equal(await page.evaluate(() => window.submits), 2);
+    await page.keyboard.press('Enter');
+    assert.equal(await page.evaluate(() => window.submits), 3);
     await page.focus('#range');
     await page.keyboard.press('ArrowRight');
     assert.equal(await page.$eval('#range', el => el.value), '51');

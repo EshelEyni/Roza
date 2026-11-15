@@ -634,11 +634,12 @@ test(
       await key('ArrowDown');
       await page.waitForFunction(cfi => window.navigationTest.reader.location.start.cfi !== cfi, beforeVerticalPage);
       const nextPageLines = await lineGeometry();
-      assert.equal(await mark(), closest(nextPageLines[0], x), 'Down preserves alignment across pages');
+      assert.equal(await mark(), nextPageLines[0].words[0].text, 'Down enters the next page at its first word');
       await key('ArrowUp');
       await page.waitForFunction(cfi => window.navigationTest.reader.location.start.cfi === cfi, beforeVerticalPage);
-      assert.equal(await mark(), closest(geometry.at(-1), x), 'Up preserves alignment across pages');
-      for (let i = geometry.length - 2; i >= lineIndex; i--) await key('ArrowUp');
+      assert.equal(await mark(), geometry.at(-1).words.at(-1).text, 'Up enters the previous page at its last word');
+      await key('Escape'); await focus(); await key('ArrowRight');
+      for (let i = 0; i < 4; i++) await key('ArrowRight');
       await key('Shift+ArrowRight');
       assert.match(await mark(), /chapter0word2 chapter0word3/, 'Shift+Right extends selection');
       await key('Shift+ArrowLeft');

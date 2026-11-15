@@ -322,7 +322,7 @@ export function ReaderChat({
                 if (
                   event.key === "Enter" &&
                   !event.shiftKey &&
-                  !event.currentTarget.closest(".reader-sentence-keyboard-panel") &&
+                  !event.defaultPrevented &&
                   !event.nativeEvent.isComposing
                 ) {
                   event.preventDefault();

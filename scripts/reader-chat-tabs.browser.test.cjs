@@ -110,7 +110,7 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
    await page.getByRole('button',{name:label.all,exact:true}).click();await page.getByRole('textbox',{name:label.search,exact:true}).fill('no matching text');assert.equal(await page.locator('.reader-chat-history-item:visible').count(),0);
    await page.keyboard.press('Escape');assert.equal(await dialog.count(),0);assert.equal(await page.getByRole('button',{name:label.all,exact:true}).evaluate(n=>n===document.activeElement),true, await page.evaluate(()=>document.activeElement.outerHTML));
    // The hook outlives the visible chat: closing the panel while replying keeps the result.
-   await textarea.fill('Background question');await page.getByRole('button',{name:label.send,exact:true}).click();await until(()=>requests.length===3);
+   await textarea.fill('Background question');await textarea.press('Shift+Enter');assert.ok((await textarea.inputValue()).endsWith(String.fromCharCode(10)));await textarea.press('Enter');await until(()=>requests.length===3);
    const pingsBefore = await page.evaluate(() => window.pings);
    await page.getByRole('button',{name:'Toggle chat',exact:true}).click();requests[2].finish();await page.waitForFunction(()=>Object.values(window.tabTest.snapshot().tabs).every(tab=>!tab.sending));
    const notification = page.locator('.reader-chat-ready-toast');

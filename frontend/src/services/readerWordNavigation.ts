@@ -222,10 +222,11 @@ export function createReaderWordNavigation(
     return {words, lines};
   };
   const highlight = async (word: Word, direction: Direction) => {
-    if (lineEntry && targetX !== null) {
-      const {words, lines} = geometry();
-      const line = direction === "next" ? lines[0] : lines.at(-1);
-      if (line) word = words[closestSentenceWord(line, targetX)];
+    if (lineEntry) {
+      const words = visibleWords();
+      word = (direction === "next" ? words[0] : words.at(-1)) || word;
+      targetX = null;
+      lineEntry = false;
     }
     const selectionAnchor = extending ? anchor || active || word : undefined;
     // Plain arrows always focus one word; Shift explicitly extends the selection.

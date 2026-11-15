@@ -1,3 +1,4 @@
+import { submitReaderPanelInput } from "../../hooks/reader/useSentencePanelKeyboard";
 import {
   CSSProperties,
   PointerEvent,
@@ -237,6 +238,9 @@ export function ReaderSheet({
               keyboard > 100 ? "0px" : "env(safe-area-inset-bottom)",
           } as CSSProperties
         }
+        onKeyDownCapture={event => {
+          if (submitReaderPanelInput(event.nativeEvent)) { event.preventDefault(); event.stopPropagation(); }
+        }}
         onFocusCapture={event => {
           lastFocused.current = event.target as HTMLElement;
           if (

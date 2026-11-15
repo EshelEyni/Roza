@@ -3,6 +3,24 @@ import { useEffect, useRef } from "react";
 const panels = ".reader-sheet, .reader-dictionary";
 const controls = 'button, input, textarea, select, a[href], summary, [tabindex], [contenteditable="true"]';
 
+/** Share editor submission behavior between Page Mode and Sentence Mode panels. */
+export function submitReaderPanelInput(event: KeyboardEvent) {
+  if (event.defaultPrevented || event.key !== "Enter" || event.isComposing || event.keyCode === 229 || event.altKey) return false;
+  const editor = event.target instanceof Element ? event.target.closest('textarea, input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=button]):not([type=submit]):not([type=color])') : null;
+  if (!editor) return false;
+  if (event.shiftKey) {
+    if (editor.matches('textarea')) return false;
+    event.preventDefault(); event.stopPropagation(); return true;
+  }
+  const form = editor.closest('form');
+  if (!form) return false;
+  const submit = form.querySelector<HTMLButtonElement | HTMLInputElement>('button[type="submit"], input[type="submit"], button:not([type])');
+  if (!submit) return false;
+  event.preventDefault(); event.stopPropagation();
+  if (!event.repeat && !submit.matches(':disabled') && submit.getAttribute('aria-disabled') !== 'true') form.requestSubmit(submit);
+  return true;
+}
+
 /** DOM order follows the panels' reading order; Tab remains entirely native. */
 export function installSentencePanelKeyboard(panel: HTMLElement) {
   // No shared platform utility exists in the reader. Safari exposes navigator.platform.
@@ -24,6 +42,7 @@ export function installSentencePanelKeyboard(panel: HTMLElement) {
     if (element.matches('button, a[href], summary, [role="option"]') && !element.matches('[role="combobox"]')) selected = element;
   };
   const onKey = (event: KeyboardEvent) => {
+    if (submitReaderPanelInput(event)) return;
     if (event.defaultPrevented || event.isComposing || event.altKey || event.shiftKey) return;
     const target = event.target as HTMLElement;
     if (target.closest(panels) && target.closest(panels) !== panel) return;
@@ -45,12 +64,6 @@ export function installSentencePanelKeyboard(panel: HTMLElement) {
       event.preventDefault();
       event.stopImmediatePropagation();
       action.click();
-      return;
-    }
-    // Single-line editors must not implicitly submit a form on plain Enter.
-    if (editing && target.matches("input") && event.key === "Enter" && !modifier) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
       return;
     }
     if (!event.key.startsWith("Arrow")) return;
