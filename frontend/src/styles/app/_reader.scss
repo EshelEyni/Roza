@@ -2079,7 +2079,7 @@
   > svg { width: 14px; height: 14px; flex-shrink: 0; }
   > span { min-width: 0; padding-block: 6px; }
   > .reader-icon-button { position: relative; width: 44px; height: 44px; border-radius: 22px; font-size: 15px; border: 0; background: transparent; color: inherit; cursor: pointer; }
-  > .reader-icon-button:hover { background: #a3896120; }
+  > .reader-icon-button > svg { stroke-width: 2.5; }
   > .reader-icon-button::before { content: ''; position: absolute; inset-inline-start: 0; top: 12px; bottom: 12px; width: 1px; background: #bca17b; }
 }
 .reader-theme-dark .reader-annotation-filter-chip { background: #40392e; color: #eadcc5; border-color: #7b694d; }
