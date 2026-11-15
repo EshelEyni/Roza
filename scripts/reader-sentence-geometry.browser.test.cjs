@@ -245,6 +245,80 @@ test(
       const initial =
         geometry[0].words[Math.floor(geometry[0].words.length * 0.7)];
       const targetX = (initial.left + initial.right) / 2;
+      const selectedText = async () =>
+        page.evaluate(() => {
+          const native = window.getSelection();
+          if (!native?.rangeCount || native.isCollapsed) return "";
+          const fragment = native.getRangeAt(0).cloneContents();
+          fragment
+            .querySelectorAll(".reader-sentence-note")
+            .forEach((node) => node.remove());
+          return fragment.textContent.trim();
+        });
+      const phrase = async (first, last) =>
+        page.evaluate(
+          ({ first, last }) => {
+            const text = window.rsvpTest.reader.sentenceMode.sentence.text;
+            const words = [
+              ...text.matchAll(/[\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*/gu),
+            ];
+            return text
+              .slice(
+                words[first].index,
+                words[last].index + words[last][0].length,
+              )
+              .trim();
+          },
+          { first, last },
+        );
+      await click(initial.index);
+      await page.keyboard.press("Shift+ArrowDown");
+      const lower = closest(geometry[1], targetX);
+      assert.equal(
+        await selectedText(),
+        await phrase(initial.index, lower),
+        "Shift+Down selects to the closest word on the next visual line",
+      );
+      await page.keyboard.press("Shift+ArrowDown");
+      const lowerAgain = closest(geometry[2], targetX);
+      assert.equal(
+        await selectedText(),
+        await phrase(initial.index, lowerAgain),
+        "Held Shift preserves horizontal alignment across multiple lines",
+      );
+      await page.keyboard.press("ArrowUp");
+      assert.equal(
+        await active(),
+        lower,
+        "Unmodified vertical navigation resumes at the Shift selection endpoint without a horizontal reset",
+      );
+      const upperOrigin =
+        geometry[2].words[Math.floor(geometry[2].words.length / 2)];
+      const upperX = (upperOrigin.left + upperOrigin.right) / 2;
+      await click(upperOrigin.index);
+      await page.keyboard.press("Shift+ArrowUp");
+      const upper = closest(geometry[1], upperX);
+      assert.equal(
+        await selectedText(),
+        await phrase(upper, upperOrigin.index),
+        "Shift+Up selects backward by visual line",
+      );
+      await page.keyboard.press("Shift+ArrowUp");
+      assert.equal(
+        await selectedText(),
+        await phrase(closest(geometry[0], upperX), upperOrigin.index),
+      );
+      await page.keyboard.press("Shift+ArrowDown");
+      assert.equal(
+        await selectedText(),
+        await phrase(upper, upperOrigin.index),
+        "Reversing direction shrinks the selection while retaining its anchor",
+      );
+      assert.equal(
+        await page.locator(".reader-dictionary").count(),
+        0,
+        "Shift vertical selection never opens lookup",
+      );
       await click(initial.index);
       for (let line = 1; line < geometry.length; line++) {
         const handled = await page.evaluate(() => {
@@ -279,7 +353,7 @@ test(
       const edge = geometry[geometry.length - 1].words[0];
 
       await click(edge.index);
-      await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Shift+ArrowDown");
       await page.waitForFunction(
         () =>
           window.rsvpTest.reader.sentenceMode.number === 2 &&
@@ -454,6 +528,7 @@ test(
       await input.first().focus();
       await input.first().fill("Typing is protected");
       await page.keyboard.press("ArrowDown");
+      await page.keyboard.press("Shift+ArrowDown");
       await page.keyboard.press("ArrowLeft");
       await page.keyboard.press("Control+ArrowRight");
       assert.equal(

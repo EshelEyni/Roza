@@ -313,7 +313,11 @@ export function ReaderSentenceMode({
     return () =>
       document.removeEventListener("selectionchange", captureSelection);
   });
-  const extendWords = (direction: number, count: number) => {
+  const extendWords = (
+    direction: number,
+    count: number,
+    targetWord?: number,
+  ) => {
     const element = sentenceText.current;
     if (!sentence || !element || !wordCount) return;
     const words = parts.flatMap((part, index) =>
@@ -350,7 +354,21 @@ export function ReaderSentenceMode({
         ? words.filter((word) => word.end > range!.focus)
         : words.filter((word) => word.start < range!.focus).reverse();
     const next = candidates[Math.min(count, candidates.length) - 1];
-    const focus = next ? (direction > 0 ? next.end : next.start) : range.focus;
+    const verticalWord =
+      targetWord === undefined ? undefined : words[targetWord];
+    const focus = verticalWord
+      ? verticalWord.end <= range.anchor
+        ? verticalWord.start
+        : verticalWord.start >= range.anchor
+          ? verticalWord.end
+          : direction > 0
+            ? verticalWord.end
+            : verticalWord.start
+      : next
+        ? direction > 0
+          ? next.end
+          : next.start
+        : range.focus;
     extendedSelection.current = { ...range, focus };
     const locate = (offset: number) => {
       const walker = document.createTreeWalker(element, 4);
@@ -582,7 +600,9 @@ export function ReaderSentenceMode({
         event.ctrlKey ||
         event.metaKey ||
         (event.shiftKey &&
-          !["ArrowRight", "ArrowLeft"].includes(event.key) &&
+          !["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(
+            event.key,
+          ) &&
           !actionKey) ||
         blocked ||
         target?.closest(
@@ -640,8 +660,11 @@ export function ReaderSentenceMode({
         let origin = wordNavigationOrigin(direction);
         if (origin < 0) {
           origin = direction > 0 ? 0 : wordCount - 1;
-          clearTextSelection();
-          setWordFocus({ cfi: sentence.cfi, index: origin });
+          if (event.shiftKey) extendWords(direction, 1);
+          else {
+            clearTextSelection();
+            setWordFocus({ cfi: sentence.cfi, index: origin });
+          }
           return;
         }
         const matching = lines.flatMap((line, index) =>
@@ -657,11 +680,12 @@ export function ReaderSentenceMode({
         verticalX.current = x;
         const next = lines[currentLine + direction];
         if (next) {
-          clearTextSelection();
-          setWordFocus({
-            cfi: sentence.cfi,
-            index: closestSentenceWord(next, x),
-          });
+          const index = closestSentenceWord(next, x);
+          if (event.shiftKey) extendWords(direction, 1, index);
+          else {
+            clearTextSelection();
+            setWordFocus({ cfi: sentence.cfi, index });
+          }
         } else if (direction > 0 ? mode.canNext : mode.canBack) {
           clearTextSelection();
           resetVertical();
