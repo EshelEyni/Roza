@@ -411,10 +411,17 @@ export function ReaderSentenceMode({
         : null,
     );
   };
-  const selection = (requireMarked = false): ReaderTextSelection | null => {
+  const selection = (requireMarked = false, preserveDismissed = false): ReaderTextSelection | null => {
     if (!sentence) return null;
+    const cursor = preserveDismissed && extendedSelection.current?.cfi === sentence.cfi
+      ? extendedSelection.current : null;
+    const retained = cursor && cursor.anchor !== cursor.focus
+      ? { start: Math.min(cursor.anchor, cursor.focus),
+          end: Math.max(cursor.anchor, cursor.focus),
+          text: sentence.text.slice(Math.min(cursor.anchor, cursor.focus), Math.max(cursor.anchor, cursor.focus)) }
+      : null;
     const chosen =
-      actionTarget ||
+      actionTarget || retained ||
       (!requireMarked
         ? { start: 0, end: sentence.text.length, text: sentence.text }
         : null);
@@ -971,7 +978,7 @@ export function ReaderSentenceMode({
               reader.annotations.loading
             }
             onClick={() => {
-              const current = selection();
+              const current = selection(false, true);
               if (current) reader.annotations.select(current, true);
             }}
           >

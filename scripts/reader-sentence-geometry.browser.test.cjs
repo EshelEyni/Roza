@@ -128,6 +128,12 @@ test(
           return;
         }
         if (req.url.includes("/annotations")) {
+          if (req.method === "DELETE") {
+            const id = req.url.split("/").at(-1);
+            const index = annotations.findIndex(item => item.id === id);
+            if (index >= 0) annotations.splice(index, 1);
+            res.end(JSON.stringify({ status: "success", data: null })); return;
+          }
           const input = body ? JSON.parse(body) : null;
           const previous = input && annotations.find(item => item.cfi === input.cfi && item.endCfi === input.endCfi);
           const item = input ? {...input, id: previous?.id || String(annotations.length + 1)} : null;
@@ -199,6 +205,47 @@ test(
               requestAnimationFrame(() => requestAnimationFrame(resolve)),
             ),
         );
+      await settle();
+      const selectPartialPhrase = async () => {
+        await page.evaluate(() => {
+          const words = document.querySelectorAll('[data-sentence-word]');
+          const range = document.createRange();
+          range.setStart(words[1].firstChild, 1);
+          range.setEnd(words[2].firstChild, 3);
+          const native = window.getSelection(); native.removeAllRanges(); native.addRange(range);
+          document.dispatchEvent(new Event('selectionchange'));
+        });
+        await page.waitForFunction(() => !document.querySelector('[data-shortcut="t"]').disabled);
+      };
+      await selectPartialPhrase();
+      await page.getByRole('button', {name:'Annotate', exact:true}).click();
+      assert.equal(await page.evaluate(() => window.rsvpTest.reader.annotations.draft.text), 'uiet rea');
+      assert.equal(await page.evaluate(async () => {
+        const r = window.rsvpTest.reader; return (await r.searchBook.getRange(r.annotations.draft.cfi)).toString();
+      }), 'uiet rea');
+      await page.getByRole('button', {name:'Green', exact:true}).click();
+      assert.equal(await page.locator('.reader-sentence-annotation[data-color="green"]').allTextContents().then(parts => parts.join('')), 'uiet rea', 'Draft highlights only the partial phrase');
+      await page.getByRole('button', {name:'Cancel', exact:true}).click();
+      await page.evaluate(() => window.rsvpTest.reader.closePanel());
+      await selectPartialPhrase();
+      await page.keyboard.press('t');
+      await page.getByRole('button', {name:'Pronounce English word', exact:true}).waitFor();
+      await page.keyboard.press('Escape');
+      await page.getByRole('button', {name:'Annotate', exact:true}).click();
+      assert.equal(await page.evaluate(() => window.rsvpTest.reader.annotations.draft.text), 'uiet rea', 'Translation dismissal preserves the annotation target');
+      await page.getByRole('button', {name:'Green', exact:true}).click();
+      await page.getByRole('button', {name:'Save', exact:true}).click();
+      await page.waitForFunction(() => !window.rsvpTest.reader.annotations.draft);
+      await page.evaluate(() => window.rsvpTest.reader.closePanel());
+      assert.equal(await page.locator('.reader-sentence-annotation[data-color="green"]').allTextContents().then(parts => parts.join('')), 'uiet rea', 'Saved highlight stays within the selected partial phrase');
+      assert.equal(await page.evaluate(async () => {
+        const r = window.rsvpTest.reader;
+        return (await r.searchBook.getRange(r.annotations.items.find(item => item.text === 'uiet rea').cfi)).toString();
+      }), 'uiet rea', 'Saved source CFI excludes the rest of the sentence');
+      await page.evaluate(() => {
+        const r = window.rsvpTest.reader;
+        return r.annotations.remove(r.annotations.items.find(item => item.text === 'uiet rea').id);
+      });
       await settle();
       const annotationInputs = await page.evaluate(async () => {
         const r = window.rsvpTest.reader;
