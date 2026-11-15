@@ -5,6 +5,8 @@ const controls = 'button, input, textarea, select, a[href], summary, [tabindex],
 
 /** DOM order follows the panels' reading order; Tab remains entirely native. */
 export function installSentencePanelKeyboard(panel: HTMLElement) {
+  // No shared platform utility exists in the reader. Safari exposes navigator.platform.
+  const mac = /Mac|iPhone|iPad|iPod/i.test(navigator.platform);
   panel.classList.add("reader-sentence-keyboard-panel");
   const available = () => Array.from(panel.querySelectorAll<HTMLElement>(controls))
     .filter(element => element.tabIndex >= 0 && !element.matches(':disabled') &&
@@ -19,34 +21,46 @@ export function installSentencePanelKeyboard(panel: HTMLElement) {
   const onFocus = (event: FocusEvent) => {
     const element = event.target as HTMLElement;
     focused = element;
-    if (element.matches('button, a[href], summary, [role="option"]')) selected = element;
+    if (element.matches('button, a[href], summary, [role="option"]') && !element.matches('[role="combobox"]')) selected = element;
   };
   const onKey = (event: KeyboardEvent) => {
-    if (event.defaultPrevented || event.isComposing || event.altKey || event.metaKey || event.shiftKey) return;
+    if (event.defaultPrevented || event.isComposing || event.altKey || event.shiftKey) return;
     const target = event.target as HTMLElement;
+    if (target.closest(panels) && target.closest(panels) !== panel) return;
+    const modifier = mac ? event.metaKey && !event.ctrlKey : event.ctrlKey && !event.metaKey;
+    if ((event.ctrlKey || event.metaKey) && !modifier) return;
     if (["Enter", " "].includes(event.key) && target.getAttribute("aria-disabled") === "true") {
       event.preventDefault();
       event.stopImmediatePropagation();
       return;
     }
-    const editing = target.matches('input:not([type=checkbox]):not([type=radio]), textarea, [contenteditable="true"], [role="textbox"]');
-    if (event.ctrlKey && event.key === "Enter") {
+    const editing = target.isContentEditable || !!target.closest('input:not([type=checkbox]):not([type=radio]):not([type=range]), textarea, [role="textbox"]');
+    if (modifier && event.key === "Enter" && editing) {
+      const items = available();
+      // Prefer this editor's form action over unrelated panel chrome (e.g. Close).
+      const form = target.closest("form");
+      const submit = (form || panel).querySelector<HTMLElement>('button[type="submit"], input[type="submit"]');
+      const action = submit || (selected && items.includes(selected) ? selected : null);
+      if (!action || !items.includes(action) || action.getAttribute("aria-disabled") === "true") return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      const items = available();
-      const action = selected && items.includes(selected) ? selected :
-        items.find(element => element.matches('button[type="submit"]'));
-      if (action?.getAttribute("aria-disabled") !== "true") action?.click();
+      action.click();
+      return;
+    }
+    // Single-line editors must not implicitly submit a form on plain Enter.
+    if (editing && target.matches("input") && event.key === "Enter" && !modifier) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
       return;
     }
     if (!event.key.startsWith("Arrow")) return;
-    if (!event.ctrlKey && (editing || target.closest('select, [role="combobox"], [role="listbox"], [role="slider"], [role="spinbutton"], [role="radio"], [role="tablist"]'))) return;
+    if (!modifier && (editing || target.closest('select, input[type="range"], input[type="radio"], [role="combobox"], [role="listbox"], [role="slider"], [role="spinbutton"], [role="radio"], [role="tablist"]'))) return;
     const items = available();
     if (!items.length) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     const direction = ["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : 1;
-    const index = items.indexOf(target);
+    const index = items.findIndex(element => element === target || element.contains(target));
     focus(items[(index + direction + items.length) % items.length]);
   };
   panel.addEventListener("keydown", onKey, true);
