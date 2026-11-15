@@ -67,7 +67,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     setError,
     setNotice,
   );
-  const flags = useReaderFlags(runtime, book.id, userId, engine.chapter);
+  const flags = useReaderFlags(runtime, book.id, userId);
   runtime.flagReady.current = flags.ready;
   selection.flagHandler.current = value => { if (!selection.busy) void flags.save(value); };
   const rsvp = useReaderRsvp(runtime, engine.loading || !!panel || !!selection.textSelection);
@@ -80,7 +80,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     setNotice,
   );
   const openAnnotations = useCallback(() => setPanel("annotations"), [setPanel]);
-  const annotations = useReaderAnnotations(runtime, book.id, userId, engine.chapter,
+  const annotations = useReaderAnnotations(runtime, book.id, userId,
     openAnnotations, selection.closeLookup, panel === "annotations");
   runtime.wordAction.current = (action, value) => {
     if (action === "n") annotations.select(value, true);

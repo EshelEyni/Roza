@@ -25,9 +25,9 @@ test('saved progress defaults across books and sessions on desktop and mobile', 
   const expectText=async text=>{await page.waitForFunction(({selector,text})=>document.querySelector(selector)?.textContent===text,{selector:mobile?'.reader-mobile-progress .reader-reading-remaining':'.reader-percent',text})};
   const waitSaved=()=>page.waitForFunction(()=>[...document.querySelectorAll('[role="status"]')].some(n=>n.textContent==='Saved for your account'));
   await page.goto(url);await waitSaved();await expectText('42%');
-  for(const [mode,text]of [['section','Section: 7 left'],['book','Book: 90 left'],['percentage','42%']]){
+  for(const [mode,text]of [['section','Chapter: 7 left'],['book','Book: 90 left'],['percentage','42%']]){
    await select().selectOption(mode);await waitSaved();await expectText(text);assert.equal(saved.defaultProgressDisplay,mode);
-   if(mobile)await page.locator('.reader-sheet-backdrop').click({position:{x:10,y:10}});else await page.locator('.reader-panel-close').click();const count=writes;await indicator().click();await expectText(mode==='percentage'?'Section: 7 left':mode==='section'?'Book: 90 left':'42%');assert.equal(writes,count);assert.equal(saved.defaultProgressDisplay,mode);
+   if(mobile)await page.locator('.reader-sheet-backdrop').click({position:{x:10,y:10}});else await page.locator('.reader-panel-close').click();const count=writes;await indicator().click();await expectText(mode==='percentage'?'Chapter: 7 left':mode==='section'?'Book: 90 left':'42%');assert.equal(writes,count);assert.equal(saved.defaultProgressDisplay,mode);
    await page.getByRole('button',{name:'Switch book'}).click();await waitSaved();await expectText(text);
    await page.close();await context.clearCookies();page=await context.newPage();await page.goto(url);await page.evaluate(()=>localStorage.clear());await page.reload();await waitSaved();await expectText(text);assert.equal(await select().inputValue(),mode);
   }

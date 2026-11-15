@@ -46,7 +46,7 @@ export function ReaderFooter({
   const indicator = remainingMode === 0
     ? Math.round(state.progress * 100) + "%"
     : remainingMode === 1
-      ? (remainingSectionPages == null ? t("reader.countingPages") : t("reader.sectionPagesRemaining", { count: remainingSectionPages }))
+      ? (remainingSectionPages == null ? t(remainingBookPages == null ? "reader.countingPages" : "reader.noChapter") : t("reader.sectionPagesRemaining", { count: remainingSectionPages }))
       : (remainingBookPages == null ? t("reader.countingPages") : t("reader.bookPagesRemaining", { count: remainingBookPages }));
   const toggleRemaining = () => setRemainingMode(mode => (mode + 1) % 3);
   return (

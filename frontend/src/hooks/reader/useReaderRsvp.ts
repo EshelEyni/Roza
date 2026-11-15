@@ -1,3 +1,4 @@
+import { loadReaderChapterItems, readerChapterAt, readerChapters, readerChapterTitle } from "../../services/readerChapters";
 import { useTranslation } from "react-i18next";
 import { EpubCFI } from "epubjs";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,7 +19,6 @@ export function useReaderRsvp(runtime: EpubRuntime, unavailable: boolean) {
   const [error, setError] = useState("");
   const [words, setWords] = useState<RsvpWord[]>([]);
   const [index, setIndex] = useState(0);
-  const [chapterTitle, setChapterTitle] = useState("");
   const [sectionIndex, setSectionIndex] = useState(0);
   const [boundary, setBoundary] = useState(false);
   const [wpm, setWpm] = useState(() => {
@@ -42,17 +42,12 @@ export function useReaderRsvp(runtime: EpubRuntime, unavailable: boolean) {
     try {
       const book = runtime.epubRef.current;
       if (!book) throw new Error("Book is not ready");
-      const section = book.spine.get(target);
-      if (!section) {
-        setBoundary(true);
-        return;
-      }
-      await section.load(book.load.bind(book));
+      const loaded = await loadReaderChapterItems(book, target, extractRsvpWords);
       if (request !== version.current) return;
-      const next = extractRsvpWords(section);
+      if (!loaded) { setBoundary(true); return; }
+      const next = loaded.items;
       setWords(next);
-      setSectionIndex(section.index);
-      setChapterTitle(book.navigation.get(section.href)?.label?.trim() || section.document.querySelector("title")?.textContent?.trim() || section.document.querySelector("h1,h2")?.textContent?.trim() || "");
+      setSectionIndex(loaded.section);
       setIndex(from && next.length ? rsvpStart(next, from) : 0);
       setBoundary(false);
     } catch {
@@ -140,6 +135,15 @@ export function useReaderRsvp(runtime: EpubRuntime, unavailable: boolean) {
   }
   function adjacent(direction: number) {
     const book = runtime.epubRef.current;
+    if (book && word) {
+      const chapters = readerChapters(book);
+      if (!chapters.length) return null;
+      if (chapters.length) {
+        const chapter = readerChapterAt(chapters, word.cfi);
+        const index = chapter ? chapters.indexOf(chapter) : -1;
+        return chapters[index + direction]?.cfi ?? null;
+      }
+    }
     let next = sectionIndex + direction;
     let section = book?.spine.get(next);
     while (section && section.linear === false) {
@@ -159,7 +163,7 @@ export function useReaderRsvp(runtime: EpubRuntime, unavailable: boolean) {
     wordNumber: words.length ? index + 1 : 0,
     wordCount: words.length,
     toggle,
-    chapterTitle,
+    chapterTitle: readerChapterTitle(runtime.epubRef.current, word?.cfi || ""),
     canPreviousChapter: adjacent(-1) !== null,
     canNextChapter: adjacent(1) !== null,
     play: () => {

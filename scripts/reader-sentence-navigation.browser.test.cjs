@@ -16,13 +16,14 @@ async function epub() {
   );
   zip.file(
     "book.opf",
-    '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">sentence-navigation</dc:identifier><dc:title>Sentence navigation</dc:title><dc:language>en</dc:language></metadata><manifest><item id="a" href="a.xhtml" media-type="application/xhtml+xml"/><item id="b" href="b.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="a"/><itemref idref="b"/></spine></package>',
+    '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">sentence-navigation</dc:identifier><dc:title>Sentence navigation</dc:title><dc:language>en</dc:language></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="a" href="a.xhtml" media-type="application/xhtml+xml"/><item id="b" href="b.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="a"/><itemref idref="b"/></spine></package>',
   );
   for (let chapter = 0; chapter < 2; chapter++)
     zip.file(
       chapter ? "b.xhtml" : "a.xhtml",
       `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter ${chapter + 1}</title></head><body>${Array.from({ length: 44 }, (_, index) => `<p id="s${index}">Sentence ${chapter + 1} number ${index + 1} describes a careful reader walking beside the river while remembering the distant mountains and every conversation shared during a long and peaceful afternoon.</p>`).join("")}</body></html>`,
     );
+  zip.file("nav.xhtml", '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="a.xhtml#s0">Part One</a><ol><li><a href="a.xhtml#s22">Part Two</a></li><li><a href="b.xhtml#s22">Part Three</a></li></ol></li></ol></nav></body></html>');
   return zip.generateAsync({ type: "nodebuffer" });
 }
 
@@ -196,6 +197,38 @@ test(
             assert.equal(await page.evaluate(() => window.sentenceNavigationTest.reader.searchBook.spine.get(window.sentenceNavigationTest.reader.state.location).index), 0);
             await page.evaluate(() => window.sentenceNavigationTest.reader.pageNavigation.go('1', 'screen'));
             await page.waitForFunction(() => window.sentenceNavigationTest.reader.pageLabel.startsWith('Page 1 '));
+            // Contents chapters can share a file and span later files.
+            let remainingBeforeSplit;
+            for (const [section, sentence, title] of [[0, 10, 'Part One'], [0, 30, 'Part Two'], [1, 10, 'Part Two'], [1, 30, 'Part Three']]) {
+              await page.evaluate(async ({ section, sentence }) => {
+                const fixture = window.sentenceNavigationTest;
+                await fixture.reader.returnTo(await fixture.sourceCfi(section, sentence));
+              }, { section, sentence });
+              await page.waitForFunction(title => window.sentenceNavigationTest.reader.chapter === title, title);
+              await page.waitForFunction(() => window.sentenceNavigationTest.reader.remainingSectionPages !== null);
+              const remaining = await page.evaluate(() => window.sentenceNavigationTest.reader.remainingSectionPages);
+              if (section === 0 && sentence === 30) remainingBeforeSplit = remaining;
+              if (section === 1 && sentence === 10) assert.ok(remaining < remainingBeforeSplit, 'Remaining chapter pages must not reset at a spine-file boundary');
+            }
+            await page.evaluate(async () => {
+              const fixture = window.sentenceNavigationTest;
+              return fixture.reader.sentenceMode.toggle(await fixture.sourceCfi(0, 30));
+            });
+            await page.waitForFunction(() => window.sentenceNavigationTest.reader.sentenceMode.active && !window.sentenceNavigationTest.reader.sentenceMode.busy);
+            assert.equal(await page.evaluate(() => window.sentenceNavigationTest.reader.sentenceMode.chapterTitle), 'Part Two');
+            assert.equal(await page.evaluate(() => window.sentenceNavigationTest.reader.sentenceMode.count), 44);
+            await page.evaluate(() => window.sentenceNavigationTest.reader.sentenceMode.toggle());
+            await page.waitForFunction(() => !window.sentenceNavigationTest.reader.sentenceMode.active && !window.sentenceNavigationTest.reader.sentenceMode.busy);
+            await page.evaluate(async () => window.sentenceNavigationTest.reader.returnTo(await window.sentenceNavigationTest.sourceCfi(0, 0)));
+            const unnamed = await page.evaluate(async () => {
+              const { loadReaderChapterItems } = await import('/frontend/src/services/readerChapters.ts');
+              const { extractReaderSentences } = await import('/frontend/src/services/readerSentences.ts');
+              const book = window.sentenceNavigationTest.reader.searchBook;
+              const noContents = { spine: book.spine, navigation: { toc: [] }, loaded: { navigation: Promise.resolve() }, load: book.load.bind(book) };
+              const result = await loadReaderChapterItems(noContents, 0, extractReaderSentences);
+              return { chapters: result.chapters.length, chapter: result.chapter, count: result.items.length };
+            });
+            assert.deepEqual(unnamed, { chapters: 0, chapter: null, count: 88 }, 'Books without Contents must not invent spine-file chapters');
             const settle = () =>
               page.evaluate(
                 () =>

@@ -168,7 +168,7 @@
   "reader": {
     "defaultProgressDisplay": "Default Reading Progress Display",
     "progressPercentage": "Percentage completed",
-    "progressSection": "Pages remaining in current section",
+    "progressSection": "Pages remaining in current chapter",
     "progressBook": "Pages remaining in book",
     "review": {
       "savedVocabulary": "Saved vocabulary",
@@ -255,11 +255,11 @@
       "loadError": "Unable to load this chapter. Return to normal reading and try again.",
       "returnError": "Unable to return to the current word. Please try again."
     },
-    "sectionPagesRemaining_one": "Section: {{count}} left",
-    "sectionPagesRemaining_other": "Section: {{count}} left",
+    "sectionPagesRemaining_one": "Chapter: {{count}} left",
+    "sectionPagesRemaining_other": "Chapter: {{count}} left",
     "bookPagesRemaining_one": "Book: {{count}} left",
     "bookPagesRemaining_other": "Book: {{count}} left",
-    "toggleRemainingPages": "Switch between percentage, pages left in section, and pages left in book",
+    "toggleRemainingPages": "Switch between percentage, pages left in chapter, and pages left in book",
     "destinationPage": "Page {{page}}",
     "destinationLoading": "Finding page…",
     "goBackTo": "Go back to",
@@ -381,6 +381,7 @@
     "screenPages": "Screen-sized pages",
     "publisherPages": "Publisher page numbers",
     "pageNumberingHint": "Screen pages adapt to your text size and screen. Publisher pages use the fixed numbers included in this EPUB.",
+    "noChapter": "No chapter information",
     "countingPages": "Counting pages…",
     "resizePanel": "Expand or collapse panel; drag to resize",
     "preparingNavigation": "Preparing book navigation…",

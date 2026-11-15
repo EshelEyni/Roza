@@ -18,13 +18,13 @@ export function ReaderContents({
           <li key={item.id || item.href + index}>
             <button
               className={
-                currentHref.split("#")[0] === item.href.split("#")[0]
+                currentHref === item.href
                   ? "is-active"
                   : ""
               }
               onClick={() => onNavigate(item.href)}
             >
-              {item.label.trim() || t("reader.section", { number: index + 1 })}
+              {item.label.trim()}
             </button>
             {!!item.subitems?.length && renderItems(item.subitems)}
           </li>

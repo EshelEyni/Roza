@@ -1,3 +1,4 @@
+import { readerChapterTitle } from "../../services/readerChapters";
 import { useTranslation } from "react-i18next";
 import { useEffect, useRef, useState } from "react";
 import api from "../../services/readerApiService";
@@ -8,7 +9,6 @@ export function useReaderFlags(
   runtime: EpubRuntime,
   bookId: string,
   userId: string,
-  chapter: string,
 ) {
   const { t } = useTranslation();
   const [items, setItems] = useState<ReaderFlag[]>([]);
@@ -62,7 +62,6 @@ export function useReaderFlags(
       } else if (existing) setMessage(t("reader.review.duplicate"));
       else {
         const book = runtime.epubRef.current;
-        const section = book?.spine.get(s.cfi);
         let context = contextText || s.text;
         if (!contextText) {
           try {
@@ -81,9 +80,7 @@ export function useReaderFlags(
             cfi: s.cfi,
             endCfi: s.endCfi || "",
             text: s.text,
-            chapter: section
-              ? book?.navigation.get(section.href)?.label || chapter
-              : chapter,
+            chapter: readerChapterTitle(book, s.cfi),
             context: context.slice(0, 100000),
           },
         );
@@ -96,5 +93,5 @@ export function useReaderFlags(
       pending.current.delete(key);
     }
   }
-  return { save, has, ready, message, items, sync: setItems };
+  return { save, has, ready, message, items: items.map(item => ({ ...item, chapter: readerChapterTitle(runtime.epubRef.current, item.cfi) })), sync: setItems };
 }

@@ -1,3 +1,4 @@
+import { readerChapterTitle } from "../../services/readerChapters";
 import { useEffect, useRef, useState } from "react";
 import { EpubCFI, type Contents } from "epubjs";
 import type {
@@ -13,7 +14,6 @@ export function useReaderAnnotations(
   runtime: EpubRuntime,
   bookId: string,
   userId: string,
-  chapter: string,
   openPanel: () => void,
   closeLookup: () => void,
   previewing = false,
@@ -144,10 +144,7 @@ export function useReaderAnnotations(
       return;
     }
     const book = runtime.epubRef.current;
-    const section = book?.spine.get(selection.cfi);
-    const title = section
-      ? book?.navigation.get(section.href)?.label || chapter || section.href
-      : chapter;
+    const title = readerChapterTitle(book, selection.cfi);
     const next = existing || {
       cfi: selection.cfi,
       endCfi: selection.endCfi || "",
@@ -221,10 +218,10 @@ export function useReaderAnnotations(
     }
   });
   return {
-    items: ordered,
+    items: ordered.map(item => ({ ...item, chapter: readerChapterTitle(runtime.epubRef.current, item.cfi) })),
     filterId,
     setFilterId,
-    draft,
+    draft: draft ? { ...draft, chapter: readerChapterTitle(runtime.epubRef.current, draft.cfi) } : null,
     setDraft,
     error,
     loading,

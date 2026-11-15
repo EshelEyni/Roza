@@ -1,4 +1,5 @@
-import type { Book, NavItem } from "epubjs";
+import { loadReaderChapters, readerChapterTitle } from "./readerChapters";
+import type { Book } from "epubjs";
 import type Section from "epubjs/types/section";
 import type {
   ReaderSearchResult,
@@ -80,16 +81,6 @@ function findPoint(spans: TextSpan[], offset: number, isEnd: boolean) {
   };
 }
 
-function getSectionTitle(items: NavItem[], href: string): string {
-  for (const item of items) {
-    if (item.href.split("#")[0] === href.split("#")[0])
-      return item.label.trim();
-    const nested = getSectionTitle(item.subitems || [], href);
-    if (nested) return nested;
-  }
-  return "";
-}
-
 async function loadSection(book: Book, section: Section, signal: AbortSignal) {
   checkCancelled(signal);
   // Independent documents avoid section.load/unload races with rendering and location generation.
@@ -107,11 +98,12 @@ async function createSession(
   const normalized = query.trim().replace(/\s+/g, " ");
   if (!normalized || normalized.length > 200)
     throw new Error("Invalid search query");
+  await loadReaderChapters(book);
   const sections: ReaderSearchSection[] = [];
   book.spine.each((section: Section) => {
     sections.push({
       section,
-      title: getSectionTitle(book.navigation.toc, section.href),
+      title: "",
       count: 0,
       nextMatch: 0,
       nextOffset: 0,
@@ -179,7 +171,7 @@ async function getResults(
         );
         results.push({
           cfi: entry.section.cfiFromRange(range),
-          sectionTitle: entry.title,
+          sectionTitle: readerChapterTitle(book, entry.section.cfiFromRange(range)),
           before:
             (excerptStart ? "…" : "") +
             content.text.slice(excerptStart, match.index).replace(/\s+/g, " "),

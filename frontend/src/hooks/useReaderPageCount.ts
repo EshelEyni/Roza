@@ -1,3 +1,4 @@
+import { loadReaderChapters, readerChapterAt } from "../services/readerChapters";
 import { RefObject, useCallback, useEffect, useRef, useState } from "react";
 import ePub, { EpubCFI, Location, Rendition, type Contents } from "epubjs";
 import Section from "epubjs/types/section";
@@ -8,7 +9,7 @@ import {
   PublisherPage,
 } from "../services/readerPublisherPages";
 
-type PageCount = { page: number; total: number; sectionRemaining?: number };
+type PageCount = { page: number; total: number; sectionRemaining?: number | null };
 
 /** Measure actual screen pages in a separate rendition, never seek the visible reader. */
 export function useReaderPageCount(
@@ -80,6 +81,7 @@ export function useReaderPageCount(
     let pageTask: Promise<void> = Promise.resolve();
     const offsets = new Map<number, { offset: number; pages: number }>();
     let total = 0;
+    let chapterEndPage: ((cfi: string, page: number) => number | null) | null = null;
     const pageStarts: { cfi: string; page: number }[] = [];
     const container = document.createElement("div");
     container.className = "reader-page-measurement";
@@ -160,7 +162,7 @@ export function useReaderPageCount(
               section.offset + Math.min(section.pages, Math.max(1, page)),
             ),
             total,
-            sectionRemaining: Math.max(0, section.pages - Math.max(1, Math.min(section.pages, page))),
+            sectionRemaining: chapterEndPage?.(current.start.cfi, section.offset + Math.min(section.pages, Math.max(1, page))) ?? null,
           });
       } while (pending && !cancelled);
       running = false;
@@ -205,6 +207,21 @@ export function useReaderPageCount(
         if (cancelled) return;
         const compare = new EpubCFI().compare;
         pageStarts.sort((a, b) => compare(a.cfi, b.cfi));
+        const chapters = await loadReaderChapters(book);
+        if (cancelled) return;
+        const chapterEnds = new Map(chapters.map((chapter, index) => {
+          const next = chapters[index + 1];
+          let low = 0, high = pageStarts.length;
+          if (next) while (low < high) {
+            const mid = Math.floor((low + high) / 2);
+            if (compare(pageStarts[mid].cfi, next.cfi) < 0) low = mid + 1; else high = mid;
+          }
+          return [chapter, next ? (low ? pageStarts[low - 1].page : 1) : total] as const;
+        }));
+        chapterEndPage = (cfi, page) => {
+          const chapter = readerChapterAt(chapters, cfi);
+          return chapter ? Math.max(0, chapterEnds.get(chapter)! - page) : null;
+        };
         cachedPageLookup.current = cfi => {
           if (cancelled || !pageStarts.length) return null;
           const point = new EpubCFI(cfi); point.collapse(true);

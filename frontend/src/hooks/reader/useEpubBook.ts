@@ -1,3 +1,4 @@
+import { loadReaderChapters, readerChapterAt, readerChapters } from "../../services/readerChapters";
 import { createReaderSentenceChord } from "../../services/readerSentenceChord";
 import { useEffect, useState } from "react";
 import ePub, {
@@ -181,26 +182,13 @@ export function useEpubBook(
         epubRef.current = epub;
         setSearchBook(epub);
         setPaginationFile(buffer);
-        let count = 0;
-        const fallback: NavItem[] = [];
-        epub.spine.each(
-          (section: { idref: string; href: string; linear: boolean }) => {
-            if (section.linear !== false) {
-              count += 1;
-              fallback.push({
-                id: section.idref,
-                href: section.href,
-                label: t("reader.section", { number: count }),
-              });
-            }
-          },
-        );
         const navigation = await epub.loaded.navigation;
+        await loadReaderChapters(epub);
         if (cancelled) {
           epub.destroy();
           return;
         }
-        setToc(navigation.toc.length ? navigation.toc : fallback);
+        setToc(navigation.toc);
         const preferences = stateRef.current.preferences;
         const renderOptions: RenditionOptions & { gap: number } = {
           width: "100%",
@@ -257,13 +245,11 @@ export function useEpubBook(
           setLocation(location);
           const start = location.start;
           readingBoundary.current = location.end.cfi || start.cfi;
-          setHref(start.href);
+          const currentChapter = readerChapterAt(readerChapters(epub!), start.cfi);
+          setHref(currentChapter?.href || start.href);
           setAtStart(location.atStart);
           setAtEnd(location.atEnd);
-          const entry = epub?.navigation.get(start.href);
-          setChapter(
-            entry?.label || t("reader.section", { number: start.index + 1 }),
-          );
+          setChapter(currentChapter?.title || "");
           // Retain an exact RSVP anchor while its page remains visible.
           // A genuine page/chapter turn clears it and resumes normal tracking.
           let savedCfi = start.cfi;

@@ -1,16 +1,8 @@
-import { EpubCFI } from "epubjs";
 import { FiSearch, FiChevronDown, FiFilter, FiX, FiEdit3, FiTrash2, FiMapPin } from "react-icons/fi";
 import { useEffect, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { annotationColors } from "../../../../shared/types/readerAnnotations";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
-
-function annotationSection(cfi: string) {
-  try {
-    const index = new EpubCFI(cfi).spinePos;
-    return Number.isInteger(index) && index >= 0 ? index + 1 : "—";
-  } catch { return "—"; }
-}
 
 function previewText(text: string) {
   const normalized = text.trim().replace(/\s+/g, " ");
@@ -200,7 +192,7 @@ export function ReaderAnnotations({
                 {item.color !== "none" && <span className="reader-annotation-color-indicator" aria-hidden="true" />}
                 <div className="reader-annotation-card-heading" title={item.chapter}>
                   <FiMapPin aria-hidden="true" />
-                  <small>{t("reader.section", { number: annotationSection(item.cfi) })} · <span className="reader-annotation-page">{t("reader.annotations.page", { page: pages[item.id]?.label || "—" })}</span></small>
+                  <small>{item.chapter && <>{item.chapter} · </>}<span className="reader-annotation-page">{t("reader.annotations.page", { page: pages[item.id]?.label || "—" })}</span></small>
                 </div>
                 <button
                   className="reader-annotation-passage"

@@ -33,13 +33,14 @@ test(
     );
     zip.file(
       "book.opf",
-      '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">annotations</dc:identifier><dc:title>Annotations</dc:title><dc:language>en</dc:language></metadata><manifest><item id="c0" href="c0.xhtml" media-type="application/xhtml+xml"/><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c0"/><itemref idref="c1"/></spine></package>',
+      '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">annotations</dc:identifier><dc:title>Annotations</dc:title><dc:language>en</dc:language></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="c0" href="c0.xhtml" media-type="application/xhtml+xml"/><item id="c1" href="c1.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="c0"/><itemref idref="c1"/></spine></package>',
     );
     for (let i = 0; i < 2; i++)
       zip.file(
         `c${i}.xhtml`,
         `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter ${i}</title></head><body><p>${Array.from({ length: 500 }, (_, n) => `chapter${i}word${n}`).join(" ")}</p></body></html>`,
       );
+    zip.file("nav.xhtml", '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="c0.xhtml">Chapter One</a></li><li><a href="c1.xhtml">Chapter Two</a></li></ol></nav></body></html>');
     const file = await zip.generateAsync({ type: "nodebuffer" });
     const aliases = [
       "react",
@@ -301,7 +302,7 @@ test(
               const chipBox = await chip.boundingBox(), searchBox = await page.getByRole('searchbox', {name:'Search annotations'}).boundingBox();
               assert.ok(chipBox.y >= searchBox.y + searchBox.height, 'Chip appears below search');
               assert.ok((await chip.getByRole('button', {name:'Clear filter'}).boundingBox()).height >= 40, 'Chip X has an accessible touch target');
-              await page.waitForFunction(() => /Section 2 · Page \d+/.test(document.querySelector('.reader-annotation-card-heading')?.textContent || ''));
+              await page.waitForFunction(() => /Chapter Two · Page \d+/.test(document.querySelector('.reader-annotation-card-heading')?.textContent || ''));
               const iconButtons = page.locator('.reader-annotation-card .reader-annotation-actions button');
               assert.equal(await iconButtons.count(), 2);
               assert.ok((await iconButtons.first().boundingBox()).height >= 40);
@@ -397,7 +398,7 @@ test(
               assert.match(await progressIndicator.textContent(), /%$/);
               await progressIndicator.click();
               const remaining = await page.evaluate(()=>({section:window.annotationTest.reader.remainingSectionPages,book:window.annotationTest.reader.remainingBookPages}));
-              assert.equal(await progressIndicator.textContent(), 'Section: '+remaining.section+' left');
+              assert.equal(await progressIndicator.textContent(), 'Chapter: '+remaining.section+' left');
               await progressIndicator.click();
               assert.equal(await progressIndicator.textContent(), 'Book: '+remaining.book+' left');
               await progressIndicator.click();

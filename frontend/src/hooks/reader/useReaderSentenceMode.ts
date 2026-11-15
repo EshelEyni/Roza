@@ -1,8 +1,8 @@
+import { loadReaderChapterItems, readerChapterAt, readerChapters, readerChapterTitle } from "../../services/readerChapters";
 import { flushSync } from "react-dom";
 import type { Contents, Location } from "epubjs";
 import { useEffect, useRef, useState } from "react";
 import { EpubCFI } from "epubjs";
-import type Section from "epubjs/types/section";
 import type { EpubRuntime } from "./useEpubRuntime";
 import {
   extractReaderSentences,
@@ -10,7 +10,7 @@ import {
 } from "../../services/readerSentences";
 import { rsvpStart } from "../../services/readerRsvp";
 
-/** Loads one spine section at a time and shares the reader's exact focus anchor. */
+/** Loads Contents chapters and shares the reader's exact focus anchor. */
 export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: string) => Promise<void>) {
   const [active, setActive] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -18,7 +18,6 @@ export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: strin
   const [sentences, setSentences] = useState<ReaderSentence[]>([]);
   const [index, setIndex] = useState(0);
   const [sectionIndex, setSectionIndex] = useState(0);
-  const [chapterTitle, setChapterTitle] = useState("");
   const [edge, setEdge] = useState({ back: false, next: false });
   const version = useRef(0);
   const locked = useRef(false);
@@ -72,6 +71,15 @@ export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: strin
   );
   function adjacent(from: number, direction: number) {
     const book = runtime.epubRef.current;
+    if (book && sentence) {
+      const chapters = readerChapters(book);
+      if (!chapters.length) return null;
+      if (chapters.length) {
+        const chapter = readerChapterAt(chapters, sentence.cfi);
+        const index = chapter ? chapters.indexOf(chapter) : -1;
+        return chapters[index + direction]?.cfi ?? null;
+      }
+    }
     let next = from + direction;
     let section = book?.spine.get(next);
     while (section && section.linear === false) {
@@ -111,36 +119,21 @@ export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: strin
     try {
       const book = runtime.epubRef.current;
       if (!book) throw new Error("Book is not ready");
-      let section: Section | undefined = book.spine.get(target);
-      while (section) {
-        await section.load(book.load.bind(book));
+      let cursor: string | number | null = target;
+      while (cursor !== null) {
+        const loaded: Awaited<ReturnType<typeof loadReaderChapterItems<ReaderSentence>>> = await loadReaderChapterItems(book, cursor, extractReaderSentences);
         if (request !== version.current) return;
-        const next = extractReaderSentences(section);
+        if (!loaded) break;
+        const next = loaded.items;
         if (next.length) {
-          const position = from
-            ? rsvpStart(
-                next.map((item) => ({ ...item, paragraphEnd: false })),
-                from,
-              )
-            : direction < 0
-              ? next.length - 1
-              : 0;
-          setSentences(next);
-          setIndex(position);
-          setSectionIndex(section.index);
+          const position = from ? rsvpStart(next.map(item => ({ ...item, paragraphEnd: false })), from)
+            : direction < 0 ? next.length - 1 : 0;
+          setSentences(next); setIndex(position); setSectionIndex(loaded.section);
           setEdge({ back: false, next: false });
-          setChapterTitle(
-            book.navigation.get(section.href)?.label?.trim() ||
-              section.document
-                .querySelector("title,h1,h2")
-                ?.textContent?.trim() ||
-              "",
-          );
           persist(next[position]);
           return;
         }
-        const nextIndex = adjacent(section.index, direction);
-        section = nextIndex === null ? undefined : book.spine.get(nextIndex);
+        cursor = loaded.chapters.length ? loaded.chapters[loaded.chapterIndex + direction]?.cfi ?? null : adjacent(loaded.section, direction);
       }
       setEdge((current) => ({
         ...current,
@@ -229,7 +222,7 @@ export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: strin
     busy,
     error,
     sentence,
-    chapterTitle,
+    chapterTitle: readerChapterTitle(runtime.epubRef.current, sentence?.cfi || ""),
     toggle,
     entryCfi,
     move,

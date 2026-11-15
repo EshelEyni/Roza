@@ -169,7 +169,7 @@
   "reader": {
     "defaultProgressDisplay": "תצוגת התקדמות קריאה כברירת מחדל",
     "progressPercentage": "אחוז הקריאה שהושלם",
-    "progressSection": "עמודים שנותרו בחלק הנוכחי",
+    "progressSection": "עמודים שנותרו בפרק הנוכחי",
     "progressBook": "עמודים שנותרו בספר",
     "review": {
       "savedVocabulary": "אוצר מילים שמור",
@@ -385,6 +385,7 @@
     "screenPages": "עמודים לפי גודל המסך",
     "publisherPages": "מספרי עמודים של המוציא לאור",
     "pageNumberingHint": "עמודי המסך מותאמים לגודל הטקסט והמסך. עמודי הספר משתמשים במספרים הקבועים שנכללו בקובץ EPUB.",
+    "noChapter": "אין מידע על פרקים",
     "countingPages": "סופר עמודים…",
     "resizePanel": "הרחבה או צמצום החלונית; גרירה לשינוי הגובה",
     "preparingNavigation": "מכינים ניווט בספר…",
