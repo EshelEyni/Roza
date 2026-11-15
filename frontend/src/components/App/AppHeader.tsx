@@ -28,19 +28,19 @@ export const AppHeader: FC = () => {
       link: "/profile",
     },
     {
-      name: t("books"),
-      icon: <GiBookPile />,
-      link: "/books",
-    },
-    {
-      name: t("reviews"),
+      name: t("myReviewsNav"),
       icon: <GiNotebook />,
       link: "/reviews",
+    },
+    {
+      name: t("writingStudioNav"),
+      icon: <GiBookPile />,
+      link: "/books",
     },
   ];
 
   if (readerAccess?.enabled)
-    navLinks.push({
+    navLinks.splice(3, 0, {
       name: t("reader.nav"),
       icon: (
         <svg

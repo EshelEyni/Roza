@@ -17,6 +17,8 @@
   "home": "Home",
   "profile": "Profile",
   "books": "Books",
+  "writingStudioNav": "Writing Studio",
+  "myReviewsNav": "My Reviews",
   "ErrorMsg": {
     "msg": "An error occurred in the system. Please try again later."
   },
@@ -292,7 +294,7 @@
     "selectionPrevious": "Extend selection to the previous page",
     "selectionNext": "Extend selection to the next page",
     "selectionError": "Could not extend the selection. Please try again.",
-    "nav": "Reader",
+    "nav": "Reading Room",
     "eyebrow": "A little space to get lost in a book",
     "library": "Your reading room",
     "subtitle": "Your books. Your pace. Anywhere.",
