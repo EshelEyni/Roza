@@ -2285,3 +2285,8 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 }
 .reader-theme-dark .reader-sentence-annotation[data-note="true"] { text-decoration-color: #e5e4da; }
 .reader-sentence-word-active .reader-sentence-annotation { background-color: transparent; }
+
+.reader-sentence-keyboard-panel :focus-visible {
+  outline: 3px solid #a36b38;
+  outline-offset: 3px;
+}

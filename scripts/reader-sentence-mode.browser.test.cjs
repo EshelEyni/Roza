@@ -985,6 +985,7 @@ test(
               ),
               cfi,
             );
+            await page.waitForFunction(() => document.activeElement?.id === "reader-annotation-note");
             await page.locator("#reader-annotation-note").fill("tacnf");
             assert.equal(
               await page.evaluate(() => window.rsvpTest.reader.panel),
@@ -996,9 +997,12 @@ test(
               "tacnf",
             );
             await page.locator("#reader-annotation-note").fill("Sentence note");
-            await page
-              .locator(".reader-annotation-actions button[type=submit]")
-              .click();
+            await page.keyboard.press("Control+ArrowDown"); // Flag checkbox
+            await page.keyboard.press("Control+ArrowDown"); // Save
+            await page.keyboard.press("ArrowUp");
+            await page.keyboard.press("Control+ArrowUp"); // Back to the note
+            assert.equal(await page.evaluate(() => document.activeElement?.id), "reader-annotation-note");
+            await page.keyboard.press("Control+Enter"); // Activate the selected Save action
             await page.waitForFunction(
               () => !window.rsvpTest.reader.annotations.draft,
             );
@@ -1006,6 +1010,7 @@ test(
             assert.equal(annotations.at(-1).cfi, cfi);
             await page.keyboard.press("Escape");
             await page.waitForFunction(() => !window.rsvpTest.reader.panel);
+            await page.waitForFunction(() => document.activeElement?.getAttribute("aria-label") === "Annotate");
             assert.equal(
               await page.evaluate(
                 () => window.rsvpTest.reader.sentenceMode.active,

@@ -106,6 +106,9 @@ export function ReaderDictionary({
     };
     document.addEventListener("pointerdown", onOutside);
     const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (dialog.current?.classList.contains("reader-sentence-keyboard-panel") &&
+          !dialog.current.contains(event.target as Node)) return;
       if (event.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKey);
@@ -118,7 +121,7 @@ export function ReaderDictionary({
   }, [onClose, mobile, opened]);
 
   useEffect(() => {
-    if (opened && !mobile) dialog.current?.focus({ preventScroll: true });
+    if (opened && !mobile && !dialog.current?.classList.contains("reader-sentence-keyboard-panel")) dialog.current?.focus({ preventScroll: true });
   }, [opened, mobile]);
 
   useEffect(() => {

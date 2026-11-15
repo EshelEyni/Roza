@@ -100,6 +100,9 @@ export function ReaderSheet({
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return;
+      if (panel.current?.classList.contains("reader-sentence-keyboard-panel") &&
+          !panel.current.contains(event.target as Node)) return;
       if (event.key === "Escape") onClose();
       if (fullScreen && event.key === "Tab") {
         const controls = Array.from(

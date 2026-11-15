@@ -1,3 +1,4 @@
+import { useSentencePanelKeyboard } from "../../hooks/reader/useSentencePanelKeyboard";
 import { readerSentencePassageOffsets } from "../../services/readerSentencePassageOffsets";
 import {
   measureSentenceLines,
@@ -59,6 +60,7 @@ export function ReaderSentenceMode({
   bookId: string;
 }) {
   const { t } = useTranslation();
+  useSentencePanelKeyboard();
   const [flagging, setFlagging] = useState(false);
   const flagPending = useRef(false);
   const mode = reader.sentenceMode;
