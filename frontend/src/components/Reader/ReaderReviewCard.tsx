@@ -25,6 +25,7 @@ export function ReaderReviewCard({
   onOpen,
   onReview,
   onRemove,
+  removeLabel,
   onAskAi,
   aiDisabled,
 }: {
@@ -39,7 +40,8 @@ export function ReaderReviewCard({
   reviewed: boolean;
   busy: boolean;
   onOpen?: () => void;
-  onReview: () => void;
+  onReview?: () => void;
+  removeLabel?: string;
   onRemove: () => void;
   onAskAi?: () => void;
   aiDisabled?: boolean;
@@ -117,20 +119,20 @@ export function ReaderReviewCard({
           )}
           {t("reader.review.open")}
         </button>
-        <button className="reader-button" onClick={onReview} disabled={busy}>
+        {onReview && <button className="reader-button" onClick={onReview} disabled={busy}>
           <FiCheck aria-hidden="true" />
           {t(
             reviewed
               ? "reader.review.markPending"
               : "reader.review.markReviewed",
           )}
-        </button>
+        </button>}
         <button
           className="reader-icon-button reader-review-card-remove"
           onClick={onRemove}
           disabled={busy}
-          aria-label={t("reader.review.remove")}
-          title={t("reader.review.remove")}
+          aria-label={removeLabel || t("reader.review.remove")}
+          title={removeLabel || t("reader.review.remove")}
         >
           <FiTrash2 aria-hidden="true" />
         </button>

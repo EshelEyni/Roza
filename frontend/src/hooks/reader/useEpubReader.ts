@@ -131,7 +131,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   }
   return {
     flags,
-    review: { bookId: book.id, userId, onPassageNavigate: navigation.onFlagNavigate, revision: flags.items.map(item => item.id).join(","), onFlagsChanged: flags.sync,
+    review: { annotations, bookId: book.id, userId, onPassageNavigate: navigation.onFlagNavigate, revision: flags.items.map(item => item.id).join(","), onFlagsChanged: flags.sync,
       onAskAi: (passage: ReaderPassage) => { chat.start(passage); selection.closeLookup(); setPanel("chat"); } },
     ...keyboard,
     ...progressSettings,

@@ -49,6 +49,7 @@ test(
       "i18next",
       "react-i18next",
       "axios",
+      "@tanstack/react-query",
     ].map((name) => ({
       find: name,
       replacement: path
@@ -82,6 +83,7 @@ test(
       const items = saved.get(key) || [];
       const respond = (data) =>
         res.end(JSON.stringify({ status: "success", data }));
+      if (parts[1] === "review") { respond({ flags: [], vocabulary: [], books: [] }); return; }
       if (parts[1] !== "annotations") {
         respond(parts[1] === "conversations" ? { items: [] } : {});
         return;
@@ -126,7 +128,7 @@ test(
     });
     await server.listen();
     try {
-      for (const mobile of [false, true])
+      for (const mobile of (process.env.READER_DESKTOP_ONLY ? [false] : [false, true]))
         await t.test(
           mobile ? "iPhone WebKit" : "desktop Chromium",
           async () => {
@@ -229,6 +231,7 @@ test(
               assert.equal(await page.locator('.reader-saved-annotation').count(),0);
               await page.evaluate(p=>window.annotationTest.reader.annotations.select(p,true),passage);
               await page.getByRole("button", {name:"Yellow",exact:true}).click();
+              await page.getByRole("checkbox", {name:"Flag for review (Ctrl+S)"}).check();
               await page.getByRole("button", {name:"Save",exact:true}).click();
               await page.evaluate(()=>window.annotationTest.reader.closePanel());
               await page.waitForFunction(before=>{
@@ -261,6 +264,20 @@ test(
                 }),
                 before,
               );
+              assert.equal(saved.get(owner + ':annotations')[0].flagged, true);
+              await page.reload(); await ready();
+              await page.waitForFunction(() => window.annotationTest.reader.annotations.items[0]?.flagged);
+              await page.evaluate(() => window.annotationTest.reader.togglePanel('review'));
+              await page.getByRole('button', {name:'Unflag annotation'}).waitFor();
+              assert.equal(await page.locator('.reader-review-card').count(), 1);
+              await page.getByRole('button', {name:'Open in book', exact:true}).click();
+              await page.waitForFunction(() => window.annotationTest.reader.href === 'c0.xhtml');
+              if (mobile) await page.evaluate(() => window.annotationTest.reader.togglePanel('review'));
+              await page.getByRole('button', {name:'Unflag annotation'}).click();
+              await page.waitForFunction(() => window.annotationTest.reader.annotations.items[0]?.flagged === false);
+              assert.equal(await page.locator('.reader-review-card').count(), 0);
+              assert.equal(saved.get(owner + ':annotations').length, 1);
+              await page.evaluate(() => window.annotationTest.reader.closePanel());
               await page.evaluate(() =>
                 window.annotationTest.reader.onNavigate("c1.xhtml"),
               );

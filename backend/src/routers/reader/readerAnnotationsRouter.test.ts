@@ -105,6 +105,7 @@ describe("saved reader annotations", () => {
   );
   it.each([
     { color: "red" },
+    { flagged: "true" },
     { cfi: "page 3" },
     { endCfi: "bad" },
     { text: "" },
@@ -121,6 +122,14 @@ describe("saved reader annotations", () => {
       ).status,
     ).toBe(400);
     expect(ReaderAnnotationModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+  it.each([true, false])("persists flag state %s without deleting the annotation", async flagged => {
+    const value = { ...data, flagged };
+    expect((await request(app).put(base).set("Authorization", "test").send(value)).status).toBe(200);
+    expect(ReaderAnnotationModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { userId: mockUser, bookId, cfi: data.cfi, endCfi: "" },
+      { $set: { ...value, endCfi: "" } }, expect.any(Object));
+    expect(ReaderAnnotationModel.findOneAndDelete).not.toHaveBeenCalled();
   });
   it("deletes only the authenticated user's annotation in the current book", async () => {
     expect(

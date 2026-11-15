@@ -29,8 +29,9 @@ export const listAnnotations = asyncErrorCatcher(async (req: Request, res: Respo
 });
 export const saveAnnotation = asyncErrorCatcher(async (req: Request, res: Response) => {
   const filter = await scope(req);
-  const { cfi, endCfi = "", text, chapter, color, note } = req.body;
+  const { cfi, endCfi = "", text, chapter, color, note, flagged } = req.body;
   if (
+    (flagged !== undefined && typeof flagged !== "boolean") ||
     !validCfi(cfi) ||
     (endCfi !== "" && !validCfi(endCfi)) ||
     typeof text !== "string" ||
@@ -43,7 +44,8 @@ export const saveAnnotation = asyncErrorCatcher(async (req: Request, res: Respon
     note.length > 10000
   )
     throw new AppError("Invalid annotation.", 400);
-  const data = { cfi, endCfi, text, chapter, color, note };
+  const data = { cfi, endCfi, text, chapter, color, note,
+    ...(flagged === undefined ? {} : { flagged }) };
   const annotation = await ReaderAnnotationModel.findOneAndUpdate(
     { ...filter, cfi, endCfi },
     { $set: data },

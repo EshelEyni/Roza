@@ -201,6 +201,7 @@
       "reviewed": "Reviewed flags",
       "loading": "Loading…",
       "retry": "Retry",
+      "unflagAnnotation": "Unflag annotation",
       "markPending": "Mark pending",
       "markReviewed": "Mark reviewed",
       "removeVocabulary": "Removed",

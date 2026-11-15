@@ -7,6 +7,7 @@ export interface ReaderAnnotationInput {
   chapter: string;
   color: AnnotationColor;
   note: string;
+  flagged?: boolean;
 }
 export interface ReaderAnnotation extends ReaderAnnotationInput {
   id: string;

@@ -1,3 +1,4 @@
+import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
 import { ReaderReviewCard } from "./ReaderReviewCard";
 import { ReaderSelect } from "./ReaderSelect";
 import { readerAiLimits } from "../../services/readerAiLimits";
@@ -61,6 +62,7 @@ const normalizeWord = (text: string) =>
     .toLowerCase();
 export function ReaderReview({
   bookId,
+  annotations,
   userId,
   revision,
   onNavigate,
@@ -69,6 +71,7 @@ export function ReaderReview({
   onFlagsChanged,
 }: {
   bookId: string;
+  annotations?: EpubReaderController["annotations"];
   userId: string;
   revision: string;
   onNavigate: (cfi: string) => void;
@@ -93,6 +96,8 @@ export function ReaderReview({
     previousRevision.current = revision;
     void refetch();
   }, [revision, refetch]);
+  const annotationFlags = annotations?.items.filter(item => item.flagged &&
+    !data.data?.flags.some(flag => flag.cfi === item.cfi && flag.endCfi === (item.endCfi || ""))) || [];
   const [filter, setFilter] = useState("pending");
   const list = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -175,6 +180,15 @@ export function ReaderReview({
         )}
         {error && <p role="alert">{error}</p>}
         <div className="reader-review-list">
+          {filter === "pending" && annotationFlags.map(item => (
+            <ReaderReviewCard key={"annotation:" + item.id} text={item.text}
+              location={item.chapter} status={t("reader.annotations.title")}
+              passage reviewed={false} busy={!!annotations?.busy}
+              translation={item.note ? <p dir="auto">{item.note}</p> : undefined}
+              onOpen={() => void onPassageNavigate(item)}
+              removeLabel={t("reader.review.unflagAnnotation")}
+              onRemove={() => void annotations?.save({ ...item, flagged: false })} />
+          ))}
           {filter === "vocabulary"
             ? data.data?.vocabulary.map((v) => {
                 const book = v.books[0];
@@ -242,7 +256,7 @@ export function ReaderReview({
                   );
                 })}
         </div>
-        {data.isSuccess &&
+        {data.isSuccess && !(filter === "pending" && annotationFlags.length) &&
           !(filter === "vocabulary"
             ? data.data.vocabulary.length
             : data.data.flags.filter(

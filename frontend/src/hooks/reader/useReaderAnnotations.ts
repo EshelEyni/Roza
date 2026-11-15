@@ -164,7 +164,7 @@ export function useReaderAnnotations(
   }
   async function save(value: ReaderAnnotationInput) {
     if (pending.current) return;
-    if (value.color === "none" && !value.note.trim()) {
+    if (value.color === "none" && !value.note.trim() && value.flagged === undefined) {
       const existing = items.find(item => item.cfi === value.cfi && (item.endCfi || "") === (value.endCfi || ""));
       if (existing) await remove(existing.id);
       return;

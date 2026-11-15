@@ -108,8 +108,13 @@ export function ReaderAnnotations({
               a.setDraft({ ...draft, note: event.target.value })
             }
           />
+          <label>
+            <input type="checkbox" checked={!!draft.flagged} disabled={a.busy}
+              onChange={event => a.setDraft({ ...draft, flagged: event.target.checked })} />
+            {t("reader.review.flag")}
+          </label>
           <div className="reader-annotation-actions">
-            <button className="reader-button" disabled={a.busy || (!draft.id && draft.color === "none" && !draft.note.trim())} type="submit">
+            <button className="reader-button" disabled={a.busy || (!draft.id && draft.color === "none" && !draft.note.trim() && !draft.flagged)} type="submit">
               {t("reader.annotations.save")}
             </button>
             <button
