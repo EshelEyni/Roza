@@ -260,7 +260,7 @@
     "bookPagesRemaining_one": "Book: {{count}} left",
     "bookPagesRemaining_other": "Book: {{count}} left",
     "toggleRemainingPages": "Switch between percentage, pages left in section, and pages left in book",
-    "destinationPage": "Go to page {{page}}",
+    "destinationPage": "Page {{page}}",
     "destinationLoading": "Finding page…",
     "goBackTo": "Go back to",
     "goBackPageLine": "page {{page}}",

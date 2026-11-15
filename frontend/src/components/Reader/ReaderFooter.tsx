@@ -19,7 +19,7 @@ type Props = Pick<
   | "togglePageNumbering"
   | "saveStatus"
   | "retrySave"
-> & { defaultProgressDisplay?: ReaderProgressDisplay; remainingSectionPages?: number | null; remainingBookPages?: number | null; getProgressDestination?: (progress: number) => Promise<string | null>; returnPoint?: {label:string} | null; goBack?: () => Promise<void> };
+> & { defaultProgressDisplay?: ReaderProgressDisplay; remainingSectionPages?: number | null; remainingBookPages?: number | null; getProgressDestination?: (progress: number) => string | null; returnPoint?: {label:string} | null; goBack?: () => Promise<void> };
 export function ReaderFooter({
   defaultProgressDisplay = "percentage",
   state,

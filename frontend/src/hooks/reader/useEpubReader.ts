@@ -143,13 +143,12 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   };
   const jumpHistory = useReaderJumpHistory(runtime, engine.location, describeLocation, navigation.returnTo,
     () => setNotice(t("reader.navigationError")));
-  const getProgressDestination = useCallback(async (progress: number) => {
+  const getProgressDestination = useCallback((progress: number) => {
     const book = runtime.epubRef.current;
     if (!book || !engine.locationsReady) return null;
     const cfi = book.locations.cfiFromPercentage(Math.max(0,Math.min(1,progress)));
-    const destination = await describeLocation(cfi);
-    return destination?.label || null;
-  }, [runtime,engine.locationsReady,describeLocation]);
+    return pagination.getCachedPageLabel(cfi);
+  }, [runtime,engine.locationsReady,pagination.getCachedPageLabel]);
   const display = useReaderFullscreen(runtime, setNotice);
   const chat = useReaderChat(
     book.id,

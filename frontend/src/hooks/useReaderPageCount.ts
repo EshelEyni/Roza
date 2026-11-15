@@ -1,5 +1,5 @@
 import { RefObject, useCallback, useEffect, useRef, useState } from "react";
-import ePub, { EpubCFI, Location, Rendition } from "epubjs";
+import ePub, { EpubCFI, Location, Rendition, type Contents } from "epubjs";
 import Section from "epubjs/types/section";
 import { ReaderPreferences } from "../../../shared/types/reader";
 
@@ -18,6 +18,8 @@ export function useReaderPageCount(
   location: Location | null,
   apply: (rendition: Rendition, preferences: ReaderPreferences) => void,
 ) {
+  const cachedPageLookup = useRef<((cfi: string) => PageCount | null) | null>(null);
+  const getCachedPage = useCallback((cfi: string) => cachedPageLookup.current?.(cfi) ?? null, []);
   const pageTargetLookup = useRef<((page: number) => Promise<string | null>) | null>(null);
   const getPageCfi = useCallback(async (page: number) => pageTargetLookup.current?.(page) ?? null, []);
   const pageLookup = useRef<((cfi: string) => Promise<PageCount | null>) | null>(null);
@@ -63,6 +65,7 @@ export function useReaderPageCount(
   useEffect(() => {
     pageLookup.current = null;
     pageTargetLookup.current = null;
+    cachedPageLookup.current = null;
     setCount(null);
     setPublisherPages(
       file && publisherCache.current?.file === file
@@ -77,6 +80,7 @@ export function useReaderPageCount(
     let pageTask: Promise<void> = Promise.resolve();
     const offsets = new Map<number, { offset: number; pages: number }>();
     let total = 0;
+    const pageStarts: { cfi: string; page: number }[] = [];
     const container = document.createElement("div");
     container.className = "reader-page-measurement";
     container.setAttribute("aria-hidden", "true");
@@ -181,9 +185,39 @@ export function useReaderPageCount(
           if (cancelled) return;
           const pages = Math.max(1, measured.start.displayed.total);
           offsets.set(section.index, { offset: total, pages });
+          // Map every page while its section is already rendered for counting.
+          // Hover previews then use this index without rendering or async lookups.
+          const manager = (measuring as unknown as { manager: {
+            current: () => { contents: Contents };
+            layout: { pageWidth: number; width: number };
+            settings: { direction: string };
+            mapping: { page: (contents: Contents, base: string, start: number, end: number) => { start: string } };
+          } }).manager;
+          const view = manager.current();
+          for (let index = 0; index < pages; index++) {
+            const physical = manager.settings.direction === "rtl" ? pages - index - 1 : index;
+            const start = physical * manager.layout.pageWidth;
+            const mapped = manager.mapping.page(view.contents, section.cfiBase, start, start + manager.layout.width);
+            pageStarts.push({ cfi: mapped.start, page: total + index + 1 });
+          }
           total += pages;
         }
         if (cancelled) return;
+        const compare = new EpubCFI().compare;
+        pageStarts.sort((a, b) => compare(a.cfi, b.cfi));
+        cachedPageLookup.current = cfi => {
+          if (cancelled || !pageStarts.length) return null;
+          const point = new EpubCFI(cfi); point.collapse(true);
+          const section = offsets.get(point.spinePos);
+          if (!section) return null;
+          let low = 0, high = pageStarts.length;
+          while (low < high) {
+            const mid = Math.floor((low + high) / 2);
+            if (compare(pageStarts[mid].cfi, point.toString()) <= 0) low = mid + 1;
+            else high = mid;
+          }
+          return { page: Math.max(section.offset + 1, Math.min(section.offset + section.pages, pageStarts[Math.max(0, low - 1)].page)), total };
+        };
         updatePage.current = () => {
           pageTask = pageTask.then(update).catch(() => {
             if (!cancelled) setCount(null);
@@ -246,6 +280,7 @@ export function useReaderPageCount(
       updatePage.current = null;
       pageLookup.current = null;
       pageTargetLookup.current = null;
+      cachedPageLookup.current = null;
       // Let in-flight EPUB rendering settle before destroying its manager.
       void Promise.allSettled([measurement, pageTask]).then(() => {
         book.destroy();
@@ -257,5 +292,5 @@ export function useReaderPageCount(
   useEffect(() => {
     updatePage.current?.();
   }, [location]);
-  return { screen: count, publisherPages, getPage, getPageCfi };
+  return { screen: count, publisherPages, getPage, getPageCfi, getCachedPage };
 }

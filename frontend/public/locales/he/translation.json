@@ -261,7 +261,7 @@
     "bookPagesRemaining_one": "נותר עמוד {{count}} בספר",
     "bookPagesRemaining_other": "נותרו {{count}} עמודים בספר",
     "toggleRemainingPages": "מעבר בין אחוז הקריאה, עמודים שנותרו בפרק ועמודים שנותרו בספר",
-    "destinationPage": "מעבר לעמוד {{page}}",
+    "destinationPage": "עמוד {{page}}",
     "destinationLoading": "מאתר עמוד…",
     "goBackTo": "חזרה אל",
     "goBackPageLine": "עמוד {{page}}",

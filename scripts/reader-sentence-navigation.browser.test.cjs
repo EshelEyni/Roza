@@ -175,6 +175,22 @@ test(
                 !window.sentenceNavigationTest.reader.loading,
             );
             await page.waitForFunction(() => window.sentenceNavigationTest.reader.totalPages > 2);
+            const previews = await page.evaluate(async () => {
+              const { reader } = window.sentenceNavigationTest;
+              const results = [];
+              for (const progress of [0, .1, .25, .5, .75, .9, 1]) {
+                const cached = reader.getProgressDestination(progress);
+                const cfi = reader.searchBook.locations.cfiFromPercentage(progress);
+                const exact = await reader.describeLocation(cfi);
+                results.push({ progress, cached, exact: exact?.label, synchronous: typeof cached === 'string' });
+              }
+              return results;
+            });
+            for (const preview of previews) {
+              assert.equal(preview.synchronous, true, JSON.stringify(preview));
+              assert.equal(preview.cached, preview.exact, JSON.stringify(preview));
+            }
+
             await page.evaluate(() => window.sentenceNavigationTest.reader.pageNavigation.go('2', 'screen'));
             await page.waitForFunction(() => window.sentenceNavigationTest.reader.pageLabel.startsWith('Page 2 '));
             assert.equal(await page.evaluate(() => window.sentenceNavigationTest.reader.searchBook.spine.get(window.sentenceNavigationTest.reader.state.location).index), 0);

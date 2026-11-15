@@ -10,14 +10,11 @@ export function ReaderProgress({
   progress: number;
   ready: boolean;
   onNavigate: (progress: number) => Promise<void>;
-  getDestination?: (progress: number) => Promise<string | null>;
+  getDestination?: (progress: number) => string | null;
 }) {
   const { t } = useTranslation();
   const tooltipId = useId();
   const [hover,setHover] = useState<number | null>(null);
-  const [destination,setDestination] = useState<string | null>(null);
-  const destinationGetter = useRef(getDestination);
-  destinationGetter.current = getDestination;
   const [preview, setPreview] = useState<number | null>(null);
   const [moving, setMoving] = useState(false);
   const pointerDown = useRef(false);
@@ -61,15 +58,7 @@ export function ReaderProgress({
   }
 
   const target = preview ?? hover;
-  useEffect(() => {
-    setDestination(null);
-    if (target === null || !ready || !destinationGetter.current) return;
-    let cancelled = false;
-    const timeout = setTimeout(() => {
-      void destinationGetter.current!(target).then(label => { if (!cancelled) setDestination(label); }).catch(() => {});
-    }, 100);
-    return () => { cancelled = true; clearTimeout(timeout); };
-  }, [target,ready,getDestination]);
+  const destination = target !== null && ready ? getDestination?.(target) : null;
   const value = preview ?? progress;
   return (
     <div
@@ -127,7 +116,7 @@ export function ReaderProgress({
       />
       {ready && target !== null && (
         <span id={tooltipId} role="tooltip" className="reader-progress-preview reader-progress-destination" style={{left: Math.max(5,Math.min(95,target*100))+"%"}}>
-          {destination ? t("reader.destinationPage", {page:destination}) : destinationGetter.current ? t("reader.destinationLoading") : t("reader.percentRead", {percent: Math.round(target*100)})}
+          {destination ? t("reader.destinationPage", {page:destination}) : t("reader.percentRead", {percent: Math.round(target*100)})}
         </span>
       )}
     </div>

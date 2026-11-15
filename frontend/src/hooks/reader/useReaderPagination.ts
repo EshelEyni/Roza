@@ -40,7 +40,7 @@ export function useReaderPagination(
     selectionColor: state.preferences.selectionColor,
     selectionTextColor: state.preferences.selectionTextColor,
   }), [renderingPreferences, state.preferences.backgroundColor, state.preferences.selectionColor, state.preferences.selectionTextColor]);
-  const { screen: pageCount, publisherPages, getPage, getPageCfi } = useReaderPageCount(
+  const { screen: pageCount, publisherPages, getPage, getPageCfi, getCachedPage } = useReaderPageCount(
     host,
     paginationFile,
     renderingPreferences,
@@ -85,6 +85,11 @@ export function useReaderPagination(
     }
   }
   return {
+    getCachedPageLabel: (cfi: string) => {
+      if (showPublisherPages && publisherPages?.length) return publisherPageAt(publisherPages, cfi)?.label ?? null;
+      const page = getCachedPage(cfi);
+      return page ? String(page.page) : null;
+    },
     bookPageRange: publisherPages?.reduce<{ min: number; max: number } | null>((range, page) => {
       if (!/^\d+$/.test(page.label)) return range;
       const number = Number(page.label);
