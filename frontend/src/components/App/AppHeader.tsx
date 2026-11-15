@@ -2,7 +2,7 @@ import { FC, cloneElement } from "react";
 import { useTranslation } from "react-i18next";
 import { GiNotebook, GiBookPile, GiHouse } from "react-icons/gi";
 import { RiUserFill } from "react-icons/ri";
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import { Logo } from "./Logo";
 import { useGetReaderAccess } from "../../hooks/reactQuery/get/useGetReaderAccess";
 
@@ -66,22 +66,23 @@ export const AppHeader: FC = () => {
     });
 
   return (
-    <header className="flex h-16 w-full items-center justify-between bg-app-700 px-3 py-2 md:px-3 md:py-1">
+    <header className="app-main-header">
       <span className="app-header-status-surface" aria-hidden="true" />
-      <nav className="flex items-center gap-3">
+      <nav className="app-main-nav" aria-label="Main navigation">
         {navLinks.map(({ name, icon, link }) => (
-          <Link key={name} to={link}>
+          <NavLink key={link} to={link} aria-label={name}
+            className={({ isActive }) => "app-main-tab" + (isActive ? " is-active" : "")}>
             {cloneElement(icon, {
               className:
-                "text-app-100 cursor-pointer transition duration-300 ease-in-out md:hidden text-4xl hover:text-app-300",
+                "app-main-tab-icon",
             })}
-            <span className="hidden text-2xl font-medium uppercase text-app-100 transition duration-300  ease-in-out hover:text-app-300 md:block">
+            <span className="app-main-tab-label">
               {name}
             </span>
-          </Link>
+          </NavLink>
         ))}
       </nav>
-      <Logo className="h-14 w-14 md:h-12 md:w-12" isLink={true} />
+      <Logo className="app-main-logo" isLink={true} />
     </header>
   );
 };
