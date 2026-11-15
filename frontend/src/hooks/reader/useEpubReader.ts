@@ -67,8 +67,6 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     setError,
     setNotice,
   );
-  const sentenceMode = useReaderSentenceMode(runtime);
-  useSentencePanelKeyboard(sentenceMode.active);
   const flags = useReaderFlags(runtime, book.id, userId, engine.chapter);
   runtime.flagReady.current = flags.ready;
   selection.flagHandler.current = value => { if (!selection.busy) void flags.save(value); };
@@ -111,6 +109,15 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     setError,
     setNotice,
   });
+  const sentenceMode = useReaderSentenceMode(runtime, navigation.returnTo);
+  useSentencePanelKeyboard(sentenceMode.active);
+  const toggleSentenceMode = () => {
+    const cfi = sentenceMode.active ? undefined : sentenceMode.entryCfi();
+    selection.closeLookup();
+    closePanel();
+    return sentenceMode.toggle(cfi);
+  };
+  runtime.enterSentenceMode.current = () => { void toggleSentenceMode(); };
   const jumpHistory = useReaderJumpHistory(runtime, engine.location, describeLocation, navigation.returnTo,
     () => setNotice(t("reader.navigationError")));
   const getProgressDestination = useCallback(async (progress: number) => {
@@ -154,7 +161,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     ...keyboard,
     ...progressSettings,
     rsvp: { ...rsvp, toggle: () => { selection.closeLookup(); closePanel(); return rsvp.toggle(); } },
-    sentenceMode: { ...sentenceMode, toggle: () => { selection.closeLookup(); closePanel(); return sentenceMode.toggle(); } },
+    sentenceMode: { ...sentenceMode, toggle: toggleSentenceMode },
     askSentenceAi: (passage: ReaderPassage, autoSubmit = false) => {
       if (passage.text.length > readerAiLimits.passage) return;
       flushSync(() => {

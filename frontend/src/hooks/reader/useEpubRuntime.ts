@@ -11,6 +11,8 @@ export function useEpubRuntime(
   panel: ReaderPanel | null,
   selection: ReaderTextSelection | null,
 ) {
+  const enterSentenceMode = useRef<(() => void) | null>(null);
+  const keyboardWordCfi = useRef("");
   const flagReady = useRef(false);
   const wordAction = useRef<((action: string, selection: ReaderTextSelection) => void) | null>(null);
   const keyboardRef = useRef(defaultReaderKeyboardSettings);
@@ -43,6 +45,8 @@ export function useEpubRuntime(
   const linkObserver = useRef<(() => void) | undefined>();
   return useMemo(
     () => ({
+      enterSentenceMode,
+      keyboardWordCfi,
       flagReady,
       wordAction,
       keyboardRef,

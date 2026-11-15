@@ -562,6 +562,28 @@ export function ReaderSentenceMode({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target instanceof Element ? event.target : null;
+      if (event.key === "Escape" && !event.defaultPrevented && !event.isComposing) {
+        if (lookup) {
+          event.preventDefault();
+          const close = reader.shell.current?.querySelector<HTMLButtonElement>(
+            ".reader-dictionary-close, .reader-dictionary-sheet .reader-panel-close",
+          );
+          // Use the popup's own dismissal path so translation marks and cursor offsets survive.
+          if (close) close.click(); else setLookup(null);
+          return;
+        }
+        // Let open reader panels and their controls consume Escape first.
+        if (reader.panel || mode.busy) return;
+        const native = window.getSelection();
+        const cursor = extendedSelection.current;
+        const hasSelection = !!actionTarget || !!(cursor?.cfi === sentence?.cfi && cursor?.anchor !== cursor?.focus) ||
+          !!(native?.toString().trim() && native.anchorNode && sentenceText.current?.contains(native.anchorNode));
+        event.preventDefault();
+        if (hasSelection) {
+          resetVertical(); clearTextSelection(); setWordFocus({ cfi: "", index: -1 });
+        } else void mode.toggle();
+        return;
+      }
       const actionKey = /^Key[TACNF]$/.test(event.code)
         ? event.code.slice(3).toLowerCase()
         : /^[tacnf]$/i.test(event.key)

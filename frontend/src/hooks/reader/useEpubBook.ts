@@ -1,3 +1,4 @@
+import { createReaderSentenceChord } from "../../services/readerSentenceChord";
 import { useEffect, useState } from "react";
 import ePub, {
   EpubCFI,
@@ -87,7 +88,14 @@ export function useEpubBook(
     let hasLocations = false;
     const element = host.current!;
     const words = createReaderWordNavigation(runtime, { closeLookup, openLookup, flagSelection });
+    const sentenceChord = createReaderSentenceChord({
+      enabled: () => ready && !cancelled && !runtime.rsvpActive.current && !panelRef.current &&
+        !document.querySelector('.reader-dictionary.is-open, [role="dialog"]:not(.reader-dictionary)'),
+      enter: () => runtime.enterSentenceMode.current?.(),
+      save: words.flagCurrent,
+    });
     const onKey = (event: KeyboardEvent) => {
+      if (sentenceChord.keydown(event)) return;
       if (runtime.rsvpActive.current) return;
       if ((event.target as Element | null)?.closest?.(
         "input,textarea,select,[contenteditable]:not([contenteditable=false]),[role=dialog]:not(.reader-dictionary),[role=textbox],[role=slider]",
@@ -210,6 +218,8 @@ export function useEpubBook(
         applyPreferences(rendition, preferences);
         rendition.hooks.content.register((contents: Contents) => {
           touchCleanups.push(words.bind(contents));
+          contents.document.addEventListener("keyup", sentenceChord.keyup);
+          touchCleanups.push(() => contents.document.removeEventListener("keyup", sentenceChord.keyup));
           touchCleanups.push(
             bindReaderContents(
               contents,
@@ -304,6 +314,8 @@ export function useEpubBook(
           })
           .catch(() => undefined);
         document.addEventListener("keydown", onKey);
+        document.addEventListener("keyup", sentenceChord.keyup);
+        window.addEventListener("blur", sentenceChord.reset);
         stopObserving = observeReaderLayout(
           element,
           rendition,
@@ -329,6 +341,8 @@ export function useEpubBook(
       stopObserving?.();
       touchCleanups.forEach(cleanup => cleanup());
       document.removeEventListener("keydown", onKey);
+      document.removeEventListener("keyup", sentenceChord.keyup);
+      window.removeEventListener("blur", sentenceChord.reset);
       renditionRef.current = undefined;
       epubRef.current = undefined;
       // EPUB open() returns before its navigation and resource work settles.

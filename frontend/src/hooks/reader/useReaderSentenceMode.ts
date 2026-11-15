@@ -1,3 +1,5 @@
+import { flushSync } from "react-dom";
+import type { Contents, Location } from "epubjs";
 import { useEffect, useRef, useState } from "react";
 import { EpubCFI } from "epubjs";
 import type Section from "epubjs/types/section";
@@ -9,7 +11,7 @@ import {
 import { rsvpStart } from "../../services/readerRsvp";
 
 /** Loads one spine section at a time and shares the reader's exact focus anchor. */
-export function useReaderSentenceMode(runtime: EpubRuntime) {
+export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: string) => Promise<void>) {
   const [active, setActive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -113,32 +115,55 @@ export function useReaderSentenceMode(runtime: EpubRuntime) {
       }
     }
   }
-  async function toggle() {
+  function entryCfi() {
+    const rendition = runtime.renditionRef.current;
+    const contents = (rendition?.getContents() as unknown as Contents[] | undefined) || [];
+    for (const content of contents) {
+      const selected = content.document.getSelection();
+      if (selected?.rangeCount && !selected.isCollapsed && selected.toString().trim())
+        return content.cfiFromRange(selected.getRangeAt(0));
+    }
+    return runtime.selectionRef.current?.cfi || runtime.keyboardWordCfi.current ||
+      (rendition?.currentLocation() as unknown as Location | undefined)?.start?.cfi ||
+      runtime.stateRef.current.location;
+  }
+  async function toggle(startCfi?: string) {
     if (locked.current) return;
     if (!active) {
       runtime.rsvpActive.current = true;
       setActive(true);
-      const cfi = runtime.stateRef.current.location;
+      const cfi = startCfi || entryCfi();
       await load(cfi || 0, 1, cfi || undefined);
       return;
     }
     locked.current = true;
     setBusy(true);
-    try {
-      if (sentence) {
-        const point = new EpubCFI(sentence.cfi);
-        point.collapse(true);
-        await runtime.layoutTask.current;
-        // Resume normal chapter/page tracking while retaining the exact focus anchor.
-        runtime.rsvpActive.current = false;
-        await runtime.renditionRef.current?.display(point.toString());
-        persist(sentence);
-      }
+    const current = sentence;
+    const rendition = runtime.renditionRef.current;
+    let restoreVersion = runtime.navigationVersion.current;
+    const superseded = async () => {
       runtime.rsvpActive.current = false;
-      setActive(false);
+      if (!runtime.explicitNavigation.current && runtime.renditionRef.current === rendition)
+        await rendition?.reportLocation();
+    };
+    try {
+      if (!current || !rendition) throw new Error("Sentence unavailable");
+      // Commit the visible Page Mode layout before epub.js resolves the stable sentence CFI.
+      // Keep relocation/persistence suppressed until the navigation transaction has finished.
+      flushSync(() => setActive(false));
+      const restoring = restore(current.cfi);
+      restoreVersion = runtime.navigationVersion.current;
+      await restoring;
+      if (runtime.renditionRef.current !== rendition) return;
+      if (runtime.navigationVersion.current !== restoreVersion) { await superseded(); return; }
+      persist(current);
+      runtime.rsvpActive.current = false;
+      await rendition.reportLocation();
       setError("");
     } catch {
+      if (runtime.navigationVersion.current !== restoreVersion) { await superseded(); return; }
       runtime.rsvpActive.current = true;
+      setActive(true);
       setError("Could not return to the reader. Please retry.");
     } finally {
       locked.current = false;
@@ -164,6 +189,7 @@ export function useReaderSentenceMode(runtime: EpubRuntime) {
     sentence,
     chapterTitle,
     toggle,
+    entryCfi,
     move,
     number: sentences.length ? index + 1 : 0,
     count: sentences.length,

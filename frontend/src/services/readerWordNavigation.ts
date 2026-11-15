@@ -47,6 +47,7 @@ export function createReaderWordNavigation(
     | undefined;
   const clearPaint = () => {
     marker.clear();
+    runtime.keyboardWordCfi.current = "";
     active = undefined;
     group = undefined;
   };
@@ -289,6 +290,7 @@ export function createReaderWordNavigation(
       if (native?.rangeCount) native.removeAllRanges();
     });
     active = direction === "next" ? last : first;
+    runtime.keyboardWordCfi.current = active.cfi;
     group = { first, last, range };
     if (turning) word.contents.document.defaultView?.focus();
     anchor = selectionAnchor;
@@ -436,6 +438,14 @@ export function createReaderWordNavigation(
       turning = false;
     }
   };
+  const flagCurrent = () => {
+    if (!runtime.flagReady.current || runtime.panelRef.current ||
+      document.querySelector('.reader-dictionary.is-open')) return;
+    const native = contents().find(content => !!content.document.getSelection()?.toString().trim());
+    if (runtime.selectionRef.current) selection.flagSelection();
+    else if (native) selection.flagSelection(native.cfiFromRange(native.document.getSelection()!.getRangeAt(0)), native);
+    else if (focusedSelection && active && isVisible(active)) runtime.wordAction.current?.("f", focusedSelection);
+  };
   const onKey = (event: KeyboardEvent): boolean => {
     const target = event.target as Element | null;
     const host = runtime.host.current;
@@ -534,6 +544,7 @@ export function createReaderWordNavigation(
   };
   return {
     onKey,
+    flagCurrent,
     hasVisibleHighlight: () => !!active && isVisible(active),
     clear,
     relocated: () => {

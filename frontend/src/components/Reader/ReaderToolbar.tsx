@@ -128,7 +128,7 @@ export function ReaderToolbar({
             <FiBookOpen />
           </button>
           <div className="reader-mode-controls">
-            {sentenceMode && <button className="reader-icon-button" aria-label="Sentence Mode" title="Sentence Mode" disabled={loading || !!error || sentenceMode.busy} onClick={() => void sentenceMode.toggle()}><ScanLineIcon /></button>}
+            {sentenceMode && <button className="reader-icon-button" aria-label="Sentence Mode" title="Sentence Mode (Ctrl+S+M)" onPointerDown={event => event.stopPropagation()} disabled={loading || !!error || sentenceMode.busy} onClick={() => void sentenceMode.toggle()}><ScanLineIcon /></button>}
             {rsvp && (
               <button
                 className="reader-icon-button"

@@ -463,7 +463,8 @@ test(
             cancelable: true,
           });
           d.body.dispatchEvent(save);
-          return !save.defaultPrevented;
+          // Reserve the save prefix so a subsequent M can enter Sentence Mode.
+          return save.defaultPrevented;
         }),
         true,
       );

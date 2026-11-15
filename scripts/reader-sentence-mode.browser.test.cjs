@@ -187,6 +187,18 @@ test(
               hasTouch: mobile,
             });
             const page = await context.newPage();
+            const selectEpubAnchor = cfi => page.evaluate(cfi => {
+              const r = window.rsvpTest.reader;
+              const content = r.searchBook.rendition.getContents().find(item => {
+                try { return !!item.range(cfi); } catch { return false; }
+              });
+              const range = content.range(cfi);
+              const native = content.document.getSelection();
+              native.removeAllRanges(); native.addRange(range);
+              content.document.dispatchEvent(new Event('selectionchange'));
+              content.document.dispatchEvent(new MouseEvent('mouseup', {bubbles:true}));
+            }, cfi);
+
             await page.addInitScript(() =>
               localStorage.setItem(
                 "roza-sentence-word-steps",
@@ -345,8 +357,11 @@ test(
               await page.evaluate(
                 () => window.rsvpTest.reader.sentenceMode.active,
               ),
-              true,
+              false,
             );
+            await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.busy);
+            await page.getByRole("button", {name:"Sentence Mode", exact:true}).click();
+            await page.waitForFunction(() => window.rsvpTest.reader.sentenceMode.active && !window.rsvpTest.reader.sentenceMode.busy);
             assert.equal(
               await page
                 .getByRole("button", { name: "Translate", exact: true })
@@ -1124,12 +1139,13 @@ test(
               .getByRole("button", { name: "Close sentence mode", exact: true })
               .click();
             await page.waitForFunction(
-              () => !window.rsvpTest.reader.sentenceMode.active,
+              () => !window.rsvpTest.reader.sentenceMode.active && !window.rsvpTest.reader.sentenceMode.busy,
             );
             assert.equal(
               await page.evaluate(() => window.rsvpTest.reader.state.location),
               anchor,
             );
+            await selectEpubAnchor(anchor);
             await page
               .getByRole("button", { name: "Sentence Mode", exact: true })
               .click();
@@ -1307,7 +1323,7 @@ test(
               .getByRole("button", { name: "Close sentence mode", exact: true })
               .click();
             await page.waitForFunction(
-              () => !window.rsvpTest.reader.sentenceMode.active,
+              () => !window.rsvpTest.reader.sentenceMode.active && !window.rsvpTest.reader.sentenceMode.busy,
             );
             await page.waitForFunction(
               () => window.rsvpTest.reader.href === "b.xhtml",
@@ -1324,6 +1340,8 @@ test(
             await page.waitForFunction(
               () => window.rsvpTest?.reader.locationsReady,
             );
+            assert.equal(await page.evaluate(() => window.rsvpTest.reader.state.location), savedCfi);
+            await selectEpubAnchor(savedCfi);
             await page
               .getByRole("button", { name: "Sentence Mode", exact: true })
               .click();
@@ -1338,7 +1356,7 @@ test(
             // A Sentence Mode annotation panel keeps its keyboard behavior after book navigation.
             await page.evaluate(() => window.rsvpTest.reader.togglePanel("annotations"));
             await page.locator(".reader-annotation-passage").first().click();
-            await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.active);
+            await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.active && !window.rsvpTest.reader.sentenceMode.busy);
             assert.equal(await page.evaluate(() => window.rsvpTest.reader.panel), "annotations");
             assert.equal(await page.locator(".reader-sheet.reader-sentence-keyboard-panel").count(), 1);
             await page.locator("#reader-annotation-search").focus();

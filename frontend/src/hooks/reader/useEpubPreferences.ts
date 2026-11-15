@@ -21,21 +21,24 @@ export function useEpubPreferences(
   useEffect(() => {
     const rendition = renditionRef.current;
     if (!rendition || loading) return;
-    const cfi = stateRef.current.location;
+    const generation = runtime.navigationVersion.current;
     changingLayout.current = true;
     applyPreferences(rendition, renderingPreferences);
     let cancelled = false;
     const timeout = setTimeout(() => {
-      if (explicitNavigation.current) return;
+      if (cancelled || renditionRef.current !== rendition || explicitNavigation.current ||
+        generation !== runtime.navigationVersion.current) return;
+      if (runtime.rsvpActive.current) { changingLayout.current = false; return; }
+      const cfi = stateRef.current.location;
       layoutTask.current = rendition
         .display(cfi || undefined)
         .then(() => {
-          if (cancelled || renditionRef.current !== rendition) return;
+          if (cancelled || renditionRef.current !== rendition || generation !== runtime.navigationVersion.current) return;
           changingLayout.current = false;
           void rendition.reportLocation();
         })
         .catch(() => {
-          if (cancelled || renditionRef.current !== rendition) return;
+          if (cancelled || renditionRef.current !== rendition || generation !== runtime.navigationVersion.current) return;
           changingLayout.current = false;
           setError(t("reader.navigationError"));
         });

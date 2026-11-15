@@ -295,7 +295,7 @@ test(
       await page.getByText('Showing selected annotation', {exact:true}).waitFor();
       assert.equal(await page.locator('.reader-annotation-card').count(), 1);
       await page.locator('.reader-annotation-passage').click();
-      await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.active);
+      await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.active && !window.rsvpTest.reader.sentenceMode.busy);
       assert.equal(await page.evaluate(() => window.rsvpTest.reader.panel), 'annotations', 'Book navigation from Sentence Mode keeps Annotations open');
       assert.equal(await page.locator('.reader-annotation-card').count(), 1);
       await page.getByRole('button', {name:'Clear filter', exact:true}).click();
