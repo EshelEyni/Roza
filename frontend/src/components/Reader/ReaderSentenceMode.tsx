@@ -89,7 +89,7 @@ export function ReaderSentenceMode({
     (visualLines.current ??= sentenceText.current
       ? measureSentenceLines(sentenceText.current)
       : []);
-  const pendingWord = useRef<{ cfi: string; direction: number } | null>(null);
+  const pendingWord = useRef<{ cfi: string; direction: number; x?: number } | null>(null);
   const highlightedWord = useRef<HTMLSpanElement>(null);
   const stage = useRef<HTMLDivElement>(null);
   const sentenceText = useRef<HTMLDivElement>(null);
@@ -467,14 +467,20 @@ export function ReaderSentenceMode({
     setFeedback("");
     const pending = pendingWord.current;
     pendingWord.current = null;
-    resetVertical();
+    if (pending?.x === undefined) resetVertical();
+    else verticalX.current = pending.x;
+    visualLines.current = null;
+    const entryLines = sentenceText.current ? measureSentenceLines(sentenceText.current) : [];
+    const entryLine = pending?.direction === 1 ? entryLines[0] : entryLines.at(-1);
     const count = Math.floor(
       (sentence?.text.split(/([\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*)/gu)
         .length || 0) / 2,
     );
     setWordFocus(
       pending && sentence && pending.cfi !== sentence.cfi && count
-        ? { cfi: sentence.cfi, index: pending.direction > 0 ? 0 : count - 1 }
+        ? { cfi: sentence.cfi, index: pending.x !== undefined && entryLine
+            ? closestSentenceWord(entryLine, pending.x)
+            : pending.direction > 0 ? 0 : count - 1 }
         : { cfi: "", index: -1 },
     );
   }, [sentence?.cfi]);
@@ -688,8 +694,7 @@ export function ReaderSentenceMode({
           }
         } else if (direction > 0 ? mode.canNext : mode.canBack) {
           clearTextSelection();
-          resetVertical();
-          pendingWord.current = { cfi: sentence.cfi, direction };
+          pendingWord.current = { cfi: sentence.cfi, direction, x };
           mode.move(direction);
         }
       } else if (

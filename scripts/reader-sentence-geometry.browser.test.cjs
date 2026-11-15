@@ -349,9 +349,10 @@ test(
           "Up preserves the same horizontal goal",
         );
       }
-      // Crossing sentences resets alignment and selects the first/last logical word.
+      // Crossing sentences preserves alignment even through a short line.
       const edge = geometry[geometry.length - 1].words[0];
 
+      const crossingX = (edge.left + edge.right) / 2;
       await click(edge.index);
       await page.keyboard.press("Shift+ArrowDown");
       await page.waitForFunction(
@@ -362,8 +363,8 @@ test(
       let next = await lines();
       assert.equal(
         await active(),
-        0,
-        "Down enters the next sentence at its first word",
+        closest(next[0], crossingX),
+        "Down preserves alignment in the next sentence",
       );
       await page.keyboard.press("ArrowDown");
       await page.waitForFunction(
@@ -374,19 +375,18 @@ test(
       next = await lines();
       assert.equal(
         await active(),
-        0,
-        "Down enters a longer sentence at its first word",
+        closest(next[0], crossingX),
+        "Down preserves alignment after a short sentence",
       );
-      const newFirst = next[0].words.find((word) => word.index === 0);
-      const newX = (newFirst.left + newFirst.right) / 2;
+      const newX = crossingX;
       await page.keyboard.press("ArrowDown");
       assert.equal(
         await active(),
         closest(next[1], newX),
-        "Alignment restarts from the first word of the new sentence",
+        "Alignment survives sentence boundaries",
       );
       await page.keyboard.press("ArrowUp");
-      assert.equal(await active(), 0);
+      assert.equal(await active(), closest(next[0], crossingX));
 
       await page.keyboard.press("ArrowUp");
       await page.waitForFunction(
@@ -397,8 +397,8 @@ test(
       next = await lines();
       assert.equal(
         await active(),
-        (await page.locator("[data-sentence-word]").count()) - 1,
-        "Up enters the previous sentence at its last word",
+        closest(next.at(-1), crossingX),
+        "Up preserves alignment in the previous sentence",
       );
       await page.keyboard.press("Control+ArrowLeft");
       await page.waitForFunction(
@@ -438,6 +438,7 @@ test(
       geometry = await lines();
       const chapterOrigin =
         geometry[0].words[Math.floor(geometry[0].words.length / 2)];
+      const chapterX = (chapterOrigin.left + chapterOrigin.right) / 2;
       await click(chapterOrigin.index);
       await page.keyboard.press("ArrowUp");
       await page.waitForFunction(
@@ -449,8 +450,8 @@ test(
       geometry = await lines();
       assert.equal(
         await active(),
-        (await page.locator("[data-sentence-word]").count()) - 1,
-        "Up crosses chapters at the previous sentence last word",
+        closest(geometry.at(-1), chapterX),
+        "Up preserves alignment across chapters",
       );
       await page.keyboard.press("ArrowDown");
       await page.waitForFunction(
@@ -461,8 +462,8 @@ test(
       geometry = await lines();
       assert.equal(
         await active(),
-        0,
-        "Down crosses chapters at the next sentence first word",
+        closest(geometry[0], chapterX),
+        "Down preserves alignment across chapters",
       );
       // Horizontal movement resets the goal to the newly marked word.
       await click(geometry[1].words[1].index);
