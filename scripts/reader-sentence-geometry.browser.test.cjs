@@ -225,6 +225,16 @@ test(
       }), 'uiet rea');
       await page.getByRole('button', {name:'Green', exact:true}).click();
       assert.equal(await page.locator('.reader-sentence-annotation[data-color="green"]').allTextContents().then(parts => parts.join('')), 'uiet rea', 'Draft highlights only the partial phrase');
+      assert.equal(await page.evaluate(() => window.getSelection().toString()), '', 'Choosing a color clears the native selection marker');
+      await page.getByRole('button', {name:'Cancel', exact:true}).click();
+      await page.evaluate(() => window.rsvpTest.reader.closePanel());
+      await page.locator('[data-sentence-word]').nth(1).click();
+      assert.equal(await page.locator('.reader-sentence-word-active').count(), 1);
+      await page.getByRole('button', {name:'Annotate', exact:true}).click();
+      await page.getByRole('button', {name:'Pink', exact:true}).click();
+      assert.equal(await page.locator('.reader-sentence-word-active').count(), 0, 'Choosing a color clears keyboard word focus');
+      assert.equal(await page.locator('.reader-sentence-annotation[data-color="pink"]').allTextContents().then(parts => parts.join('')), 'quiet');
+      assert.notEqual(await page.locator('.reader-sentence-annotation[data-color="pink"]').first().evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
       await page.getByRole('button', {name:'Cancel', exact:true}).click();
       await page.evaluate(() => window.rsvpTest.reader.closePanel());
       await selectPartialPhrase();

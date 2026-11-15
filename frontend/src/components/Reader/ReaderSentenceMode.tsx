@@ -257,6 +257,14 @@ export function ReaderSentenceMode({
     if (native?.anchorNode && sentenceText.current?.contains(native.anchorNode))
       native.removeAllRanges();
   };
+  useLayoutEffect(() => {
+    const draft = reader.annotations.draft;
+    if (reader.panel !== "annotations" || !draft || draft.color === "none") return;
+    // The draft already owns the exact source range. Let its preview color replace focus paint.
+    clearTextSelection();
+    setWordFocus({ cfi: "", index: -1 });
+    resetVertical();
+  }, [reader.panel, reader.annotations.draft?.cfi, reader.annotations.draft?.endCfi, reader.annotations.draft?.color]);
   const captureSelection = () => {
     const element = sentenceText.current;
     const native = window.getSelection();
