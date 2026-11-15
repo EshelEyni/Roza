@@ -1,3 +1,7 @@
+import { useRef, useState } from "react";
+import { FiCornerDownRight } from "react-icons/fi";
+import { ReaderGoToPage } from "./ReaderGoToPage";
+import { ReaderToolbarMenu } from "./ReaderToolbarMenu";
 import { ScanLineIcon } from "./ReaderSentenceMode";
 import { LuFlag } from "react-icons/lu";
 import { Link } from "react-router-dom";
@@ -26,9 +30,10 @@ type Props = Pick<
   | "fullscreen"
   | "toggleFullscreen"
   | "reload"
-> & { book: ReaderBook; rsvp?: EpubReaderController["rsvp"]; sentenceMode?: EpubReaderController["sentenceMode"] };
+> & { pageNavigation?: EpubReaderController["pageNavigation"]; book: ReaderBook; rsvp?: EpubReaderController["rsvp"]; sentenceMode?: EpubReaderController["sentenceMode"] };
 export function ReaderToolbar({
   book,
+  pageNavigation,
   rsvp,
   sentenceMode,
   panel,
@@ -41,6 +46,8 @@ export function ReaderToolbar({
   reload,
 }: Props) {
   const { t } = useTranslation();
+  const [goToPageOpen, setGoToPageOpen] = useState(false);
+  const sentenceEntry = useRef<string | undefined>();
   if (sentenceMode?.active) return <header className="reader-toolbar reader-toolbar-sentence"><span><ScanLineIcon />Sentence Mode</span><button className="reader-icon-button" aria-label="Close sentence mode" disabled={sentenceMode.busy} onClick={() => void sentenceMode.toggle()}><FiX /></button></header>;
   if (rsvp?.active)
     return (
@@ -88,11 +95,6 @@ export function ReaderToolbar({
           >
             <FiEdit3 />
           </button>
-          <button className={"reader-icon-button " + (panel === "review" ? "is-active" : "")}
-            onClick={() => togglePanel("review")} aria-label={t("reader.review.title")}
-            title={t("reader.review.title")} aria-expanded={panel === "review"}>
-            <LuFlag aria-hidden="true" />
-          </button>
           <button
             className={
               "reader-icon-button " + (panel === "chat" ? "is-active" : "")
@@ -127,8 +129,31 @@ export function ReaderToolbar({
           >
             <FiBookOpen />
           </button>
-          <div className="reader-mode-controls">
-            {sentenceMode && <button className="reader-icon-button" aria-label="Sentence Mode" title="Sentence Mode (Ctrl+S+M)" onPointerDown={event => event.stopPropagation()} disabled={loading || !!error || sentenceMode.busy} onClick={() => void sentenceMode.toggle()}><ScanLineIcon /></button>}
+
+          {mobile ? (
+            <button
+              className="reader-icon-button"
+              onClick={reload}
+              aria-label={t("reader.reload")}
+              title={t("reader.reload")}
+            >
+              <FiRefreshCw />
+            </button>
+          ) : (
+            <button
+              className="reader-icon-button"
+              onClick={() => void toggleFullscreen()}
+              aria-label={t("reader.fullscreen")}
+              title={t("reader.fullscreen")}
+              aria-pressed={fullscreen}
+            >
+              {fullscreen ? <FiMinimize /> : <FiMaximize />}
+            </button>
+          )}
+          <ReaderToolbarMenu onBeforeOpen={() => { sentenceEntry.current = sentenceMode?.entryCfi(); }}>
+            {pageNavigation && <button className="reader-icon-button" aria-label="Go to page" disabled={loading || !!error} onClick={() => setGoToPageOpen(true)}><FiCornerDownRight /><span>Go to page</span></button>}
+
+            {sentenceMode && <button className="reader-icon-button" aria-label="Sentence Mode" title="Sentence Mode (Ctrl+S+M)" onPointerDown={event => event.stopPropagation()} disabled={loading || !!error || sentenceMode.busy} onClick={() => void sentenceMode.toggle(sentenceEntry.current)}><ScanLineIcon /><span>Sentence Mode</span></button>}
             {rsvp && (
               <button
                 className="reader-icon-button"
@@ -151,6 +176,7 @@ export function ReaderToolbar({
                 >
                   <path d="M8 3H6a3 3 0 0 0-3 3v2m13-5h2a3 3 0 0 1 3 3v2M3 16v2a3 3 0 0 0 3 3h2m13-5v2a3 3 0 0 1-3 3h-2M8 8h8M8 12h5M8 16h8" />
                 </svg>
+                <span>{t("reader.rsvp.mode")}</span>
               </button>
             )}
             <button
@@ -163,31 +189,17 @@ export function ReaderToolbar({
               aria-expanded={panel === "settings"}
               title={t("reader.settings")}
             >
-              <FiSettings />
+              <FiSettings /><span>{t("reader.settings")}</span>
             </button>
-          </div>
-          {mobile ? (
-            <button
-              className="reader-icon-button"
-              onClick={reload}
-              aria-label={t("reader.reload")}
-              title={t("reader.reload")}
-            >
-              <FiRefreshCw />
-            </button>
-          ) : (
-            <button
-              className="reader-icon-button"
-              onClick={() => void toggleFullscreen()}
-              aria-label={t("reader.fullscreen")}
-              title={t("reader.fullscreen")}
-              aria-pressed={fullscreen}
-            >
-              {fullscreen ? <FiMinimize /> : <FiMaximize />}
-            </button>
-          )}
+          <button className={"reader-icon-button " + (panel === "review" ? "is-active" : "")}
+            onClick={() => togglePanel("review")} aria-label={t("reader.review.title")}
+            title={t("reader.review.title")} aria-expanded={panel === "review"}>
+            <LuFlag aria-hidden="true" /><span>{t("reader.review.title")}</span>
+          </button>
+          </ReaderToolbarMenu>
         </>
       )}
+      {goToPageOpen && pageNavigation && <ReaderGoToPage navigation={pageNavigation} onClose={() => setGoToPageOpen(false)} />}
     </header>
   );
 }

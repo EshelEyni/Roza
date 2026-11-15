@@ -111,8 +111,8 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   });
   const sentenceMode = useReaderSentenceMode(runtime, navigation.returnTo);
   useSentencePanelKeyboard(sentenceMode.active);
-  const toggleSentenceMode = () => {
-    const cfi = sentenceMode.active ? undefined : sentenceMode.entryCfi();
+  const toggleSentenceMode = (startCfi?: string) => {
+    const cfi = sentenceMode.active ? undefined : startCfi || sentenceMode.entryCfi();
     selection.closeLookup();
     closePanel();
     return sentenceMode.toggle(cfi);
@@ -222,6 +222,17 @@ export function useEpubReader(book: ReaderBook, userId: string) {
       if (!locations?.length()) return cfi;
       const index = locations.locationFromCfi(cfi);
       return typeof index === "number" && index >= 0 ? locations.cfiFromLocation(index) || cfi : cfi;
+    },
+    pageNavigation: {
+      total: pagination.totalPages,
+      bookPagesAvailable: pagination.publisherPagesAvailable,
+      bookRange: pagination.bookPageRange,
+      defaultKind: pagination.showPublisherPages ? "book" as const : "screen" as const,
+      go: async (value: string, kind: "book" | "screen") => {
+        const cfi = await pagination.resolvePage(value, kind);
+        closePanel(); selection.closeLookup();
+        await navigation.returnTo(cfi);
+      },
     },
     getProgressDestination,
     returnPoint: jumpHistory.returnPoint,

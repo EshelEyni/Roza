@@ -50,7 +50,7 @@ export function ReaderFooter({
       : (remainingBookPages == null ? t("reader.countingPages") : t("reader.bookPagesRemaining", { count: remainingBookPages }));
   const toggleRemaining = () => setRemainingMode(mode => (mode + 1) % 3);
   return (
-    <footer className="reader-footer">
+    <footer className={"reader-footer reader-width-" + state.preferences.width}>
       <div className="reader-mobile-progress">
         <button type="button" className="reader-reading-remaining" onClick={toggleRemaining} title={t("reader.toggleRemainingPages")}>{indicator}</button>
         <ReaderProgress

@@ -40,7 +40,7 @@ export function useReaderPagination(
     selectionColor: state.preferences.selectionColor,
     selectionTextColor: state.preferences.selectionTextColor,
   }), [renderingPreferences, state.preferences.backgroundColor, state.preferences.selectionColor, state.preferences.selectionTextColor]);
-  const { screen: pageCount, publisherPages, getPage } = useReaderPageCount(
+  const { screen: pageCount, publisherPages, getPage, getPageCfi } = useReaderPageCount(
     host,
     paginationFile,
     renderingPreferences,
@@ -85,6 +85,30 @@ export function useReaderPagination(
     }
   }
   return {
+    bookPageRange: publisherPages?.reduce<{ min: number; max: number } | null>((range, page) => {
+      if (!/^\d+$/.test(page.label)) return range;
+      const number = Number(page.label);
+      if (!Number.isSafeInteger(number)) return range;
+      return range ? { min: Math.min(range.min, number), max: Math.max(range.max, number) } : { min: number, max: number };
+    }, null) ?? null,
+    resolvePage: async (value: string, kind: "book" | "screen") => {
+      if (kind === "book") {
+        if (publisherPages === null) throw new Error("Book pages are still loading.");
+        if (!publisherPages.length) throw new Error("This book has no book-page labels. Choose screen page instead.");
+        const number = Number(value);
+        if (!value.trim() || !Number.isSafeInteger(number) || number < 0) throw new Error("Enter a valid book-page number.");
+        const page = publisherPages.find(page => /^\d+$/.test(page.label) && Number(page.label) === number);
+        if (!page) throw new Error("That book-page number is not available.");
+        return page.cfi;
+      }
+      const number = Number(value);
+      if (!pageCount) throw new Error("Screen pages are still being counted.");
+      if (!value.trim() || !Number.isInteger(number) || number < 1 || number > pageCount.total)
+        throw new Error("Enter a screen page from 1 to " + pageCount.total + ".");
+      const cfi = await getPageCfi(number);
+      if (!cfi) throw new Error("Screen pagination changed. Please try again.");
+      return cfi;
+    },
     renderingPreferences: visualPreferences,
     describeLocation,
     totalPages: pageCount?.total || 0,

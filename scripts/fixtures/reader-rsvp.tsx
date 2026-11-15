@@ -50,7 +50,7 @@ function Fixture() {
   return (
     <div className="reader-shell reader-theme-sepia" ref={reader.shell}>
       <ReaderReadingTarget reader={reader} />
-      <ReaderToolbar
+      <ReaderToolbar pageNavigation={reader.pageNavigation}
         book={book}
         sentenceMode={reader.sentenceMode}
         rsvp={reader.rsvp}

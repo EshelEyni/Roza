@@ -174,6 +174,12 @@ test(
                 window.sentenceNavigationTest?.reader.locationsReady &&
                 !window.sentenceNavigationTest.reader.loading,
             );
+            await page.waitForFunction(() => window.sentenceNavigationTest.reader.totalPages > 2);
+            await page.evaluate(() => window.sentenceNavigationTest.reader.pageNavigation.go('2', 'screen'));
+            await page.waitForFunction(() => window.sentenceNavigationTest.reader.pageLabel.startsWith('Page 2 '));
+            assert.equal(await page.evaluate(() => window.sentenceNavigationTest.reader.searchBook.spine.get(window.sentenceNavigationTest.reader.state.location).index), 0);
+            await page.evaluate(() => window.sentenceNavigationTest.reader.pageNavigation.go('1', 'screen'));
+            await page.waitForFunction(() => window.sentenceNavigationTest.reader.pageLabel.startsWith('Page 1 '));
             const settle = () =>
               page.evaluate(
                 () =>
@@ -192,6 +198,7 @@ test(
                     .cfi,
               );
             const enter = async () => {
+              await page.getByRole("button", { name: "Reader menu", exact: true }).click();
               await page
                 .getByRole("button", { name: "Sentence Mode", exact: true })
                 .click();

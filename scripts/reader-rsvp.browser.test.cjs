@@ -152,6 +152,7 @@ test(
             await page.waitForFunction(
               () => window.rsvpTest?.reader.locationsReady,
             );
+            await page.getByRole("button", { name: "Reader menu", exact: true }).click();
             await page.getByRole("button", { name: "RSVP Mode" }).click();
             await page.waitForFunction(
               () => window.rsvpTest.reader.rsvp.word?.text === "Hello,",
@@ -408,6 +409,7 @@ test(
                     ),
                 );
               });
+            await page.getByRole("button", { name: "Reader menu", exact: true }).click();
             await page.getByRole("button", { name: "RSVP Mode" }).click();
             await page.waitForFunction(
               () => window.rsvpTest.reader.rsvp.word?.text === "chapter",
@@ -429,6 +431,7 @@ test(
             await page.waitForFunction(
               () => window.rsvpTest?.reader.locationsReady,
             );
+            await page.getByRole("button", { name: "Reader menu", exact: true }).click();
             await page.getByRole("button", { name: "RSVP Mode" }).click();
             await page.waitForFunction(
               () => window.rsvpTest.reader.rsvp.word?.text === "chapter",

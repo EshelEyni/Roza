@@ -190,6 +190,7 @@ test(
       page.on("pageerror", (e) => errors.push(e.message));
       await page.goto(server.resolvedUrls.local[0] + "rsvp-test");
       await page.waitForFunction(() => window.rsvpTest?.reader.locationsReady);
+      await page.getByRole("button", { name: "Reader menu", exact: true }).click();
       await page
         .getByRole("button", { name: "Sentence Mode", exact: true })
         .click();

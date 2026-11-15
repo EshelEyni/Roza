@@ -20,7 +20,7 @@ async function epub() {
   );
   zip.file(
     "a.xhtml",
-    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>A</title></head><body><p>Hello, <em>read</em>ing<a role="doc-noteref" href="note.xhtml#n57"><sup>57</sup></a> world.<a role="doc-noteref" href="note.xhtml#n58">58</a> Next sentence!</p><p>Last paragraph.</p><p>Line<br/>break.</p><p hidden="hidden">Hidden text</p><script>bad()</script></body></html>',
+    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>A</title></head><body><p>Hello, <em>read</em>ing<a role="doc-noteref" href="note.xhtml#n57"><sup>57</sup></a> world.<a role="doc-noteref" href="note.xhtml#n58">58</a> <span role="doc-pagebreak" title="10" id="page10"></span>Next sentence!</p><p>Last paragraph.</p><p>Line<br/>break.</p><p hidden="hidden">Hidden text</p><script>bad()</script></body></html>',
   );
   zip.file(
     "note.xhtml",
@@ -222,6 +222,43 @@ test(
                 configurable: true,
               });
             });
+            await page.waitForFunction(() => window.rsvpTest.reader.totalPages > 1 && window.rsvpTest.reader.publisherPagesAvailable !== null);
+            await page.getByRole('button', { name: 'Reader menu', exact: true }).click();
+            await page.getByRole('button', { name: 'Go to page', exact: true }).click();
+            const pageDialog = page.getByRole('dialog');
+            await pageDialog.getByRole('button', { name: 'Book page', exact: true }).click();
+            assert.equal(await pageDialog.getByLabel('Book-page number').getAttribute('type'), 'number');
+            assert.equal(await pageDialog.getByLabel('Book-page number').getAttribute('min'), '10');
+            assert.equal(await pageDialog.getByLabel('Book-page number').getAttribute('max'), '10');
+            assert.match(await pageDialog.getByRole('status').textContent(), /10–10 book pages/);
+            await pageDialog.getByLabel('Book-page number').fill('999');
+            await pageDialog.getByLabel('Book-page number').blur();
+            assert.equal(await pageDialog.getByLabel('Book-page number').inputValue(), '10');
+            await pageDialog.getByLabel('Book-page number').fill('-1');
+            await pageDialog.getByLabel('Book-page number').blur();
+            assert.equal(await pageDialog.getByLabel('Book-page number').inputValue(), '10');
+            await pageDialog.getByRole('button', { name: 'Go to page', exact: true }).click();
+            await pageDialog.waitFor({ state: 'detached' });
+            await page.getByRole('button', { name: 'Reader menu', exact: true }).click();
+            await page.getByRole('button', { name: 'Go to page', exact: true }).click();
+            await pageDialog.getByRole('button', { name: 'Screen page', exact: true }).click();
+            const maxPage = await pageDialog.getByLabel('Screen-page number').getAttribute('max');
+            await pageDialog.getByLabel('Screen-page number').fill('999999');
+            await pageDialog.getByLabel('Screen-page number').blur();
+            assert.equal(await pageDialog.getByLabel('Screen-page number').inputValue(), maxPage);
+            await pageDialog.getByLabel('Screen-page number').fill('-1');
+            await pageDialog.getByLabel('Screen-page number').blur();
+            assert.equal(await pageDialog.getByLabel('Screen-page number').inputValue(), '1');
+            await pageDialog.getByLabel('Screen-page number').fill('2');
+            await pageDialog.getByRole('button', { name: 'Go to page', exact: true }).click();
+            await pageDialog.waitFor({ state: 'detached' });
+            await page.waitForFunction(() => window.rsvpTest.reader.pageLabel.includes('2'));
+            await page.getByRole('button', { name: 'Reader menu', exact: true }).click();
+            await page.getByRole('button', { name: 'Go to page', exact: true }).click();
+            await pageDialog.getByLabel('Screen-page number').fill('1');
+            await pageDialog.getByRole('button', { name: 'Go to page', exact: true }).click();
+            await pageDialog.waitFor({ state: 'detached' });
+            await page.getByRole("button", { name: "Reader menu", exact: true }).click();
             await page
               .getByRole("button", { name: "Sentence Mode", exact: true })
               .click();
@@ -417,6 +454,7 @@ test(
               false,
             );
             await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.busy);
+            await page.getByRole("button", { name: "Reader menu", exact: true }).click();
             await page.getByRole("button", {name:"Sentence Mode", exact:true}).click();
             await page.waitForFunction(() => window.rsvpTest.reader.sentenceMode.active && !window.rsvpTest.reader.sentenceMode.busy);
             assert.equal(
@@ -1203,6 +1241,7 @@ test(
               anchor,
             );
             await selectEpubAnchor(anchor);
+            await page.getByRole("button", { name: "Reader menu", exact: true }).click();
             await page
               .getByRole("button", { name: "Sentence Mode", exact: true })
               .click();
@@ -1399,6 +1438,7 @@ test(
             );
             assert.equal(await page.evaluate(() => window.rsvpTest.reader.state.location), savedCfi);
             await selectEpubAnchor(savedCfi);
+            await page.getByRole("button", { name: "Reader menu", exact: true }).click();
             await page
               .getByRole("button", { name: "Sentence Mode", exact: true })
               .click();

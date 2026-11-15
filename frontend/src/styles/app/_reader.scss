@@ -2096,7 +2096,14 @@
 .reader-annotation-filters fieldset:disabled { opacity: .5; }
 @media (min-width: 1025px) {
   .reader-footer > .reader-icon-button { display: none; }
-  .reader-footer-center { max-width: 520px; width: 80%; }
+  .reader-footer {
+    display: grid;
+    grid-template-columns: minmax(44px, 1fr) minmax(0, var(--reader-page-width)) minmax(44px, 1fr);
+    column-gap: 0;
+    padding-inline: 0;
+  }
+  .reader-footer-center { grid-column: 2; grid-row: 1; max-width: none; width: 100%; min-width: 0; }
+  .reader-footer > .reader-return-button { grid-column: 1; grid-row: 1; justify-self: end; margin-right: 12px; max-width: calc(100% - 12px); white-space: normal; }
 }
 
 .reader-annotation-search-field > svg { flex-shrink: 0; margin-inline: 10px; font-size: 18px; opacity: .5; }
@@ -2365,3 +2372,21 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
   line-height: 1.4;
 }
 .reader-target-instructions > span { min-width: 0; }
+
+.reader-toolbar-menu { position: relative; flex-shrink: 0; margin-left: auto; }
+.reader-toolbar-menu-popover { z-index: 220; min-width: 190px; direction: ltr; }
+.reader-toolbar-menu-popover .reader-icon-button { justify-content: flex-start; height: auto; min-height: 40px; border: 0; background: transparent; font-size: 13px; }
+.reader-toolbar-menu-popover .reader-icon-button svg { flex-shrink: 0; width: 20px; height: 20px; }
+.reader-toolbar-menu-popover .reader-icon-button:disabled { opacity: .4; cursor: default; }
+.reader-toolbar-menu-popover .reader-icon-button.is-active { background: #e9d8c4; }
+
+.reader-toolbar-menu-popover { transform-origin: top right; animation: reader-menu-open 150ms ease-out; }
+@keyframes reader-menu-open { from { opacity: 0; transform: translateY(-5px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .reader-toolbar-menu-popover { animation: none; } }
+.reader-go-to-page { display: grid; gap: 10px; text-align: start; }
+.reader-page-kind { display: flex; gap: 6px; }
+.reader-page-kind .reader-button { flex: 1; padding: 8px 12px; }
+.reader-page-kind [aria-pressed="true"] { background: #5b4634; color: #fff9ef; }
+.reader-go-to-page input { width: 100%; box-sizing: border-box; border: 1px solid #bca58d; border-radius: 7px; padding: 10px 12px; background: #fbf6ed; color: #493a2d; font: inherit; }
+.reader-go-to-page p { margin: 0; font-size: 12px; }
+.reader-go-to-page [role="alert"] { color: #a33224; }

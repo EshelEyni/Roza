@@ -75,7 +75,7 @@ export function EpubReader({
         />
       )}
       <ReaderReadingTarget reader={reader} />
-      <ReaderToolbar
+      <ReaderToolbar pageNavigation={reader.pageNavigation}
         sentenceMode={reader.sentenceMode}
         rsvp={reader.rsvp}
         book={book}
