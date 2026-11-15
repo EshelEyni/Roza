@@ -173,7 +173,7 @@ export function ReaderDictionary({
   }, [autoLookup, selection.lookupRequest, selection.cfi, selection.word]);
 
   function pronounce() {
-    if (!selection.word) return;
+    if (!selection.word || speaking) return;
     setSpeechError(false);
     if (!window.speechSynthesis || !window.SpeechSynthesisUtterance) {
       setSpeechError(true);
@@ -389,7 +389,8 @@ export function ReaderDictionary({
               ref={audioButton}
               aria-keyshortcuts={sentenceMode ? undefined : "t"}
               onClick={pronounce}
-              disabled={speaking}
+              disabled={speaking && !sentenceMode}
+              aria-disabled={speaking || undefined}
               aria-label={t("reader.pronounce")}
               title={t("reader.pronounce")}
             >

@@ -957,6 +957,11 @@ test(
             assert.equal(lookups.at(-1).location, cfi);
             await page.evaluate(() => {
               window.pronunciationClicks = 0;
+              window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+              Object.defineProperty(window, 'speechSynthesis', { configurable: true, value: {
+                getVoices: () => [{lang: 'en-US'}], cancel: () => {},
+                speak: utterance => { window.activeUtterance = utterance; }
+              }});
               const button = document.querySelector('.reader-dictionary button[title="Pronounce English word"]');
               if (!button) throw new Error('Pronunciation button missing');
               button.addEventListener('click', () => window.pronunciationClicks++);
@@ -966,6 +971,24 @@ test(
             assert.equal(await page.evaluate(() => window.pronunciationClicks), 0);
             await page.keyboard.press("Enter");
             assert.equal(await page.evaluate(() => window.pronunciationClicks), 1);
+            const audio = page.getByRole('button', {name: 'Pronounce English word', exact: true});
+            assert.equal(await audio.evaluate(el => document.activeElement === el), true, 'Speech retains button focus');
+            assert.equal(await audio.getAttribute('aria-disabled'), 'true');
+            await page.keyboard.press('Enter');
+            assert.equal(await page.evaluate(() => window.pronunciationClicks), 1, 'Cannot restart speech while busy');
+            await page.keyboard.press('ArrowDown');
+            assert.equal(await audio.evaluate(el => document.activeElement === el), false);
+            await page.keyboard.press('ArrowUp');
+            assert.equal(await audio.evaluate(el => document.activeElement === el), true, 'Can navigate back during playback');
+            await page.evaluate(() => window.activeUtterance.onend());
+            assert.equal(await audio.evaluate(el => document.activeElement === el), true, 'Speech completion retains focus');
+            await audio.click();
+            assert.equal(await audio.evaluate(el => document.activeElement === el), true, 'Clicking sound retains focus');
+            await page.keyboard.press('ArrowDown');
+            assert.equal(await audio.evaluate(el => document.activeElement === el), false, 'Navigation works after clicking sound');
+            await page.keyboard.press('ArrowUp');
+            assert.equal(await audio.evaluate(el => document.activeElement === el), true);
+            await page.evaluate(() => window.activeUtterance.onend());
 
             await page.keyboard.press("Escape");
             await page.waitForFunction(

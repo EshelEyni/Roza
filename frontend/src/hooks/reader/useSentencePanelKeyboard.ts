@@ -7,7 +7,7 @@ const controls = 'button, input, textarea, select, a[href], summary, [tabindex],
 export function installSentencePanelKeyboard(panel: HTMLElement) {
   panel.classList.add("reader-sentence-keyboard-panel");
   const available = () => Array.from(panel.querySelectorAll<HTMLElement>(controls))
-    .filter(element => element.tabIndex >= 0 && !element.matches(':disabled, [aria-disabled="true"]') &&
+    .filter(element => element.tabIndex >= 0 && !element.matches(':disabled') &&
       !element.closest('[inert], [hidden]') && element.getClientRects().length > 0);
   let selected: HTMLElement | null = null;
   let focused: HTMLElement | null = null;
@@ -24,6 +24,11 @@ export function installSentencePanelKeyboard(panel: HTMLElement) {
   const onKey = (event: KeyboardEvent) => {
     if (event.defaultPrevented || event.isComposing || event.altKey || event.metaKey || event.shiftKey) return;
     const target = event.target as HTMLElement;
+    if (["Enter", " "].includes(event.key) && target.getAttribute("aria-disabled") === "true") {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return;
+    }
     const editing = target.matches('input:not([type=checkbox]):not([type=radio]), textarea, [contenteditable="true"], [role="textbox"]');
     if (event.ctrlKey && event.key === "Enter") {
       event.preventDefault();
@@ -31,7 +36,7 @@ export function installSentencePanelKeyboard(panel: HTMLElement) {
       const items = available();
       const action = selected && items.includes(selected) ? selected :
         items.find(element => element.matches('button[type="submit"]'));
-      action?.click();
+      if (action?.getAttribute("aria-disabled") !== "true") action?.click();
       return;
     }
     if (!event.key.startsWith("Arrow")) return;
