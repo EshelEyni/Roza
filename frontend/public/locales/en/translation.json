@@ -532,6 +532,9 @@
       "openBesideTitle": "Open beside: {{title}}"
     },
     "annotations": {
+      "openAnnotation": "Open annotation",
+      "filteredByAnnotation": "Filtered by annotation",
+      "clearFilter": "Clear filter",
       "search": "Search annotations",
       "searchPlaceholder": "Search selected text or notes",
       "pageRange": "Filter by page",

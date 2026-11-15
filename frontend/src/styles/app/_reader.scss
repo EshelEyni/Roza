@@ -2290,3 +2290,13 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
   outline: 3px solid #a36b38;
   outline-offset: 3px;
 }
+
+.reader-review-actions.has-annotation {
+  .reader-review-card-remove { grid-column: 3; grid-row: 1; }
+  .reader-review-card-review { grid-column: 1 / -1; }
+  .reader-review-card-open, .reader-review-card-annotation {
+    gap: 4px;
+    padding-inline: 4px;
+    > svg { display: block; flex-shrink: 0; width: 12px; height: 12px; }
+  }
+}

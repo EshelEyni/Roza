@@ -18,6 +18,7 @@ export function useReaderAnnotations(
   closeLookup: () => void,
   previewing = false,
 ) {
+  const [filterId, setFilterId] = useState<string | null>(null);
   const [items, setItems] = useState<ReaderAnnotation[]>([]);
   const [draft, setDraft] = useState<
     (ReaderAnnotationInput & { id?: string }) | null
@@ -34,6 +35,7 @@ export function useReaderAnnotations(
   useEffect(() => {
     let active = true;
     setItems([]);
+    setFilterId(null);
     setDraft(null);
     setLoading(true);
     setError("");
@@ -220,6 +222,8 @@ export function useReaderAnnotations(
   });
   return {
     items: ordered,
+    filterId,
+    setFilterId,
     draft,
     setDraft,
     error,

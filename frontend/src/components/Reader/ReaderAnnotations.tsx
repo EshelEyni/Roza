@@ -48,6 +48,7 @@ export function ReaderAnnotations({
   const last = Math.max(first, Math.min(range[1] ?? totalPages, Math.max(1, totalPages)));
   const term = search.trim().toLocaleLowerCase();
   const filtered = a.items.filter(item => {
+    if (a.filterId) return item.id === a.filterId;
     const matches = !term || item.text.toLocaleLowerCase().includes(term) || item.note.toLocaleLowerCase().includes(term);
     const page = pages[item.id]?.page;
     const allPages = !totalPages || (first === 1 && last === totalPages);
@@ -141,6 +142,12 @@ export function ReaderAnnotations({
         <>
           <div className="reader-annotation-filters">
             <h2>{t("reader.annotations.title")}</h2>
+            {a.filterId && <div className="reader-annotation-actions">
+              <small role="status">{t("reader.annotations.filteredByAnnotation")}</small>
+              <button className="reader-button" onClick={() => {
+                a.setFilterId(null); setSearch(""); setRange([1, null]);
+              }}>{t("reader.annotations.clearFilter")}</button>
+            </div>}
             <label className="reader-sr-only" htmlFor="reader-annotation-search">{t("reader.annotations.search")}</label>
             <div className="reader-search-form reader-annotation-search-field">
               <input id="reader-annotation-search" type="search" value={search}

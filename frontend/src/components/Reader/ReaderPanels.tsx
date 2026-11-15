@@ -28,6 +28,7 @@ type Props = Pick<
   | "closePanel"
   | "toc"
   | "href"
+  | "onAnnotationNavigate"
   | "onNavigate"
   | "onPassageNavigate"
   | "loading"
@@ -54,6 +55,7 @@ export function ReaderPanels({
   toc,
   href,
   onNavigate,
+  onAnnotationNavigate,
   onPassageNavigate,
   loading,
   searchBook,
@@ -97,7 +99,7 @@ export function ReaderPanels({
     >
       {panel !== "chat" && <ReaderPanelResize width={chat.workspace.panelWidth}
         onWidthChange={chat.setPanelWidth} />}
-      {panel === "review" ? <ReaderReview key={review.userId + ":" + review.bookId} {...review} onNavigate={onNavigate} /> : panel === "annotations" ? <ReaderAnnotations annotations={annotations} onNavigate={onNavigate} getPage={describeLocation} totalPages={totalPages} /> : panel === "contents" ? (
+      {panel === "review" ? <ReaderReview key={review.userId + ":" + review.bookId} {...review} onNavigate={onNavigate} /> : panel === "annotations" ? <ReaderAnnotations annotations={annotations} onNavigate={onAnnotationNavigate} getPage={describeLocation} totalPages={totalPages} /> : panel === "contents" ? (
         <ReaderContents
           items={toc}
           currentHref={href}

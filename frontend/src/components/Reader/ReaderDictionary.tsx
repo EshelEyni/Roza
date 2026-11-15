@@ -27,6 +27,7 @@ export function ReaderDictionary({
   flagged,
   flagReady,
   autoLookup = false,
+  sentenceMode = false,
   passage = false,
   onAnnotate,
   annotationBusy,
@@ -45,6 +46,7 @@ export function ReaderDictionary({
   flagged?: boolean;
   flagReady?: boolean;
   autoLookup?: boolean;
+  sentenceMode?: boolean;
   passage?: boolean;
   onAnnotate?: (note: boolean) => void;
   annotationBusy?: boolean;
@@ -203,7 +205,7 @@ export function ReaderDictionary({
   }
 
   useEffect(() => {
-    if (!opened) return;
+    if (!opened || sentenceMode) return;
     const onPronounceKey = (event: KeyboardEvent) => {
       const target = event.target as Element | null;
       if (event.defaultPrevented || event.isComposing || event.ctrlKey || event.metaKey ||
@@ -215,7 +217,7 @@ export function ReaderDictionary({
     };
     document.addEventListener("keydown", onPronounceKey, true);
     return () => document.removeEventListener("keydown", onPronounceKey, true);
-  }, [opened]);
+  }, [opened, sentenceMode]);
 
   const entry = result?.entry;
   async function copy() {
@@ -385,7 +387,7 @@ export function ReaderDictionary({
             <button
               className="reader-icon-button"
               ref={audioButton}
-              aria-keyshortcuts="t"
+              aria-keyshortcuts={sentenceMode ? undefined : "t"}
               onClick={pronounce}
               disabled={speaking}
               aria-label={t("reader.pronounce")}

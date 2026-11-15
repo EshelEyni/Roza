@@ -225,6 +225,16 @@ test(
       }), 'uiet rea');
       await page.getByRole('button', {name:'Green', exact:true}).click();
       assert.equal(await page.locator('.reader-sentence-annotation[data-color="green"]').allTextContents().then(parts => parts.join('')), 'uiet rea', 'Draft highlights only the partial phrase');
+      assert.equal(await page.evaluate(() => window.getSelection().toString()), '', 'Choosing a color clears the native selection marker');
+      await page.getByRole('button', {name:'Cancel', exact:true}).click();
+      await page.evaluate(() => window.rsvpTest.reader.closePanel());
+      await page.locator('[data-sentence-word]').nth(1).click();
+      assert.equal(await page.locator('.reader-sentence-word-active').count(), 1);
+      await page.getByRole('button', {name:'Annotate', exact:true}).click();
+      await page.getByRole('button', {name:'Pink', exact:true}).click();
+      assert.equal(await page.locator('.reader-sentence-word-active').count(), 0, 'Choosing a color clears keyboard word focus');
+      assert.equal(await page.locator('.reader-sentence-annotation[data-color="pink"]').allTextContents().then(parts => parts.join('')), 'quiet');
+      assert.notEqual(await page.locator('.reader-sentence-annotation[data-color="pink"]').first().evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
       await page.getByRole('button', {name:'Cancel', exact:true}).click();
       await page.evaluate(() => window.rsvpTest.reader.closePanel());
       await selectPartialPhrase();
@@ -278,6 +288,20 @@ test(
       await page.evaluate(() => window.rsvpTest.reader.sentenceMode.toggle()); await settle();
       assert.equal(await page.locator('.reader-sentence-annotation[data-color="pink"]').allTextContents().then(items=>items.join('')), 'quiet reader');
       assert.equal(JSON.stringify(annotations), savedAnnotations, 'Switching modes never rewrites saved annotation data');
+      await page.evaluate(() => {
+        const r = window.rsvpTest.reader;
+        r.review.onOpenAnnotation(r.annotations.items.find(item => item.color === 'pink').id);
+      });
+      await page.getByText('Filtered by annotation', {exact:true}).waitFor();
+      assert.equal(await page.locator('.reader-annotation-card').count(), 1);
+      await page.locator('.reader-annotation-passage').click();
+      await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.active);
+      assert.equal(await page.evaluate(() => window.rsvpTest.reader.panel), 'annotations', 'Book navigation from Sentence Mode keeps Annotations open');
+      assert.equal(await page.locator('.reader-annotation-card').count(), 1);
+      await page.getByRole('button', {name:'Clear filter', exact:true}).click();
+      assert.equal(await page.locator('.reader-annotation-card').count(), 3);
+      await page.evaluate(() => window.rsvpTest.reader.sentenceMode.toggle()); await settle();
+
       const lines = async () =>
         page.evaluate(() => {
           const root = document.querySelector(".reader-sentence-text"),
@@ -614,25 +638,28 @@ test(
       const audio = page.getByRole('button', {name:'Pronounce English word', exact:true});
       await audio.waitFor();
       await page.keyboard.press('t');
+      assert.deepEqual(await page.evaluate(() => window.spoken), [], 'T does not pronounce in Sentence Mode');
+      await audio.focus();
+      await page.keyboard.press('Enter');
       const spokenWord = await page.evaluate(() => window.spoken[0]);
       assert.ok(spokenWord);
       await audio.click();
       await page.keyboard.press('t');
-      assert.deepEqual(await page.evaluate(() => window.spoken), [spokenWord, spokenWord, spokenWord]);
+      assert.deepEqual(await page.evaluate(() => window.spoken), [spokenWord, spokenWord]);
       await page.getByRole('button', {name:'Google', exact:true}).click();
       await page.keyboard.press('t');
-      assert.equal(await page.evaluate(() => window.spoken.length), 4);
+      assert.equal(await page.evaluate(() => window.spoken.length), 2);
       await page.evaluate(() => {
         const input = document.createElement('input'); input.id='typing-test';
         document.querySelector('.reader-dictionary').append(input); input.focus();
       });
       await page.keyboard.press('t');
       assert.equal(await page.locator('#typing-test').inputValue(), 't');
-      assert.equal(await page.evaluate(() => window.spoken.length), 4);
+      assert.equal(await page.evaluate(() => window.spoken.length), 2);
       await page.keyboard.press('Escape');
       await page.evaluate(() => document.querySelector('#typing-test')?.remove());
       await page.keyboard.press('t');
-      assert.equal(await page.evaluate(() => window.spoken.length), 4);
+      assert.equal(await page.evaluate(() => window.spoken.length), 2);
       await page.keyboard.press('Escape');
       const cfi = await page.evaluate(
         () => window.rsvpTest.reader.sentenceMode.sentence.cfi,

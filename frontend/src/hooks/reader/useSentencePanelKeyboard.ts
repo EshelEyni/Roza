@@ -64,8 +64,11 @@ export function installSentencePanelKeyboard(panel: HTMLElement) {
   };
 }
 
-/** Installed only while Sentence Mode is mounted, including its portalled sheets. */
-export function useSentencePanelKeyboard() {
+/** Panels opened in Sentence Mode retain navigation until they close, even after mode exit. */
+export function useSentencePanelKeyboard(active: boolean) {
+  const enabled = useRef(active);
+  enabled.current = active;
+  const refresh = useRef<(() => void) | null>(null);
   const trigger = useRef<HTMLElement | null>(null);
   useEffect(() => {
     const installed = new Map<HTMLElement, () => void>();
@@ -81,19 +84,20 @@ export function useSentencePanelKeyboard() {
         installed.delete(panel);
         removed = true;
       }
-      for (const panel of current) if (!installed.has(panel)) installed.set(panel, installSentencePanelKeyboard(panel));
+      for (const panel of current) if (enabled.current && !installed.has(panel)) installed.set(panel, installSentencePanelKeyboard(panel));
       if (removed && !installed.size && trigger.current?.isConnected) trigger.current.focus({ preventScroll: true });
     };
+    refresh.current = sync;
     document.addEventListener("click", remember, true);
     const observer = new MutationObserver(sync);
     observer.observe(document.body, { childList: true, subtree: true });
     sync();
     return () => {
+      refresh.current = null;
       observer.disconnect();
       document.removeEventListener("click", remember, true);
       installed.forEach(cleanup => cleanup());
     };
   }, []);
+  useEffect(() => { refresh.current?.(); }, [active]);
 }
-
-

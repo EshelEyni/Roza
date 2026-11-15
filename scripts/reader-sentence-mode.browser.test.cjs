@@ -130,7 +130,7 @@ test(
         if (req.url.includes("/annotations")) {
           const item = body ? { ...JSON.parse(body), id: "note-1" } : null;
           if (item) annotations.push(item);
-          res.end(JSON.stringify({ status: "success", data: item || [] }));
+          res.end(JSON.stringify({ status: "success", data: item || annotations.slice(-1) }));
           return;
         }
         res.end(
@@ -955,6 +955,18 @@ test(
             assert.equal(lookups.at(-1).passage, true);
             assert.equal(lookups.at(-1).provider, "google");
             assert.equal(lookups.at(-1).location, cfi);
+            await page.evaluate(() => {
+              window.pronunciationClicks = 0;
+              const button = document.querySelector('.reader-dictionary button[title="Pronounce English word"]');
+              if (!button) throw new Error('Pronunciation button missing');
+              button.addEventListener('click', () => window.pronunciationClicks++);
+              button.focus();
+            });
+            await page.keyboard.press("t");
+            assert.equal(await page.evaluate(() => window.pronunciationClicks), 0);
+            await page.keyboard.press("Enter");
+            assert.equal(await page.evaluate(() => window.pronunciationClicks), 1);
+
             await page.keyboard.press("Escape");
             await page.waitForFunction(
               () => !document.querySelector(".reader-dictionary"),
@@ -1300,6 +1312,20 @@ test(
               savedCfi,
             );
             assert.deepEqual(errors, []);
+            // A Sentence Mode annotation panel keeps its keyboard behavior after book navigation.
+            await page.evaluate(() => window.rsvpTest.reader.togglePanel("annotations"));
+            await page.locator(".reader-annotation-passage").first().click();
+            await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.active);
+            assert.equal(await page.evaluate(() => window.rsvpTest.reader.panel), "annotations");
+            assert.equal(await page.locator(".reader-sheet.reader-sentence-keyboard-panel").count(), 1);
+            await page.locator("#reader-annotation-search").focus();
+            await page.keyboard.press("Control+ArrowDown");
+            assert.equal(await page.evaluate(() => document.activeElement?.id === "reader-annotation-search"), false);
+            await page.keyboard.press("Escape");
+            await page.waitForFunction(() => !window.rsvpTest.reader.panel);
+            await page.evaluate(() => window.rsvpTest.reader.togglePanel("annotations"));
+            assert.equal(await page.locator(".reader-sentence-keyboard-panel").count(), 0);
+            await page.evaluate(() => window.rsvpTest.reader.closePanel());
           } finally {
             await browser.close();
           }

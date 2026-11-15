@@ -1,4 +1,3 @@
-import { useSentencePanelKeyboard } from "../../hooks/reader/useSentencePanelKeyboard";
 import { readerSentencePassageOffsets } from "../../services/readerSentencePassageOffsets";
 import {
   measureSentenceLines,
@@ -60,7 +59,6 @@ export function ReaderSentenceMode({
   bookId: string;
 }) {
   const { t } = useTranslation();
-  useSentencePanelKeyboard();
   const [flagging, setFlagging] = useState(false);
   const flagPending = useRef(false);
   const mode = reader.sentenceMode;
@@ -259,6 +257,14 @@ export function ReaderSentenceMode({
     if (native?.anchorNode && sentenceText.current?.contains(native.anchorNode))
       native.removeAllRanges();
   };
+  useLayoutEffect(() => {
+    const draft = reader.annotations.draft;
+    if (reader.panel !== "annotations" || !draft || draft.color === "none") return;
+    // The draft already owns the exact source range. Let its preview color replace focus paint.
+    clearTextSelection();
+    setWordFocus({ cfi: "", index: -1 });
+    resetVertical();
+  }, [reader.panel, reader.annotations.draft?.cfi, reader.annotations.draft?.endCfi, reader.annotations.draft?.color]);
   const captureSelection = () => {
     const element = sentenceText.current;
     const native = window.getSelection();
@@ -767,6 +773,7 @@ export function ReaderSentenceMode({
             lookup.selection.text.length > 80
           }
           autoLookup={lookup.translate}
+          sentenceMode
           bookId={bookId}
           getLookupPage={reader.getLookupPage}
           onClose={() => setLookup(null)}
