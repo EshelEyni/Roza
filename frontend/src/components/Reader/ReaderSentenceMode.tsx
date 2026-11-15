@@ -605,7 +605,7 @@ export function ReaderSentenceMode({
         setWordFocus({ cfi: "", index: -1 });
         const direction = event.key === "ArrowRight" ? 1 : -1;
         if (direction > 0 ? mode.canNext : mode.canBack) {
-          pendingWord.current = { cfi: sentence.cfi, direction: 1 };
+          pendingWord.current = null;
           mode.move(direction);
         }
         return;

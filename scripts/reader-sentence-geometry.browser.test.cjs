@@ -510,35 +510,35 @@ test(
       await page.waitForFunction(
         () =>
           window.rsvpTest.reader.sentenceMode.number === 1 &&
-          document.querySelector(".reader-sentence-word-active"),
+          !document.querySelector(".reader-sentence-word-active"),
       );
       assert.equal(
         await active(),
-        0,
-        "Ctrl+Left selects the previous sentence start",
+        -1,
+        "Ctrl+Left changes sentence without selecting a word",
       );
       await page.keyboard.press("Control+ArrowRight");
       await page.waitForFunction(
         () =>
           window.rsvpTest.reader.sentenceMode.number === 2 &&
-          !!document.querySelector(".reader-sentence-word-active"),
+          !document.querySelector(".reader-sentence-word-active"),
       );
-      assert.equal(await active(), 0);
+      assert.equal(await active(), -1);
       await page.keyboard.press("Control+ArrowRight");
       await page.waitForFunction(
         () =>
           window.rsvpTest.reader.sentenceMode.number === 3 &&
-          !!document.querySelector(".reader-sentence-word-active"),
+          !document.querySelector(".reader-sentence-word-active"),
       );
       await page.keyboard.press("Control+ArrowRight");
       await page.waitForFunction(
         () =>
           window.rsvpTest.reader.sentenceMode.chapterTitle === "B" &&
-          document.querySelector(".reader-sentence-word-active"),
+          !document.querySelector(".reader-sentence-word-active"),
       );
       assert.equal(
         await active(),
-        0,
+        -1,
         "Ctrl sentence navigation crosses spine boundaries",
       );
       geometry = await lines();

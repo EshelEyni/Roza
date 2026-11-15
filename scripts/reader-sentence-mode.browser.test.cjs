@@ -883,10 +883,7 @@ test(
                 window.rsvpTest.reader.sentenceMode.sentence.text ===
                 "Next sentence!",
             );
-            assert.equal(
-              await page.locator(".reader-sentence-word-active").textContent(),
-              "Next",
-            );
+            assert.equal(await page.locator(".reader-sentence-word-active").count(), 0);
             if (!mobile) {
               await page.locator("[data-sentence-word]").last().click();
               assert.equal(
@@ -902,11 +899,11 @@ test(
                 window.rsvpTest.reader.sentenceMode.sentence.text ===
                 "Hello, reading world.",
             );
-            await page.waitForFunction(() => document.querySelector('.reader-sentence-word-active')?.textContent === 'Hello');
+            assert.equal(await page.locator('.reader-sentence-word-active').count(), 0);
             assert.equal(
               await page.getByRole("button", { name: "Translate", exact: true }).isDisabled(),
-              false,
-              "Sentence navigation clears the old range and focuses the new sentence start",
+              true,
+              "Ctrl sentence navigation clears selection without focusing a word",
             );
             if (!mobile) {
               const words = page.locator("[data-sentence-word]");
