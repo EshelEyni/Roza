@@ -142,3 +142,28 @@ describe("Reader book context", () => {
     expect(() => book().passage(beforeSecret)).toThrow();
   });
 });
+
+describe("Full-book indexed retrieval", () => {
+  it("retrieves evidence across chapters with edition source references", () => {
+    const result = book("Alice remembers the garden friendship.").retrieve("Alice garden FUTURE_SECRET", beforeSecret, true);
+    expect(result.context.some(entry => entry.label.startsWith("Section 1:") && entry.text.includes("Alice"))).toBe(true);
+    expect(result.context.some(entry => entry.label.startsWith("Section 2:") && entry.text.includes("FUTURE_SECRET"))).toBe(true);
+    expect(result.context.filter(entry => entry.label.startsWith("Section")).every(entry => /characters \d+-\d+/.test(entry.label))).toBe(true);
+  });
+  it("does not select clipped chunks using future-only matches, even after unrestricted retrieval", () => {
+    const context = book();
+    context.retrieve("FUTURE_SECRET secret", beforeSecret, true);
+    const safe = context.retrieve("FUTURE_SECRET secret", beforeSecret, false);
+    expect(safe.context.filter(entry => entry.label.startsWith("Section"))).toEqual([]);
+    expect(JSON.stringify(safe)).not.toContain("revealed later");
+  });
+  it("finds a late-book reference in a large edition with bounded output on repeated searches", () => {
+    const context = book("ordinary prose ".repeat(150000) + " Alice discovers the silver compass.");
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const result = context.retrieve("silver compass", beforeSecret, true);
+      expect(JSON.stringify(result.context)).toContain("silver compass");
+      expect(result.context.reduce((sum, entry) => sum + entry.text.length, 0)).toBeLessThanOrEqual(MAX_CONTEXT_CHARS);
+      expect(result.context.length).toBeLessThanOrEqual(8);
+    }
+  });
+});

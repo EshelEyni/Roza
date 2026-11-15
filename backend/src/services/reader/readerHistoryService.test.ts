@@ -51,3 +51,13 @@ describe("Reader source-aware history", () => {
     expect(JSON.stringify(result)).not.toContain("later");
   });
 });
+
+it("keeps the conversation after chapter reads without replaying all source text", () => {
+  const history = build([make("chapter", { question: "Summarize chapter two", answer: "Alice meets Bob.",
+    excerpts: [{ label: "Section 2", text: "x".repeat(95000) }],
+  })], "Continue discussing Alice");
+  expect(history.omitted).toBe(0);
+  expect(history.input[1]).toEqual({ role: "assistant", content: "Alice meets Bob." });
+  expect(history.input[0].content).toContain('"prefixOnly":true');
+  expect(history.input[0].content.length).toBeLessThan(17000);
+});

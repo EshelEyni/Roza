@@ -104,6 +104,19 @@ describe("Reader conversations", () => {
   afterEach(() => {
     delete process.env.OPENAI_API_KEY;
   });
+  it("exposes book tools within the existing chat and persists their source evidence", async () => {
+    (askReaderAi as jest.Mock).mockImplementationOnce(async (_instructions, _input, _model, purpose, _tokens, tools) => {
+      expect(purpose).toBe("answer");
+      expect(tools.definitions.map((tool: { name: string }) => tool.name)).toContain("read_book");
+      expect(await tools.execute("search_book", { query: "garden" })).toMatchObject({ excerpts: [{ text: "A quiet garden." }] });
+      return "A grounded answer";
+    });
+    (ReaderConversationModel.findOneAndUpdate as jest.Mock).mockResolvedValue(conversation());
+    expect((await request(app).post(url + "/messages").set("Authorization", "test").send(body)).status).toBe(200);
+    const calls = (ReaderConversationModel.findOneAndUpdate as jest.Mock).mock.calls;
+    const completed = calls.find(call => call[1].$set?.["turns.$[turn].status"] === "completed");
+    expect(completed[1].$set["turns.$[turn].excerpts"]).toContainEqual({ label: "Current passage", text: "A quiet garden." });
+  });
   it("requires authentication and the existing reader allowlist", async () => {
     expect((await request(app).get(base)).status).toBe(401);
     process.env.READER_ENABLED = "false";
