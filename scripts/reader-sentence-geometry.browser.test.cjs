@@ -292,7 +292,7 @@ test(
         const r = window.rsvpTest.reader;
         r.review.onOpenAnnotation(r.annotations.items.find(item => item.color === 'pink').id);
       });
-      await page.getByText('Filtered by annotation', {exact:true}).waitFor();
+      await page.getByText('Showing selected annotation', {exact:true}).waitFor();
       assert.equal(await page.locator('.reader-annotation-card').count(), 1);
       await page.locator('.reader-annotation-passage').click();
       await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.active);
