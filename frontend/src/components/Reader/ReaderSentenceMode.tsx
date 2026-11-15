@@ -24,6 +24,7 @@ import {
   FiCopy,
   FiEdit3,
   FiFlag,
+  FiX,
   FiGlobe,
   FiMessageSquare,
 } from "react-icons/fi";
@@ -915,7 +916,7 @@ export function ReaderSentenceMode({
           {mode.number} / {mode.count}
         </span>
         <progress
-          aria-label="Sentence progress in chapter"
+          aria-label={mode.target ? "Sentence progress to reading target" : "Sentence progress in chapter"}
           value={mode.number}
           max={mode.count || 1}
         />
@@ -952,6 +953,12 @@ export function ReaderSentenceMode({
           ref={actions}
           onMouseDown={(event) => event.preventDefault()}
         >
+          {mode.target && <button disabled={blocked} aria-label="Clear target"
+            title={"Clear target: " + mode.target.text} onClick={mode.clearReadingTarget}>
+            <FiX /><span>Clear target</span>
+          </button>}
+          <button disabled={blocked || !sentence} aria-label="Set reading target" title="Set reading target"
+            onClick={() => void reader.readingTarget.begin()}><FiFlag /><span>Set target</span></button>
           <button
             disabled={blocked || translateDisabled}
             data-shortcut="t"

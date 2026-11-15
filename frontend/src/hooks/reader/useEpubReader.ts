@@ -117,7 +117,30 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     closePanel();
     return sentenceMode.toggle(cfi);
   };
-  runtime.enterSentenceMode.current = () => { void toggleSentenceMode(); };
+  const [targetOrigin, setTargetOrigin] = useState<string | null>(null);
+  runtime.enterSentenceMode.current = () => { if (!targetOrigin) void toggleSentenceMode(); };
+  const [targetPending, setTargetPending] = useState(false);
+  const [targetError, setTargetError] = useState("");
+  const beginReadingTarget = async () => {
+    const origin = sentenceMode.sentence?.cfi;
+    if (!origin) return;
+    await toggleSentenceMode();
+    if (runtime.rsvpActive.current) return;
+    setTargetError(""); setTargetOrigin(origin);
+  };
+  const finishReadingTarget = async (confirm: boolean) => {
+    if (!targetOrigin || targetPending) return;
+    setTargetPending(true); setTargetError("");
+    try {
+      if (confirm && selection.textSelection)
+        await sentenceMode.setReadingTarget(selection.textSelection.cfi, selection.textSelection.text, targetOrigin);
+      selection.closeLookup();
+      await sentenceMode.toggle(targetOrigin);
+      setTargetOrigin(null);
+    } catch (error) {
+      setTargetError(error instanceof Error ? error.message : "Could not set reading target. Try again.");
+    } finally { setTargetPending(false); }
+  };
   const jumpHistory = useReaderJumpHistory(runtime, engine.location, describeLocation, navigation.returnTo,
     () => setNotice(t("reader.navigationError")));
   const getProgressDestination = useCallback(async (progress: number) => {
@@ -161,6 +184,9 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     ...keyboard,
     ...progressSettings,
     rsvp: { ...rsvp, toggle: () => { selection.closeLookup(); closePanel(); return rsvp.toggle(); } },
+    readingTarget: { selecting: !!targetOrigin, pending: targetPending, error: targetError,
+      begin: beginReadingTarget, finish: finishReadingTarget,
+      chooseAgain: () => { selection.closeLookup(); setTargetError(""); } },
     sentenceMode: { ...sentenceMode, toggle: toggleSentenceMode },
     askSentenceAi: (passage: ReaderPassage, autoSubmit = false) => {
       if (passage.text.length > readerAiLimits.passage) return;

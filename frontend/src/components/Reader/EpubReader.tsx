@@ -1,3 +1,4 @@
+import { ReaderReadingTarget } from "./ReaderReadingTarget";
 import { ReaderSentenceMode } from "./ReaderSentenceMode";
 import { useSearchParams } from "react-router-dom";
 import { ReaderRsvp } from "./ReaderRsvp";
@@ -50,7 +51,7 @@ export function EpubReader({
       <span className="app-header-status-surface" aria-hidden="true" />
       {reader.flags.message && <div className="reader-copy-toast" role="status">{reader.flags.message}</div>}
       {copyToast && <div key={copyToast.id} className="reader-copy-toast" role="status" aria-live="polite">{copyToast.message}</div>}
-      {reader.textSelection && !reader.textSelection.suppressTooltip && (
+      {reader.textSelection && !reader.readingTarget.selecting && !reader.textSelection.suppressTooltip && (
         <ReaderDictionary
           key={reader.textSelection.cfi}
           selection={reader.textSelection}
@@ -73,13 +74,14 @@ export function EpubReader({
           busy={reader.selectionBusy}
         />
       )}
+      <ReaderReadingTarget reader={reader} />
       <ReaderToolbar
         sentenceMode={reader.sentenceMode}
         rsvp={reader.rsvp}
         book={book}
         panel={reader.panel}
         togglePanel={reader.togglePanel}
-        loading={reader.loading}
+        loading={reader.loading || reader.readingTarget.selecting}
         error={reader.error}
         mobile={reader.mobile}
         fullscreen={reader.fullscreen}

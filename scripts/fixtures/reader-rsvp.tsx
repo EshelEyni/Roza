@@ -1,3 +1,4 @@
+import { ReaderReadingTarget } from "../../frontend/src/components/Reader/ReaderReadingTarget";
 import { ReaderSentenceMode } from "../../frontend/src/components/Reader/ReaderSentenceMode";
 import { ReaderPanels } from "../../frontend/src/components/Reader/ReaderPanels";
 import * as sentenceService from "../../frontend/src/services/readerSentences";
@@ -48,13 +49,14 @@ function Fixture() {
   }, [reader]);
   return (
     <div className="reader-shell reader-theme-sepia" ref={reader.shell}>
+      <ReaderReadingTarget reader={reader} />
       <ReaderToolbar
         book={book}
         sentenceMode={reader.sentenceMode}
         rsvp={reader.rsvp}
         panel={reader.panel}
         togglePanel={reader.togglePanel}
-        loading={reader.loading}
+        loading={reader.loading || reader.readingTarget.selecting}
         error={reader.error}
         mobile={reader.mobile}
         fullscreen={reader.fullscreen}

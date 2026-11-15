@@ -233,6 +233,63 @@ test(
             await page.waitForFunction(
               () => window.rsvpTest.reader.flags.ready,
             );
+            // Targets span sections and revert to section progress after passing the endpoint.
+            const targetResult = await page.evaluate(async () => {
+              const { reader, sentenceService } = window.rsvpTest;
+              const origin = reader.sentenceMode.sentence.cfi;
+              const last = reader.searchBook.spine.get(2);
+              await last.load(reader.searchBook.load.bind(reader.searchBook));
+              const endpoint = sentenceService.extractReaderSentences(last)[0];
+              await reader.sentenceMode.setReadingTarget(endpoint.cfi, endpoint.text, origin);
+              return origin;
+            });
+            await page.waitForFunction(() => window.rsvpTest.reader.sentenceMode.count === 6);
+            assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.number), 1);
+            for (let step = 0; step < 5; step++) {
+              await page.getByRole("button", { name: "Next", exact: true }).click();
+              await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.busy);
+            }
+            assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.number), 6);
+            await page.getByRole("button", { name: "Next", exact: true }).click();
+            assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.number), 2);
+            assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.target), null);
+            assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.count), 3);
+            for (let step = 0; step < 6; step++) {
+              await page.getByRole("button", { name: "Back", exact: true }).click();
+              await page.waitForFunction(() => !window.rsvpTest.reader.sentenceMode.busy);
+            }
+            const widths = await page.evaluate(() => ({
+              text: document.querySelector('.reader-sentence-content').getBoundingClientRect().width,
+              progress: document.querySelector('.reader-sentence-progress').getBoundingClientRect().width,
+            }));
+            assert.ok(Math.abs(widths.text - widths.progress) < 2, JSON.stringify(widths));
+            await page.getByRole("button", { name: "Set reading target", exact: true }).click();
+            await page.waitForFunction(() => window.rsvpTest.reader.readingTarget.selecting);
+            assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.active), false);
+            await page.evaluate(() => window.rsvpTest.reader.readingTarget.finish(false));
+            await page.waitForFunction(() => window.rsvpTest.reader.sentenceMode.active && !window.rsvpTest.reader.sentenceMode.busy);
+            assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.sentence.cfi), targetResult);
+            await page.getByRole("button", { name: "Set reading target", exact: true }).click();
+            await page.waitForFunction(() => window.rsvpTest.reader.readingTarget.selecting);
+            await page.waitForTimeout(700); // Allow the Page Mode banner resize to settle before selecting.
+            await page.waitForFunction(() => {
+              const docs = [...document.querySelectorAll('iframe')].map(frame => frame.contentDocument);
+              const element = docs.flatMap(doc => [...(doc?.querySelectorAll('p') || [])])
+                .find(element => element.textContent === 'Last paragraph.');
+              if (!element) return false;
+              const range = element.ownerDocument.createRange();
+              range.setStart(element.firstChild, 0); range.setEnd(element.firstChild, 4);
+              const selection = element.ownerDocument.getSelection();
+              selection.removeAllRanges(); selection.addRange(range);
+              element.ownerDocument.dispatchEvent(new Event('selectionchange'));
+              return true;
+            });
+            await page.getByRole('dialog').waitFor();
+            await page.getByRole('button', { name: 'Set target', exact: true }).click();
+            await page.waitForFunction(() => window.rsvpTest.reader.sentenceMode.active && !window.rsvpTest.reader.readingTarget.selecting);
+            assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.count), 3);
+            assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.sentence.cfi), targetResult);
+            await page.getByRole('button', { name: 'Clear target', exact: true }).click();
             const extraction = await page.evaluate(async () => {
               const { reader, sentenceService } = window.rsvpTest;
               const items = sentenceService.extractReaderSentences(

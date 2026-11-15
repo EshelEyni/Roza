@@ -27,7 +27,43 @@ export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: strin
     direction: number;
     from?: string;
   }>({ target: 0, direction: 1 });
+  const [target, setTarget] = useState<{ text: string; cfis: string[] } | null>(null);
   const sentence = sentences[index];
+  async function setReadingTarget(cfi: string, text: string, origin: string) {
+    const book = runtime.epubRef.current;
+    if (!book) throw new Error("Book is not ready");
+    const compare = new EpubCFI().compare;
+    const start = new EpubCFI(origin); start.collapse(true);
+    const end = new EpubCFI(cfi); end.collapse(false);
+    if (compare(end.toString(), start.toString()) <= 0)
+      throw new Error("Choose a target after your starting sentence.");
+    const first = book.spine.get(origin), last = book.spine.get(cfi);
+    if (!first || !last) throw new Error("Target is unavailable.");
+    const cfis: string[] = [];
+    for (let i = first.index; i <= last.index; i++) {
+      const section = book.spine.get(i);
+      if (!section || section.linear === false) continue;
+      await section.load(book.load.bind(book));
+      for (const item of extractReaderSentences(section)) {
+        const a = new EpubCFI(item.cfi); a.collapse(true);
+        const b = new EpubCFI(item.cfi); b.collapse(false);
+        if (compare(b.toString(), start.toString()) > 0 && compare(a.toString(), end.toString()) < 0) cfis.push(item.cfi);
+      }
+    }
+    if (!cfis.length) throw new Error("No readable sentences found before this target.");
+    setTarget({ text, cfis });
+  }
+  const targetNumber = target && sentence ? (() => {
+    const point = new EpubCFI(sentence.cfi); point.collapse(true);
+    const first = new EpubCFI(target.cfis[0]); first.collapse(true);
+    const compare = new EpubCFI().compare;
+    if (compare(point.toString(), first.toString()) < 0) return 0;
+    const position = target.cfis.findIndex(cfi => {
+      const end = new EpubCFI(cfi); end.collapse(false);
+      return compare(end.toString(), point.toString()) > 0;
+    });
+    return position < 0 ? target.cfis.length : position + 1;
+  })() : null;
   useEffect(
     () => () => {
       ++version.current;
@@ -45,6 +81,12 @@ export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: strin
     return section ? next : null;
   }
   function persist(current: ReaderSentence) {
+    setTarget(previous => {
+      if (!previous) return previous;
+      const end = new EpubCFI(previous.cfis[previous.cfis.length - 1]); end.collapse(false);
+      const point = new EpubCFI(current.cfi); point.collapse(true);
+      return new EpubCFI().compare(point.toString(), end.toString()) >= 0 ? null : previous;
+    });
     const book = runtime.epubRef.current;
     runtime.rsvpLocation.current = current.cfi;
     const end = new EpubCFI(current.cfi);
@@ -191,8 +233,9 @@ export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: strin
     toggle,
     entryCfi,
     move,
-    number: sentences.length ? index + 1 : 0,
-    count: sentences.length,
+    target, setReadingTarget, clearReadingTarget: () => setTarget(null),
+    number: targetNumber ?? (sentences.length ? index + 1 : 0),
+    count: target ? target.cfis.length : sentences.length,
     canBack: index > 0 || (!edge.back && adjacent(sectionIndex, -1) !== null),
     canNext:
       index + 1 < sentences.length ||

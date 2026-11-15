@@ -2211,7 +2211,7 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 .reader-sentence-content { margin: 0 auto; width: 100%; max-width: 1100px; min-height: 0; display: grid; grid-template-rows: 32px minmax(0, 1fr); gap: 16px; }
 .reader-sentence-chapter { text-align: center; font-size: 11px; line-height: 16px; letter-spacing: 2.6px; text-transform: uppercase; color: #958673; margin: 0; font-weight: 650; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .reader-sentence-text { min-height: 0; height: 100%; overflow: hidden; font: 400 clamp(28px,5.5vw,43px)/1.45 Georgia, 'Times New Roman', serif; letter-spacing: -.008em; text-align: center; text-wrap: balance; overflow-wrap: anywhere; }
-.reader-sentence-progress { flex: none; display: flex; align-items: center; gap: 13px; padding: 10px 28px 14px; color: #8D806F; font-size: 12px; }
+.reader-sentence-progress { box-sizing: border-box; width: calc(100% - 64px); max-width: 1100px; margin-inline: auto; flex: none; display: flex; align-items: center; gap: 13px; padding: 10px 0 14px; color: #8D806F; font-size: 12px; }
 .reader-sentence-progress progress { flex: 1; min-width: 0; height: 3px; border: 0; background: #DCD1C1; accent-color: #816449; }
 .reader-sentence-progress progress::-webkit-progress-bar { background: #DCD1C1; }
 .reader-sentence-progress progress::-webkit-progress-value { background: #816449; }
@@ -2241,7 +2241,7 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
   .reader-sentence-actions { display: grid; grid-template-columns: repeat(3,44px); gap: 6px; }
   .reader-sentence-actions button { width: 44px; min-width: 44px; min-height: 40px; padding: 6px; gap: 0; }
   .reader-sentence-actions span { display: none; }
-  .reader-sentence-progress { padding: 8px 18px 10px; }
+  .reader-sentence-progress { width: calc(100% - 36px); padding: 8px 0 10px; }
 }
 .reader-review-list { display: grid; gap: 1rem; margin-top: 1rem; }
 .reader-review-filter { display: flex; align-items: center; gap: 10px; }
@@ -2335,3 +2335,33 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
     > svg { display: block; flex-shrink: 0; width: 12px; height: 12px; }
   }
 }
+
+.reader-target-instructions {
+  position: fixed;
+  top: calc(10px + env(safe-area-inset-top, 0px));
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  box-sizing: border-box;
+  padding: 8px 10px 8px 14px;
+  border: 1px solid #D8CBBB;
+  border-radius: 10px;
+  background: #EFE7DA;
+  color: #564737;
+  box-shadow: 0 4px 18px #0002;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.reader-target-instructions .reader-button {
+  flex-shrink: 0;
+  min-height: 28px;
+  padding: 4px 9px;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.reader-target-instructions > span { min-width: 0; }
