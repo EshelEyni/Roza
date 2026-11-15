@@ -68,6 +68,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   );
   const sentenceMode = useReaderSentenceMode(runtime);
   const flags = useReaderFlags(runtime, book.id, userId, engine.chapter);
+  runtime.flagReady.current = flags.ready;
   selection.flagHandler.current = value => { if (!selection.busy) void flags.save(value); };
   const rsvp = useReaderRsvp(runtime, engine.loading || !!panel || !!selection.textSelection);
   const pagination = useReaderPagination(
@@ -81,6 +82,16 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   const openAnnotations = useCallback(() => setPanel("annotations"), [setPanel]);
   const annotations = useReaderAnnotations(runtime, book.id, userId, engine.chapter,
     openAnnotations, selection.closeLookup, panel === "annotations");
+  runtime.wordAction.current = (action, value) => {
+    if (action === "n") annotations.select(value, true);
+    if (action === "f") void flags.save(value);
+    if (action === "c") void navigator.clipboard.writeText(value.text)
+      .then(() => setNotice(t("reader.selectionCopied")))
+      .catch(() => setNotice(t("reader.selectionCopyError")));
+    if (action === "a" && value.text.length <= readerAiLimits.passage) {
+      chat.start(value); selection.closeLookup(); setPanel("chat");
+    }
+  };
   const {describeLocation} = pagination;
   useEpubPreferences(
     runtime,

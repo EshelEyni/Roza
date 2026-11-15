@@ -329,12 +329,13 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
     },
     [t, publishRange],
   );
-  const openLookup = useCallback((cfi?: string, contents?: Contents) => {
+  const openLookup = useCallback((cfi?: string, contents?: Contents, value?: ReaderTextSelection) => {
     popupSuppressed.current = false;
     if (cfi && contents) {
       select(cfi, contents);
       keyboardSelection.current = !contents.document.getSelection()?.toString().trim();
     }
+    if (value) { current.current = value; keyboardSelection.current = true; }
     if (current.current) {
       current.current = { ...current.current, suppressTooltip: false, lookupRequest: ++lookupRequest.current };
       setTextSelection(current.current);

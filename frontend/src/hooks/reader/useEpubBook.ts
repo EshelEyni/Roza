@@ -89,6 +89,9 @@ export function useEpubBook(
     const words = createReaderWordNavigation(runtime, { closeLookup, openLookup, flagSelection });
     const onKey = (event: KeyboardEvent) => {
       if (runtime.rsvpActive.current) return;
+      if ((event.target as Element | null)?.closest?.(
+        "input,textarea,select,[contenteditable]:not([contenteditable=false]),[role=dialog]:not(.reader-dictionary),[role=textbox],[role=slider]",
+      )) return;
       if (words.onKey(event)) return;
       if (event.key === "Escape") words.clear();
       if (event.key === "Escape") closeLookup();

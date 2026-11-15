@@ -39,7 +39,7 @@ async function epub() {
         (i === 0
           ? '<a epub:type="noteref" href="c7.xhtml#note">Note 1</a> '
           : "") +
-        Array.from({ length: 600 }, (_, j) => "chapter" + i + "word" + j).join(
+        Array.from({ length: 600 }, (_, j) => "chapter" + i + "word" + j + (j % 30 === 29 ? "!" : "")).join(
           " ",
         ) +
         "</p></body></html>",
@@ -114,7 +114,7 @@ test(
       res.end(
         JSON.stringify({
           status: "success",
-          data: { entry: null, lookupCount: 1 },
+          data: req.url.includes("annotations") ? [] : { entry: null, lookupCount: 1 },
         }),
       );
     });
@@ -186,11 +186,11 @@ test(
       await key("Control+Space");
       assert.equal(await mark(), null);
       assert.equal(lookups.length, 0);
-      await key("ArrowDown");
+      await key("ArrowRight");
       assert.equal(await mark(), "Note");
-      await key("ArrowDown");
+      await key("ArrowRight");
       assert.equal(await mark(), "1");
-      await key("ArrowUp");
+      await key("ArrowLeft");
       assert.equal(await mark(), "Note");
       assert.equal(
         await page.evaluate(() => window.navigationTest.reader.textSelection),
@@ -198,11 +198,11 @@ test(
       );
       assert.equal(lookups.length, 0);
       // At the first word, Up goes to the previous page; at book start it stays put.
-      await key("ArrowUp");
+      await key("ArrowLeft");
       assert.equal(await mark(), "Note");
       await key("Escape");
       await focus();
-      await key("ArrowUp");
+      await key("ArrowLeft");
       const last = await mark();
       assert.ok(last?.startsWith("chapter0word"));
       await page.evaluate(() => {
@@ -219,14 +219,14 @@ test(
       const firstPage = await page.evaluate(
         () => window.navigationTest.reader.location.start.cfi,
       );
-      await key("ArrowDown");
+      await key("ArrowRight");
       await page.waitForFunction(
         (cfi) => window.navigationTest.reader.location.start.cfi !== cfi,
         firstPage,
       );
       const nextFirst = await mark();
       assert.ok(nextFirst?.startsWith("chapter0word"));
-      await key("ArrowUp");
+      await key("ArrowLeft");
       await page.waitForFunction(
         (cfi) => window.navigationTest.reader.location.start.cfi === cfi,
         firstPage,
@@ -240,7 +240,7 @@ test(
       assert.equal(lookups.length, 0);
       await key("Escape");
       await focus();
-      await key("ArrowDown");
+      await key("ArrowRight");
       await key("Control+Space");
       await page.waitForFunction(
         () => window.navigationTest.reader.textSelection?.lookupRequest,
@@ -321,7 +321,7 @@ test(
         1,
         "A passage uses the existing selection actions, not a word lookup",
       );
-      await key("ArrowDown");
+      await key("ArrowRight");
       assert.equal(
         await mark(),
         "chapter0word0",
@@ -347,10 +347,10 @@ test(
           d.getSelection().addRange(range);
         });
       await selectPassage();
-      await key("ArrowDown");
+      await key("ArrowRight");
       assert.equal(await mark(), "chapter0word4");
       await selectPassage();
-      await key("ArrowUp");
+      await key("ArrowLeft");
       assert.equal(
         await mark(),
         "chapter0word1",
@@ -386,9 +386,9 @@ test(
       );
       await page.evaluate(() => window.navigationTest.reader.closeLookup());
       await focus();
-      await key("ArrowDown");
+      await key("ArrowRight");
       await page.getByRole("textbox", { name: "Outside input" }).fill("typing");
-      await key("ArrowDown");
+      await key("ArrowRight");
       await key("Control+Space");
       assert.equal(await mark(), "Note");
       assert.equal(lookups.length, 2);
@@ -403,7 +403,7 @@ test(
       await page.waitForTimeout(600);
       assert.equal(await mark(), "Note");
       await focus();
-      await key("ArrowDown");
+      await key("ArrowRight");
       assert.equal(await mark(), "1");
       assert.equal(
         await page.evaluate(() => window.chapterWordScans),
@@ -412,7 +412,7 @@ test(
       );
       await key("Escape");
       await focus();
-      await key("ArrowRight");
+      await key("PageDown");
       await page.waitForFunction(
         (cfi) => window.navigationTest.reader.location.start.cfi !== cfi,
         firstPage,
@@ -423,7 +423,7 @@ test(
       );
       await key("Escape");
       await focus();
-      await key("ArrowDown");
+      await key("ArrowRight");
       assert.equal(
         await page.evaluate(() => {
           const d = document.querySelector(
@@ -443,7 +443,7 @@ test(
             if (kind === "dialog" || kind === "textbox")
               target.setAttribute("role", kind);
             d.body.append(target);
-            for (const key of ["ArrowDown", "ArrowUp", " "]) {
+            for (const key of ["ArrowRight", "ArrowLeft", " "]) {
               const e = new KeyboardEvent("keydown", {
                 key,
                 code: key === " " ? "Space" : key,
@@ -475,7 +475,7 @@ test(
         for (let i = 0; i < 5; i++)
           d.body.dispatchEvent(
             new KeyboardEvent("keydown", {
-              key: "ArrowDown",
+              key: "ArrowRight",
               bubbles: true,
               cancelable: true,
             }),
@@ -503,19 +503,19 @@ test(
         () => window.navigationTest.reader.location.start.index === 1,
       );
       await focus();
-      await key("ArrowDown");
+      await key("ArrowRight");
       assert.equal(await mark(), "chapter1word0");
-      await key("ArrowUp");
+      await key("ArrowLeft");
       await page.waitForFunction(
         () => window.navigationTest.reader.location.start.index === 0,
       );
       assert.equal(await mark(), "chapter0word599");
-      await key("ArrowDown");
+      await key("ArrowRight");
       await page.waitForFunction(
         () => window.navigationTest.reader.location.start.index === 1,
       );
       assert.equal(await mark(), "chapter1word0");
-      await key("ArrowDown");
+      await key("ArrowRight");
       assert.equal(await mark(), "chapter1word1");
       await key("Escape");
       // An open side tab must not block a focused EPUB or repeated key paints.
@@ -523,7 +523,7 @@ test(
       await page.locator(".reader-settings").waitFor();
       await page.waitForTimeout(600);
       await focus();
-      await key("ArrowDown");
+      await key("ArrowRight");
       assert.equal(await mark(), "chapter1word0");
       await page.evaluate(() => {
         const d = document.querySelector(
@@ -551,7 +551,7 @@ test(
         for (let i = 0; i < 5; i++)
           d.body.dispatchEvent(
             new KeyboardEvent("keydown", {
-              key: "ArrowDown",
+              key: "ArrowRight",
               repeat: true,
               bubbles: true,
               cancelable: true,
@@ -576,19 +576,85 @@ test(
       await page
         .getByRole("textbox", { name: "Side text" })
         .fill("typing in side tab");
-      await key("ArrowDown");
+      await key("ArrowRight");
       await key("Control+Space");
       assert.equal(await mark(), "chapter1word5");
       assert.equal(lookups.length, 2);
       await focus();
-      await key("ArrowUp");
+      await key("ArrowLeft");
       assert.equal(await mark(), "chapter1word4");
       await key("Escape");
       await page.evaluate(() => window.navigationTest.reader.closePanel());
+      await page.evaluate(() => window.navigationTest.reader.returnTo('c0.xhtml'));
+      await key('Escape'); await focus();
+      await key('ArrowRight');
+      assert.equal(await mark(), 'Note', 'Sentence test starts at the first word');
+      await key('Control+ArrowRight');
+      assert.equal(await mark(), 'chapter0word30', 'Ctrl+Right goes to next sentence');
+      await key('Control+ArrowLeft');
+      assert.equal(await mark(), 'Note', 'Ctrl+Left goes to previous sentence start');
+      for (let i = 0; i < 4; i++) await key('ArrowRight');
+      const lineGeometry = () => page.evaluate(() => {
+        const host = window.navigationTest.reader.host.current.getBoundingClientRect();
+        const frame = document.querySelector('.reader-viewport iframe');
+        const doc = frame.contentDocument, offset = frame.getBoundingClientRect();
+        const walker = doc.createTreeWalker(doc.body, 4); const lines = [];
+        for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+          for (const match of node.textContent.matchAll(/[\p{L}\p{N}]+(?:['’-][\p{L}\p{N}]+)*/gu)) {
+            const range = doc.createRange(); range.setStart(node, match.index); range.setEnd(node, match.index + match[0].length);
+            const r = range.getBoundingClientRect();
+            if (!r.width || offset.left + r.left < host.left - 1 || offset.left + r.left >= host.right - 1 || offset.top + r.top >= host.bottom) continue;
+            let line = lines.at(-1); const y = offset.top + r.top;
+            if (!line || Math.abs(line.y - y) > r.height * .35) { line = {y, words:[]}; lines.push(line); }
+            line.words.push({text:match[0], left:offset.left+r.left, right:offset.left+r.right});
+          }
+        }
+        return lines;
+      });
+      let geometry = await lineGeometry();
+      const originText = await mark();
+      const lineIndex = geometry.findIndex(line => line.words.some(word => word.text === originText));
+      const originWord = geometry[lineIndex].words.find(word => word.text === originText);
+      const x = (originWord.left + originWord.right) / 2;
+      const closest = (line, goal) => line.words.reduce((best, word) => {
+        const distance = w => Math.max(w.left-goal, 0, goal-w.right);
+        return distance(word) < distance(best) ? word : best;
+      }).text;
+      for (let i = 1; i <= 3; i++) {
+        await key('ArrowDown');
+        assert.equal(await mark(), closest(geometry[lineIndex+i], x), 'Down uses visual-line geometry');
+      }
+      for (let i = 2; i >= 0; i--) {
+        await key('ArrowUp');
+        assert.equal(await mark(), closest(geometry[lineIndex+i], x), 'Up retains the original horizontal target');
+      }
+      const beforeVerticalPage = await page.evaluate(() => window.navigationTest.reader.location.start.cfi);
+      for (let i = lineIndex + 1; i < geometry.length; i++) await key('ArrowDown');
+      await key('ArrowDown');
+      await page.waitForFunction(cfi => window.navigationTest.reader.location.start.cfi !== cfi, beforeVerticalPage);
+      const nextPageLines = await lineGeometry();
+      assert.equal(await mark(), closest(nextPageLines[0], x), 'Down preserves alignment across pages');
+      await key('ArrowUp');
+      await page.waitForFunction(cfi => window.navigationTest.reader.location.start.cfi === cfi, beforeVerticalPage);
+      assert.equal(await mark(), closest(geometry.at(-1), x), 'Up preserves alignment across pages');
+      for (let i = geometry.length - 2; i >= lineIndex; i--) await key('ArrowUp');
+      await key('Shift+ArrowRight');
+      assert.match(await mark(), /chapter0word2 chapter0word3/, 'Shift+Right extends selection');
+      await key('Shift+ArrowLeft');
+      assert.equal(await mark(), originText, 'Shift+Left contracts selection');
+      await key('t');
+      await page.waitForFunction(() => !!window.navigationTest.reader.textSelection?.lookupRequest);
+      assert.equal(await page.evaluate(() => window.navigationTest.reader.textSelection.text), originText);
+      await key('Escape'); await focus();
+      await key('ArrowRight');
+      await key('n');
+      await page.waitForFunction(() => !!window.navigationTest.reader.annotations.draft, null, {timeout:5000});
+      assert.ok(await page.getByLabel('Personal note').isVisible());
+      await page.evaluate(() => { window.navigationTest.reader.annotations.setDraft(null); window.navigationTest.reader.closePanel(); });
       await page.setViewportSize({ width: 390, height: 844 });
       await page.waitForTimeout(500);
       await focus();
-      await key("ArrowDown");
+      await key("ArrowRight");
       assert.equal(await mark(), null);
       assert.equal(lookups.length, 2);
       assert.deepEqual(errors, []);

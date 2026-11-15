@@ -11,6 +11,8 @@ export function useEpubRuntime(
   panel: ReaderPanel | null,
   selection: ReaderTextSelection | null,
 ) {
+  const flagReady = useRef(false);
+  const wordAction = useRef<((action: string, selection: ReaderTextSelection) => void) | null>(null);
   const keyboardRef = useRef(defaultReaderKeyboardSettings);
   // RSVP and Sentence Mode share an exact range anchor and suppress hidden rendition input.
   const rsvpLocation = useRef(state.location.includes(",") ? state.location : "");
@@ -41,6 +43,8 @@ export function useEpubRuntime(
   const linkObserver = useRef<(() => void) | undefined>();
   return useMemo(
     () => ({
+      flagReady,
+      wordAction,
       keyboardRef,
       rsvpLocation,
       rsvpActive,
