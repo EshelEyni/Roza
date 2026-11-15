@@ -1,3 +1,4 @@
+import { ReaderChatNotification } from "../../frontend/src/components/Reader/ReaderChatNotification";
 import type { Book } from "epubjs";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -46,6 +47,7 @@ function Fixture() {
       split: chat.splitGroup, focus: chat.focusGroup, merge: chat.mergeGroups, move: chat.moveTab } });
   }, [chat.workspace]);
   return <ReaderPassageMarks.Provider value={passageMarks}><div className={"reader-shell reader-theme-" + (dark ? "dark" : "sepia")}>
+    <ReaderChatNotification chat={chat} visible={opened && panel === "chat"} onOpen={key => { void chat.open(key); setPanel("chat"); setOpened(true); }} />
     <header className="reader-toolbar"><div className="reader-toolbar-title"><h1>{rtl ? "בין השורות" : "Between the lines"}</h1><p>{rtl ? "פרק שלישי · סביבת בדיקה מקומית" : "Chapter three · Local test fixture"}</p></div>
       <button className="reader-button" onClick={() => setDark(value => !value)}>Theme</button>
       <button className="reader-button" onClick={() => setOpened(value => !value)}>Toggle chat</button>

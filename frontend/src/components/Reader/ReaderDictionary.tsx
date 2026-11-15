@@ -109,8 +109,8 @@ export function ReaderDictionary({
     document.addEventListener("pointerdown", onOutside);
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
-      if (dialog.current?.classList.contains("reader-sentence-keyboard-panel") &&
-          !dialog.current.contains(event.target as Node)) return;
+      const owner = (event.target as Element | null)?.closest?.('.reader-sheet, .reader-dictionary, [role="dialog"]');
+      if (owner && owner !== dialog.current) return;
       if (event.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKey);

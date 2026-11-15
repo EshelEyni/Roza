@@ -386,6 +386,7 @@
     "resizePanel": "Expand or collapse panel; drag to resize",
     "preparingNavigation": "Preparing book navigation…",
     "chat": {
+      "answerReady": "Your answer is ready",
       "title": "Book chat",
       "ask": "Ask AI",
       "new": "New chat",

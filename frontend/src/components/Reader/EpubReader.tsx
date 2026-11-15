@@ -1,3 +1,4 @@
+import { ReaderChatNotification } from "./ReaderChatNotification";
 import { ReaderReadingTarget } from "./ReaderReadingTarget";
 import { ReaderSentenceMode } from "./ReaderSentenceMode";
 import { useSearchParams } from "react-router-dom";
@@ -74,6 +75,9 @@ export function EpubReader({
           busy={reader.selectionBusy}
         />
       )}
+      <ReaderChatNotification key={userId + ":" + book.id} chat={reader.chat} visible={reader.panel === "chat"} onOpen={key => {
+        void reader.chat.open(key); if (reader.panel !== "chat") reader.togglePanel("chat");
+      }} />
       <ReaderReadingTarget reader={reader} />
       <ReaderToolbar pageNavigation={reader.pageNavigation}
         sentenceMode={reader.sentenceMode}

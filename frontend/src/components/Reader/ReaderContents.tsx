@@ -11,6 +11,15 @@ export function ReaderContents({
   onNavigate: (href: string) => void;
 }) {
   const { t } = useTranslation();
+  let active: NavItem | null = null;
+  let activeDepth = -1;
+  const findActive = (entries: NavItem[], depth = 0) => {
+    for (const item of entries) {
+      if (item.href === currentHref && depth >= activeDepth) { active = item; activeDepth = depth; }
+      findActive(item.subitems || [], depth + 1);
+    }
+  };
+  findActive(items);
   function renderItems(entries: NavItem[]) {
     return (
       <ol>
@@ -18,10 +27,11 @@ export function ReaderContents({
           <li key={item.id || item.href + index}>
             <button
               className={
-                currentHref === item.href
+                active === item
                   ? "is-active"
                   : ""
               }
+              aria-current={active === item ? "location" : undefined}
               onClick={() => onNavigate(item.href)}
             >
               {item.label.trim()}

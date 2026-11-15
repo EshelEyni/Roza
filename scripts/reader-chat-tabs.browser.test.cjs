@@ -38,6 +38,15 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
   });
   const label={send:lang==='he'?'שליחה':'Send',all:lang==='he'?'כל השיחות':'All conversations',search:lang==='he'?'חיפוש שיחות…':'Search conversations…',closeList:lang==='he'?'סגירת רשימת השיחות':'Close conversation list',undo:lang==='he'?'פתיחה מחדש':'Reopen tab'};
   try{
+   await page.addInitScript(() => {
+     window.pings = 0;
+     window.AudioContext = class {
+       state = 'running'; currentTime = 0; destination = {};
+       resume() { return Promise.resolve(); } close() { return Promise.resolve(); }
+       createOscillator() { return { type: '', frequency: { setValueAtTime() {} }, connect() {}, disconnect() {}, start() { window.pings++; }, stop() {} }; }
+       createGain() { return { gain: { setValueAtTime() {}, linearRampToValueAtTime() {}, exponentialRampToValueAtTime() {} }, connect() {}, disconnect() {} }; }
+     };
+   });
    await page.goto(server.resolvedUrls.local[0]+'tabs-test?lang='+lang);await page.waitForFunction(()=>!!window.tabTest);
    const headerClose=page.locator('.reader-chat-panel > .reader-panel-close');
    assert.equal(await headerClose.evaluate(button=>{const r=button.getBoundingClientRect();return button.contains(document.elementFromPoint(r.x+r.width/2,r.y+r.height/2))}),true,'The close button beside the chat heading must receive pointer events');
@@ -102,8 +111,14 @@ test('real chat workspace: concurrent tabs, restored drafts, history, keyboard, 
    await page.keyboard.press('Escape');assert.equal(await dialog.count(),0);assert.equal(await page.getByRole('button',{name:label.all,exact:true}).evaluate(n=>n===document.activeElement),true, await page.evaluate(()=>document.activeElement.outerHTML));
    // The hook outlives the visible chat: closing the panel while replying keeps the result.
    await textarea.fill('Background question');await page.getByRole('button',{name:label.send,exact:true}).click();await until(()=>requests.length===3);
+   const pingsBefore = await page.evaluate(() => window.pings);
    await page.getByRole('button',{name:'Toggle chat',exact:true}).click();requests[2].finish();await page.waitForFunction(()=>Object.values(window.tabTest.snapshot().tabs).every(tab=>!tab.sending));
-   await page.getByRole('button',{name:'Toggle chat',exact:true}).click();assert.equal((await snapshot()).tabs[b].conversation.turns.length,2);
+   const notification = page.locator('.reader-chat-ready-toast');
+   await notification.waitFor();
+   assert.equal(await page.evaluate(() => window.pings), pingsBefore + 1, 'A completed hidden answer pings once');
+   await notification.getByRole('button').first().click();
+   await notification.waitFor({state:'detached'});
+   assert.equal((await snapshot()).tabs[b].conversation.turns.length,2);
    for(const width of [1100,1280,1440,1920]){await page.setViewportSize({width,height:960});const layout=await page.evaluate(()=>({overflow:document.documentElement.scrollWidth>innerWidth,chat:document.querySelector('.reader-chat-panel').getBoundingClientRect().width,paper:document.querySelector('.reader-paper').getBoundingClientRect().width}));assert.equal(layout.overflow,false,JSON.stringify(layout));assert.ok(layout.chat>=440&&layout.paper>=480,JSON.stringify(layout))}
    await page.setViewportSize({width:1100,height:960});
    await separator.press('End');

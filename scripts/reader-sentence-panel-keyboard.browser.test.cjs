@@ -74,6 +74,9 @@ for (const platform of ['Win32', 'MacIntel']) test(`${platform}: Sentence panel 
     await page.keyboard.press('ArrowRight');
     assert.equal(await page.$eval('#range', el => el.value), '51');
     assert.equal(await page.evaluate(() => document.activeElement.id), 'range');
+    await page.focus('#save');
+    await page.evaluate(() => { window.dispatchEvent(new Event('blur')); document.activeElement.blur(); window.dispatchEvent(new Event('focus')); });
+    assert.equal(await page.evaluate(() => document.activeElement.id), 'save', 'Browser refocus restores the last panel control');
     await page.evaluate(() => window.cleanup());
     await page.focus('#first');
     await page.keyboard.press('ArrowRight');

@@ -245,11 +245,8 @@ export function useEpubBook(
           setLocation(location);
           const start = location.start;
           readingBoundary.current = location.end.cfi || start.cfi;
-          const currentChapter = readerChapterAt(readerChapters(epub!), start.cfi);
-          setHref(currentChapter?.href || start.href);
           setAtStart(location.atStart);
           setAtEnd(location.atEnd);
-          setChapter(currentChapter?.title || "");
           // Retain an exact RSVP anchor while its page remains visible.
           // A genuine page/chapter turn clears it and resumes normal tracking.
           let savedCfi = start.cfi;
@@ -261,6 +258,9 @@ export function useEpubBook(
             if (compare(start.cfi, point.toString()) <= 0 && compare(point.toString(), location.end.cfi) <= 0) savedCfi = anchor;
             else runtime.rsvpLocation.current = "";
           }
+          const currentChapter = readerChapterAt(readerChapters(epub!), savedCfi);
+          setHref(currentChapter?.href || start.href);
+          setChapter(currentChapter?.title || "");
           const progress =
             hasLocations && epub?.locations.length()
               ? epub.locations.percentageFromCfi(savedCfi)

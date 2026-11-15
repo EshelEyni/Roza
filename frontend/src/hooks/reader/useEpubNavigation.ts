@@ -1,3 +1,4 @@
+import { readerChapters } from "../../services/readerChapters";
 import { EpubCFI } from "epubjs";
 import { useTranslation } from "react-i18next";
 import type { ReaderPassage } from "../../../../shared/types/readerChat";
@@ -43,6 +44,7 @@ export function useEpubNavigation(
       const anchor = new EpubCFI(target);
       anchor.collapse(true);
       target = anchor.toString();
+      runtime.rsvpLocation.current = target;
     }
     const rendition = renditionRef.current;
     if (!rendition) return;
@@ -102,9 +104,10 @@ export function useEpubNavigation(
     }
   }
 
-  function onNavigate(target: string) {
-    closePanel();
-    void navigateTo(target).catch(() => setError(t("reader.navigationError")));
+  function onNavigate(target: string, keepPanel = false) {
+    if (!keepPanel) closePanel();
+    const chapter = keepPanel && epubRef.current ? readerChapters(epubRef.current).find(chapter => chapter.href === target) : null;
+    void navigateTo(chapter?.cfi || target).catch(() => setError(t("reader.navigationError")));
   }
 
   function onAnnotationNavigate(target: string) {

@@ -249,8 +249,8 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     ...pagination,
     ...navigation,
     onNavigate: (target: string) => {
-      if (!sentenceMode.active) return navigation.onNavigate(target);
-      void sentenceMode.toggle().then(() => { if (!runtime.rsvpActive.current) navigation.onNavigate(target); });
+      if (!sentenceMode.active) return navigation.onNavigate(target, panel === "contents");
+      void sentenceMode.toggle().then(() => { if (!runtime.rsvpActive.current) navigation.onNavigate(target, panel === "contents"); });
     },
     onAnnotationNavigate: async (target: string) => {
       if (sentenceMode.active) {

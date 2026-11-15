@@ -23,7 +23,7 @@ async function epub() {
       chapter ? "b.xhtml" : "a.xhtml",
       `<html xmlns="http://www.w3.org/1999/xhtml"><head><title>Chapter ${chapter + 1}</title></head><body>${Array.from({ length: 44 }, (_, index) => `<p id="s${index}">Sentence ${chapter + 1} number ${index + 1} describes a careful reader walking beside the river while remembering the distant mountains and every conversation shared during a long and peaceful afternoon.</p>`).join("")}</body></html>`,
     );
-  zip.file("nav.xhtml", '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="a.xhtml#s0">Part One</a><ol><li><a href="a.xhtml#s22">Part Two</a></li><li><a href="b.xhtml#s22">Part Three</a></li></ol></li></ol></nav></body></html>');
+  zip.file("nav.xhtml", '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="a.xhtml#s0">Book title</a><ol><li><a href="a.xhtml#s0">Part One</a></li><li><a href="a.xhtml#s22">Part Two</a></li><li><a href="b.xhtml#s22">Part Three</a></li></ol></li></ol></nav></body></html>');
   return zip.generateAsync({ type: "nodebuffer" });
 }
 
@@ -229,6 +229,17 @@ test(
               return { chapters: result.chapters.length, chapter: result.chapter, count: result.items.length };
             });
             assert.deepEqual(unnamed, { chapters: 0, chapter: null, count: 88 }, 'Books without Contents must not invent spine-file chapters');
+            await page.evaluate(() => window.sentenceNavigationTest.reader.togglePanel('contents'));
+            await page.getByRole('button', { name: 'Part Two', exact: true }).click();
+            await page.waitForFunction(() => window.sentenceNavigationTest.reader.chapter === 'Part Two');
+            assert.equal(await page.evaluate(() => window.sentenceNavigationTest.reader.panel), 'contents', 'Contents stays open after navigation');
+            await page.getByRole('button', { name: 'Part One', exact: true }).click();
+            await page.waitForFunction(() => window.sentenceNavigationTest.reader.chapter === 'Part One');
+            assert.equal(await page.locator('.reader-contents button.is-active').count(), 1, 'Only the deepest matching Contents entry is highlighted');
+            assert.equal(await page.locator('.reader-contents button.is-active').textContent(), 'Part One');
+            await page.evaluate(() => { window.dispatchEvent(new Event('blur')); document.activeElement.blur(); window.dispatchEvent(new Event('focus')); });
+            await page.keyboard.press('Escape');
+            await page.waitForFunction(() => !window.sentenceNavigationTest.reader.panel);
             const settle = () =>
               page.evaluate(
                 () =>

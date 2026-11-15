@@ -68,6 +68,15 @@ export function installSentencePanelKeyboard(panel: HTMLElement) {
   // Run after existing panel focus effects, preferring the editor over chrome.
   const focusInitial = () => focus(available().find(element =>
     element.matches('textarea, input:not([type="checkbox"]):not([type="range"])')) || available()[0]);
+  const recoverFocus = () => {
+    const current = document.activeElement;
+    if (current && current !== document.body && current !== document.documentElement && current.isConnected && current.getClientRects().length && !current.closest('[inert], [hidden], [aria-hidden="true"]')) return;
+    const top = document.querySelector<HTMLElement>('.reader-dictionary') || document.querySelector<HTMLElement>('.reader-sheet');
+    if (top && top !== panel) return;
+    const items = available();
+    if (focused && items.includes(focused)) focus(focused); else focusInitial();
+  };
+  window.addEventListener("focus", recoverFocus);
   focusInitial();
   const timer = window.setTimeout(focusInitial, 0);
   const observer = new MutationObserver(() => {
@@ -75,6 +84,7 @@ export function installSentencePanelKeyboard(panel: HTMLElement) {
   });
   observer.observe(panel, { childList: true, subtree: true });
   return () => {
+    window.removeEventListener("focus", recoverFocus);
     clearTimeout(timer);
     observer.disconnect();
     panel.removeEventListener("keydown", onKey, true);

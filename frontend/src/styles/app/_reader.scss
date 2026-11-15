@@ -2390,3 +2390,9 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 .reader-go-to-page input { width: 100%; box-sizing: border-box; border: 1px solid #bca58d; border-radius: 7px; padding: 10px 12px; background: #fbf6ed; color: #493a2d; font: inherit; }
 .reader-go-to-page p { margin: 0; font-size: 12px; }
 .reader-go-to-page [role="alert"] { color: #a33224; }
+
+.reader-chat-ready-toast { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); z-index: 250; display: flex; align-items: center; gap: 9px; max-width: calc(100vw - 24px); box-sizing: border-box; padding: 9px 12px; border: 1px solid #cfbba5; border-radius: 10px; background: #fffefa; color: #493a2d; box-shadow: 0 4px 18px #0002; font-size: 13px; }
+.reader-chat-ready-toast button { border: 0; padding: 2px; background: transparent; color: inherit; font: inherit; cursor: pointer; }
+.reader-chat-ready-toast > svg { flex-shrink: 0; }
+.reader-chat-ready-toast .reader-chat-ready-close { display: flex; align-items: center; }
+.reader-chat-ready-toast :focus-visible { outline: 2px solid #a38259; outline-offset: 3px; }

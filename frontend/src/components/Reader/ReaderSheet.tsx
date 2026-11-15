@@ -40,6 +40,7 @@ export function ReaderSheet({
   const drag = useRef<{ y: number; height: number; viewport: number }>();
   const suppressClick = useRef(false);
   const closeButton = useRef<HTMLButtonElement>(null);
+  const lastFocused = useRef<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
     const viewport = window.visualViewport;
@@ -101,9 +102,12 @@ export function ReaderSheet({
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return;
-      if (panel.current?.classList.contains("reader-sentence-keyboard-panel") &&
-          !panel.current.contains(event.target as Node)) return;
-      if (event.key === "Escape") onClose();
+      const owner = (event.target as Element | null)?.closest?.('.reader-sheet, .reader-dictionary, [role="dialog"]');
+      if (owner && owner !== panel.current) return;
+      if (event.key === "Escape") {
+        if (document.querySelector('.reader-dictionary, .reader-chat-history-drawer, dialog[open]')) return;
+        event.preventDefault(); onClose();
+      }
       if (fullScreen && event.key === "Tab") {
         const controls = Array.from(
           panel.current?.querySelectorAll<HTMLElement>(
@@ -123,6 +127,15 @@ export function ReaderSheet({
         }
       }
     };
+    const recoverFocus = () => {
+      const current = document.activeElement;
+      if (current && current !== document.body && current !== document.documentElement && current.getClientRects().length && !current.closest('[inert], [hidden], [aria-hidden="true"]')) return;
+      if (document.querySelector('.reader-dictionary, .reader-chat-history-drawer, dialog[open]')) return;
+      const previous = lastFocused.current;
+      if (previous?.isConnected && panel.current?.contains(previous)) previous.focus({ preventScroll: true });
+      else (closeButton.current || panel.current)?.focus({ preventScroll: true });
+    };
+    window.addEventListener("focus", recoverFocus);
     document.addEventListener("keydown", onKey);
     // Keep touch focus in the EPUB so native selection handles survive.
     if (
@@ -130,7 +143,7 @@ export function ReaderSheet({
       !panel.current?.contains(document.activeElement)
     )
       (closeButton.current || panel.current)?.focus({ preventScroll: true });
-    return () => document.removeEventListener("keydown", onKey);
+    return () => { window.removeEventListener("focus", recoverFocus); document.removeEventListener("keydown", onKey); };
   }, [mobile, onClose, fullScreen]);
 
   useLayoutEffect(() => {
@@ -225,6 +238,7 @@ export function ReaderSheet({
           } as CSSProperties
         }
         onFocusCapture={event => {
+          lastFocused.current = event.target as HTMLElement;
           if (
             mobile &&
             (event.target instanceof HTMLInputElement ||

@@ -16,7 +16,7 @@ async function epub() {
   );
   zip.file(
     "book.opf",
-    '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">rsvp</dc:identifier><dc:title>RSVP</dc:title><dc:language>en</dc:language></metadata><manifest><item id="a" href="a.xhtml" media-type="application/xhtml+xml"/><item id="note" href="note.xhtml" media-type="application/xhtml+xml"/><item id="b" href="b.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="a"/><itemref idref="note" linear="no"/><itemref idref="b"/></spine></package>',
+    '<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="id">rsvp</dc:identifier><dc:title>RSVP</dc:title><dc:language>en</dc:language></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="a" href="a.xhtml" media-type="application/xhtml+xml"/><item id="note" href="note.xhtml" media-type="application/xhtml+xml"/><item id="b" href="b.xhtml" media-type="application/xhtml+xml"/></manifest><spine><itemref idref="a"/><itemref idref="note" linear="no"/><itemref idref="b"/></spine></package>',
   );
   zip.file(
     "a.xhtml",
@@ -30,6 +30,7 @@ async function epub() {
     "b.xhtml",
     '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>B</title></head><body><p>The quiet reader followed the winding road through gardens where curious travelers shared stories about distant mountains and changing seasons The quiet reader followed the winding road through gardens where curious travelers shared stories about distant mountains and changing seasons The quiet reader followed the winding road through gardens where curious travelers shared stories about distant mountains and changing seasons The quiet reader followed the winding road through gardens where curious travelers shared stories about distant mountains and changing seasons The quiet reader followed the winding road through gardens where curious travelers shared stories about distant mountains and changing seasons. The end.</p></body></html>',
   );
+  zip.file("nav.xhtml", '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="a.xhtml">A</a></li><li><a href="b.xhtml">B</a></li></ol></nav></body></html>');
   return zip.generateAsync({ type: "nodebuffer" });
 }
 test(
@@ -454,7 +455,7 @@ test(
           "Up preserves the same horizontal goal",
         );
       }
-      // Crossing sentences preserves alignment even through a short line.
+      // Crossing sentences starts at the appropriate edge word.
       const edge = geometry[geometry.length - 1].words[0];
 
       const crossingX = (edge.left + edge.right) / 2;
@@ -468,8 +469,8 @@ test(
       let next = await lines();
       assert.equal(
         await active(),
-        closest(next[0], crossingX),
-        "Down preserves alignment in the next sentence",
+        0,
+        "Down starts at the first word of the next sentence",
       );
       await page.keyboard.press("ArrowDown");
       await page.waitForFunction(
@@ -480,10 +481,10 @@ test(
       next = await lines();
       assert.equal(
         await active(),
-        closest(next[0], crossingX),
-        "Down preserves alignment after a short sentence",
+        0,
+        "Down starts at the first word after a short sentence",
       );
-      const newX = crossingX;
+      const newX = (next[0].words[0].left + next[0].words[0].right) / 2;
       await page.keyboard.press("ArrowDown");
       assert.equal(
         await active(),
@@ -491,7 +492,7 @@ test(
         "Alignment survives sentence boundaries",
       );
       await page.keyboard.press("ArrowUp");
-      assert.equal(await active(), closest(next[0], crossingX));
+      assert.equal(await active(), closest(next[0], newX));
 
       await page.keyboard.press("ArrowUp");
       await page.waitForFunction(
@@ -502,8 +503,8 @@ test(
       next = await lines();
       assert.equal(
         await active(),
-        closest(next.at(-1), crossingX),
-        "Up preserves alignment in the previous sentence",
+        next.at(-1).words.at(-1).index,
+        "Up starts at the last word of the previous sentence",
       );
       await page.keyboard.press("Control+ArrowLeft");
       await page.waitForFunction(
@@ -543,7 +544,6 @@ test(
       geometry = await lines();
       const chapterOrigin =
         geometry[0].words[Math.floor(geometry[0].words.length / 2)];
-      const chapterX = (chapterOrigin.left + chapterOrigin.right) / 2;
       await click(chapterOrigin.index);
       await page.keyboard.press("ArrowUp");
       await page.waitForFunction(
@@ -555,8 +555,8 @@ test(
       geometry = await lines();
       assert.equal(
         await active(),
-        closest(geometry.at(-1), chapterX),
-        "Up preserves alignment across chapters",
+        geometry.at(-1).words.at(-1).index,
+        "Up selects the previous chapter sentence last word",
       );
       await page.keyboard.press("ArrowDown");
       await page.waitForFunction(
@@ -567,8 +567,8 @@ test(
       geometry = await lines();
       assert.equal(
         await active(),
-        closest(geometry[0], chapterX),
-        "Down preserves alignment across chapters",
+        0,
+        "Down selects the next chapter sentence first word",
       );
       // Horizontal movement resets the goal to the newly marked word.
       await click(geometry[1].words[1].index);
