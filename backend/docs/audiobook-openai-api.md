@@ -1,6 +1,6 @@
 # OpenAI audiobook backend — frontend handoff
 
-Backend-only implementation. No frontend/shared source, Docker, nginx, database schema or production settings are changed. Kokoro is absent. This runs in the existing Node backend; there is no model inference on EC2 and no second container.
+Backend API contract, now connected to the reader's Audiobook Mode frontend. See [frontend behavior and local testing](../../docs/reader-tts-mvp.md). No Docker, nginx, database schema or production settings are changed. Kokoro is absent. This runs in the existing Node backend; there is no model inference on EC2 and no second container.
 
 ## Enable deliberately
 

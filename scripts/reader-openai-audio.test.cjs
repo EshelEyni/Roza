@@ -1,0 +1,109 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const vm = require("node:vm");
+const ts = require("../frontend/node_modules/typescript");
+function compile(file, globals = {}) {
+  const exports = {};
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync(path.join(__dirname, "../frontend/src/services", file), "utf8"), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText, { exports, ...globals });
+  return exports;
+}
+const tts = compile("readerTts.ts");
+function setup(handler) {
+  const calls = [], sources = [], contexts = [];
+  class Context {
+    state = "suspended"; currentTime = 0; destination = {};
+    constructor() { contexts.push(this); }
+    resume() { this.state = "running"; return Promise.resolve(); }
+    close() { this.state = "closed"; return Promise.resolve(); }
+    decodeAudioData() { return Promise.resolve({ duration: 10 }); }
+    createBufferSource() {
+      const source = { playbackRate: { value: 1, setValueAtTime(value) { this.value = value; } },
+        connect() {}, disconnect() {}, stop() { this.stopped = true; }, start(_, offset) { this.offset = offset; } };
+      sources.push(source); return source;
+    }
+  }
+  const api = compile("readerOpenAiAudio.ts", { require: () => tts, AudioContext: Context, AbortController,
+    crypto: require("node:crypto").webcrypto,
+    fetch: async (url, options = {}) => {
+      calls.push({ url, ...options });
+      const custom = handler?.(url, options);
+      if (custom) return custom;
+      if (options.method === "POST") return { ok: true, json: async () => ({ status: "success", data: {
+        text: "Hello world.", chunkId: "a".repeat(64), audioUrl: "/api/reader/book/audiobook/chunks/" + "a".repeat(64),
+      } }) };
+      return { ok: true, arrayBuffer: async () => new ArrayBuffer(0) };
+    },
+  });
+  return { ...api, calls, sources, contexts };
+}
+const passage = { text: "Hello world.", cfi: "source-range" };
+
+test("OpenAI passages stay within server bounds and retain exact source offsets", () => {
+  const { openAiPassage } = setup();
+  const text = Array.from({length:200}, (_, i) => "word" + i).join(" ") + " 😀 end";
+  const ranges = [], chunks = [];
+  let offset = 0;
+  while (offset < text.length) {
+    const part = openAiPassage({ text, rangeCfi: (a,b) => { ranges.push([a,b]); return `${a}:${b}`; } }, offset, 600);
+    assert.ok(part.text.length <= 600 && part.text.length > 0);
+    assert.equal(text.slice(...ranges.at(-1)), part.text);
+    chunks.push(part.text); offset = part.end; while (text[offset] === " ") offset++;
+  }
+  assert.equal(chunks.join(" "), text);
+  assert.throws(() => openAiPassage({text:"No source"}, 0, 600), /cannot be narrated/);
+});
+
+test("pause resumes decoded audio and speed changes locally without regeneration", async () => {
+  const env = setup(), player = new env.ReaderOpenAiAudio("book");
+  await player.unlock(); let ends=0;
+  await player.play(passage,"marin",1,()=>{},()=>ends++);
+  env.contexts[0].currentTime=3; player.pause();
+  await player.play(passage,"marin",1,()=>{},()=>ends++);
+  assert.equal(env.sources[1].offset,3);
+  player.setRate(1.5);
+  assert.equal(env.sources[1].playbackRate.value,1.5);
+  assert.equal(env.calls.filter(call=>call.method==="POST").length,1);
+  env.sources[1].onended(); assert.equal(ends,1);
+  player.dispose(); assert.equal(env.contexts[0].state,"closed");
+});
+
+test("cancellation stops an old generation before a replacement and ignores stale audio", async () => {
+  let finish;
+  const env=setup((url, options)=>options.method==="POST" && !finish ? new Promise(resolve=>{finish=resolve;}) : undefined);
+  const player=new env.ReaderOpenAiAudio("book"); await player.unlock();
+  const first=player.play(passage,"marin",1,()=>assert.fail("stale audio started"),()=>{});
+  await new Promise(resolve=>setImmediate(resolve));
+  player.stop();
+  const second=player.play({...passage,cfi:"new-range"},"cedar",1,()=>{},()=>{});
+  await second;
+  finish({ok:true,json:async()=>({status:"success",data:{text:"Hello world."}})});
+  await first;
+  assert.equal(env.sources.length,1);
+  assert.equal(env.calls[0].signal.aborted,true);
+  assert.deepEqual(env.calls.filter(call=>call.method).map(call=>call.method),["POST","DELETE","POST"]);
+  player.dispose();
+});
+
+test("mismatched source text and API quotas fail without playing or paid retries", async () => {
+  for (const mode of ["mismatch","quota"]) {
+    const env=setup((url, options)=> options.method==="POST" ? Promise.resolve({
+      ok: mode!=="quota", status:429, headers:{get:()=>"60"}, json:async()=>mode==="quota"
+        ? {status:"fail",message:"Limit reached."} : {status:"success",data:{text:"Different text"}},
+    }) : undefined);
+    const player=new env.ReaderOpenAiAudio("book"); await player.unlock();
+    await assert.rejects(player.play(passage,"marin",1,()=>{},()=>{}),mode==="quota"?/60 seconds/:/differs/);
+    assert.equal(env.sources.length,0); assert.equal(env.calls.length,1); player.dispose();
+  }
+});
+
+test("an interrupted audio context reports the interruption", async () => {
+  const env=setup(); let interrupted=0;
+  const player=new env.ReaderOpenAiAudio("book",()=>{interrupted++;player.pause();}); await player.unlock();
+  await player.play(passage,"marin",1,()=>{},()=>{});
+  env.contexts[0].state="suspended"; env.contexts[0].onstatechange();
+  assert.equal(interrupted,1); assert.equal(env.sources[0].stopped,true); player.dispose();
+});

@@ -16,7 +16,7 @@ export async function loadAudiobookSection(
       let totalWords = 0;
       let paragraph = -1;
       let previousBlock: Element | null | undefined;
-      const sentences: AudiobookSentence[] = extractReaderSentences(section).map(sentence => {
+      const sentences: AudiobookSentence[] = extractReaderSentences(section, true).map(sentence => {
         const range = new EpubCFI(sentence.cfi).toRange(section.document);
         const container = range.startContainer.nodeType === 1 ? range.startContainer as Element : range.startContainer.parentElement;
         const block = container?.closest("p,div,li,h1,h2,h3,h4,h5,h6,blockquote,pre,td") || null;

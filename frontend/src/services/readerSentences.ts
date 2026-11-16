@@ -5,11 +5,12 @@ import { readerNoteReference } from "./readerNoteReference";
 export type ReaderSentence = {
   text: string;
   cfi: string;
+  rangeCfi?: (start: number, end: number) => string;
   notes?: { offset: number; text: string }[];
 };
 
 /** Join inline nodes before segmenting, retaining exact UTF-16 DOM offsets. */
-export function extractReaderSentences(section: Section): ReaderSentence[] {
+export function extractReaderSentences(section: Section, withRanges = false): ReaderSentence[] {
   const doc = section.document;
   const body = doc.querySelector("body") || doc.documentElement;
   const walker = doc.createTreeWalker(body, 5);
@@ -82,6 +83,21 @@ export function extractReaderSentences(section: Section): ReaderSentence[] {
       sentences.push({
         text: text.slice(span.start, span.end).replace(/\s+/gu, " "),
         cfi: section.cfiFromRange(range),
+        ...(withRanges ? { rangeCfi: (from: number, to: number) => {
+          // Map normalized UTF-16 offsets back through inline nodes and whitespace.
+          const raw = text.slice(span.start, span.end);
+          const starts: number[] = [], ends: number[] = [];
+          for (let i = 0; i < raw.length;) {
+            const first = i++;
+            if (/\s/u.test(raw[first])) while (i < raw.length && /\s/u.test(raw[i])) i++;
+            starts.push(span.start + first); ends.push(span.start + i);
+          }
+          if (from < 0 || to <= from || to > starts.length) throw new Error("Invalid audiobook passage range.");
+          const a = locate(starts[from]), b = locate(ends[to - 1]);
+          const selected = doc.createRange();
+          selected.setStart(a.node, a.offset); selected.setEnd(b.node, b.offset);
+          return section.cfiFromRange(selected);
+        } } : {}),
         notes: notes.flatMap((note, index) => {
           if (
             assignedNotes.has(index) ||

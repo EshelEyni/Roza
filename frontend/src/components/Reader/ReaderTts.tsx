@@ -6,10 +6,10 @@ import { ScanLineIcon } from "./ReaderSentenceMode";
 import { useReaderAudiobook, type AudiobookLoader } from "../../hooks/reader/useReaderAudiobook";
 import { audiobookTime } from "../../services/readerTts";
 
-export function ReaderTts({ bookTitle, loadSection, onClose }: {
-  bookTitle: string; loadSection: AudiobookLoader; onClose: (cfi?: string) => void;
+export function ReaderTts({ bookTitle, bookId, loadSection, onClose }: {
+  bookTitle: string; bookId?: string; loadSection: AudiobookLoader; onClose: (cfi?: string) => void;
 }) {
-  const audio = useReaderAudiobook(loadSection);
+  const audio = useReaderAudiobook(loadSection, bookId);
   const [voiceOpen, setVoiceOpen] = useState(false);
   const voiceButton = useRef<HTMLButtonElement>(null);
   const resumeAfterVoice = useRef(false);
@@ -83,6 +83,7 @@ export function ReaderTts({ bookTitle, loadSection, onClose }: {
   // Web Speech exposes no exact duration: these are explicitly text-based estimates.
   const secondsPerWord = 60 / (180 * audio.speed);
   const selectedVoice = audio.voices.find(voice => voice.voiceURI === audio.voice);
+  const narratorName = audio.engine === "openai" ? "OpenAI · " + audio.aiVoice : selectedVoice?.name;
   return <div className="reader-audiobook" ref={root} role="dialog" aria-modal="true" aria-label="Audiobook Mode" tabIndex={-1}
     onKeyDown={event => {
       if (event.defaultPrevented || voiceOpen) return;
@@ -148,22 +149,22 @@ export function ReaderTts({ bookTitle, loadSection, onClose }: {
             </div>
           </div>
           <div className="audiobook-voice">
-            <button ref={voiceButton} type="button" className="audiobook-voice-trigger" aria-label="Choose narrator voice" title={selectedVoice?.name || "Choose narrator voice"} aria-haspopup="dialog" aria-expanded={voiceOpen} onClick={() => {
+            <button ref={voiceButton} type="button" className="audiobook-voice-trigger" aria-label="Choose narrator voice" title={narratorName || "Choose narrator voice"} aria-haspopup="dialog" aria-expanded={voiceOpen} onClick={() => {
               setSpeedOpen(false); resumeAfterVoice.current = audio.playing;
               audio.pause("Paused while choosing a narrator"); setVoiceOpen(true);
             }}>
               <svg className="audiobook-voice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6M9 5v14M13 8v8M17 6v12M21 10v4" /></svg>
-              <span className="audiobook-voice-name">{selectedVoice?.name || "Choose voice"}</span><FiChevronDown aria-hidden="true" />
+              <span className="audiobook-voice-name">{narratorName || "Choose voice"}</span><FiChevronDown aria-hidden="true" />
             </button>
           </div>
         </div>
-        <div className="audiobook-player-meta" role="status" aria-live="polite"><span className={"audiobook-pulse" + (audio.playing ? " is-live" : "")} aria-hidden="true" /><span>{audio.available ? audio.status : "System speech is unavailable in this browser"}</span></div>
-        <div className="audiobook-timing-note">Estimated section timing · {audio.wordEvents ? "Word follow-along" : "Sentence follow-along; word support varies by voice"}</div>
+        <div className="audiobook-player-meta" role="status" aria-live="polite"><span className={"audiobook-pulse" + (audio.playing ? " is-live" : "")} aria-hidden="true" /><span>{audio.available ? audio.status : "Selected voice engine is unavailable"}</span></div>
+        <div className="audiobook-timing-note">Estimated section timing · {audio.engine === "openai" ? "AI-generated voice · sentence follow-along" : audio.wordEvents ? "Word follow-along" : "Sentence follow-along; word support varies by voice"}</div>
         {audio.error && <p className="audiobook-error" role="alert">{audio.error}</p>}
       </div>
     </footer>
-    {voiceOpen && <ReaderAudiobookVoices voices={audio.voices} selected={audio.voice} onClose={selected => {
-      if (selected !== undefined) audio.changeVoice(selected);
+    {voiceOpen && <ReaderAudiobookVoices voices={audio.voices} selected={audio.voice} engine={audio.engine} aiVoice={audio.aiVoice} config={audio.config} configStatus={audio.configStatus} onClose={(selected, engine) => {
+      if (selected !== undefined) audio.changeNarrator(engine || "system", selected);
       setVoiceOpen(false); voiceButton.current?.focus({ preventScroll: true });
       if (resumeAfterVoice.current) { resumeAfterVoice.current = false; audio.resume(); }
     }} />}

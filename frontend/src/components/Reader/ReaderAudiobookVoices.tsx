@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { FiCheck, FiPlay, FiSearch, FiSquare, FiX } from "react-icons/fi";
+import type { AudiobookConfig, AudiobookEngine } from "../../services/readerOpenAiAudio";
 
 function languageName(language: string) {
   try {
@@ -14,10 +15,13 @@ function preferred(voices: SpeechSynthesisVoice[], selected: string) {
     || voices[0];
 }
 
-export function ReaderAudiobookVoices({ voices, selected, onClose }: {
-  voices: SpeechSynthesisVoice[]; selected: string; onClose: (selected?: string) => void;
+export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiVoice = "", config, configStatus, onClose }: {
+  voices: SpeechSynthesisVoice[]; selected: string; engine?: AudiobookEngine; aiVoice?: string;
+  config?: AudiobookConfig; configStatus?: string;
+  onClose: (selected?: string, engine?: AudiobookEngine) => void;
 }) {
-  const [staged, setStaged] = useState(() => preferred(voices, selected)?.voiceURI || "");
+  const [stagedEngine, setStagedEngine] = useState(engine);
+  const [staged, setStaged] = useState(() => engine === "openai" ? aiVoice : preferred(voices, selected)?.voiceURI || "");
   const [englishOnly, setEnglishOnly] = useState(() => {
     const voice = voices.find(item => item.voiceURI === selected);
     return !voice || /^en(?:[-_]|$)/i.test(voice.lang);
@@ -42,7 +46,7 @@ export function ReaderAudiobookVoices({ voices, selected, onClose }: {
     setPreviewing("");
   }
   function dismiss(value?: string) {
-    stopPreview(); dialog.current?.close(); onClose(value);
+    stopPreview(); dialog.current?.close(); onClose(value, stagedEngine);
   }
   function playPreview(voice: SpeechSynthesisVoice) {
     const alreadyPlaying = preview.current?.voice?.voiceURI === voice.voiceURI;
@@ -84,15 +88,17 @@ export function ReaderAudiobookVoices({ voices, selected, onClose }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
+    if (stagedEngine !== "system") return;
     setStaged(current => voices.some(voice => voice.voiceURI === current) ? current : preferred(voices, selected)?.voiceURI || "");
     if (preview.current && !voices.some(voice => voice.voiceURI === preview.current?.voice?.voiceURI)) stopPreview();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [voices, selected]);
+  }, [voices, selected, stagedEngine]);
 
   const search = query.trim().toLocaleLowerCase();
-  const visible = voices.filter(voice => (!englishOnly || /^en(?:[-_]|$)/i.test(voice.lang))
+  const choices = stagedEngine === "system" ? voices : (config?.voices || []).map(name => ({ voiceURI: name, name, lang: "en", localService: false }));
+  const visible = choices.filter(voice => (!englishOnly || /^en(?:[-_]|$)/i.test(voice.lang))
     && (!search || (voice.name + " " + voice.lang + " " + languageName(voice.lang)).toLocaleLowerCase().includes(search)));
-  const stagedVoice = voices.find(voice => voice.voiceURI === staged);
+  const stagedVoice = choices.find(voice => voice.voiceURI === staged);
   return <dialog className="audiobook-voice-modal" ref={dialog} aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId}
     style={{ "--audiobook-voice-height": viewport.height + "px", "--audiobook-voice-top": viewport.top + "px" } as CSSProperties}
     onCancel={event => { event.preventDefault(); dismiss(); }}
@@ -113,29 +119,34 @@ export function ReaderAudiobookVoices({ voices, selected, onClose }: {
         <button ref={close} type="button" className="audiobook-voice-dialog-close" aria-label="Close voice picker" onClick={() => dismiss()}><FiX /></button>
       </header>
       <div className="audiobook-voice-dialog-scroll">
-        <div className="audiobook-voice-section-heading">VOICE ENGINE <span className="audiobook-voice-count">{synth ? "1 available" : "Unavailable"}</span></div>
-        <div className="audiobook-voice-engine">
+        <div className="audiobook-voice-section-heading">VOICE ENGINE <span className="audiobook-voice-count">{Number(!!synth) + Number(!!config?.available)} available</span></div>
+        <button type="button" className="audiobook-voice-engine" aria-pressed={stagedEngine === "system"} onClick={() => { stopPreview(); setStagedEngine("system"); setStaged(preferred(voices, selected)?.voiceURI || ""); }}>
           <span className="audiobook-voice-engine-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4" /></svg></span>
           <span className="audiobook-voice-engine-copy"><strong>System voices</strong><small>Voices available on this device</small></span>
-          <span className="audiobook-voice-engine-check" aria-hidden="true"><FiCheck /></span>
-        </div>
+          {stagedEngine === "system" && <span className="audiobook-voice-engine-check" aria-hidden="true"><FiCheck /></span>}
+        </button>
+        <button type="button" className="audiobook-voice-engine" aria-pressed={stagedEngine === "openai"} disabled={!config?.available} onClick={() => { stopPreview(); setStagedEngine("openai"); setStaged(aiVoice || config?.defaultVoice || ""); }}>
+          <span className="audiobook-voice-engine-copy"><strong>OpenAI voices</strong><small>{configStatus || "OpenAI narration is unavailable"}</small></span>
+          {stagedEngine === "openai" && <span className="audiobook-voice-engine-check" aria-hidden="true"><FiCheck /></span>}
+        </button>
+        {stagedEngine === "openai" && <p className="audiobook-voice-help">These voices are generated by AI. Playback uses your server’s OpenAI account and incurs API charges. Press Play to hear your book; passages are prepared automatically as narration advances.</p>}
         <div className="audiobook-voices-heading"><div className="audiobook-voice-section-heading">NARRATOR VOICE</div><span className="audiobook-voice-count" role="status">{visible.length} {visible.length === 1 ? "voice" : "voices"}</span></div>
         <div className="audiobook-voice-tools">
           <label className="audiobook-voice-search"><FiSearch aria-hidden="true" /><input type="search" autoComplete="off" placeholder="Search voices or languages" aria-label="Search voices" value={query} onChange={event => setQuery(event.target.value)} /></label>
           <button type="button" className={"audiobook-voice-filter" + (englishOnly ? " is-active" : "")} aria-pressed={englishOnly} onClick={() => setEnglishOnly(!englishOnly)}>English only</button>
         </div>
-        <div className="audiobook-voice-options" role="radiogroup" aria-label="Available system voices">
+        <div className="audiobook-voice-options" role="radiogroup" aria-label={stagedEngine === "system" ? "Available system voices" : "Available OpenAI voices"}>
           {!visible.length && <div className="audiobook-voice-empty">{voices.length ? "No matching voices. Try a different search or turn off English only." : "No system voices detected yet. Voices may still be loading; browser-default narration remains available."}</div>}
           {visible.map(voice => <div key={voice.voiceURI} className={"audiobook-voice-card" + (voice.voiceURI === staged ? " is-selected" : "")}>
             <label className="audiobook-voice-choice">
               <input type="radio" name={radioName} value={voice.voiceURI} checked={voice.voiceURI === staged} onChange={() => setStaged(voice.voiceURI)} />
-              <span className="audiobook-voice-detail"><strong>{voice.name}</strong><small>{languageName(voice.lang)} · {voice.lang}{voice.localService ? " · On device" : ""}</small></span>
+              <span className="audiobook-voice-detail"><strong>{voice.name}</strong><small>{stagedEngine === "openai" ? "Multilingual · AI-generated" : languageName(voice.lang) + " · " + voice.lang + (voice.localService ? " · On device" : "")}</small></span>
             </label>
-            <button type="button" className={"audiobook-voice-preview" + (previewing === voice.voiceURI ? " is-previewing" : "")} title={(previewing === voice.voiceURI ? "Stop preview of " : "Preview ") + voice.name}
-              aria-label={(previewing === voice.voiceURI ? "Stop preview of " : "Preview ") + voice.name} onClick={() => playPreview(voice)}>{previewing === voice.voiceURI ? <FiSquare fill="currentColor" /> : <FiPlay fill="currentColor" />}</button>
+            {stagedEngine === "system" && <button type="button" className={"audiobook-voice-preview" + (previewing === voice.voiceURI ? " is-previewing" : "")} title={(previewing === voice.voiceURI ? "Stop preview of " : "Preview ") + voice.name}
+              aria-label={(previewing === voice.voiceURI ? "Stop preview of " : "Preview ") + voice.name} onClick={() => { const systemVoice = voices.find(item => item.voiceURI === voice.voiceURI); if (systemVoice) playPreview(systemVoice); }}>{previewing === voice.voiceURI ? <FiSquare fill="currentColor" /> : <FiPlay fill="currentColor" />}</button>}
           </div>)}
         </div>
-        <p className="audiobook-voice-help">Voices come from your browser and device. Tap the play icon to hear a real preview.</p>
+        {stagedEngine === "system" && <p className="audiobook-voice-help">Voices come from your browser and device. Tap the play icon to hear a real preview.</p>}
         <div className="audiobook-voice-preview-status" role="status" aria-live="polite">{previewing ? "Playing voice preview" : ""}</div>
         {error && <p className="audiobook-error" role="alert">{error}</p>}
       </div>

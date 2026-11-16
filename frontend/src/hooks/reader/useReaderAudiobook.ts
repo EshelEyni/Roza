@@ -1,9 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import { audiobookSpeechSlice, audiobookSeek, audiobookWordAt, type AudiobookSection } from "../../services/readerTts";
+import { loadAudiobookConfig, openAiPassage, ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
 
 export type AudiobookLoader = (target?: number, direction?: 1 | -1) => Promise<AudiobookSection | null>;
 
-export function useReaderAudiobook(loadSection: AudiobookLoader) {
+export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string) {
+  const [engine, setEngine] = useState<AudiobookEngine>("system");
+  const [config, setConfig] = useState<AudiobookConfig>();
+  const [configStatus, setConfigStatus] = useState("Checking OpenAI availability…");
+  const [aiVoice, setAiVoice] = useState("");
+  const engineRef = useRef<AudiobookEngine>("system");
+  const aiVoiceRef = useRef("");
+  const configRef = useRef<AudiobookConfig>();
+  const ai = useRef<ReaderOpenAiAudio>();
+  if (!ai.current && bookId) ai.current = new ReaderOpenAiAudio(bookId, () => pause("Audio interrupted · press Play to continue"));
   const [section, setSection] = useState<AudiobookSection | null>(null);
   const [index, setIndex] = useState(0);
   const [offset, setOffset] = useState(0);
@@ -27,8 +37,9 @@ export function useReaderAudiobook(loadSection: AudiobookLoader) {
   const utterance = useRef<SpeechSynthesisUtterance>();
   const synth = window.speechSynthesis;
 
-  function cancel() {
+  function cancel(resetAudio = true) {
     ++version.current;
+    if (resetAudio) ai.current?.stop(); else ai.current?.pause();
     const previous = utterance.current;
     utterance.current = undefined;
     if (previous) {
@@ -40,7 +51,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader) {
   function pause(message = "Paused · press Play to continue") {
     // Cancel at the last real word boundary: native pause/resume is unreliable
     // on mobile voices. Without boundaries, replay the current speech chunk.
-    cancel(); wantPlay.current = false; setPlaying(false); setStatus(message);
+    cancel(false); wantPlay.current = false; setPlaying(false); setStatus(message);
   }
   function completed() {
     cancel(); wantPlay.current = false;
@@ -53,9 +64,30 @@ export function useReaderAudiobook(loadSection: AudiobookLoader) {
   function speak() {
     const { section: current, index: sentenceIndex, offset: start } = position.current;
     if (!current || !wantPlay.current) return;
-    cancel();
+    cancel(false);
     const run = version.current;
     const sentence = current.sentences[sentenceIndex];
+    const advance = (end: number) => {
+      if (version.current !== run || !wantPlay.current) return;
+      let following = end;
+      while (/\s/u.test(sentence.text[following] || "") && following < sentence.text.length) following++;
+      if (following < sentence.text.length) {
+        position.current.offset = following; setOffset(following); speak();
+      } else if (sentenceIndex + 1 < current.sentences.length) goTo(sentenceIndex + 1, 0);
+      else if (current.next !== null) void load(current.next, 1, true);
+      else completed();
+    };
+    if (engineRef.current === "openai") {
+      try {
+        if (!configRef.current?.available || !ai.current) throw new Error("OpenAI narration is unavailable. Choose System voices.");
+        const passage = openAiPassage(sentence, start, configRef.current.maxChars);
+        setWordEvents(false); setHighlight(null); setStatus("Preparing OpenAI narration…");
+        void ai.current.play(passage, aiVoiceRef.current, rate.current,
+          () => { if (version.current === run) setStatus("Following AI-generated narration"); },
+          () => advance(passage.end)).catch(cause => { if (version.current === run) fail(cause); });
+      } catch (cause) { fail(cause); }
+      return;
+    }
     const part = audiobookSpeechSlice(sentence.text, start);
     try {
       if (!synth) throw new Error("System speech is unavailable in this browser.");
@@ -74,15 +106,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader) {
       next.onend = () => {
         if (version.current !== run || !wantPlay.current) return;
         utterance.current = undefined;
-        let following = part.end;
-        while (/\s/u.test(sentence.text[following] || "") && following < sentence.text.length) following++;
-        if (following < sentence.text.length) {
-          position.current.offset = following; setOffset(following); speak();
-        } else if (sentenceIndex + 1 < current.sentences.length) {
-          goTo(sentenceIndex + 1, 0);
-        } else if (current.next !== null) {
-          void load(current.next, 1, true);
-        } else completed();
+        advance(part.end);
       };
       next.onerror = event => {
         if (version.current === run) fail(new Error("System speech: " + event.error + ". Press Play to retry or choose another voice."));
@@ -128,6 +152,10 @@ export function useReaderAudiobook(loadSection: AudiobookLoader) {
   }
   function resume() {
     if (!position.current.section) return;
+    if (engineRef.current === "openai") {
+      try { void ai.current?.unlock().catch(cause => fail(cause)); }
+      catch (cause) { fail(cause); return; }
+    }
     if (ended && !loading) goTo(0);
     setError(""); wantPlay.current = true; setPlaying(true);
     setStatus(loading ? "Loading book…" : "Starting narration…");
@@ -157,11 +185,29 @@ export function useReaderAudiobook(loadSection: AudiobookLoader) {
     selectedVoice.current = value; setVoice(value); setWordEvents(false);
     if (position.current.section) goTo(position.current.index, position.current.offset);
   }
+  function changeNarrator(next: AudiobookEngine, value: string) {
+    cancel(); engineRef.current = next; setEngine(next); setWordEvents(false); setHighlight(null);
+    if (next === "system") { selectedVoice.current = value; setVoice(value); }
+    else { aiVoiceRef.current = value; setAiVoice(value); }
+    setError("");
+    if (wantPlay.current) resume();
+  }
   function changeSpeed(value: number) {
     rate.current = Math.max(0.5, Math.min(2.5, value)); setSpeed(rate.current);
+    if (engineRef.current === "openai") { ai.current?.setRate(rate.current); return; }
     if (position.current.section) goTo(position.current.index, position.current.offset);
   }
 
+  useEffect(() => {
+    const controller = new AbortController();
+    if (bookId) void loadAudiobookConfig(bookId, controller.signal).then(value => {
+      configRef.current = value; setConfig(value);
+      aiVoiceRef.current = value.defaultVoice; setAiVoice(value.defaultVoice);
+      setConfigStatus(value.available ? "AI-generated voices · requires internet" : "OpenAI narration is not enabled on this server.");
+    }).catch(() => { if (!controller.signal.aborted) setConfigStatus("OpenAI availability could not be checked. System voices remain available."); });
+    else setConfigStatus("OpenAI narration is unavailable for this book.");
+    return () => controller.abort();
+  }, [bookId]);
   useEffect(() => {
     void load();
     const updateVoices = () => setVoices(Array.from(new Map((synth?.getVoices() || []).filter(item => item.voiceURI).map(item => [item.voiceURI, item])).values()));
@@ -178,6 +224,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
       ++loadVersion.current;
       wantPlay.current = false; cancel();
+      ai.current?.dispose();
       synth?.removeEventListener("voiceschanged", updateVoices);
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("pagehide", hide);
@@ -191,7 +238,8 @@ export function useReaderAudiobook(loadSection: AudiobookLoader) {
   return {
     section, index, offset, highlight, wordEvents, playing, ended, loading, status, error,
     voices, voice, speed, toggle, move, seek, changeVoice, changeSpeed, pause, resume,
-    available: !!synth,
+    engine, config, configStatus, aiVoice, changeNarrator,
+    available: engine === "openai" ? !!config?.available : !!synth,
     currentWord: ended ? section?.totalWords || 0 : currentWord,
     cfi: sentence?.cfi,
   };

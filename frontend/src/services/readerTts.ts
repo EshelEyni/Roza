@@ -1,5 +1,5 @@
 export type AudiobookWord = { text: string; start: number; end: number };
-export type AudiobookSentence = { text: string; cfi: string; paragraph: number; words: AudiobookWord[]; startWord: number };
+export type AudiobookSentence = { text: string; cfi: string; rangeCfi?: (start: number, end: number) => string; paragraph: number; words: AudiobookWord[]; startWord: number };
 export type AudiobookSection = {
   section: number; title: string; sentences: AudiobookSentence[]; totalWords: number;
   start: number; offset: number; previous: number | null; next: number | null;

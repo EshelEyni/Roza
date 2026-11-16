@@ -78,7 +78,7 @@ export function ReaderPanels({
     return () => query.removeEventListener("change", update);
   }, []);
   if (!panel) return null;
-  if (panel === "tts") return <ReaderTts key={review.bookId} bookTitle={audiobook.bookTitle} loadSection={audiobook.loadSection} onClose={cfi => { if (cfi) onNavigate(cfi); else closePanel(); }} />;
+  if (panel === "tts") return <ReaderTts key={review.bookId} bookId={review.bookId} bookTitle={audiobook.bookTitle} loadSection={audiobook.loadSection} onClose={cfi => { if (cfi) onNavigate(cfi); else closePanel(); }} />;
   return (
     <ReaderSheet
       mobileFullscreen={panel === "search" || panel === "chat" || panel === "annotations"}

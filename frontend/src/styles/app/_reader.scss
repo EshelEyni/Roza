@@ -2613,6 +2613,10 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 .audiobook-voice-engine-copy small { font-size: 11px; color: #8f7762; }
 .audiobook-voice-engine-check { background: #78583f; color: white; border-radius: 50%; width: 22px; height: 22px; display: grid; place-items: center; flex-shrink: 0; }
 .audiobook-voice-engine-check svg { width: 14px; height: 14px; }
+.audiobook-voice-engine { width: 100%; text-align: left; font: inherit; cursor: pointer; }
+.audiobook-voice-engine[aria-pressed="false"] { background: transparent; border-color: #d8cbbb; }
+.audiobook-voice-engine:disabled { opacity: .65; cursor: default; }
+.audiobook-voice-engine:focus-visible { outline: 2px solid #78583f; outline-offset: 3px; }
 .audiobook-voices-heading { display: flex; justify-content: space-between; align-items: center; margin: 0 0 12px; }
 .audiobook-voice-tools { display: flex; gap: 9px; margin-bottom: 11px; }
 .audiobook-voice-search { flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px; border: 1px solid #e1d4c4; background: #fffdf9; border-radius: 10px; padding: 0 11px; color: #998572; min-height: 44px; }
