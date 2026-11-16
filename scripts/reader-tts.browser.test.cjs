@@ -179,7 +179,8 @@ test(
           assert.equal(await mode.locator(".audiobook-content p").count(),5);
           assert.equal(await mode.locator(".audiobook-sentence.is-active").innerText(),source.sentences[0].text);
           assert.equal(await mode.getByText(/Kokoro|Generate/).count(),0);
-          assert.equal(await mode.getByRole("combobox").count(),1);
+          assert.equal(await mode.getByRole("combobox").count(),0);
+          assert.equal(await mode.getByRole("button",{name:"Choose narrator voice"}).count(),1);
           assert.equal(await page.evaluate(()=>window.workers),0);
           async function layout() {
             const result=await mode.evaluate(element=>{
@@ -217,15 +218,102 @@ test(
           assert.equal(await page.evaluate(()=>window.spoken.at(-1).text),source.sentences[1].text);
           await mode.getByRole("button",{name:"Previous sentence"}).click();
           assert.equal(await page.evaluate(()=>window.spoken.at(-1).text),source.sentences[0].text);
+          await mode.getByRole("button",{name:"Choose narrator voice"}).click();
+          let picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await picker.waitFor();
+          await picker.getByText(/No system voices detected yet/).waitFor();
+          assert.equal(await picker.getByRole("button",{name:"Use this voice"}).isDisabled(),true);
           await page.evaluate(()=>{
-            window.testVoices=[{voiceURI:"native",name:"A very long installed system narrator name",lang:"en-US"}];
+            window.testVoices=[
+              {voiceURI:"native",name:"A very long installed system narrator name",lang:"en-US",default:true,localService:true},
+              {voiceURI:"alex",name:"Alex",lang:"en-GB",localService:true},
+              {voiceURI:"french",name:"Amelie",lang:"fr-FR",localService:true},
+              ...Array.from({length:8},(_,i)=>({voiceURI:"voice-"+i,name:"English narrator "+(i+1),lang:"en-US",localService:false})),
+            ];
             speechSynthesis.dispatchEvent(new Event("voiceschanged"));
           });
-          await mode.getByRole("combobox",{name:"Narrator voice"}).click();
-          const voice=page.getByRole("option",{name:/A very long installed/});
-          const voiceBounds=await voice.boundingBox(); assert.ok(voiceBounds.x>=0);
-          await voice.click();
+          await picker.getByRole("radio",{name:/A very long installed/}).waitFor();
+          assert.equal(await picker.getByRole("radio").count(),10);
+          assert.equal(await picker.getByRole("radio",{name:/A very long installed/}).isChecked(),true);
+          const beforeSelect=await page.evaluate(()=>window.spoken.length);
+          await picker.getByRole("radio",{name:/Alex/}).check();
+          assert.equal(await page.evaluate(()=>window.spoken.length),beforeSelect,"staging a voice does not speak");
+          await picker.getByRole("button",{name:"Cancel",exact:true}).click();
+          await picker.waitFor({state:"detached"});
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).voice),null,"Cancel retains default narration");
+          assert.match(await mode.getByRole("button",{name:"Choose narrator voice"}).innerText(),/Choose voice/);
+          await mode.getByRole("button",{name:"Choose narrator voice"}).click();
+          picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await picker.waitFor();
+          async function pickerLayout() {
+            const bounds=await picker.locator(".audiobook-voice-dialog").boundingBox();
+            const viewport=page.viewportSize();
+            assert.ok(bounds.x>=0&&bounds.y>=0&&bounds.x+bounds.width<=viewport.width+1&&bounds.y+bounds.height<=viewport.height+1,JSON.stringify(bounds));
+            const controls=await picker.locator(".audiobook-voice-dialog-footer").boundingBox();
+            assert.ok(controls.y>=0&&controls.y+controls.height<=viewport.height+1);
+            assert.equal(await picker.evaluate(el=>el.scrollWidth<=innerWidth),true);
+          }
+          await pickerLayout();
+          if(mobile) {
+            for(const viewport of [{width:320,height:740},{width:844,height:390}]) {
+              await page.setViewportSize(viewport); await pickerLayout();
+            }
+            await page.setViewportSize({width:375,height:844});
+          }
+          if(process.env.TTS_SCREENSHOT) await page.screenshot({path:process.env.TTS_SCREENSHOT.replace(".png",mobile?"-voices-mobile.png":"-voices-desktop.png")});
+          await picker.getByRole("searchbox",{name:"Search voices"}).fill("French");
+          assert.equal(await picker.getByRole("radio").count(),0);
+          await picker.getByRole("button",{name:"English only"}).click();
+          await picker.getByRole("radio",{name:/Amelie/}).check();
+          await picker.getByRole("button",{name:"Preview Amelie",exact:true}).click();
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).voice.voiceURI),"french");
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).lang),"fr-FR");
+          assert.match(await page.evaluate(()=>window.spoken.at(-1).text),/^The morning arrived quietly/);
+          await picker.getByRole("button",{name:"Stop preview of Amelie",exact:true}).click();
+          await picker.getByRole("button",{name:"Preview Amelie",exact:true}).click();
+          await page.evaluate(()=>{window.stalePreviewEnd=window.spoken.at(-1).onend;});
+          await picker.getByRole("button",{name:"Cancel",exact:true}).click();
+          await picker.waitFor({state:"detached"});
+          const afterPreview=await page.evaluate(()=>window.cancelled);
+          await page.evaluate(()=>window.stalePreviewEnd());
+          assert.equal(await page.evaluate(()=>window.cancelled),afterPreview,"late preview completion cannot cancel book speech");
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).voice),null);
+          await mode.getByRole("button",{name:"Choose narrator voice"}).click();
+          picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await picker.getByRole("radio",{name:/A very long installed/}).check();
+          await picker.getByRole("button",{name:/Preview A very long/}).click();
+          await page.evaluate(()=>window.spoken.at(-1).onerror({error:"interrupted"}));
+          await picker.getByRole("alert").waitFor();
+          await picker.getByRole("button",{name:"Close voice picker"}).focus();
+          await page.keyboard.press("Shift+Tab");
+          assert.equal(await picker.getByRole("button",{name:"Use this voice"}).evaluate(el=>el===document.activeElement),true);
+          await picker.getByRole("button",{name:"Use this voice"}).click();
+          await picker.waitFor({state:"detached"});
           assert.equal(await page.evaluate(()=>window.spoken.at(-1).voice.voiceURI),"native");
+          assert.equal(await mode.getByRole("button",{name:"Choose narrator voice"}).evaluate(el=>el===document.activeElement),true);
+          await mode.getByRole("button",{name:"Choose narrator voice"}).click();
+          picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await picker.getByRole("searchbox",{name:"Search voices"}).fill("Alex");
+          await picker.getByRole("searchbox",{name:"Search voices"}).press("Escape");
+          await picker.waitFor({state:"detached"});
+          assert.equal(await mode.count(),1,"Escape closes only narrator picker");
+          await mode.getByRole("button",{name:"Choose narrator voice"}).click();
+          picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await picker.waitFor(); await page.mouse.click(5,5);
+          await picker.waitFor({state:"detached"});
+          await mode.getByRole("button",{name:"Choose narrator voice"}).click();
+          picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await picker.getByRole("button",{name:"Preview Alex",exact:true}).click();
+          await page.evaluate(()=>window.dispatchEvent(new Event("pagehide")));
+          await picker.getByRole("button",{name:"Preview Alex",exact:true}).waitFor();
+          await picker.getByRole("button",{name:"Cancel",exact:true}).click();
+          await mode.getByRole("button",{name:"Play narration"}).waitFor();
+          await mode.getByRole("button",{name:"Choose narrator voice"}).click();
+          picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await picker.getByRole("radio",{name:/Alex/}).check();
+          await picker.getByRole("button",{name:"Use this voice"}).click();
+          await mode.getByRole("button",{name:"Play narration"}).waitFor();
+          await mode.getByRole("button",{name:"Play narration"}).click();
           await mode.getByRole("button",{name:"Reading speed 1×"}).click();
           const speed=mode.getByRole("slider",{name:"Reading speed",exact:true});
           await speed.focus(); await speed.press("ArrowRight");

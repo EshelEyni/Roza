@@ -117,7 +117,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader) {
       }
       position.current = { section: next, index: next.start, offset: next.offset };
       setSection(next); setIndex(next.start); setOffset(next.offset); setEnded(false);
-      const shouldPlay = autoplay && wantPlay.current;
+      const shouldPlay = wantPlay.current;
       setStatus(shouldPlay ? "Starting narration…" : autoplay ? "Paused · press Play to continue" : "Ready to listen");
       if (shouldPlay) speak();
     } catch (cause) {
@@ -126,12 +126,16 @@ export function useReaderAudiobook(loadSection: AudiobookLoader) {
       if (request === loadVersion.current) setLoading(false);
     }
   }
+  function resume() {
+    if (!position.current.section) return;
+    if (ended && !loading) goTo(0);
+    setError(""); wantPlay.current = true; setPlaying(true);
+    setStatus(loading ? "Loading book…" : "Starting narration…");
+    if (!loading) speak();
+  }
   function toggle() {
     if (wantPlay.current) { pause(); return; }
-    if (!position.current.section || loading) return;
-    if (ended) goTo(0);
-    setError(""); wantPlay.current = true; setPlaying(true);
-    setStatus("Starting narration…"); speak();
+    if (!loading) resume();
   }
   function move(direction: 1 | -1) {
     const current = position.current.section;
@@ -186,7 +190,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader) {
   const currentWord = sentence ? sentence.startWord + audiobookWordAt(sentence.words, offset) : 0;
   return {
     section, index, offset, highlight, wordEvents, playing, ended, loading, status, error,
-    voices, voice, speed, toggle, move, seek, changeVoice, changeSpeed,
+    voices, voice, speed, toggle, move, seek, changeVoice, changeSpeed, pause, resume,
     available: !!synth,
     currentWord: ended ? section?.totalWords || 0 : currentWord,
     cfi: sentence?.cfi,

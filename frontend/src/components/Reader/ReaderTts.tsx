@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { FiPause, FiPlay, FiSkipBack, FiSkipForward, FiX } from "react-icons/fi";
-import { ReaderSelect } from "./ReaderSelect";
+import { FiChevronDown, FiPause, FiPlay, FiSkipBack, FiSkipForward, FiX } from "react-icons/fi";
+import { ReaderAudiobookVoices } from "./ReaderAudiobookVoices";
 import { ScanLineIcon } from "./ReaderSentenceMode";
 import { useReaderAudiobook, type AudiobookLoader } from "../../hooks/reader/useReaderAudiobook";
 import { audiobookTime, type AudiobookSentence } from "../../services/readerTts";
@@ -9,6 +9,9 @@ export function ReaderTts({ bookTitle, loadSection, onClose }: {
   bookTitle: string; loadSection: AudiobookLoader; onClose: (cfi?: string) => void;
 }) {
   const audio = useReaderAudiobook(loadSection);
+  const [voiceOpen, setVoiceOpen] = useState(false);
+  const voiceButton = useRef<HTMLButtonElement>(null);
+  const resumeAfterVoice = useRef(false);
   const [speedOpen, setSpeedOpen] = useState(false);
   const [speedDraft, setSpeedDraft] = useState(audio.speed);
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
@@ -67,6 +70,14 @@ export function ReaderTts({ bookTitle, loadSection, onClose }: {
     }
   }, [audio.index, audio.highlight, audio.section]);
   useEffect(() => {
+    if (!voiceOpen) return;
+    const hide = () => { resumeAfterVoice.current = false; };
+    const visibility = () => { if (document.hidden) hide(); };
+    document.addEventListener("visibilitychange", visibility);
+    window.addEventListener("pagehide", hide);
+    return () => { document.removeEventListener("visibilitychange", visibility); window.removeEventListener("pagehide", hide); };
+  }, [voiceOpen]);
+  useEffect(() => {
     if (!speedOpen) return;
     const outside = (event: PointerEvent) => {
       if (!speedAnchor.current?.contains(event.target as Node)) setSpeedOpen(false);
@@ -79,10 +90,10 @@ export function ReaderTts({ bookTitle, loadSection, onClose }: {
   const progress = seekDraft ?? audio.currentWord;
   // Web Speech exposes no exact duration: these are explicitly text-based estimates.
   const secondsPerWord = 60 / (180 * audio.speed);
-  const options = [{ value: "", label: "System voice" }, ...audio.voices.map(voice => ({ value: voice.voiceURI, label: voice.name + " · " + voice.lang }))];
+  const selectedVoice = audio.voices.find(voice => voice.voiceURI === audio.voice);
   return <div className="reader-audiobook" ref={root} role="dialog" aria-modal="true" aria-label="Audiobook Mode" tabIndex={-1}
     onKeyDown={event => {
-      if (event.defaultPrevented) return;
+      if (event.defaultPrevented || voiceOpen) return;
       if (event.key === "Escape") {
         if (speedOpen) { setSpeedOpen(false); speedButton.current?.focus(); }
         else exit();
@@ -157,10 +168,14 @@ export function ReaderTts({ bookTitle, loadSection, onClose }: {
               </div>}
             </div>
           </div>
-          <div className="audiobook-voice" onPointerDown={() => setSpeedOpen(false)}>
-            <span id="audiobook-voice-label" className="audiobook-sr-only">Narrator voice</span>
-            <svg className="audiobook-voice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6M9 5v14M13 8v8M17 6v12M21 10v4" /></svg>
-            <ReaderSelect id="audiobook-voice" labelId="audiobook-voice-label" value={audio.voice} options={options} onChange={audio.changeVoice} />
+          <div className="audiobook-voice">
+            <button ref={voiceButton} type="button" className="audiobook-voice-trigger" aria-label="Choose narrator voice" title={selectedVoice?.name || "Choose narrator voice"} aria-haspopup="dialog" aria-expanded={voiceOpen} onClick={() => {
+              setSpeedOpen(false); resumeAfterVoice.current = audio.playing;
+              audio.pause("Paused while choosing a narrator"); setVoiceOpen(true);
+            }}>
+              <svg className="audiobook-voice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6M9 5v14M13 8v8M17 6v12M21 10v4" /></svg>
+              <span className="audiobook-voice-name">{selectedVoice?.name || "Choose voice"}</span><FiChevronDown aria-hidden="true" />
+            </button>
           </div>
         </div>
         <div className="audiobook-player-meta" role="status" aria-live="polite"><span className={"audiobook-pulse" + (audio.playing ? " is-live" : "")} aria-hidden="true" /><span>{audio.available ? audio.status : "System speech is unavailable in this browser"}</span></div>
@@ -168,5 +183,10 @@ export function ReaderTts({ bookTitle, loadSection, onClose }: {
         {audio.error && <p className="audiobook-error" role="alert">{audio.error}</p>}
       </div>
     </footer>
+    {voiceOpen && <ReaderAudiobookVoices voices={audio.voices} selected={audio.voice} onClose={selected => {
+      if (selected !== undefined) audio.changeVoice(selected);
+      setVoiceOpen(false); voiceButton.current?.focus({ preventScroll: true });
+      if (resumeAfterVoice.current) { resumeAfterVoice.current = false; audio.resume(); }
+    }} />}
   </div>;
 }

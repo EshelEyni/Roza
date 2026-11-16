@@ -1,6 +1,6 @@
 # Audiobook Mode — system-voice follow-along
 
-The UI follows the supplied `roza_audiobook_follow_along_footer_v3.html` reference: slim mode header, warm paper/serif reading area, sentence and word highlights, automatic follow-along scrolling, and a fixed transport footer. The reference is a simulated timer-only preview. Roza uses real EPUB text and real `window.speechSynthesis` speech.
+The UI follows the supplied `roza_audiobook_follow_along_footer_v3.html` reference: slim mode header, warm paper/serif reading area, sentence and word highlights, automatic follow-along scrolling, and a fixed transport footer. The narrator picker follows `roza_audiobook_voice_modal_fixed.html`. The reading reference is a simulated timer-only preview. Roza uses real EPUB text and real `window.speechSynthesis` speech.
 
 **System voices only.** Kokoro, its worker, model downloads and package dependency have been removed for now. There is no engine selector or Generate step.
 
@@ -12,11 +12,13 @@ Open Reader menu → Audiobook Mode. The menu order remains Go to page, Review l
 - **Previous/Next sentence:** moves within the current section or across section boundaries. Playing continues; paused navigation stays paused.
 - **Seek:** the footer bar moves to a word within the displayed EPUB section. Dragging commits on release; keyboard changes also work.
 - **Speed:** opens the reference-style popover, 0.5×–2.5×. A change restarts speech at the last reported word using the new native speech rate.
-- **Voice:** the existing ReaderSelect lists installed/available system voices and responds to asynchronous `voiceschanged` events. Browser default is available even if no voices are enumerated. Long names truncate in the footer and wrap in the upward-opening menu.
+- **Voice:** the footer button opens the reference-style **Choose a narrator** modal (centered desktop dialog / mobile bottom sheet). It lists installed system voices, updates on asynchronous `voiceschanged` events, searches voice names/languages, and offers an English-only filter. Select a card, optionally preview it using real system speech, then **Use this voice** to apply; Cancel/close/backdrop/Escape discard the staged choice. Browser-default narration remains available even if no voices are enumerated.
 - **Exit:** stops speech, restores focus/normal reader controls and returns the EPUB reader to the current sentence CFI.
 - **Keyboard:** Space toggles playback when focus is in the reading area; arrow keys move by word. Escape dismisses a popover first, then exits the mode. Focus stays within the open mode.
 
 Text extraction reuses the existing sentence and CFI helpers, preserves paragraph grouping and inline text, and excludes scripts, hidden content and note-reference text. One spine section is rendered at a time; titles come from existing Contents navigation rather than invented chapter numbers. Non-linear/empty sections are skipped during continuous reading.
+
+The narrator modal pauses book narration before any preview. Closing it resumes from the same reading position only if the book was playing before opening; applying while already paused keeps it paused. Previews are stopped on close, replacement, errors or app hide, and stale preview events cannot cancel resumed narration. Hiding the app also suppresses automatic resume when the modal closes. Native dialog semantics, keyboard focus wrapping/return, viewport-height limits and 16px mobile search input support touch and keyboard use.
 
 ## Real synchronization and timing limits
 
@@ -47,3 +49,5 @@ Automated checks:
 Screenshots and automated behavior checks use desktop Edge/Chromium, with speech APIs mocked to provide deterministic boundary/error events. They do not verify audible OS output or physical iPhone Safari/PWA behavior. Those require manual device listening. The inherited Sentence Mode width assertion was previously reproduced identically on untouched main and is outside this change.
 
 Validated on 2026-11-16: production build, focused ESLint and all 21 selected audiobook/RSVP/mobile-toolbar/annotations/sentence-navigation/content-security checks passed. Desktop and mobile screenshots were visually reviewed; 320px and landscape footer/control bounds passed. OS voices may require installed voice downloads or network depending on the platform; Roza adds no TTS server or model download.
+
+Narrator-modal update validated on 2026-11-16: build, focused ESLint and all 21 selected checks passed, including asynchronous voices, staged Apply/Cancel, search/language filtering, actual preview API calls, preview cancellation/error/late events, narration resume, background handling, focus wrapping/return, search-field Escape, backdrop dismissal, and 320px/landscape bounds. Desktop/mobile screenshots were visually reviewed. Preview audio remains unverified on a physical iPhone.
