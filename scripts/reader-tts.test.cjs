@@ -47,3 +47,28 @@ test("section seeking clamps and maps words to exact sentence offsets", () => {
   assert.equal(functions.audiobookSeek(section,999).offset,11);
   assert.equal(functions.audiobookTime(65), "1:05");
 });
+
+test("paragraph render units retain every sentence and exact offsets", () => {
+  const sentences = [
+    { text:"First sentence.", paragraph:0 }, { text:"Second sentence!", paragraph:0 },
+    { text:"שלום 😀 עולם", paragraph:1 },
+  ].map((item,index)=>({...item,cfi:String(index),startWord:index,words:functions.audiobookWords(item.text)}));
+  const groups=functions.audiobookParagraphs(sentences);
+  assert.equal(groups.length,2);
+  assert.equal(groups.map(group=>group.text).join(""),sentences.map(s=>s.text).join(" ")+" ");
+  for(const group of groups) for(const item of group.items) {
+    assert.equal(group.text.slice(item.offset,item.offset+item.sentence.text.length),item.sentence.text);
+    assert.ok(item.index>=group.first&&item.index<=group.last);
+  }
+});
+test("word rendering stays bounded while preserving a long sentence in full", () => {
+  const text=Array.from({length:2000},(_,i)=>"מילה"+i+"😀").join(" ");
+  const sentence={text,words:functions.audiobookWords(text)};
+  for(const index of [0,16,31,32,63,64,95,500,1000,1999]) {
+    const window=functions.audiobookWordWindow(sentence,index);
+    assert.ok(window.end-window.start<=64);
+    assert.ok(index>=window.start&&index<window.end);
+    const visible=text.slice(sentence.words[window.start].start,sentence.words[window.end-1].end);
+    assert.equal(window.prefix+visible+window.suffix,text);
+  }
+});

@@ -1,9 +1,10 @@
-import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiChevronDown, FiPause, FiPlay, FiSkipBack, FiSkipForward, FiX } from "react-icons/fi";
+import { ReaderAudiobookText } from "./ReaderAudiobookText";
 import { ReaderAudiobookVoices } from "./ReaderAudiobookVoices";
 import { ScanLineIcon } from "./ReaderSentenceMode";
 import { useReaderAudiobook, type AudiobookLoader } from "../../hooks/reader/useReaderAudiobook";
-import { audiobookTime, type AudiobookSentence } from "../../services/readerTts";
+import { audiobookTime } from "../../services/readerTts";
 
 export function ReaderTts({ bookTitle, loadSection, onClose }: {
   bookTitle: string; loadSection: AudiobookLoader; onClose: (cfi?: string) => void;
@@ -23,15 +24,6 @@ export function ReaderTts({ bookTitle, loadSection, onClose }: {
   const speedButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const exit = () => onClose(audio.cfi);
-  const paragraphs = useMemo(() => {
-    const groups: { paragraph: number; items: { index: number; sentence: AudiobookSentence }[] }[] = [];
-    audio.section?.sentences.forEach((sentence, index) => {
-      let group = groups[groups.length - 1];
-      if (!group || group.paragraph !== sentence.paragraph) { group = { paragraph: sentence.paragraph, items: [] }; groups.push(group); }
-      group.items.push({ index, sentence });
-    });
-    return groups;
-  }, [audio.section]);
 
   useEffect(() => {
     const mode = root.current;
@@ -58,7 +50,7 @@ export function ReaderTts({ bookTitle, loadSection, onClose }: {
     const container = reading.current;
     const target = container?.querySelector<HTMLElement>(".audiobook-word.is-active, .audiobook-sentence.is-active");
     // Prefer the actual boundary word when one is available.
-    const word = container?.querySelector<HTMLElement>(".audiobook-word.is-active") || target;
+    const word = container?.querySelector<HTMLElement>(".audiobook-word.is-active") || container?.querySelector<HTMLElement>("[data-audiobook-cursor]") || target;
     if (!container || !word) return;
     const rect = word.getBoundingClientRect();
     const viewport = container.getBoundingClientRect();
@@ -68,7 +60,7 @@ export function ReaderTts({ bookTitle, loadSection, onClose }: {
         behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
       });
     }
-  }, [audio.index, audio.highlight, audio.section]);
+  }, [audio.index, audio.highlight, audio.offset, audio.section]);
   useEffect(() => {
     if (!voiceOpen) return;
     const hide = () => { resumeAfterVoice.current = false; };
@@ -119,21 +111,8 @@ export function ReaderTts({ bookTitle, loadSection, onClose }: {
       <button ref={closeButton} className="audiobook-close" aria-label="Exit audiobook mode" title="Exit audiobook mode" onClick={exit}><FiX /></button>
     </header>
     <main className="audiobook-reading" ref={reading} tabIndex={0} aria-label="Book text">
-      <article className="audiobook-content" dir="auto" aria-busy={audio.loading}>
-        {audio.section?.title && <div className="audiobook-chapter-meta">{bookTitle}</div>}
-        <h1 className="audiobook-chapter-title">{audio.section?.title || bookTitle}</h1>
-        {audio.loading && <p className="audiobook-loading" role="status">Loading book…</p>}
-        {!audio.loading && paragraphs.map(group => <p key={group.paragraph}>
-          {group.items.map(({ sentence, index }) => <Fragment key={sentence.cfi}>
-            <span className={"audiobook-sentence" + (index === audio.index ? " is-active" : "")} aria-current={index === audio.index ? "true" : undefined} data-sentence={index}>
-              {sentence.words.map((word, wordIndex) => <Fragment key={word.start}>
-                <span className={"audiobook-word" + (index === audio.index && wordIndex === audio.highlight ? " is-active" : "")}>{word.text}</span>
-                {wordIndex < sentence.words.length - 1 ? " " : ""}
-              </Fragment>)}
-            </span>{" "}
-          </Fragment>)}
-        </p>)}
-      </article>
+      <ReaderAudiobookText section={audio.section} bookTitle={bookTitle} loading={audio.loading}
+        index={audio.index} highlight={audio.highlight} offset={audio.offset} />
     </main>
     <footer className="audiobook-player">
       <div className="audiobook-player-inner">

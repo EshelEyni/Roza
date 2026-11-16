@@ -50,7 +50,7 @@ test(
         ),
       )
     );
-    const file = await epub();
+    let file = await epub();
     const saves = [];
     const lookups = [];
     const aliases = [
@@ -355,6 +355,85 @@ test(
           assert.equal(await page.evaluate(()=>[...document.querySelectorAll(".reader-shell [inert]")].length),0);
           assert.equal(await page.evaluate(()=>window.spoken.at(-1).onend),null);
           assert.equal(await page.evaluate(()=>window.workers),0);
+        } finally {await browser.close();}
+      });
+
+      await t.test("long chapter keeps complete native scrolling with bounded highlight DOM", async () => {
+        const archive=await JSZip.loadAsync(file);
+        const original=await archive.file("a.xhtml").async("string");
+        const paragraph=original.match(/<p>[\s\S]*?<\/p>/)[0];
+        const longSentence=Array.from({length:2000},(_,i)=>"token"+i).join(" ")+".";
+        archive.file("a.xhtml",original.replace("</body>",paragraph.repeat(150)+"<p>"+longSentence+"</p></body>"));
+        file=await archive.generateAsync({type:"nodebuffer"}); saves.length=0;
+        const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL || "msedge"});
+        try {
+          const page=await browser.newPage({viewport:{width:375,height:844},isMobile:true,hasTouch:true});
+          await page.emulateMedia({reducedMotion:"reduce"});
+          await page.addInitScript(()=>{
+            const synth=new EventTarget(); window.spoken=[];
+            synth.getVoices=()=>[{voiceURI:"native",name:"Native narrator",lang:"en-US",default:true,localService:true}];
+            synth.cancel=()=>{}; synth.resume=()=>{};
+            synth.speak=u=>{window.spoken.push(u);queueMicrotask(()=>u.onstart?.());};
+            Object.defineProperty(window,"speechSynthesis",{value:synth});
+            window.SpeechSynthesisUtterance=class {constructor(text){this.text=text;}};
+          });
+          await page.goto(server.resolvedUrls.local[0]+"rsvp-test");
+          await page.waitForFunction(()=>window.rsvpTest?.reader.loading===false);
+          const source=await page.evaluate(async()=>{
+            const data=await window.rsvpTest.reader.audiobook.loadSection();
+            return {text:data.sentences.map(s=>s.text).join(" ")+" ",total:data.totalWords};
+          });
+          assert.ok(source.total>9000);
+          await page.getByRole("button",{name:"Reader menu",exact:true}).click();
+          await page.getByRole("button",{name:"Audiobook Mode",exact:true}).click();
+          const mode=page.getByRole("dialog",{name:"Audiobook Mode",exact:true});
+          await page.waitForFunction(()=>document.querySelector(".audiobook-content")?.getAttribute("aria-busy")==="false");
+          const allText=async()=> (await mode.locator(".audiobook-content p").allTextContents()).join("");
+          assert.equal(await allText(),source.text);
+          assert.ok(await mode.locator(".audiobook-word").count()<=64);
+          assert.equal(await mode.locator(".audiobook-content p").count(),156);
+          const scroll=mode.locator(".audiobook-reading");
+          const before=await scroll.evaluate(element=>{
+            element.scrollTop=element.scrollHeight;
+            return {top:element.scrollTop,height:element.scrollHeight,client:element.clientHeight};
+          });
+          assert.ok(before.top+before.client>=before.height-1,"native scrolling reaches the end of all text");
+          await page.evaluate(()=>{
+            window.articleMutations=0;
+            window.articleObserver=new MutationObserver(records=>window.articleMutations+=records.length);
+            window.articleObserver.observe(document.querySelector(".audiobook-content"),{subtree:true,childList:true,characterData:true,attributes:true});
+          });
+          await mode.getByRole("button",{name:"Choose narrator voice"}).click();
+          await page.getByRole("dialog",{name:"Choose a narrator",exact:true}).getByRole("button",{name:"Cancel",exact:true}).click();
+          await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
+          const after=await scroll.evaluate(element=>({top:element.scrollTop,height:element.scrollHeight}));
+          assert.equal(after.top,before.top,"modal does not move the user's scroll position");
+          assert.equal(after.height,before.height);
+          assert.equal(await page.evaluate(()=>window.articleMutations),0,"modal opening and closing leave chapter DOM untouched");
+          await page.evaluate(()=>window.articleObserver.disconnect());
+          const seek=mode.getByRole("slider",{name:"Estimated section progress"});
+          await seek.focus(); await seek.press("End");
+          await page.waitForFunction(()=>document.querySelector("[data-audiobook-cursor]")?.textContent==="token1999.");
+          assert.ok(await mode.locator(".audiobook-word").count()<=64);
+          assert.equal(await allText(),source.text);
+          assert.equal(await scroll.evaluate(element=>element.scrollHeight),before.height,"highlight markup preserves full scroll height");
+          const cursor=await mode.locator("[data-audiobook-cursor]").boundingBox();
+          const reading=await scroll.boundingBox();
+          assert.ok(cursor.y>=reading.y&&cursor.y+cursor.height<=reading.y+reading.height+1,"seeking within a long sentence scrolls to the chosen word");
+          await mode.getByRole("button",{name:"Previous sentence"}).click();
+          await mode.getByRole("button",{name:"Next sentence"}).click();
+          await page.waitForFunction(()=>document.querySelector("[data-audiobook-cursor]")?.textContent==="token0");
+          assert.equal(await allText(),source.text);
+          await seek.focus(); await seek.press("End");
+          await mode.getByRole("button",{name:"Play narration",exact:true}).click();
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).text),"token1999.");
+          await page.evaluate(()=>window.spoken.at(-1).onboundary({name:"word",charIndex:0}));
+          await page.waitForFunction(()=>document.querySelector(".audiobook-word.is-active")?.textContent==="token1999.");
+          assert.ok(await mode.locator(".audiobook-word").count()<=64);
+          await page.evaluate(()=>window.spoken.at(-1).onend());
+          await mode.getByRole("heading",{name:"The Next Day"}).waitFor();
+          await page.waitForFunction(()=>window.spoken.at(-1).text==="A new day began.");
+          await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
         } finally {await browser.close();}
       });
     } finally {await server.close();}

@@ -35,3 +35,36 @@ export function audiobookTime(seconds: number) {
   const rounded = Math.max(0, Math.round(seconds));
   return Math.floor(rounded / 60) + ":" + String(rounded % 60).padStart(2, "0");
 }
+
+export type AudiobookParagraphData = {
+  paragraph: number; first: number; last: number; text: string;
+  items: { index: number; sentence: AudiobookSentence; offset: number }[];
+};
+
+/** Build stable paragraph-sized render units once per section, preserving all text. */
+export function audiobookParagraphs(sentences: AudiobookSentence[]): AudiobookParagraphData[] {
+  const groups: AudiobookParagraphData[] = [];
+  sentences.forEach((sentence, index) => {
+    let group = groups[groups.length - 1];
+    if (!group || group.paragraph !== sentence.paragraph) {
+      group = { paragraph: sentence.paragraph, first: index, last: index, text: "", items: [] };
+      groups.push(group);
+    }
+    group.items.push({ index, sentence, offset: group.text.length });
+    group.text += sentence.text + " ";
+    group.last = index;
+  });
+  return groups;
+}
+
+/** Only the spoken neighborhood needs word elements; prefix/suffix remain exact text. */
+export function audiobookWordWindow(sentence: AudiobookSentence, anchor: number) {
+  const word = Math.max(0, Math.min(sentence.words.length - 1, Number.isFinite(anchor) ? Math.floor(anchor) : 0));
+  const start = Math.max(0, Math.floor(word / 32) * 32 - 16);
+  const end = Math.min(sentence.words.length, start + 64);
+  return {
+    start, end,
+    prefix: sentence.text.slice(0, sentence.words[start]?.start || 0),
+    suffix: sentence.text.slice(sentence.words[end - 1]?.end || 0),
+  };
+}

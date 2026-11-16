@@ -20,6 +20,10 @@ Text extraction reuses the existing sentence and CFI helpers, preserves paragrap
 
 The narrator modal pauses book narration before any preview. Closing it resumes from the same reading position only if the book was playing before opening; applying while already paused keeps it paused. Previews are stopped on close, replacement, errors or app hide, and stale preview events cannot cancel resumed narration. Hiding the app also suppresses automatic resume when the modal closes. Native dialog semantics, keyboard focus wrapping/return, viewport-height limits and 16px mobile search input support touch and keyboard use.
 
+## Bounded text rendering
+
+The complete current section remains in the document as ordinary paragraph text: no virtual-scroll placeholders, estimated heights, hidden text or scroll-triggered loading. The text subtree and each paragraph are memoized, so opening the voice modal or changing player status does not re-render the chapter. Only the active sentence receives individual word elements, capped at a stable 64-word window around the current spoken position; text before and after that window remains exact plain text. Highlighting and seeking retain the original sentence/word offsets and CFI source. This preserves native full-section scrolling and copy/find text while reducing modal/layout work.
+
 ## Real synchronization and timing limits
 
 Sentence highlighting and advancement use real speech events. Dark word highlights use native word-boundary events only; no timer animates or guesses spoken words. If a voice does not emit boundaries, sentence follow-along still works. The footer indicates sentence or word follow-along.
@@ -51,3 +55,7 @@ Screenshots and automated behavior checks use desktop Edge/Chromium, with speech
 Validated on 2026-11-16: production build, focused ESLint and all 21 selected audiobook/RSVP/mobile-toolbar/annotations/sentence-navigation/content-security checks passed. Desktop and mobile screenshots were visually reviewed; 320px and landscape footer/control bounds passed. OS voices may require installed voice downloads or network depending on the platform; Roza adds no TTS server or model download.
 
 Narrator-modal update validated on 2026-11-16: build, focused ESLint and all 21 selected checks passed, including asynchronous voices, staged Apply/Cancel, search/language filtering, actual preview API calls, preview cancellation/error/late events, narration resume, background handling, focus wrapping/return, search-field Escape, backdrop dismissal, and 320px/landscape bounds. Desktop/mobile screenshots were visually reviewed. Preview audio remains unverified on a physical iPhone.
+
+Bounded-rendering update validated on 2026-11-16: build and focused lint passed. Long-chapter checks preserve every sentence, exact paragraph text, native scroll height/end reachability and modal scroll position; the word-element count stays at or below 64, including a 2,000-word sentence, and modal open/close causes no chapter DOM mutations. A parallel regression run passed 22/24 checks; its annotation parent/desktop color assertion failed once, and the annotation suite passed unchanged when rerun alone.
+
+Local development Edge profiling with 4× CPU throttling, 7,135 words and 60 visible voices reduced word elements from 7,135 to 19 at the initial position. Text SHA-256 and scroll height (55,119px) matched exactly. Warm click-to-next-paint opportunities changed from 479–535ms to 107–146ms (cold: 569ms to 229ms). Speech was mocked; this isolates rendering/layout and is not an iPhone or native speech-cancellation measurement.
