@@ -780,11 +780,11 @@ export function ReaderSentenceMode({
     actionTarget,
   ]);
   const openLookup = (translate: boolean) => {
-    const current = selection(true);
+    const current = selection();
     if (current) setLookup({ selection: current, translate });
   };
   const translateDisabled =
-    !actionTarget || actionTarget.text.length > readerAiLimits.passage;
+    !sentence || (actionTarget?.text || sentence.text).length > readerAiLimits.passage;
   const aiDisabled =
     !sentence ||
     (actionTarget?.text || sentence.text).length > readerAiLimits.passage;
