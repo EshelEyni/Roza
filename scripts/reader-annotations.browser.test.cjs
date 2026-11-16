@@ -222,6 +222,12 @@ test(
               assert.equal(await page.getByRole("button", {name:"None",exact:true}).getAttribute("aria-pressed"), "true");
               assert.equal(await page.getByRole("button", {name:"Remove",exact:true}).count(), 0);
               await page.getByLabel("Personal note").fill("Unsaved note");
+              assert.equal(await page.locator('.reader-annotation-swatch').count(), 5);
+              assert.equal(await page.locator('.reader-annotation-swatch[aria-pressed="true"]').count(), 1);
+              assert.equal(await page.locator('.reader-annotation-editor-header h2').textContent(), 'Edit highlight');
+              const editorBounds = await page.locator('.reader-annotation-editor').evaluate(el => ({width: el.clientWidth, scrollWidth: el.scrollWidth}));
+              assert.ok(editorBounds.scrollWidth <= editorBounds.width + 1, JSON.stringify(editorBounds));
+              if (process.env.READER_EDITOR_SCREENSHOTS) await page.screenshot({path: require('node:path').join(process.env.READER_EDITOR_SCREENSHOTS, mobile ? 'notes-editor-mobile.png' : 'notes-editor-desktop.png')});
               assert.equal(await page.getByRole("button", {name:"Remove note",exact:true}).count(), 0);
               await page.getByLabel("Personal note").fill("");
               await page.getByRole("button", {name:"Yellow",exact:true}).click();
@@ -229,13 +235,14 @@ test(
               assert.equal(await page.evaluate(()=>window.annotationTest.reader.annotations.items.length),0);
               assert.equal((saved.get(owner + ':annotations') || []).length,0);
               await page.getByRole("button", {name:"Cancel",exact:true}).click();
-              await page.waitForFunction(()=>!window.annotationTest.reader.annotations.draft);
+              await page.waitForFunction(()=>!window.annotationTest.reader.annotations.draft && window.annotationTest.reader.panel === null);
               assert.equal(await page.locator('.reader-saved-annotation').count(),0);
               await page.evaluate(p=>window.annotationTest.reader.annotations.select(p,true),passage);
               await page.getByRole("button", {name:"Yellow",exact:true}).click();
               await page.getByRole("checkbox", {name:"Flag for review (Ctrl+S)"}).check();
-              await page.getByRole("button", {name:"Save",exact:true}).click();
-              await page.evaluate(()=>window.annotationTest.reader.closePanel());
+              await page.getByRole("button", {name:"Save changes",exact:true}).click();
+              await page.waitForFunction(() => window.annotationTest.reader.panel === null && !window.annotationTest.reader.annotations.busy);
+              assert.equal(await page.evaluate(() => window.annotationTest.reader.sentenceMode.active), false);
               await page.waitForFunction(before=>{
                 const doc=window.annotationTest.reader.host.current.querySelector('iframe')?.contentDocument;
                 return !!doc && doc.documentElement.scrollWidth===before.width && doc.body.scrollHeight===before.height;
@@ -311,6 +318,9 @@ test(
               await page.getByRole('button', {name:'Edit', exact:true}).click();
               assert.equal(await page.evaluate(() => window.annotationTest.reader.href), beforeEdit, 'Edit never triggers card navigation');
               await page.getByRole('button', {name:'Cancel', exact:true}).click();
+              await page.waitForFunction(() => window.annotationTest.reader.panel === null);
+              await page.getByRole('button', {name: 'Annotations', exact: true}).click();
+
               if (process.env.READER_UI_SCREENSHOTS) await page.locator('.reader-annotations').screenshot({path:path.join(process.env.READER_UI_SCREENSHOTS, mobile ? 'annotation-chip-mobile.png' : 'annotation-chip-desktop.png')});
 
               const headingBox = await page.locator('.reader-annotation-card-heading').boundingBox();
@@ -322,6 +332,8 @@ test(
               await page.getByRole('button', {name:'Edit', exact:true}).click();
               assert.equal(await page.getByLabel('Personal note').inputValue(), 'Same text, different ID');
               await page.getByRole('button', {name:'Cancel', exact:true}).click();
+              await page.waitForFunction(() => window.annotationTest.reader.panel === null);
+              await page.getByRole('button', {name: 'Annotations', exact: true}).click();
               await page.getByRole('button', {name:'Clear filter', exact:true}).click();
               assert.equal(await page.locator('.reader-annotation-card').count(), 2);
               assert.equal(await page.getByText('Showing selected annotation', {exact:true}).count(), 0);
@@ -370,7 +382,7 @@ test(
               await page.getByLabel("Personal note").fill("A personal note");
               assert.equal(await page.getByRole("group", { name: "Highlight color" }).count(), 1);
               await page
-                .getByRole("button", { name: "Save", exact: true })
+                .getByRole("button", { name: "Save changes", exact: true })
                 .click();
               await page.waitForFunction(
                 () =>
@@ -379,18 +391,23 @@ test(
               );
               await page.waitForSelector('.reader-saved-annotation[data-note="true"] rect');
               assert.equal(await page.locator('.reader-saved-annotation[data-note="true"] rect').first().evaluate(el => getComputedStyle(el).fill), "rgb(245, 164, 204)");
+              await page.waitForFunction(() => window.annotationTest.reader.panel === null);
+              await page.getByRole('button', {name: 'Annotations', exact: true}).click();
+
               await page
                 .getByRole("button", { name: "Edit", exact: true })
                 .click();
               await page.getByLabel("Personal note").fill("Edited note");
               await page
-                .getByRole("button", { name: "Save", exact: true })
+                .getByRole("button", { name: "Save changes", exact: true })
                 .click();
               await page.waitForFunction(
                 () =>
                   window.annotationTest.reader.annotations.items[0]?.note ===
                   "Edited note",
               );
+              await page.waitForFunction(() => window.annotationTest.reader.panel === null);
+              await page.getByRole('button', {name: 'Annotations', exact: true}).click();
               await page.waitForFunction(() => /Page \d+/.test(document.querySelector('.reader-annotation-page')?.textContent || ''));
               if (mobile) await page.evaluate(()=>window.annotationTest.reader.closePanel());
               await page.waitForFunction(()=>window.annotationTest.reader.remainingSectionPages !== null && window.annotationTest.reader.remainingBookPages !== null);
@@ -490,7 +507,7 @@ test(
               assert.equal(await page.getByRole("button", {name:"Remove note",exact:true}).count(), 0);
               await page.getByLabel("Personal note").fill("");
               await page
-                .getByRole("button", { name: "Save", exact: true })
+                .getByRole("button", { name: "Save changes", exact: true })
                 .click();
               await page.waitForFunction(
                 () =>
@@ -521,7 +538,7 @@ test(
                 overlap,
               );
               await page.getByRole("button", {name:"Yellow",exact:true}).click();
-              await page.getByRole("button", {name:"Save",exact:true}).click();
+              await page.getByRole("button", {name:"Save changes",exact:true}).click();
               await page.evaluate(()=>window.annotationTest.reader.closePanel());
               await page.waitForFunction(
                 () =>
@@ -567,7 +584,7 @@ test(
                 extended,
               );
               await page.getByRole("button", {name:"Yellow",exact:true}).click();
-              await page.getByRole("button", {name:"Save",exact:true}).click();
+              await page.getByRole("button", {name:"Save changes",exact:true}).click();
               await page.evaluate(()=>window.annotationTest.reader.closePanel());
               await page.waitForFunction(
                 () =>
@@ -631,6 +648,31 @@ test(
                 await page.locator(".reader-saved-annotation").count(),
                 0,
               );
+              // Finishing a note opened over Sentence Mode returns to that sentence.
+              await page.evaluate(async () => {
+                const r = window.annotationTest.reader;
+                r.closePanel();
+                await r.sentenceMode.toggle();
+              });
+              await page.waitForFunction(() => window.annotationTest.reader.sentenceMode.active && !window.annotationTest.reader.sentenceMode.busy);
+              const openSentenceNote = async () => page.evaluate(() => {
+                const r = window.annotationTest.reader;
+                const sentence = r.sentenceMode.sentence;
+                r.annotations.select({ cfi: sentence.cfi, text: sentence.text, x: 0, y: 0 }, true);
+                return sentence.cfi;
+              });
+              const sentenceCfi = await openSentenceNote();
+              await page.getByLabel('Personal note').fill('Discard this sentence note');
+              await page.getByRole('button', {name: 'Cancel', exact: true}).click();
+              await page.waitForFunction(() => window.annotationTest.reader.panel === null);
+              assert.equal(await page.evaluate(() => window.annotationTest.reader.sentenceMode.active), true);
+              assert.equal(await page.evaluate(() => window.annotationTest.reader.annotations.items.length), 0);
+              await openSentenceNote();
+              await page.getByLabel('Personal note').fill('Saved from Sentence Mode');
+              await page.getByRole('button', {name: 'Save changes', exact: true}).click();
+              await page.waitForFunction(() => window.annotationTest.reader.panel === null && window.annotationTest.reader.annotations.items.some(item => item.note === 'Saved from Sentence Mode'));
+              assert.equal(await page.evaluate(() => window.annotationTest.reader.sentenceMode.active), true);
+              assert.equal(await page.evaluate(() => window.annotationTest.reader.sentenceMode.sentence.cfi), sentenceCfi);
               assert.deepEqual(errors, []);
               await context.close();
             } finally {

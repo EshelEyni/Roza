@@ -322,7 +322,7 @@
     "bookCount_one": "{{count}} book in your library",
     "bookCount_other": "{{count}} books in your library",
     "progress": "Reading progress",
-    "settings": "Reading settings",
+    "settings": "Settings",
     "fontSize": "Text size",
     "font": "Typeface",
     "serif": "Serif",
@@ -534,6 +534,13 @@
       "openBesideTitle": "Open beside: {{title}}"
     },
     "annotations": {
+      "editorEyebrow": "Reader · Annotation",
+      "editorTitle": "Edit highlight",
+      "closeEditor": "Close editor",
+      "optional": "Optional",
+      "notePlaceholder": "Add your thoughts about this passage…",
+      "reviewHint": "Save this passage to your review list",
+      "saveChanges": "Save changes",
       "openAnnotation": "Open annotation",
       "filteredByAnnotation": "Showing selected annotation",
       "clearFilter": "Clear filter",

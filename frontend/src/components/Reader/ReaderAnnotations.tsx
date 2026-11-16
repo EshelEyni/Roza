@@ -1,4 +1,4 @@
-import { FiSearch, FiChevronDown, FiFilter, FiX, FiEdit3, FiTrash2, FiMapPin } from "react-icons/fi";
+import { FiSearch, FiChevronDown, FiFilter, FiX, FiEdit3, FiTrash2, FiMapPin, FiCheck } from "react-icons/fi";
 import { useEffect, useState, type CSSProperties } from "react";
 import { useTranslation } from "react-i18next";
 import { annotationColors } from "../../../../shared/types/readerAnnotations";
@@ -55,7 +55,7 @@ export function ReaderAnnotations({
     return matches && (allPages || (page !== undefined && page >= first && page <= last));
   });
   return (
-    <section className="reader-annotations" aria-busy={a.busy || a.loading}>
+    <section className={"reader-annotations" + (draft ? " is-editing" : "")} aria-busy={a.busy || a.loading}>
       {a.error && (
         <p role="alert">
           {t("reader.annotations." + a.error)}{" "}
@@ -72,71 +72,55 @@ export function ReaderAnnotations({
       )}
       {a.loading && <p role="status">{t("reader.annotations.loading")}</p>}
       {draft ? (
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            void a.save(draft);
-          }}
-        >
-          <blockquote dir="auto">{previewText(draft.text)}</blockquote>
-          <p>{draft.chapter}</p>
-          <fieldset disabled={a.busy}>
-            <legend>{t("reader.annotations.color")}</legend>
-            {annotationColors.map((color) => (
-              <button
-                type="button"
-                key={color}
-                className={
-                  "reader-button reader-annotation-color color-" + color
-                }
-                aria-pressed={draft.color === color}
-                onClick={() => a.setDraft({ ...draft, color })}
-              >
-                {t("reader.annotations." + color)}
-              </button>
-            ))}
-          </fieldset>
-          <label htmlFor="reader-annotation-note">
-            {t("reader.annotations.note")}
-          </label>
-          <textarea
-            id="reader-annotation-note"
-            dir="auto"
-            value={draft.note}
-            maxLength={10000}
-            disabled={a.busy}
-            onChange={(event) =>
-              a.setDraft({ ...draft, note: event.target.value })
-            }
-          />
-          <label>
-            <input type="checkbox" checked={!!draft.flagged} disabled={a.busy}
-              onChange={event => a.setDraft({ ...draft, flagged: event.target.checked })} />
-            {t("reader.review.flag")}
-          </label>
-          <div className="reader-annotation-actions">
-            <button className="reader-button" disabled={a.busy || (!draft.id && draft.color === "none" && !draft.note.trim() && !draft.flagged)} type="submit">
-              {t("reader.annotations.save")}
-            </button>
-            <button
-              className="reader-button"
-              disabled={a.busy}
-              type="button"
-              onClick={() => a.setDraft(null)}
-            >
+        <form className="reader-annotation-editor"
+          onSubmit={event => { event.preventDefault(); void a.save(draft); }}>
+          <header className="reader-annotation-editor-header">
+            <div>
+              <span className="reader-annotation-eyebrow">{t("reader.annotations.editorEyebrow", "Reader · Annotation")}</span>
+              <h2>{t("reader.annotations.editorTitle", "Edit highlight")}</h2>
+            </div>
+            <button type="button" className="reader-icon-button" disabled={a.busy}
+              aria-label={t("reader.annotations.closeEditor", "Close editor")} onClick={() => a.setDraft(null)}><FiX aria-hidden="true" /></button>
+          </header>
+          <div className="reader-annotation-editor-body">
+            <blockquote className="reader-annotation-editor-quote" dir="auto">{draft.text}</blockquote>
+            {draft.chapter && <p className="reader-annotation-editor-chapter" title={draft.chapter}>{draft.chapter}</p>}
+            <fieldset className="reader-annotation-swatches" disabled={a.busy}>
+              <legend>{t("reader.annotations.color")}</legend>
+              {annotationColors.map(color => (
+                <button type="button" key={color}
+                  className={"reader-annotation-swatch color-" + color}
+                  aria-label={t("reader.annotations." + color)} title={t("reader.annotations." + color)}
+                  aria-pressed={draft.color === color} onClick={() => a.setDraft({ ...draft, color })}>
+                  <FiCheck aria-hidden="true" />
+                </button>
+              ))}
+            </fieldset>
+            <div className="reader-annotation-note-heading">
+              <label htmlFor="reader-annotation-note">{t("reader.annotations.note")}</label>
+              <span>{t("reader.annotations.optional", "Optional")}</span>
+            </div>
+            <textarea id="reader-annotation-note" dir="auto" value={draft.note} maxLength={10000}
+              placeholder={t("reader.annotations.notePlaceholder", "Add your thoughts about this passage…")}
+              disabled={a.busy} onChange={event => a.setDraft({ ...draft, note: event.target.value })} />
+            <label className="reader-annotation-review-toggle">
+              <input type="checkbox" checked={!!draft.flagged} disabled={a.busy}
+                onChange={event => a.setDraft({ ...draft, flagged: event.target.checked })} />
+              <span><strong>{t("reader.review.flag")}</strong>
+                <small>{t("reader.annotations.reviewHint", "Save this passage to your review list")}</small></span>
+            </label>
+          </div>
+          <footer className="reader-annotation-editor-footer reader-annotation-actions">
+            {draft.id && <button className="reader-button reader-annotation-editor-remove" disabled={a.busy} type="button"
+              onClick={() => void a.remove(draft.id!)}>{t("reader.annotations.remove")}</button>}
+            <button className="reader-button" disabled={a.busy} type="button" onClick={() => a.setDraft(null)}>
               {t("reader.annotations.cancel")}
             </button>
-            {draft.id && (
-              <button
-                className="reader-button"
-                disabled={a.busy}
-                type="button"
-                onClick={() => void a.remove(draft.id!)}
-              >
-                {t("reader.annotations.remove")}
-              </button>
-            )}
-          </div>
+            <button className="reader-button reader-annotation-editor-save" type="submit"
+              disabled={a.busy || (!draft.id && draft.color === "none" && !draft.note.trim() && !draft.flagged)}>
+              {t("reader.annotations.saveChanges", "Save changes")}
+            </button>
+          </footer>
         </form>
       ) : (
         <>

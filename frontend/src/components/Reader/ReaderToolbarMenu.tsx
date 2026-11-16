@@ -14,8 +14,41 @@ export function ReaderToolbarMenu({ children, onBeforeOpen, label, mobileOnly }:
     const outside = (event: PointerEvent) => {
       if (event.target instanceof Node && !root.current?.contains(event.target)) setOpen(false);
     };
+    // EPUB pointer events stay inside its document and never bubble to this one.
+    const frameDocuments = new Map<HTMLIFrameElement, Document>();
+    const closeFromFrame = () => setOpen(false);
+    const scope = root.current?.closest(".reader-shell") || document.body;
+    const syncFrames = () => {
+      const frames = new Set(scope.querySelectorAll<HTMLIFrameElement>("iframe"));
+      for (const [frame, doc] of frameDocuments) {
+        if (!frames.has(frame) || frame.contentDocument !== doc) {
+          doc.removeEventListener("pointerdown", closeFromFrame, true);
+          frameDocuments.delete(frame);
+        }
+      }
+      for (const frame of frames) {
+        // EPUB documents are same-origin; ignore inaccessible external frames.
+        try {
+          const doc = frame.contentDocument;
+          if (doc && !frameDocuments.has(frame)) {
+            doc.addEventListener("pointerdown", closeFromFrame, true);
+            frameDocuments.set(frame, doc);
+          }
+        } catch { /* Cross-origin frames cannot be inspected. */ }
+      }
+    };
+    const observer = new MutationObserver(syncFrames);
+    observer.observe(scope, { childList: true, subtree: true });
+    scope.addEventListener("load", syncFrames, true);
+    syncFrames();
     document.addEventListener("pointerdown", outside);
-    return () => document.removeEventListener("pointerdown", outside);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      scope.removeEventListener("load", syncFrames, true);
+      observer.disconnect();
+      for (const doc of frameDocuments.values())
+        doc.removeEventListener("pointerdown", closeFromFrame, true);
+    };
   }, [open]);
   if (mobileOnly && !mobile) return <>{children}</>;
   return <div className="reader-toolbar-menu" ref={root}

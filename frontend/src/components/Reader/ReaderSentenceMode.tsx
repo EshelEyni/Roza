@@ -1,5 +1,4 @@
 import { bindReaderTouch } from "../../services/readerTouch";
-import { ReaderToolbarMenu } from "./ReaderToolbarMenu";
 import { readerSentencePassageOffsets } from "../../services/readerSentencePassageOffsets";
 import {
   measureSentenceLines,
@@ -26,7 +25,6 @@ import {
   FiCopy,
   FiEdit3,
   FiFlag,
-  FiX,
   FiGlobe,
   FiMessageSquare,
 } from "react-icons/fi";
@@ -929,6 +927,7 @@ export function ReaderSentenceMode({
           </button>
         </div>
       )}
+      <footer className="reader-sentence-controls" aria-label="Sentence mode controls">
       <div className="reader-sentence-progress">
         <span>
           {mode.number} / {mode.count}
@@ -942,43 +941,12 @@ export function ReaderSentenceMode({
           {mode.count ? Math.round((mode.number / mode.count) * 100) : 0}%
         </span>
       </div>
-      <footer className="reader-sentence-controls">
-        <div className="reader-sentence-nav">
-          <button
-            disabled={blocked || !mode.canBack}
-            onClick={() => {
-              pendingWord.current = null;
-              resetVertical();
-              mode.move(-1);
-            }}
-          >
-            <FiChevronLeft />
-            Back
-          </button>
-          <button
-            disabled={blocked || !mode.canNext}
-            onClick={() => {
-              pendingWord.current = null;
-              mode.move(1);
-            }}
-          >
-            Next
-            <FiChevronRight />
-          </button>
-        </div>
+
         <div
           className="reader-sentence-actions"
           ref={actions}
           onMouseDown={(event) => event.preventDefault()}
         >
-          <ReaderToolbarMenu label="More" mobileOnly>
-          {mode.target && <button disabled={blocked} aria-label="Clear target"
-            title={"Clear target: " + mode.target.text} onClick={mode.clearReadingTarget}>
-            <FiX /><span>Clear target</span>
-          </button>}
-          <button disabled={blocked || !sentence} aria-label="Set reading target" title="Set reading target"
-            onClick={() => void reader.readingTarget.begin()}><FiFlag /><span>Set target</span></button>
-          </ReaderToolbarMenu>
           <button
             disabled={blocked || translateDisabled}
             data-shortcut="t"
@@ -1055,11 +1023,37 @@ export function ReaderSentenceMode({
             <FiFlag />
             <span>Flag</span>
           </button>
+          <button className="reader-sentence-target" disabled={blocked || !sentence}
+            aria-label={mode.target ? "Clear target" : "Set reading target"}
+            aria-pressed={!!mode.target}
+            title={mode.target ? "Clear target: " + mode.target.text : "Set reading target"}
+            onClick={() => { if (mode.target) mode.clearReadingTarget(); else void reader.readingTarget.begin(); }}>
+            <FiFlag /><span>{mode.target ? "Clear target" : "Set target"}</span>
+          </button>
         </div>
-        <button className="reader-sentence-next-mobile" aria-label="Next sentence" disabled={blocked || !mode.canNext}
-          onClick={() => { pendingWord.current = null; resetVertical(); mode.move(1); }}>
-          <FiChevronRight /><span>Next</span>
-        </button>
+        <div className="reader-sentence-nav">
+          <button
+            disabled={blocked || !mode.canBack}
+            onClick={() => {
+              pendingWord.current = null;
+              resetVertical();
+              mode.move(-1);
+            }}
+          >
+            <FiChevronLeft />
+            Back
+          </button>
+          <button
+            disabled={blocked || !mode.canNext}
+            onClick={() => {
+              pendingWord.current = null;
+              mode.move(1);
+            }}
+          >
+            Next
+            <FiChevronRight />
+          </button>
+        </div>
       </footer>
       {feedback && (
         <div className="reader-sentence-toast" role="status">

@@ -236,7 +236,7 @@ export function ReaderDictionary({
   const popupWidth = opened ? 360 : actionWidth;
   const popupTop = `clamp(12px, ${selection.y}px, max(12px, calc(100dvh - ${opened ? 442 : 152}px)))`;
   const [mobilePosition, setMobilePosition] = useState<{
-    left: number; top: number; width: number; maxHeight: number; visibility: "visible" | "hidden";
+    left: number; bottom: number; width: number; maxHeight: number; visibility: "visible" | "hidden";
   }>();
   useEffect(() => {
     if (!mobile || opened) return;
@@ -249,41 +249,15 @@ export function ReaderDictionary({
       const top = viewport?.offsetTop || 0;
       const width = viewport?.width || window.innerWidth;
       const height = viewport?.height || window.innerHeight;
-      const shell = element.closest(".reader-shell");
-      const header = shell?.querySelector(".reader-toolbar")?.getBoundingClientRect();
-      const footer = shell?.querySelector(".reader-footer, .reader-sentence-controls")?.getBoundingClientRect();
-      const minY = Math.max(top + 8, header?.bottom || top);
-      const maxY = Math.min(top + height - 8, footer?.top || top + height);
-      const maxHeight = Math.max(0, maxY - minY);
-      const popupWidth = Math.min(actionWidth, width - 16);
-      const popupHeight = Math.min(element.scrollHeight + 2, maxHeight);
-      const source = selection.range;
-      const doc = source?.startContainer.ownerDocument;
-      const native = doc?.getSelection();
-      const range = native?.rangeCount && !native.isCollapsed ? native.getRangeAt(0) : source;
-      let anchor = { left: selection.x, right: selection.x, top: selection.y, bottom: selection.y };
-      if (range?.startContainer.isConnected) {
-        const rect = range.getBoundingClientRect();
-        const frame = doc?.defaultView?.frameElement;
-        const bounds = frame?.getBoundingClientRect();
-        // Range rectangles are iframe-local; fixed CSS uses the parent layout viewport.
-        const scaleX = frame instanceof HTMLElement && frame.offsetWidth ? bounds!.width / frame.offsetWidth : 1;
-        const scaleY = frame instanceof HTMLElement && frame.offsetHeight ? bounds!.height / frame.offsetHeight : 1;
-        if (rect.width || rect.height) anchor = {
-          left: (bounds?.left || 0) + rect.left * scaleX,
-          right: (bounds?.left || 0) + rect.right * scaleX,
-          top: (bounds?.top || 0) + rect.top * scaleY,
-          bottom: (bounds?.top || 0) + rect.bottom * scaleY,
-        };
-      }
-      const below = anchor.bottom + 8;
-      const preferred = below + popupHeight <= maxY ? below : anchor.top - popupHeight - 8;
+      // The action bar replaces the footer, independent of the selected passage.
+      // Fixed bottom uses the layout viewport; compensate only for the part
+      // obscured by browser chrome/keyboard outside Safari's visual viewport.
       setMobilePosition({
-        width: popupWidth,
-        left: Math.max(left + 8, Math.min((anchor.left + anchor.right - popupWidth) / 2, left + width - popupWidth - 8)),
-        top: Math.max(minY, Math.min(preferred, maxY - popupHeight)),
-        maxHeight,
-        visibility: maxHeight > 0 ? "visible" : "hidden",
+        left,
+        bottom: Math.max(0, window.innerHeight - (top + height)),
+        width,
+        maxHeight: Math.max(0, height),
+        visibility: height > 0 ? "visible" : "hidden",
       });
     };
     const schedule = () => {
@@ -291,24 +265,18 @@ export function ReaderDictionary({
       request = requestAnimationFrame(update);
     };
     update();
-    const selectionDoc = selection.range?.startContainer.ownerDocument;
-    selectionDoc?.addEventListener("selectionchange", schedule);
-    const observer = new ResizeObserver(schedule);
-    if (dialog.current) observer.observe(dialog.current);
     window.addEventListener("resize", schedule);
     window.addEventListener("scroll", schedule, true);
     viewport?.addEventListener("resize", schedule);
     viewport?.addEventListener("scroll", schedule);
     return () => {
       cancelAnimationFrame(request);
-      observer.disconnect();
-      selectionDoc?.removeEventListener("selectionchange", schedule);
       window.removeEventListener("resize", schedule);
       window.removeEventListener("scroll", schedule, true);
       viewport?.removeEventListener("resize", schedule);
       viewport?.removeEventListener("scroll", schedule);
     };
-  }, [mobile, opened, actionWidth, selection]);
+  }, [mobile, opened]);
   const content = (
     <div
       className={"reader-dictionary " + (opened ? "is-open" : mobile ? "reader-selection-docked" : "")}

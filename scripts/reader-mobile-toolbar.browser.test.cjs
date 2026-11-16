@@ -16,7 +16,7 @@ function equalText(actual, expected) {
 }
 
 test(
-  "selection toolbar labels and live iframe geometry",
+  "selection toolbar labels and fixed footer docking",
   { timeout: 120000 },
   async (t) => {
     const { createServer } = await import(
@@ -97,20 +97,37 @@ test(
             });
           const run = (fn) => page.evaluate(fn);
 
+          const menu = page.getByRole('button', { name: 'Reader menu', exact: true });
+          await menu.click();
+          await page.getByRole('button', { name: 'Menu test action' }).waitFor();
+          await page.frameLocator('iframe').locator('p').click({ position: { x: 60, y: 12 } });
+          await page.waitForFunction(() => !document.querySelector('[data-reader-menu]'));
+          // Navigation replaces EPUB documents while the menu can remain open.
+          await menu.click();
+          await run(() => window.selectionTest.display(1));
+          await page.frameLocator('iframe').locator('p').click({ position: { x: 60, y: 12 } });
+          await page.waitForFunction(() => !document.querySelector('[data-reader-menu]'));
+          await run(() => window.selectionTest.display(0));
+          assert.deepEqual(errors, []);
           await run(() => window.selectionTest.select(0, 24));
           await page.getByRole('dialog').waitFor();
           if (mobile) {
             assert.deepEqual(await page.locator('.reader-selection-label').allTextContents(), ['Ask AI', 'Note', 'Copy']);
             const check = async () => {
               await page.waitForFunction(() => {
-                const popup = document.querySelector('.reader-dictionary').getBoundingClientRect();
-                const frame = document.querySelector('iframe');
-                const range = frame.contentDocument.getSelection().getRangeAt(0).getBoundingClientRect();
-                const offset = frame.getBoundingClientRect();
-                const bottom = offset.top + range.bottom;
-                return popup.width > 0 && popup.left >= 0 && popup.right <= innerWidth && popup.top >= bottom && popup.top - bottom < 12;
+                const element = document.querySelector('.reader-dictionary');
+                if (!element) return false;
+                const popup = element.getBoundingClientRect();
+                const viewport = window.visualViewport;
+                const left = viewport?.offsetLeft || 0;
+                const bottom = (viewport?.offsetTop || 0) + (viewport?.height || innerHeight);
+                const width = viewport?.width || innerWidth;
+                return popup.width > 0 && Math.abs(popup.left - left) <= 1 && Math.abs(popup.width - width) <= 1 && popup.top >= (viewport?.offsetTop || 0) && Math.abs(popup.bottom - bottom) <= 1;
               });
             };
+            await check();
+            // Changing the selected passage must not move the toolbar.
+            await run(() => window.selectionTest.select(80, 104));
             await check();
             await page.setViewportSize({ width: 320, height: 700 });
             await check();
