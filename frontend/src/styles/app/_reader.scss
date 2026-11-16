@@ -2425,3 +2425,8 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 @media (max-width: 1024px) {
   .reader-dictionary.reader-selection-docked { max-width: calc(100dvw - 16px); border: 1px solid #b7a58a; border-radius: 12px; box-shadow: 0 8px 28px #0002; padding: 6px; }
 }
+
+@media (max-width: 1024px) {
+  // Override the toolbar's compact icon width inside the text menu.
+  .reader-shell .reader-toolbar .reader-toolbar-menu-popover .reader-icon-button { width: 100%; }
+}

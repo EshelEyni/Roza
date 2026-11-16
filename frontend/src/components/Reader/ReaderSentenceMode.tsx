@@ -339,7 +339,7 @@ export function ReaderSentenceMode({
             backward,
           },
     );
-    setWordFocus({ cfi: "", index: -1 });
+    setWordFocus(current => current.index === -1 ? current : { cfi: "", index: -1 });
   };
   useEffect(() => {
     document.addEventListener("selectionchange", captureSelection);
@@ -868,9 +868,8 @@ export function ReaderSentenceMode({
             aria-busy={mode.busy}
             dir="auto"
             onPointerDown={() => {
+              // Native iOS handle drags must retain the existing range.
               resetVertical();
-              clearTextSelection();
-              setWordFocus({ cfi: "", index: -1 });
             }}
             onPointerUp={captureSelection}
           >
@@ -1057,6 +1056,10 @@ export function ReaderSentenceMode({
             <span>Flag</span>
           </button>
         </div>
+        <button className="reader-sentence-next-mobile" aria-label="Next sentence" disabled={blocked || !mode.canNext}
+          onClick={() => { pendingWord.current = null; resetVertical(); mode.move(1); }}>
+          <FiChevronRight /><span>Next</span>
+        </button>
       </footer>
       {feedback && (
         <div className="reader-sentence-toast" role="status">

@@ -301,12 +301,14 @@ test(
               progress: document.querySelector('.reader-sentence-progress').getBoundingClientRect().width,
             }));
             assert.ok(Math.abs(widths.text - widths.progress) < 2, JSON.stringify(widths));
+            if (mobile) await page.locator(".reader-sentence-actions .reader-toolbar-menu > button").click();
             await page.getByRole("button", { name: "Set reading target", exact: true }).click();
             await page.waitForFunction(() => window.rsvpTest.reader.readingTarget.selecting);
             assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.active), false);
             await page.evaluate(() => window.rsvpTest.reader.readingTarget.finish(false));
             await page.waitForFunction(() => window.rsvpTest.reader.sentenceMode.active && !window.rsvpTest.reader.sentenceMode.busy);
             assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.sentence.cfi), targetResult);
+            if (mobile) await page.locator(".reader-sentence-actions .reader-toolbar-menu > button").click();
             await page.getByRole("button", { name: "Set reading target", exact: true }).click();
             await page.waitForFunction(() => window.rsvpTest.reader.readingTarget.selecting);
             await page.waitForTimeout(700); // Allow the Page Mode banner resize to settle before selecting.
@@ -327,6 +329,7 @@ test(
             await page.waitForFunction(() => window.rsvpTest.reader.sentenceMode.active && !window.rsvpTest.reader.readingTarget.selecting);
             assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.count), 3);
             assert.equal(await page.evaluate(() => window.rsvpTest.reader.sentenceMode.sentence.cfi), targetResult);
+            if (mobile) await page.locator(".reader-sentence-actions .reader-toolbar-menu > button").click();
             await page.getByRole('button', { name: 'Clear target', exact: true }).click();
             const extraction = await page.evaluate(async () => {
               const { reader, sentenceService } = window.rsvpTest;
@@ -462,7 +465,7 @@ test(
               await page
                 .getByRole("button", { name: "Translate", exact: true })
                 .isDisabled(),
-              true,
+              false,
             );
             assert.equal(
               await page
@@ -867,7 +870,7 @@ test(
                 await page
                   .getByRole("button", { name: "Translate", exact: true })
                   .isDisabled(),
-                true,
+                false,
               );
               await page.keyboard.press("Control+ArrowLeft");
               await page.keyboard.press("ArrowLeft");
@@ -902,7 +905,7 @@ test(
             assert.equal(await page.locator('.reader-sentence-word-active').count(), 0);
             assert.equal(
               await page.getByRole("button", { name: "Translate", exact: true }).isDisabled(),
-              true,
+              false,
               "Ctrl sentence navigation clears selection without focusing a word",
             );
             if (!mobile) {
@@ -960,7 +963,7 @@ test(
                 await page
                   .getByRole("button", { name: "Translate", exact: true })
                   .isDisabled(),
-                true,
+                false,
                 "Translated word remains painted while no active selection is required for other actions",
               );
               await page.keyboard.press("ArrowRight");
@@ -992,6 +995,11 @@ test(
               await page.waitForFunction(
                 () => !document.querySelector('[data-shortcut="t"]').disabled,
               );
+              assert.equal(await page.evaluate(() => {
+                const before = window.getSelection().toString();
+                document.querySelector('.reader-sentence-text').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
+                return !!before && before === window.getSelection().toString();
+              }), true, 'Grabbing native selection handles preserves a multi-word range');
               assert.equal(await page.locator(".reader-dictionary").count(), 0);
               await page
                 .getByRole("button", { name: "Copy", exact: true })
@@ -1332,7 +1340,7 @@ test(
               });
             if (mobile) {
               assert.ok(controls.nav[0] < controls.nav[1]);
-              assert.ok(controls.labels.every((d) => d === "none"));
+              assert.ok(controls.labels.every((d) => d !== "none"));
             } else {
               assert.equal(controls.nav[0], controls.nav[1]);
               assert.ok(
