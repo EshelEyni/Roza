@@ -1,3 +1,5 @@
+import { extractRsvpWords, rsvpStart } from "../../services/readerRsvp";
+import { ttsPassage } from "../../services/readerTts";
 import { useSentencePanelKeyboard } from "./useSentencePanelKeyboard";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { useReaderProgressSettings } from "./useReaderProgressSettings";
@@ -172,6 +174,16 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     retry();
   }
   return {
+    getTtsPassage: async () => {
+      const book = runtime.epubRef.current;
+      const cfi = sentenceMode.entryCfi();
+      if (!book || !cfi) throw new Error("Book is not ready");
+      const section = book.spine.get(cfi);
+      if (!section) return "";
+      await section.load(book.load.bind(book));
+      const words = extractRsvpWords(section);
+      return ttsPassage(words, rsvpStart(words, cfi));
+    },
     flags,
     review: { annotations, onOpenAnnotation: (id: string) => {
       selection.closeLookup();

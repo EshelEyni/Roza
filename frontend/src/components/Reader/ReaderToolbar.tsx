@@ -7,6 +7,7 @@ import { LuFlag } from "react-icons/lu";
 import { Link } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import {
+  FiVolume2,
   FiArrowLeft,
   FiX,
   FiBookOpen,
@@ -83,6 +84,7 @@ export function ReaderToolbar({
       </div>
       {!rsvp?.active && (
         <>
+          <button className="reader-icon-button" aria-label="Read aloud" title="Read aloud" aria-expanded={panel === "tts"} disabled={loading || !!error} onClick={() => togglePanel("tts")}><FiVolume2 /></button>
           <button
             className={
               "reader-icon-button " +
@@ -130,16 +132,7 @@ export function ReaderToolbar({
             <FiBookOpen />
           </button>
 
-          {mobile ? (
-            <button
-              className="reader-icon-button"
-              onClick={reload}
-              aria-label={t("reader.reload")}
-              title={t("reader.reload")}
-            >
-              <FiRefreshCw />
-            </button>
-          ) : (
+          {mobile ? null : (
             <button
               className="reader-icon-button"
               onClick={() => void toggleFullscreen()}
@@ -151,6 +144,7 @@ export function ReaderToolbar({
             </button>
           )}
           <ReaderToolbarMenu onBeforeOpen={() => { sentenceEntry.current = sentenceMode?.entryCfi(); }}>
+            {mobile && <button className="reader-icon-button" onClick={reload} aria-label={t("reader.reload")}><FiRefreshCw /><span>{t("reader.reload")}</span></button>}
             {pageNavigation && <button className="reader-icon-button" aria-label="Go to page" disabled={loading || !!error} onClick={() => setGoToPageOpen(true)}><FiCornerDownRight /><span>Go to page</span></button>}
 
             {sentenceMode && <button className="reader-icon-button" aria-label="Sentence Mode" title="Sentence Mode (Ctrl+S+M)" onPointerDown={event => event.stopPropagation()} disabled={loading || !!error || sentenceMode.busy} onClick={() => void sentenceMode.toggle(sentenceEntry.current)}><ScanLineIcon /><span>Sentence Mode</span></button>}

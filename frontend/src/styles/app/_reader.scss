@@ -2396,3 +2396,14 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 .reader-chat-ready-toast > svg { flex-shrink: 0; }
 .reader-chat-ready-toast .reader-chat-ready-close { display: flex; align-items: center; }
 .reader-chat-ready-toast :focus-visible { outline: 2px solid #a38259; outline-offset: 3px; }
+
+.reader-tts { display: grid; gap: 10px; min-width: 0; padding: 12px; text-align: start; }
+.reader-tts h2 { margin: 0; font-size: 18px; }
+.reader-tts p { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.reader-tts label { font-size: 13px; }
+.reader-tts .reader-select { min-width: 0; }
+.reader-tts .reader-select > button { min-height: 44px; white-space: normal; text-align: start; }
+.reader-tts-passage { max-height: 120px; overflow: auto; padding: 10px; border: 1px solid #bca58d; border-radius: 8px; }
+.reader-tts-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.reader-tts-actions .reader-button { min-height: 44px; padding: 8px 12px; }
+.reader-tts [role="alert"] { color: #a33224; }

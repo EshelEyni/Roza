@@ -1,3 +1,4 @@
+import { ReaderTts } from "./ReaderTts";
 import { useEffect, useState } from "react";
 import { ReaderWorkspace } from "./ReaderWorkspace";
 import { ReaderPanelResize } from "./ReaderPanelResize";
@@ -12,6 +13,7 @@ import { ReaderAnnotations } from "./ReaderAnnotations";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
 type Props = Pick<
   EpubReaderController,
+  | "getTtsPassage"
   | "progressSettings"
   | "updateProgressSettings"
   | "progressSaveStatus"
@@ -41,6 +43,7 @@ type Props = Pick<
   | "publisherPagesAvailable"
 >;
 export function ReaderPanels({
+  getTtsPassage,
   progressSettings, updateProgressSettings, progressSaveStatus, retryProgressSettings,
   keyboardSettings,
   updateKeyboardSettings,
@@ -77,9 +80,9 @@ export function ReaderPanels({
   if (!panel) return null;
   return (
     <ReaderSheet
-      mobileFullscreen={panel === "search" || panel === "chat"}
+      mobileFullscreen={panel === "tts" || panel === "search" || panel === "chat"}
       mobileCloseInContent={panel === "search" || panel === "chat"}
-      label={t(
+      label={panel === "tts" ? "Read aloud" : t(
         panel === "review" ? "reader.review.title" : panel === "annotations" ? "reader.annotations.title" : panel === "chat"
           ? "reader.chat.title"
           : panel === "contents"
@@ -99,7 +102,7 @@ export function ReaderPanels({
     >
       {panel !== "chat" && <ReaderPanelResize width={chat.workspace.panelWidth}
         onWidthChange={chat.setPanelWidth} />}
-      {panel === "review" ? <ReaderReview key={review.userId + ":" + review.bookId} {...review} onNavigate={onNavigate} /> : panel === "annotations" ? <ReaderAnnotations annotations={annotations} onNavigate={onAnnotationNavigate} getPage={describeLocation} totalPages={totalPages} /> : panel === "contents" ? (
+      {panel === "tts" ? <ReaderTts key={review.bookId} getPassage={getTtsPassage} /> : panel === "review" ? <ReaderReview key={review.userId + ":" + review.bookId} {...review} onNavigate={onNavigate} /> : panel === "annotations" ? <ReaderAnnotations annotations={annotations} onNavigate={onAnnotationNavigate} getPage={describeLocation} totalPages={totalPages} /> : panel === "contents" ? (
         <ReaderContents
           items={toc}
           currentHref={href}
