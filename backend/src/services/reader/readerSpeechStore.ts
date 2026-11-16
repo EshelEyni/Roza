@@ -1,8 +1,9 @@
 import { createHash } from "crypto";
 import { AppError } from "../error/errorService";
 import { readerSpeechLimits } from "./readerSpeechConfig";
+import type { ReaderSpeechWordTiming } from "./readerSpeechAlignment";
 
-export type SpeechAudio = { wav: Buffer; durationSeconds: number; transcript: string };
+export type SpeechAudio = { wav: Buffer; durationSeconds: number; transcript: string; wordTimings?: ReaderSpeechWordTiming[] | null };
 export type SpeechEntry = SpeechAudio & {
   id: string;
   scope: string;
@@ -29,9 +30,9 @@ export class ReaderSpeechStore {
       charsPerHour: number;
     } = readerSpeechLimits,
   ) {}
-  key(scope: string, model: string, voice: string, text: string) {
+  key(scope: string, model: string, voice: string, text: string, aligned = false) {
     return createHash("sha256")
-      .update(JSON.stringify(["reader-speech-v1", scope, model, voice, text]))
+      .update(JSON.stringify(["reader-speech-v2", scope, model, voice, text, aligned]))
       .digest("hex");
   }
   private prune(now: number) {

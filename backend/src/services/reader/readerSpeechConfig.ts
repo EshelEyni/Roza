@@ -38,7 +38,8 @@ export function readerSpeechConfig() {
   const model = process.env.READER_AUDIOBOOK_MODEL || "gpt-realtime-2.1-mini";
   if (!["gpt-realtime-2.1-mini", "gpt-realtime-2.1"].includes(model))
     throw new AppError("Configure a supported READER_AUDIOBOOK_MODEL.", 503);
-  return { enabled, key, model, available: enabled && !!key };
+  const wordTimings = process.env.READER_AUDIOBOOK_WORD_TIMINGS !== "false";
+  return { enabled, key, model, wordTimings, available: enabled && !!key };
 }
 export function requireReaderSpeech() {
   const config = readerSpeechConfig();

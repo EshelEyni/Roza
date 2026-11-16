@@ -55,8 +55,8 @@ Returns `{ status: "success", data: { ... } }`:
   "audioFormat": "wav",
   "sampleRate": 24000,
   "channels": 1,
-  "alignment": "passage",
-  "wordTimings": false,
+  "alignment": "word",
+  "wordTimings": true,
   "requiresAiVoiceDisclosure": true,
   "cacheTtlSeconds": 1800
 }
@@ -106,10 +106,14 @@ Returns 201 on generation or 200 on a cache hit:
     "channels": 1,
     "durationSeconds": 0.1,
     "alignment": {
-      "type": "passage",
+      "type": "word",
       "startSeconds": 0,
       "endSeconds": 0.1,
-      "wordTimings": null
+      "source": "whisper-1",
+      "wordTimings": [
+        { "startChar": 0, "endChar": 5, "startSeconds": 0.05, "endSeconds": 0.4 },
+        { "startChar": 6, "endChar": 12, "startSeconds": 0.5, "endSeconds": 0.95 }
+      ]
     },
     "aiGenerated": true
   }
@@ -117,6 +121,10 @@ Returns 201 on generation or 200 on a cache hit:
 ```
 
 `passageEndCfi` is echoed when supplied. Duration is measured from actual PCM sample count, not guessed from text. The example's duration is illustrative. A response can arrive only after the complete short chunk is validated; this endpoint does **not** stream unvalidated audio directly to the browser.
+
+Word timing is best-effort. With `READER_AUDIOBOOK_WORD_TIMINGS` enabled (the default), book chunks get a second, bounded OpenAI transcription call using `whisper-1`, `verbose_json` and word timestamp granularity. Preview audio skips it. Recognized tokens must match the original source sequentially; repeated words remain distinct, contractions/hyphenated source tokens may combine multiple recognized intervals, and ambiguous merges across source words are rejected. Returned character ranges are UTF-16 offsets into `text`; seconds refer to the original 1× audio. Missing/invalid/mismatched timestamps, timeout (10 seconds), quota or model errors return playable audio with `{ type: "passage", wordTimings: null, source: null }`. Timing metadata is cached with the audio, so normal resume/prefetch does not repeat the transcription. Cancellation holds the same per-user generation slot through alignment and discards incomplete results.
+
+Set `READER_AUDIOBOOK_WORD_TIMINGS=false` to disable the extra cost (approximately $0.006/audio minute) and latency. The timestamp endpoint is scheduled for retirement on **2027-02-26**; the adapter is intentionally isolated for replacement. API retirement falls back to passage highlighting rather than breaking audio. Capability `wordTimings: true` means alignment is enabled, not that every chunk is guaranteed to align. No local speech model or new container is introduced.
 
 The provider streams PCM internally. The backend checks a completed successful response, one scoped audio item, valid/size-bounded PCM, and a generated transcript matching the source words (allowing punctuation/case/apostrophe normalization). Then it creates a playable WAV and caches it. There are no automatic billable retries. Transcript comparison is a quality guard, not independent ASR verification of the waveform; abbreviations/numbers or other verbalization changes can be conservatively rejected. A mismatch returns an error and saves no audio.
 
@@ -142,7 +150,7 @@ Aborting the original POST fetch also cancels upstream generation when its HTTP 
 4. On end, play the next prepared chunk; continue through book sections using existing source positions.
 5. Use HTML audio playbackRate for ordinary speed changes; the cached audio is generated at 1×. Backend speed is intentionally not a request field.
 6. Display the required AI-generated voice disclosure.
-7. Synchronize passage/sentence highlighting to real media time. **No word timestamps are provided.** Do not reuse native SpeechSynthesis boundary handlers or invent exact word timings for OpenAI audio. Fine word alignment needs separate validated work.
+7. When `alignment.type` is `word`, validate each word's UTF-16 source range and finite timestamp interval, then use actual audio time to highlight that source word. Account for pause offsets and speed; clear highlights in silence and invalidate stale frames after seek/stop. If `wordTimings` is null, keep passage highlighting. Never use native speech-boundary callbacks or guessed word durations for OpenAI audio.
 8. Exact duration is available per generated chunk. Whole-section/book remaining time is still estimated until all relevant audio exists.
 
 A request ID is a cancellation handle, not persistent idempotency. Completed identical source text/voice/model is deduplicated by cache while present; in-flight duplicate generation is rejected with 409 rather than billed twice.

@@ -17,6 +17,7 @@ import {
 } from "../../services/reader/readerSpeechConfig";
 import { readerSpeechStore, type SpeechEntry } from "../../services/reader/readerSpeechStore";
 import { generateReaderSpeech } from "../../services/reader/readerSpeechProvider";
+import { alignReaderSpeech } from "../../services/reader/readerSpeechAlignment";
 
 async function ownedBook(req: Request) {
   if (!mongoose.isValidObjectId(req.params.id)) throw new AppError("Book not found.", 404);
@@ -66,10 +67,11 @@ function metadata(
     channels: 1,
     durationSeconds: entry.durationSeconds,
     alignment: {
-      type: "passage",
+      type: entry.wordTimings?.length ? "word" : "passage",
       startSeconds: 0,
       endSeconds: entry.durationSeconds,
-      wordTimings: null,
+      wordTimings: entry.wordTimings || null,
+      source: entry.wordTimings?.length ? "whisper-1" : null,
     },
     aiGenerated: true,
   };
@@ -96,8 +98,8 @@ export const getAudiobookConfig = asyncErrorCatcher(async (req: Request, res: Re
       audioFormat: "wav",
       sampleRate: 24000,
       channels: 1,
-      alignment: "passage",
-      wordTimings: false,
+      alignment: config.wordTimings ? "word" : "passage",
+      wordTimings: config.wordTimings,
       requiresAiVoiceDisclosure: true,
       cacheTtlSeconds: readerSpeechLimits.cacheTtlMs / 1000,
     },
@@ -165,7 +167,7 @@ function createAudio(preview: boolean) { return asyncErrorCatcher(async (req: Re
       400,
     );
   const voice = (body.voice || "marin") as ReaderSpeechVoice;
-  const key = readerSpeechStore.key(owner.scope, config.model, voice, text);
+  const key = readerSpeechStore.key(owner.scope, config.model, voice, text, !preview && config.wordTimings);
   res.setHeader("Cache-Control", "no-store");
   const cached = readerSpeechStore.get(key, owner.scope);
   if (cached) {
@@ -200,8 +202,14 @@ function createAudio(preview: boolean) { return asyncErrorCatcher(async (req: Re
     );
     if (res.destroyed || req.aborted) return;
     if (job.signal.aborted) throw new AppError("Audiobook narration cancelled.", 499);
+    const wordTimings = !preview && config.wordTimings
+      ? await alignReaderSpeech(text, audio.wav, audio.durationSeconds, config.key, job.signal)
+      : null;
+    if (res.destroyed || req.aborted) return;
+    if (job.signal.aborted) throw new AppError("Audiobook narration cancelled.", 499);
     const entry = readerSpeechStore.put({
       ...audio,
+      wordTimings,
       id: key,
       scope: owner.scope,
       model: config.model,

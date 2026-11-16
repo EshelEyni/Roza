@@ -373,7 +373,7 @@ test(
         try {
           const page = await browser.newPage({ viewport: { width: mobile ? 375 : 1280, height: 844 }, hasTouch: mobile, isMobile: mobile });
           const requests = [], previewRequests=[];
-          let passages = {}, failure = false, narrator = null, saveFailure=false;
+          let passages = {}, failure = false, narrator = null, saveFailure=false, aligned=false;
           const sample="The morning arrived quietly, and the world seemed full of possibility.";
           await page.route("**/audiobook/**", async route => {
             const url = new URL(route.request().url());
@@ -394,7 +394,9 @@ test(
               assert.deepEqual(Object.keys(body).sort(),body.passageEndCfi ? ["passageCfi","passageEndCfi","requestId","voice"] : ["passageCfi","requestId","voice"]);
               const key=body.passageCfi+"|"+(body.passageEndCfi||"");
               assert.ok(passages[key],"real EPUB range identifies the submitted passage");
-              return route.fulfill({json:{status:"success",data:{chunkId:"a".repeat(64),audioUrl:"/api/reader/rsvp/audiobook/chunks/"+"a".repeat(64),text:passages[key]}}});
+              const text=passages[key];
+              const wordTimings=aligned ? [...text.matchAll(/\S+/gu)].filter(match=>/[\p{L}\p{M}\p{N}]/u.test(match[0])).map((match,index)=>({startChar:match.index,endChar:match.index+match[0].length,startSeconds:0.2+index*0.06,endSeconds:0.24+index*0.06})) : null;
+              return route.fulfill({json:{status:"success",data:{chunkId:"a".repeat(64),audioUrl:"/api/reader/rsvp/audiobook/chunks/"+"a".repeat(64),text,alignment:{wordTimings}}}});
             }
             return route.fulfill({contentType:"audio/wav",body:Buffer.from("mock audio decoded by fake AudioContext")});
           });
@@ -417,7 +419,7 @@ test(
           const source=await page.evaluate(async()=>{
             const section=await window.rsvpTest.reader.audiobook.loadSection();
             const {openAiBlock}=await import("/frontend/src/services/readerOpenAiAudio.ts");
-            return section.sentences.map((s,index)=>({text:s.text,block:openAiBlock(section.sentences,index,0,600),partial:openAiBlock(section.sentences,index,7,600)}));
+            return section.sentences.map((s,index)=>({text:s.text,block:openAiBlock(section.sentences,index,0,600),partial:openAiBlock(section.sentences,index,7,600),variants:s.words.map(word=>openAiBlock(section.sentences,index,word.start,600))}));
           });
           const mapped=await page.evaluate(()=>{
             const doc=new DOMParser().parseFromString('<html xmlns="http://www.w3.org/1999/xhtml"><body><p>Hello   <em>😀 world</em>\t again.</p></body></html>',"application/xhtml+xml");
@@ -426,7 +428,7 @@ test(
             return {text:sentence.text,part:sentence.rangeCfi(6,14)};
           });
           assert.deepEqual(mapped,{text:"Hello 😀 world again.",part:"😀 world"},"normalized UTF-16 ranges map through inline nodes and whitespace");
-          passages=Object.fromEntries(source.flatMap(s=>[s.block,s.partial].map(block=>[block.cfi+"|"+(block.endCfi||""),block.text])));
+          passages=Object.fromEntries(source.flatMap(s=>[s.block,s.partial,...s.variants].map(block=>[block.cfi+"|"+(block.endCfi||""),block.text])));
           const following=await page.evaluate(async()=>{
             const section=await window.rsvpTest.reader.audiobook.loadSection(2,1);
             const {openAiBlock}=await import("/frontend/src/services/readerOpenAiAudio.ts");
@@ -571,6 +573,43 @@ test(
           assert.equal(await page.evaluate(()=>window.spoken.at(-1).voice.voiceURI),"native","saved system voice is restored after asynchronous enumeration");
           await page.evaluate(()=>{Object.defineProperty(document,"hidden",{configurable:true,value:true});document.dispatchEvent(new Event("visibilitychange"));});
           await mode.getByRole("button",{name:"Pause narration",exact:true}).waitFor();
+          await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
+          aligned=true; narrator={engine:"openai",voice:"cedar",name:"cedar",lang:""};
+          await page.goto(server.resolvedUrls.local[0]+"rsvp-test");
+          await page.waitForFunction(()=>window.rsvpTest?.reader.loading===false);
+          await page.getByRole("button",{name:"Reader menu",exact:true}).click(); await page.getByRole("button",{name:"Audiobook Mode",exact:true}).click();
+          await mode.getByRole("button",{name:"Play narration",exact:true}).click();
+          await page.waitForFunction(()=>window.audioSources.length===1);
+          await mode.getByText(/AI-generated voice · word follow-along/).waitFor();
+          assert.equal(await mode.locator(".audiobook-word.is-active").count(),0,"no word is guessed during leading silence");
+          await page.evaluate(()=>window.audioContexts[0].currentTime=0.21);
+          await page.waitForFunction(()=>document.querySelector(".audiobook-word.is-active")?.textContent==="At");
+          const timedWords=[...source[0].block.text.matchAll(/\S+/gu)];
+          const second=source[0].block.locations.find(location=>location.sentence===1);
+          const cueIndex=timedWords.findIndex(word=>word.index>=second.start);
+          const cueTime=0.21+cueIndex*0.06;
+          await page.evaluate(time=>window.audioContexts[0].currentTime=time,cueTime);
+          await page.waitForFunction(()=>document.querySelector(".audiobook-word.is-active")?.textContent==="The");
+          assert.equal(await mode.locator(".audiobook-sentence.is-active").innerText(),source[1].text,"word cues cross source sentence boundaries");
+          assert.ok(await mode.locator(".audiobook-word").count()<=64);
+          const beforeResume=requests.filter(request=>request.passageCfi===source[0].block.cfi && request.passageEndCfi===source[0].block.endCfi).length;
+          await mode.getByRole("button",{name:"Pause narration",exact:true}).click();
+          await mode.getByRole("button",{name:"Play narration",exact:true}).click();
+          await page.waitForFunction(()=>window.audioSources.length===2);
+          assert.equal(requests.filter(request=>request.passageCfi===source[0].block.cfi && request.passageEndCfi===source[0].block.endCfi).length,beforeResume,"moving word highlights do not regenerate audio on resume");
+          assert.ok(Math.abs(await page.evaluate(()=>window.audioSources.at(-1).offset)-cueTime)<0.001);
+          await mode.getByRole("button",{name:"Reading speed 1×",exact:true}).click();
+          const timedSpeed=mode.getByRole("slider",{name:"Reading speed",exact:true}); await timedSpeed.focus(); await timedSpeed.press("End");
+          await page.evaluate(time=>window.audioContexts[0].currentTime=time+0.12,cueTime);
+          await page.waitForFunction(expected=>document.querySelector(".audiobook-word.is-active")?.textContent===expected,timedWords[cueIndex+5][0]);
+          await timedSpeed.press("Escape");
+          const timedSeek=mode.getByRole("slider",{name:"Estimated section progress"});
+          const beforeSeek=await page.evaluate(()=>window.audioSources.length);
+          await timedSeek.focus(); await timedSeek.press("Home"); await timedSeek.press("ArrowRight"); await timedSeek.press("ArrowRight");
+          await page.waitForFunction(before=>window.audioSources.length>before && !window.audioSources.at(-1).stopped,beforeSeek);
+          await page.evaluate(()=>window.audioContexts[0].currentTime+=0.084);
+          await page.waitForFunction(()=>document.querySelector(".audiobook-word.is-active")?.textContent==="edge");
+          if(process.env.TTS_SCREENSHOT) await page.screenshot({path:process.env.TTS_SCREENSHOT.replace(".png",mobile?"-word-mobile.png":"-word-desktop.png")});
           await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
         } finally { await browser.close(); }
       });

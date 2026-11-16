@@ -4,6 +4,8 @@ import { ReaderBookModel } from "../../models/reader/readerBookModel";
 import { generateReaderSpeech, readerSpeechWav } from "../../services/reader/readerSpeechProvider";
 import { readerSpeechLimits, readerSpeechPreviewText } from "../../services/reader/readerSpeechConfig";
 import { AppError } from "../../services/error/errorService";
+import { alignReaderSpeech } from "../../services/reader/readerSpeechAlignment";
+jest.mock("../../services/reader/readerSpeechAlignment", () => ({ alignReaderSpeech: jest.fn() }));
 import readerRouter from "./readerRouter";
 
 let mockUser = "507f1f77bcf86cd799439011";
@@ -91,6 +93,8 @@ describe("backend-only audiobook API", () => {
     process.env.OPENAI_API_KEY = "test-only-secret";
     delete process.env.READER_AUDIOBOOK_MODEL;
     delete process.env.READER_AUDIOBOOK_OPENAI_API_KEY;
+    delete process.env.READER_AUDIOBOOK_WORD_TIMINGS;
+    (alignReaderSpeech as jest.Mock).mockResolvedValue(null);
     (ReaderBookModel.findOne as jest.Mock).mockImplementation(filter => ({
       select: jest.fn().mockResolvedValue(
         String(filter._id) === bookId && filter.userId === owner
@@ -141,7 +145,7 @@ describe("backend-only audiobook API", () => {
       enabled: false,
       available: false,
       unavailableReason: "disabled",
-      wordTimings: false,
+      wordTimings: true,
     });
     expect((await post()).status).toBe(503);
     process.env.READER_AUDIOBOOK_ENABLED = "true";
@@ -159,7 +163,7 @@ describe("backend-only audiobook API", () => {
       model: "gpt-realtime-2.1-mini",
       defaultVoice: "marin",
       maxChars: 600,
-      wordTimings: false,
+      wordTimings: true,
       requiresAiVoiceDisclosure: true,
     });
     expect(response.body.data.voices).toHaveLength(10);
@@ -202,6 +206,37 @@ describe("backend-only audiobook API", () => {
     expect((await preview({requestId:"voice-preview-123458",voice:"cedar",text:"arbitrary"})).status).toBe(400);
     expect((await preview({requestId:"voice-preview-123459",voice:"other"})).status).toBe(400);
     expect(generateReaderSpeech).toHaveBeenCalledTimes(1);
+    expect(alignReaderSpeech).not.toHaveBeenCalled();
+  });
+  it("caches word timings with audio and returns exact source offsets", async () => {
+    const words = [{startChar:0,endChar:5,startSeconds:0.01,endSeconds:0.04},{startChar:6,endChar:12,startSeconds:0.05,endSeconds:0.09}];
+    (alignReaderSpeech as jest.Mock).mockResolvedValue(words);
+    const response = await post();
+    expect(response.status).toBe(201);
+    expect(response.body.data.alignment).toMatchObject({type:"word",source:"whisper-1",wordTimings:words});
+    expect((await post()).body.data.alignment.wordTimings).toEqual(words);
+    expect(alignReaderSpeech).toHaveBeenCalledTimes(1);
+  });
+  it("can disable timing without the extra provider call", async () => {
+    process.env.READER_AUDIOBOOK_WORD_TIMINGS = "false";
+    expect((await get(base+"/config")).body.data.wordTimings).toBe(false);
+    expect((await post()).body.data.alignment).toMatchObject({type:"passage",wordTimings:null});
+    expect(alignReaderSpeech).not.toHaveBeenCalled();
+  });
+  it("cancels an alignment in progress without caching incomplete work", async () => {
+    let began!: () => void;
+    const started = new Promise<void>(resolve => { began=resolve; });
+    (alignReaderSpeech as jest.Mock).mockImplementation((_text,_wav,_duration,_key,signal) => new Promise(resolve => {
+      signal.addEventListener("abort",()=>resolve(null),{once:true}); began();
+    }));
+    const pending = post().then(response=>response);
+    await started;
+    expect((await request(app).delete(base+"/requests/"+body().requestId).set("Authorization","test")).status).toBe(204);
+    expect((await pending).status).toBe(499);
+    (alignReaderSpeech as jest.Mock).mockResolvedValue(null);
+    const retry = await post(); expect(retry.status).toBe(201);
+    expect(retry.body.data.cacheHit).toBe(false);
+    expect(generateReaderSpeech).toHaveBeenCalledTimes(2);
   });
   it("guards preview generation and narrator writes with authentication and ownership", async () => {
     expect((await request(app).post(base+"/preview").send({})).status).toBe(401);

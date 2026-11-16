@@ -161,7 +161,7 @@ export function ReaderTts({ bookTitle, bookId, loadSection, onClose }: {
           </div>
         </div>
         <div className="audiobook-player-meta" role="status" aria-live="polite"><span className={"audiobook-pulse" + (audio.playing ? " is-live" : "")} aria-hidden="true" /><span>{audio.available ? audio.status : "Selected voice engine is unavailable"}</span></div>
-        <div className="audiobook-timing-note">Estimated section timing · {audio.engine === "openai" ? "AI-generated voice · passage follow-along" : audio.wordEvents ? "Word follow-along" : "Sentence follow-along; word support varies by voice"}</div>
+        <div className="audiobook-timing-note">Estimated section timing · {audio.engine === "openai" ? "AI-generated voice · " + (audio.wordEvents ? "word follow-along" : "passage follow-along; word timing unavailable") : audio.wordEvents ? "Word follow-along" : "Sentence follow-along; word support varies by voice"}</div>
         {audio.error && <p className="audiobook-error" role="alert">{audio.error}</p>}
       </div>
     </footer>

@@ -145,6 +145,7 @@ The backend calls `dotenv.config()` without an explicit path, so it reads `.env`
 | `READER_ENABLED`, `READER_ALLOWED_USER_IDS` | Enable EPUB Reader and allow your actual MongoDB user ID (comma-separated for multiple users). |
 | `OPENAI_API_KEY`, `READER_AI_MODEL` | Optional Reader AI chat key and legacy model default; per-user settings can override the model. |
 | `READER_AUDIOBOOK_ENABLED`, `READER_AUDIOBOOK_MODEL` | Optional OpenAI narration flag and server-selected model. Disabled in the examples. |
+| `READER_AUDIOBOOK_WORD_TIMINGS` | Defaults to `true`: adds a timestamp transcription pass for word highlighting (about $0.006/audio minute). Set `false` for passage-only highlighting. Temporary `whisper-1` support retires February 26, 2027; see the audiobook documentation. |
 | `READER_AUDIOBOOK_OPENAI_API_KEY` | Optional dedicated narration key; empty means reuse `OPENAI_API_KEY`. |
 | `GOOGLE_TRANSLATE_API_KEY` | Optional Google Cloud Translation Basic v2 dictionary fallback. |
 

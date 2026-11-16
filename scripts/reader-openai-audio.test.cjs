@@ -13,7 +13,7 @@ function compile(file, globals = {}) {
 }
 const tts = compile("readerTts.ts");
 function setup(handler) {
-  const calls = [], sources = [], contexts = [];
+  const calls = [], sources = [], contexts = [], frames = new Map(); let frameId = 0;
   class Context {
     state = "suspended"; currentTime = 0; destination = {};
     constructor() { contexts.push(this); }
@@ -27,6 +27,8 @@ function setup(handler) {
     }
   }
   const api = compile("readerOpenAiAudio.ts", { require: () => tts, AudioContext: Context, AbortController,
+    requestAnimationFrame: callback => {frames.set(++frameId,callback);return frameId;},
+    cancelAnimationFrame: id => frames.delete(id),
     crypto: require("node:crypto").webcrypto,
     fetch: async (url, options = {}) => {
       calls.push({ url, ...options });
@@ -38,7 +40,9 @@ function setup(handler) {
       return { ok: true, arrayBuffer: async () => new ArrayBuffer(0) };
     },
   });
-  return { ...api, calls, sources, contexts };
+  return { ...api, calls, sources, contexts, frames, tick: time => {
+    contexts[0].currentTime=time; const pending=[...frames.values()]; frames.clear(); pending.forEach(callback=>callback());
+  } };
 }
 const passage = { text: "Hello world.", cfi: "source-range" };
 
@@ -192,4 +196,33 @@ test("OpenAI preview requests use the fixed server sample endpoint without clien
   assert.equal(request.url,"/api/reader/book/audiobook/preview");
   assert.deepEqual(Object.keys(JSON.parse(request.body)).sort(),["requestId","voice"]);
   player.dispose();
+});
+
+test("word highlighting follows measured audio time, gaps, pause/resume and speed", async () => {
+  const timings=[{startChar:0,endChar:5,startSeconds:0.5,endSeconds:1.25},{startChar:6,endChar:12,startSeconds:1.5,endSeconds:2.5}];
+  const env=setup((_url,options)=> options.method==="POST" ? Promise.resolve({ok:true,json:async()=>({status:"success",data:{
+    text:passage.text,chunkId:"a".repeat(64),audioUrl:"/api/reader/book/audiobook/chunks/"+"a".repeat(64),alignment:{wordTimings:timings},
+  }})}) : undefined);
+  const player=new env.ReaderOpenAiAudio("book"); await player.unlock(); const cues=[];
+  await player.play(passage,"marin",1,aligned=>assert.equal(aligned,true),()=>{},word=>cues.push(word?.startChar??null));
+  assert.deepEqual(cues,[null],"leading silence does not guess the first word");
+  env.tick(0.75); assert.equal(cues.at(-1),0);
+  env.tick(1.35); assert.equal(cues.at(-1),null,"no highlight between timed words");
+  env.tick(1.75); assert.equal(cues.at(-1),6);
+  const stale=[...env.frames.values()][0];
+  player.pause(); const before=cues.length; env.tick(5); assert.equal(cues.length,before);
+  await player.play(passage,"marin",1,()=>{},()=>{},word=>cues.push(word?.startChar??null));
+  assert.equal(env.sources.at(-1).offset,1.75); assert.equal(cues.at(-1),6);
+  const count=env.frames.size; stale(); assert.equal(env.frames.size,count,"stale animation frames cannot restart old highlights");
+  player.setRate(2); env.tick(5.25); assert.equal(cues.at(-1),6);
+  env.tick(5.5); assert.equal(cues.at(-1),null,"speed uses the audio clock, not elapsed wall time");
+  assert.equal(env.calls.filter(call=>call.method==="POST").length,1);
+  player.dispose(); assert.equal(env.frames.size,0);
+});
+
+test("malformed or partial timestamps fall back to passage highlighting", () => {
+  const {validateAudiobookTimings,audiobookTimingAt}=setup();
+  assert.equal(validateAudiobookTimings([{startChar:0,endChar:5,startSeconds:0,endSeconds:1}],passage.text,2),null);
+  assert.equal(validateAudiobookTimings([{startChar:0,endChar:99,startSeconds:0,endSeconds:1},{startChar:6,endChar:12,startSeconds:1,endSeconds:2}],passage.text,2),null);
+  assert.equal(audiobookTimingAt([],1),null);
 });

@@ -5,6 +5,7 @@ export type AudiobookConfig = {
   available: boolean; unavailableReason: string | null; voices: string[];
   defaultVoice: string; maxChars: number;
   narrator?: ReaderAudiobookNarrator | null; previewText?: string;
+  wordTimings?: boolean;
 };
 export type AudiobookEngine = "system" | "openai";
 const base = (book: string) => `/api/reader/${encodeURIComponent(book)}/audiobook`;
@@ -34,21 +35,47 @@ export function openAiPassage(sentence: AudiobookSentence, offset: number, limit
 }
 
 export type OpenAiPassage = { text: string; cfi: string; endCfi?: string; preview?: boolean };
+export type AudiobookWordTiming = { startChar: number; endChar: number; startSeconds: number; endSeconds: number };
+
+export function audiobookTimingAt(words: AudiobookWordTiming[], seconds: number) {
+  let low = 0, high = words.length;
+  while (low < high) { const mid = (low + high) >>> 1; if (words[mid].startSeconds <= seconds) low = mid + 1; else high = mid; }
+  const word = words[low - 1];
+  return word && seconds < word.endSeconds ? word : null;
+}
+export function validateAudiobookTimings(value: unknown, text: string, duration: number): AudiobookWordTiming[] | null {
+  if (!Array.isArray(value) || !value.length || value.length > 1200 || !Number.isFinite(duration) || duration <= 0) return null;
+  const source = Array.from(text.matchAll(/\S+/gu)).filter(match => /[\p{L}\p{M}\p{N}]/u.test(match[0]));
+  if (value.length !== source.length) return null;
+  let endChar = 0, startTime = 0, endTime = 0;
+  for (let index = 0; index < value.length; index++) {
+    const word = value[index], expected = source[index];
+    if (!word || !Number.isSafeInteger(word.startChar) || !Number.isSafeInteger(word.endChar)
+      || word.startChar !== expected.index || word.endChar !== expected.index! + expected[0].length
+      || word.startChar < endChar || !Number.isFinite(word.startSeconds) || !Number.isFinite(word.endSeconds)
+      || word.startSeconds < startTime || word.startSeconds < endTime - 0.08
+      || word.endSeconds <= word.startSeconds || word.endSeconds < endTime || word.endSeconds > duration + 0.05) return null;
+    endChar = word.endChar; startTime = word.startSeconds; endTime = word.endSeconds;
+  }
+  return value;
+}
 
 /** Group adjacent sentences into a bounded passage, retaining exact endpoints. */
 export function openAiBlock(sentences: AudiobookSentence[], index: number, offset: number, limit: number) {
   const first = openAiPassage(sentences[index], offset, limit);
   let text = first.text, end = first.end, endIndex = index;
+  const locations = [{ start: 0, end: first.text.length, sentence: index, offset }];
   let endCfi: string | undefined;
   while (end === sentences[endIndex].text.length && endIndex + 1 < sentences.length) {
     const next = sentences[endIndex + 1];
     // Keep sentence boundaries when possible; split only an oversized sentence.
     if (text.length + 1 + next.text.length > Math.min(600, limit)) break;
     const part = openAiPassage(next, 0, limit);
+    locations.push({ start: text.length + 1, end: text.length + 1 + part.text.length, sentence: endIndex + 1, offset: 0 });
     text += " " + part.text; end = part.end; endIndex++;
     endCfi = part.cfi;
   }
-  return { text, cfi: first.cfi, ...(endCfi ? { endCfi } : {}), end, endIndex };
+  return { text, cfi: first.cfi, ...(endCfi ? { endCfi } : {}), end, endIndex, locations };
 }
 
 /** Current and next passage only; one cancellable generation request at a time. */
@@ -59,6 +86,8 @@ export class ReaderOpenAiAudio {
   private cancellation: Promise<unknown> = Promise.resolve();
   private revision = 0;
   private buffers = new Map<string, AudioBuffer>();
+  private timings = new Map<string, AudiobookWordTiming[] | null>();
+  private frame?: number;
   private prepared?: { key: string; promise: Promise<AudioBuffer | undefined> };
   private activeKey = "";
   private cursor = 0;
@@ -91,6 +120,7 @@ export class ReaderOpenAiAudio {
     }
   }
   pause() {
+    this.stopWordClock();
     ++this.revision; this.remember(); this.running = false;
     this.prepared = undefined;
     if (this.source) { this.source.onended = null; this.source.stop(); this.source.disconnect(); this.source = undefined; }
@@ -104,7 +134,27 @@ export class ReaderOpenAiAudio {
   }
   stop() { this.pause(); this.cursor = 0; }
   waitForCancellation() { return this.cancellation; }
-  dispose() { this.stop(); this.buffers.clear(); void this.context?.close(); }
+  dispose() { this.stop(); this.buffers.clear(); this.timings.clear(); void this.context?.close(); }
+
+  private stopWordClock() {
+    if (this.frame !== undefined) cancelAnimationFrame(this.frame);
+    this.frame = undefined;
+  }
+  private startWordClock(key: string, onWord?: (word: AudiobookWordTiming | null) => void) {
+    this.stopWordClock();
+    const words = this.timings.get(key);
+    if (!words?.length || !onWord) return;
+    const revision = this.revision, source = this.source;
+    let previous: AudiobookWordTiming | null | undefined;
+    const tick = () => {
+      if (!this.running || !this.context || revision !== this.revision || source !== this.source) return;
+      const seconds = this.cursor + (this.context.currentTime - this.started) * this.rate;
+      const word = audiobookTimingAt(words, seconds);
+      if (word !== previous) { previous = word; onWord(word); }
+      this.frame = requestAnimationFrame(tick);
+    };
+    tick();
+  }
 
   private key(passage: OpenAiPassage, voice: string) {
     return JSON.stringify([voice, passage.cfi, passage.endCfi, !!passage.preview]);
@@ -130,7 +180,7 @@ export class ReaderOpenAiAudio {
       const pending = { id: crypto.randomUUID(), abort: new AbortController() };
       this.pending = pending;
       try {
-        const chunk = await json<{ text: string; audioUrl: string; chunkId: string }>(base(this.book) + (passage.preview ? "/preview" : "/chunks"), {
+        const chunk = await json<{ text: string; audioUrl: string; chunkId: string; alignment?: { wordTimings?: unknown } }>(base(this.book) + (passage.preview ? "/preview" : "/chunks"), {
           method: "POST", signal: pending.abort.signal, headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ requestId: pending.id,
             ...(!passage.preview ? { passageCfi: passage.cfi, ...(passage.endCfi ? { passageEndCfi: passage.endCfi } : {}) } : {}), voice }),
@@ -145,7 +195,8 @@ export class ReaderOpenAiAudio {
         const buffer = await context.decodeAudioData(await response.arrayBuffer());
         if (revision !== this.revision) return;
         this.buffers.set(key, buffer);
-        while (this.buffers.size > 2) this.buffers.delete(this.buffers.keys().next().value!);
+        this.timings.set(key, validateAudiobookTimings(chunk.alignment?.wordTimings, passage.text, buffer.duration));
+        while (this.buffers.size > 2) { const oldest = this.buffers.keys().next().value!; this.buffers.delete(oldest); this.timings.delete(oldest); }
         return buffer;
       } finally { if (this.pending === pending) this.pending = undefined; }
     })();
@@ -156,7 +207,8 @@ export class ReaderOpenAiAudio {
     return promise;
   }
   async play(passage: OpenAiPassage, voice: string, speed: number,
-    onStart: () => void, onEnd: () => void) {
+    onStart: (wordTimings: boolean) => void, onEnd: () => void, onWord?: (word: AudiobookWordTiming | null) => void) {
+    this.stopWordClock();
     const revision = this.revision;
     const key = this.key(passage, voice);
     if (this.source) {
@@ -175,9 +227,11 @@ export class ReaderOpenAiAudio {
     source.connect(context.destination);
     source.onended = () => {
       if (revision !== this.revision || this.source !== source) return;
+      this.stopWordClock();
       this.running = false; this.cursor = 0; this.source = undefined; source.disconnect(); onEnd();
     };
     this.source = source; this.started = context.currentTime; this.running = true;
-    source.start(0, Math.min(this.cursor, source.buffer.duration)); onStart();
+    source.start(0, Math.min(this.cursor, source.buffer.duration)); onStart(!!this.timings.get(key)?.length);
+    this.startWordClock(key, onWord);
   }
 }

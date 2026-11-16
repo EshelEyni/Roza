@@ -37,6 +37,8 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   const [voice, setVoice] = useState("");
   const [speed, setSpeed] = useState(1);
   const position = useRef({ section: null as AudiobookSection | null, index: 0, offset: 0 });
+  // Keep the audio passage origin stable while visible word cues advance.
+  const spoken = useRef({ index: 0, offset: 0 });
   const loader = useRef(loadSection); loader.current = loadSection;
   const nextSection = useRef<{ target: number; promise: Promise<AudiobookSection | null> }>();
   const selectedVoice = useRef("");
@@ -100,8 +102,10 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
         setPassageEnd(passage.endIndex);
         setWordEvents(false); setHighlight(null); setStatus("Preparing OpenAI narration…");
         void ai.current.play(passage, aiVoiceRef.current, rate.current,
-          () => {
+          timed => {
             if (version.current !== run) return;
+            setWordEvents(timed);
+            if (timed) setPassageEnd(spoken.current.index);
             setStatus("Following AI-generated narration");
             // Generate exactly one passage ahead while the current audio plays.
             let nextIndex = passage.endIndex, nextOffset = passage.end;
@@ -122,7 +126,18 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
               }).catch(() => undefined);
             }
           },
-          () => advance(passage.end, passage.endIndex)).catch(cause => { if (version.current === run) fail(cause); });
+          () => advance(passage.end, passage.endIndex),
+          word => {
+            if (version.current !== run) return;
+            if (!word) { setHighlight(null); return; }
+            const location = passage.locations.find(item => word.startChar >= item.start && word.startChar < item.end);
+            if (!location) { setHighlight(null); return; }
+            const item = current.sentences[location.sentence];
+            const wordIndex = audiobookWordAt(item.words, location.offset + word.startChar - location.start);
+            const character = item.words[wordIndex]?.start || 0;
+            spoken.current = { index: location.sentence, offset: character };
+            setIndex(location.sentence); setOffset(character); setPassageEnd(location.sentence); setHighlight(wordIndex);
+          }).catch(cause => { if (version.current === run) fail(cause); });
       } catch (cause) { fail(cause); }
       return;
     }
@@ -142,6 +157,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
         const word = audiobookWordAt(sentence.words, start + event.charIndex);
         const character = sentence.words[word]?.start || 0;
         position.current.offset = character;
+        spoken.current = { index: sentenceIndex, offset: character };
         setOffset(character); setHighlight(word); setWordEvents(true);
       };
       next.onend = () => {
@@ -162,6 +178,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   function goTo(sentence: number, character = 0, continuous = false) {
     cancel(true, continuous); setError(""); setEnded(false);
     position.current.index = sentence; position.current.offset = character;
+    spoken.current = { index: sentence, offset: character };
     setIndex(sentence); setPassageEnd(sentence); setOffset(character); setHighlight(null);
     if (wantPlay.current) { setStatus("Starting narration…"); speak(continuous); }
     else setStatus("Paused · press Play to continue");
@@ -186,6 +203,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
         return;
       }
       position.current = { section: next, index: next.start, offset: next.offset };
+      spoken.current = { index: next.start, offset: next.offset };
       setSection(next); setIndex(next.start); setPassageEnd(next.start); setOffset(next.offset); setEnded(false);
       const shouldPlay = wantPlay.current;
       setStatus(shouldPlay ? "Starting narration…" : autoplay ? "Paused · press Play to continue" : "Ready to listen");
@@ -222,7 +240,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   function move(direction: 1 | -1) {
     const current = position.current.section;
     if (!current || loading) return;
-    const next = position.current.index + direction;
+    const next = spoken.current.index + direction;
     if (next >= 0 && next < current.sentences.length) goTo(next);
     else {
       const target = direction > 0 ? current.next : current.previous;
@@ -251,7 +269,10 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     } catch {
       warn("Your narrator could not be saved to this book. Check your connection and try again."); return false;
     }
-    cancel(); engineRef.current = next; setEngine(next); setWordEvents(false); setHighlight(null);
+    cancel();
+    position.current.index = spoken.current.index; position.current.offset = spoken.current.offset;
+    setPassageEnd(spoken.current.index);
+    engineRef.current = next; setEngine(next); setWordEvents(false); setHighlight(null);
     if (next === "system") { selectedVoice.current = value; setVoice(value); }
     else { aiVoiceRef.current = value; setAiVoice(value); }
     setError("");
