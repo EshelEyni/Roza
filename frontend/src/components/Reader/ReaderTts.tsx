@@ -1,294 +1,172 @@
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { FiPause, FiPlay, FiSkipBack, FiSkipForward, FiX } from "react-icons/fi";
 import { ReaderSelect } from "./ReaderSelect";
-import type { TtsCursor, TtsPassage } from "../../services/readerTts";
+import { ScanLineIcon } from "./ReaderSentenceMode";
+import { useReaderAudiobook, type AudiobookLoader } from "../../hooks/reader/useReaderAudiobook";
+import { audiobookTime, type AudiobookSentence } from "../../services/readerTts";
 
-type VoiceOption = { value: string; label: string };
-type Prepared = { passage: TtsPassage; buffer: AudioBuffer };
-type PreparedResult = { value: Prepared | null; error?: unknown };
-type Pending = { id: number; resolve: (blob: Blob) => void; reject: (error: Error) => void };
-
-export function ReaderTts({ getPassage }: {
-  getPassage: (cursor?: TtsCursor) => Promise<TtsPassage | null>;
+export function ReaderTts({ bookTitle, loadSection, onClose }: {
+  bookTitle: string; loadSection: AudiobookLoader; onClose: (cfi?: string) => void;
 }) {
-  const [engine, setEngine] = useState("system");
-  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [voice, setVoice] = useState("");
-  const [kokoroVoices, setKokoroVoices] = useState<VoiceOption[]>([{ value: "af_heart", label: "Heart · en-us · Female" }]);
-  const [kokoroVoice, setKokoroVoice] = useState("af_heart");
-  const [speed, setSpeed] = useState("1");
-  const [text, setText] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [status, setStatus] = useState("");
-  const [error, setError] = useState("");
-  const [active, setActive] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const current = useRef<TtsPassage | null>(null);
-  const getCurrentPassage = useRef(getPassage);
-  getCurrentPassage.current = getPassage;
-  const session = useRef(0);
-  const loadRequest = useRef(0);
-  const workerRequest = useRef(0);
-  const speedRef = useRef(1);
-  const pausedRef = useRef(false);
-  const buffering = useRef(false);
-  const worker = useRef<Worker>();
-  const pending = useRef<Pending>();
-  const context = useRef<AudioContext>();
-  const source = useRef<AudioBufferSourceNode>();
-  const finishAudio = useRef<() => void>();
-  const resumeSpeech = useRef<() => void>();
-  const utterance = useRef<SpeechSynthesisUtterance>();
-  const synth = window.speechSynthesis;
-
-  function stop(silent = false) {
-    ++session.current;
-    pausedRef.current = false; buffering.current = false;
-    resumeSpeech.current = undefined;
-    if (utterance.current) {
-      utterance.current.onend = null; utterance.current.onerror = null;
-      utterance.current.onpause = null; utterance.current.onresume = null;
-      synth?.cancel(); utterance.current = undefined;
-    }
-    if (source.current) {
-      source.current.onended = null;
-      source.current.stop(); source.current.disconnect(); source.current = undefined;
-    }
-    finishAudio.current?.(); finishAudio.current = undefined;
-    const oldContext = context.current;
-    context.current = undefined;
-    if (oldContext) oldContext.onstatechange = null;
-    if (oldContext && oldContext.state !== "closed") void oldContext.close().catch(() => {});
-    worker.current?.terminate(); worker.current = undefined;
-    pending.current?.reject(new Error("Stopped"));
-    pending.current = undefined;
-    if (!silent) { setActive(false); setPaused(false); setStatus(""); }
-  }
-  function fail(run: number, cause: unknown) {
-    if (session.current !== run) return;
-    stop();
-    setError(cause instanceof Error ? cause.message : String(cause));
-  }
-  function finish(run: number) {
-    if (session.current !== run) return;
-    stop(); setStatus("End of book.");
-  }
-
-  function ensureWorker() {
-    if (worker.current) return worker.current;
-    const next = new Worker(new URL("../../services/readerKokoro.worker.ts", import.meta.url), { type: "module" });
-    worker.current = next;
-    next.onmessage = (event: MessageEvent<{ id?: number; voices?: VoiceOption[]; status?: string; error?: string; blob?: Blob }>) => {
-      if (worker.current !== next) return;
-      if (event.data.voices) setKokoroVoices(event.data.voices);
-      const request = pending.current;
-      if (!request || request.id !== event.data.id) return;
-      if (event.data.status && buffering.current) setStatus(pausedRef.current ? "Paused." : event.data.status);
-      if (event.data.error) {
-        pending.current = undefined;
-        request.reject(new Error("Kokoro: " + event.data.error + ". Try System Voices on this device."));
-      } else if (event.data.blob) {
-        pending.current = undefined; request.resolve(event.data.blob);
-      }
-    };
-    next.onerror = event => {
-      event.preventDefault();
-      if (worker.current !== next) return;
-      const message = "Kokoro could not load. Check your connection or try System Voices.";
-      const request = pending.current;
-      pending.current = undefined;
-      next.terminate(); worker.current = undefined;
-      if (request) request.reject(new Error(message)); else setError(message);
-    };
-    return next;
-  }
-  async function prepare(passage: TtsPassage, run: number, ctx: AudioContext, selectedVoice: string): Promise<Prepared> {
-    if (session.current !== run) throw new Error("Stopped");
-    const next = ensureWorker();
-    const blob = await new Promise<Blob>((resolve, reject) => {
-      const id = ++workerRequest.current;
-      pending.current = { id, resolve, reject };
-      next.postMessage({ id, text: passage.text, voice: selectedVoice });
+  const audio = useReaderAudiobook(loadSection);
+  const [speedOpen, setSpeedOpen] = useState(false);
+  const [speedDraft, setSpeedDraft] = useState(audio.speed);
+  const [seekDraft, setSeekDraft] = useState<number | null>(null);
+  const draggingSeek = useRef(false);
+  const draggingSpeed = useRef(false);
+  const root = useRef<HTMLDivElement>(null);
+  const reading = useRef<HTMLElement>(null);
+  const speedAnchor = useRef<HTMLDivElement>(null);
+  const speedButton = useRef<HTMLButtonElement>(null);
+  const closeButton = useRef<HTMLButtonElement>(null);
+  const exit = () => onClose(audio.cfi);
+  const paragraphs = useMemo(() => {
+    const groups: { paragraph: number; items: { index: number; sentence: AudiobookSentence }[] }[] = [];
+    audio.section?.sentences.forEach((sentence, index) => {
+      let group = groups[groups.length - 1];
+      if (!group || group.paragraph !== sentence.paragraph) { group = { paragraph: sentence.paragraph, items: [] }; groups.push(group); }
+      group.items.push({ index, sentence });
     });
-    if (session.current !== run) throw new Error("Stopped");
-    const buffer = await ctx.decodeAudioData(await blob.arrayBuffer());
-    return { passage, buffer };
-  }
-  function playBuffer(buffer: AudioBuffer, ctx: AudioContext, run: number) {
-    return new Promise<void>(resolve => {
-      if (session.current !== run) { resolve(); return; }
-      const node = ctx.createBufferSource();
-      node.buffer = buffer; node.playbackRate.value = speedRef.current;
-      node.connect(ctx.destination);
-      source.current = node; finishAudio.current = resolve;
-      node.onended = () => {
-        node.disconnect();
-        if (source.current === node) { source.current = undefined; finishAudio.current = undefined; }
-        resolve();
-      };
-      // The context was unlocked synchronously by Play. A suspended context also
-      // holds a ready next chunk during Pause, without requiring another gesture.
-      node.start();
-    });
-  }
-  async function readKokoro(passage: TtsPassage, run: number, ctx: AudioContext, selectedVoice: string) {
-    try {
-      let prepared: Prepared | null = await prepare(passage, run, ctx, selectedVoice);
-      while (prepared && session.current === run) {
-        current.current = prepared.passage; setText(prepared.passage.text);
-        buffering.current = false;
-        setStatus(pausedRef.current ? "Paused." : "Reading…");
-        const ended = playBuffer(prepared.buffer, ctx, run);
-        // At most one chunk ahead, never a whole chapter/book of generated audio.
-        const ahead: Promise<PreparedResult> = (prepared.passage.next
-          ? getCurrentPassage.current(prepared.passage.next).then(next => next ? prepare(next, run, ctx, selectedVoice) : null)
-          : Promise.resolve(null)).then(
-            value => ({ value, error: undefined }),
-            error => ({ value: null, error }),
-          );
-        await ended;
-        if (session.current !== run) return;
-        buffering.current = true;
-        setStatus(pausedRef.current ? "Paused." : "Preparing next passage…");
-        const outcome = await ahead;
-        if (session.current !== run) return;
-        if (outcome.error) throw outcome.error;
-        prepared = outcome.value;
-      }
-      finish(run);
-    } catch (cause) { fail(run, cause); }
-  }
-  function readSystem(passage: TtsPassage, run: number, selectedVoice: SpeechSynthesisVoice | null) {
-    if (session.current !== run) return;
-    current.current = passage; setText(passage.text);
-    if (pausedRef.current) {
-      resumeSpeech.current = () => readSystem(passage, run, selectedVoice);
-      return;
-    }
-    try {
-      if (!synth) throw new Error("System speech is unavailable in this browser.");
-      const next = new SpeechSynthesisUtterance(passage.text);
-      next.voice = selectedVoice;
-      if (selectedVoice) next.lang = selectedVoice.lang;
-      next.rate = speedRef.current;
-      next.onend = () => {
-        if (session.current !== run) return;
-        utterance.current = undefined;
-        if (!passage.next) { finish(run); return; }
-        setStatus("Preparing next passage…");
-        void getCurrentPassage.current(passage.next).then(following => {
-          if (session.current !== run) return;
-          if (following) readSystem(following, run, selectedVoice); else finish(run);
-        }).catch(cause => fail(run, cause));
-      };
-      next.onerror = event => fail(run, new Error("System speech: " + event.error + ". Tap Play to retry."));
-      next.onpause = () => { if (session.current === run) { pausedRef.current = true; setPaused(true); setStatus("Paused."); } };
-      next.onresume = () => { if (session.current === run) { pausedRef.current = false; setPaused(false); setStatus("Reading…"); } };
-      utterance.current = next;
-      setStatus("Reading…"); synth.resume(); synth.speak(next);
-    } catch (cause) { fail(run, cause); }
-  }
-  function play() {
-    const passage = current.current;
-    if (!passage) return;
-    stop(); setError(""); setActive(true);
-    const run = session.current;
-    if (engine === "system") {
-      readSystem(passage, run, voices.find(item => item.voiceURI === voice) || null);
-    } else {
-      try {
-        // Safari requires unlocking audio inside the click, before model download/inference.
-        const ctx = new AudioContext();
-        context.current = ctx; buffering.current = true;
-        setStatus("Preparing speech… First use downloads the voice model.");
-        void ctx.resume().then(() => {
-          if (session.current !== run) return;
-          ctx.onstatechange = () => {
-            if (session.current === run && ctx.state === "suspended" && !pausedRef.current) {
-              pausedRef.current = true; setPaused(true);
-              setStatus("Audio was interrupted. Tap Resume to continue.");
-            }
-          };
-          return readKokoro(passage, run, ctx, kokoroVoice);
-        }).catch(cause => fail(run, cause));
-      } catch (cause) { fail(run, cause); }
-    }
-  }
-  function pauseResume() {
-    const nextPaused = !pausedRef.current;
-    pausedRef.current = nextPaused; setPaused(nextPaused);
-    setStatus(nextPaused ? "Paused." : buffering.current ? "Preparing speech…" : "Reading…");
-    if (engine === "kokoro") {
-      const ctx = context.current;
-      const run = session.current;
-      if (ctx) void (nextPaused ? ctx.suspend() : ctx.resume()).catch(cause => fail(run, cause));
-    } else if (nextPaused) synth?.pause();
-    else {
-      const resume = resumeSpeech.current;
-      resumeSpeech.current = undefined;
-      if (resume) resume(); else synth?.resume();
-    }
-  }
-  async function loadPassage() {
-    stop(); setText(""); setError(""); setLoading(true); current.current = null;
-    const request = ++loadRequest.current;
-    try {
-      const passage = await getCurrentPassage.current();
-      if (request !== loadRequest.current) return;
-      current.current = passage; setText(passage?.text || "");
-      if (!passage) setStatus("No readable text here. Move to a paragraph and try again.");
-    } catch {
-      if (request === loadRequest.current) setError("Could not read this EPUB position. Try another paragraph.");
-    } finally { if (request === loadRequest.current) setLoading(false); }
-  }
+    return groups;
+  }, [audio.section]);
+
   useEffect(() => {
-    void loadPassage();
-    const update = () => setVoices(synth?.getVoices() || []);
-    update(); synth?.addEventListener("voiceschanged", update);
-    const hide = () => { stop(); setStatus("Playback stopped while the app was hidden. Tap Play to continue from this passage."); };
-    const visibility = () => { if (document.hidden) hide(); };
-    document.addEventListener("visibilitychange", visibility);
-    window.addEventListener("pagehide", hide);
+    const mode = root.current;
+    const shell = mode?.closest(".reader-shell");
+    const trigger = shell?.querySelector<HTMLElement>('.reader-toolbar [aria-label="Reader menu"]');
+    const inert: { element: HTMLElement; previous: boolean }[] = [];
+    let branch: Element | null = mode;
+    while (branch && branch !== shell && branch.parentElement) {
+      for (const sibling of branch.parentElement.children) {
+        if (sibling !== branch && sibling instanceof HTMLElement) { inert.push({ element: sibling, previous: sibling.inert }); sibling.inert = true; }
+      }
+      branch = branch.parentElement;
+    }
+    const overflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    closeButton.current?.focus({ preventScroll: true });
     return () => {
-      // Invalidate pending extraction; this is a request counter, not a DOM ref.
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      ++loadRequest.current;
-      stop(true);
-      synth?.removeEventListener("voiceschanged", update);
-      document.removeEventListener("visibilitychange", visibility);
-      window.removeEventListener("pagehide", hide);
+      document.body.style.overflow = overflow;
+      for (const item of inert) item.element.inert = item.previous;
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
     };
-    // Playback and extraction use refs so a render never restarts a listening session.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  useEffect(() => {
+    const container = reading.current;
+    const target = container?.querySelector<HTMLElement>(".audiobook-word.is-active, .audiobook-sentence.is-active");
+    // Prefer the actual boundary word when one is available.
+    const word = container?.querySelector<HTMLElement>(".audiobook-word.is-active") || target;
+    if (!container || !word) return;
+    const rect = word.getBoundingClientRect();
+    const viewport = container.getBoundingClientRect();
+    if (rect.top < viewport.top + 70 || rect.bottom > viewport.top + viewport.height * 0.72) {
+      container.scrollTo({
+        top: Math.max(0, container.scrollTop + rect.top - viewport.top - viewport.height * 0.33),
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+      });
+    }
+  }, [audio.index, audio.highlight, audio.section]);
+  useEffect(() => {
+    if (!speedOpen) return;
+    const outside = (event: PointerEvent) => {
+      if (!speedAnchor.current?.contains(event.target as Node)) setSpeedOpen(false);
+    };
+    document.addEventListener("pointerdown", outside);
+    return () => document.removeEventListener("pointerdown", outside);
+  }, [speedOpen]);
 
-  const systemOptions = [{ value: "", label: "Browser default" }, ...voices.map(item => ({ value: item.voiceURI, label: item.name + " · " + item.lang }))];
-  return <section className="reader-tts">
-    <h2>Audiobook Mode</h2>
-    <label id="tts-engine-label">Engine</label>
-    <ReaderSelect id="tts-engine" labelId="tts-engine-label" value={engine} options={[{ value: "system", label: "System Voices" }, { value: "kokoro", label: "Kokoro · Local AI" }]} onChange={value => {
-      stop(); setError(""); setEngine(value);
-      if (value === "kokoro") { try { ensureWorker(); } catch { setError("Kokoro is unavailable in this browser."); } }
-    }} />
-    <label id="tts-voice-label">Voice</label>
-    <ReaderSelect id="tts-voice" labelId="tts-voice-label" value={engine === "system" ? voice : kokoroVoice} options={engine === "system" ? systemOptions : kokoroVoices} onChange={value => { stop(); setError(""); if (engine === "system") setVoice(value); else setKokoroVoice(value); }} />
-    {engine === "system" && !voices.length && <p>Waiting for system voices. The browser default may still work.</p>}
-    <label id="tts-speed-label">Speed</label>
-    <ReaderSelect id="tts-speed" labelId="tts-speed-label" value={speed} options={["0.75", "1", "1.25", "1.5", "2"].map(value => ({ value, label: value + "×" }))} onChange={value => {
-      if (engine === "system") stop();
-      speedRef.current = Number(value); setSpeed(value);
-      if (source.current) source.current.playbackRate.value = Number(value);
-    }} />
-    <p className="reader-tts-passage" dir="auto">{loading ? "Reading current EPUB position…" : text}</p>
-    <div className="reader-tts-actions">
-      <button className="reader-button" disabled={!text || loading || active} onClick={play}>Play</button>
-      <button className="reader-button" disabled={!active} onClick={pauseResume}>{paused ? "Resume" : "Pause"}</button>
-      <button className="reader-button" disabled={!active} onClick={() => stop()}>Stop</button>
-      <button className="reader-button" disabled={loading} onClick={() => void loadPassage()}>Use current position</button>
-    </div>
-    <p role="status" aria-live="polite">{status}</p>
-    {error && <p role="alert">{error}</p>}
-    <p>Reads continuously from this position through the book. {engine === "kokoro"
-      ? "Speech is prepared automatically as you listen. First use downloads a large voice model; slower devices may pause between passages. These are all English voices supported by this Kokoro package."
-      : "Voice availability and Pause/Resume depend on your browser."} Keep the screen active. Background and locked-screen playback are not supported yet.</p>
-  </section>;
+  const total = audio.section?.totalWords || 0;
+  const progress = seekDraft ?? audio.currentWord;
+  // Web Speech exposes no exact duration: these are explicitly text-based estimates.
+  const secondsPerWord = 60 / (180 * audio.speed);
+  const options = [{ value: "", label: "System voice" }, ...audio.voices.map(voice => ({ value: voice.voiceURI, label: voice.name + " · " + voice.lang }))];
+  return <div className="reader-audiobook" ref={root} role="dialog" aria-modal="true" aria-label="Audiobook Mode" tabIndex={-1}
+    onKeyDown={event => {
+      if (event.defaultPrevented) return;
+      if (event.key === "Escape") {
+        if (speedOpen) { setSpeedOpen(false); speedButton.current?.focus(); }
+        else exit();
+        event.preventDefault(); event.stopPropagation(); return;
+      }
+      if (event.key === "Tab") {
+        const controls = Array.from(root.current?.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), [tabindex="0"]') || []).filter(element => element.getClientRects().length);
+        const first = controls[0], last = controls[controls.length - 1];
+        if (first && ((event.shiftKey && document.activeElement === first) || (!event.shiftKey && document.activeElement === last))) {
+          event.preventDefault(); (event.shiftKey ? last : first).focus();
+        }
+        return;
+      }
+      if ((event.target as Element).closest('button,input,[role="combobox"],[role="listbox"]')) return;
+      if (event.code === "Space") { event.preventDefault(); event.stopPropagation(); audio.toggle(); }
+      if (event.code === "ArrowRight" || event.code === "ArrowLeft") {
+        event.preventDefault(); event.stopPropagation(); audio.seek(audio.currentWord + (event.code === "ArrowRight" ? 1 : -1));
+      }
+    }}>
+    <header className="audiobook-topbar">
+      <div className="audiobook-brand"><ScanLineIcon /><span>Audiobook Mode</span></div>
+      <span className="audiobook-mode-label">Follow along</span>
+      <button ref={closeButton} className="audiobook-close" aria-label="Exit audiobook mode" title="Exit audiobook mode" onClick={exit}><FiX /></button>
+    </header>
+    <main className="audiobook-reading" ref={reading} tabIndex={0} aria-label="Book text">
+      <article className="audiobook-content" dir="auto" aria-busy={audio.loading}>
+        {audio.section?.title && <div className="audiobook-chapter-meta">{bookTitle}</div>}
+        <h1 className="audiobook-chapter-title">{audio.section?.title || bookTitle}</h1>
+        {audio.loading && <p className="audiobook-loading" role="status">Loading book…</p>}
+        {!audio.loading && paragraphs.map(group => <p key={group.paragraph}>
+          {group.items.map(({ sentence, index }) => <Fragment key={sentence.cfi}>
+            <span className={"audiobook-sentence" + (index === audio.index ? " is-active" : "")} aria-current={index === audio.index ? "true" : undefined} data-sentence={index}>
+              {sentence.words.map((word, wordIndex) => <Fragment key={word.start}>
+                <span className={"audiobook-word" + (index === audio.index && wordIndex === audio.highlight ? " is-active" : "")}>{word.text}</span>
+                {wordIndex < sentence.words.length - 1 ? " " : ""}
+              </Fragment>)}
+            </span>{" "}
+          </Fragment>)}
+        </p>)}
+      </article>
+    </main>
+    <footer className="audiobook-player">
+      <div className="audiobook-player-inner">
+        <div className="audiobook-progress-row">
+          <span title="Estimated elapsed section time">{audiobookTime(progress * secondsPerWord)}</span>
+          <input type="range" min={0} max={Math.max(1, total)} step={1} value={progress} disabled={audio.loading || !total} aria-label="Estimated section progress"
+            aria-valuetext={total ? Math.round(progress / total * 100) + "% of section · estimated timing" : "Loading"}
+            onPointerDown={() => { draggingSeek.current = true; }}
+            onChange={event => { const value = Number(event.target.value); if (draggingSeek.current) setSeekDraft(value); else audio.seek(value); }}
+            onPointerUp={event => { draggingSeek.current = false; setSeekDraft(null); audio.seek(Number(event.currentTarget.value)); }}
+            onPointerCancel={() => { draggingSeek.current = false; setSeekDraft(null); }} />
+          <span title="Estimated remaining section time">−{audiobookTime(Math.max(0, total - progress) * secondsPerWord)}</span>
+        </div>
+        <div className="audiobook-control-row">
+          <div className="audiobook-transport">
+            <button className="audiobook-control" aria-label="Previous sentence" title="Previous sentence" disabled={audio.loading || !audio.section || (!audio.index && audio.section.previous === null)} onClick={() => audio.move(-1)}><FiSkipBack /></button>
+            <button className="audiobook-play" aria-label={audio.playing ? "Pause narration" : "Play narration"} title={audio.playing ? "Pause narration" : "Play narration"} disabled={audio.loading || !total || !audio.available} onClick={audio.toggle}>
+              {audio.playing ? <FiPause fill="currentColor" /> : <FiPlay fill="currentColor" />}
+            </button>
+            <button className="audiobook-control" aria-label="Next sentence" title="Next sentence" disabled={audio.loading || !audio.section || (audio.index === audio.section.sentences.length - 1 && audio.section.next === null)} onClick={() => audio.move(1)}><FiSkipForward /></button>
+            <div className="audiobook-speed-anchor" ref={speedAnchor}>
+              <button ref={speedButton} className="audiobook-speed-button" aria-label={"Reading speed " + audio.speed + "×"} aria-haspopup="dialog" aria-expanded={speedOpen} aria-controls={speedOpen ? "audiobook-speed-popup" : undefined}
+                onClick={() => { setSpeedDraft(audio.speed); setSpeedOpen(!speedOpen); }}>{audio.speed}×</button>
+              {speedOpen && <div id="audiobook-speed-popup" className="audiobook-speed-popup" role="dialog" aria-label="Reading speed">
+                <span>Reading speed</span>
+                <input type="range" min="0.5" max="2.5" step="0.1" value={speedDraft} aria-label="Reading speed"
+                  onPointerDown={() => { draggingSpeed.current = true; }}
+                  onChange={event => { const value = Number(event.target.value); setSpeedDraft(value); if (!draggingSpeed.current) audio.changeSpeed(value); }}
+                  onPointerUp={event => { draggingSpeed.current = false; audio.changeSpeed(Number(event.currentTarget.value)); }}
+                  onPointerCancel={() => { draggingSpeed.current = false; setSpeedDraft(audio.speed); }} />
+                <output>{speedDraft.toFixed(1)}</output>
+              </div>}
+            </div>
+          </div>
+          <div className="audiobook-voice" onPointerDown={() => setSpeedOpen(false)}>
+            <span id="audiobook-voice-label" className="audiobook-sr-only">Narrator voice</span>
+            <svg className="audiobook-voice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6M9 5v14M13 8v8M17 6v12M21 10v4" /></svg>
+            <ReaderSelect id="audiobook-voice" labelId="audiobook-voice-label" value={audio.voice} options={options} onChange={audio.changeVoice} />
+          </div>
+        </div>
+        <div className="audiobook-player-meta" role="status" aria-live="polite"><span className={"audiobook-pulse" + (audio.playing ? " is-live" : "")} aria-hidden="true" /><span>{audio.available ? audio.status : "System speech is unavailable in this browser"}</span></div>
+        <div className="audiobook-timing-note">Estimated section timing · {audio.wordEvents ? "Word follow-along" : "Sentence follow-along; word support varies by voice"}</div>
+        {audio.error && <p className="audiobook-error" role="alert">{audio.error}</p>}
+      </div>
+    </footer>
+  </div>;
 }

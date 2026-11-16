@@ -20,7 +20,7 @@ async function epub() {
   );
   zip.file(
     "a.xhtml",
-    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>A</title></head><body><p>Hello, <em>read</em>ing world. Next sentence!</p><p>Last paragraph.</p><p>Line<br/>break.</p><p hidden="hidden">Hidden text</p><script>bad()</script></body></html>',
+    "<html xmlns=\"http://www.w3.org/1999/xhtml\"><head><title>A Quiet Morning</title></head><body><p>At the <em>edge</em> of the little town, where the road turned toward the fields, the morning arrived without ceremony. The first light touched the windows, and a pale breeze moved through the trees. Nothing seemed especially remarkable, yet the world felt different from the evening before.</p><p>Thomas opened his notebook and looked at the empty page. He had carried it with him for weeks, convinced that one day he would find the right words. Now, sitting beside the window, he wondered whether words were really what he had been looking for. Somewhere beyond the garden, a bird began to sing.</p><p>The kettle clicked in the kitchen. He rose slowly, poured a cup of tea, and watched the steam drift into the cold air. Across the street, a woman in a blue coat hurried toward the station. A dog followed her for a moment and then returned to the warmth of its doorway.</p><p>It was a morning like many others, and that was precisely what made it beautiful. He understood, for the first time in many months, that he did not need to go anywhere. The quiet room, the distant bells, and the light on the table were enough.</p><p>Later, when the rain began, he would remember the smallness of this moment. Not because anything extraordinary had happened, but because he had finally stopped expecting it to. He picked up his pen and began to write.</p><p hidden=\"hidden\">Hidden text</p></body></html>",
   );
   zip.file(
     "note.xhtml",
@@ -28,13 +28,13 @@ async function epub() {
   );
   zip.file(
     "b.xhtml",
-    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>B</title></head><body><p>Second chapter starts here.</p></body></html>',
+    '<html xmlns="http://www.w3.org/1999/xhtml"><head><title>B</title></head><body><p>A new day began. He opened the window.</p></body></html>',
   );
-  zip.file("nav.xhtml", '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="a.xhtml">A</a></li><li><a href="b.xhtml">B</a></li></ol></nav></body></html>');
+  zip.file("nav.xhtml", '<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><a href="a.xhtml">A Quiet Morning</a></li><li><a href="b.xhtml">The Next Day</a></li></ol></nav></body></html>');
   return zip.generateAsync({ type: "nodebuffer" });
 }
 test(
-  "TTS real EPUB: passage, controls, cancellation and mobile",
+  "Audiobook Mode: system speech, real EPUB follow-along and footer",
   { timeout: 600000 },
   async (t) => {
     const { createServer } = await import(
@@ -62,7 +62,6 @@ test(
       "i18next",
       "react-i18next",
       "axios",
-      "kokoro-js",
     ].map((name) => ({
       find: name,
       replacement: path
@@ -76,7 +75,7 @@ test(
       cacheDir: path.join(root, "frontend/node_modules/.vite-tts-test"),
       plugins: [react()],
       resolve: { alias: aliases },
-      optimizeDeps: { entries: ["scripts/fixtures/reader-rsvp.tsx"], include: ["kokoro-js"] },
+      optimizeDeps: { entries: ["scripts/fixtures/reader-rsvp.tsx"] },
       server: { host: "127.0.0.1", port: 0, fs: { allow: [root] } },
     });
     server.middlewares.use("/rsvp-state", (_, res) => {
@@ -131,202 +130,145 @@ test(
     });
     await server.listen();
     try {
-      for (const mobile of [false, true]) await t.test(mobile ? "mobile" : "desktop", async () => {
+      for (const mobile of [false, true]) await t.test(mobile ? "mobile system follow-along" : "desktop system follow-along", async () => {
+        saves.length = 0;
         const browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || "msedge" });
         try {
           const page = await browser.newPage({ viewport: { width: mobile ? 375 : 1280, height: 844 }, hasTouch: mobile, isMobile: mobile });
           page.setDefaultTimeout(30000);
           await page.addInitScript(() => {
             const synth = new EventTarget();
-            window.spoken = []; window.cancelled = 0;
-            synth.getVoices = () => window.testVoices || [];
-            synth.speak = u => { window.spoken.push(u); };
-            synth.cancel = () => { window.cancelled++; };
-            synth.pause = () => {}; synth.resume = () => {};
-            Object.defineProperty(window, "speechSynthesis", { value: synth });
-            window.SpeechSynthesisUtterance = class { constructor(text) { this.text = text; } };
+            window.spoken=[]; window.cancelled=0; window.workers=0;
+            synth.getVoices=()=>window.testVoices || [];
+            synth.speak=utterance=>{ window.spoken.push(utterance); queueMicrotask(()=>utterance.onstart?.()); };
+            synth.cancel=()=>window.cancelled++;
+            synth.resume=()=>{};
+            Object.defineProperty(window,"speechSynthesis",{value:synth});
+            window.SpeechSynthesisUtterance=class {constructor(text){this.text=text;}};
+            window.Worker=class {constructor(){window.workers++; throw new Error("Audiobook must not load a model");}};
           });
-          if (!process.env.TTS_REAL_KOKORO) await page.addInitScript(() => {
-            window.workers = []; window.sources = []; window.audioContexts = [];
-            window.Worker = class {
-              constructor() {
-                window.workers.push(this); this.inputs = [];
-                queueMicrotask(() => this.onmessage?.({data:{ voices: [
-                  {value:'af_heart',label:'Heart · en-us · Female'},
-                  {value:'am_echo',label:'Echo · en-us · Male'},
-                  {value:'bm_lewis',label:'Lewis · en-gb · Male'},
-                ]}}));
-              }
-              postMessage(data) { this.input = data; this.inputs.push(data); }
-              terminate() { this.terminated = true; }
-            };
-            window.AudioContext = class {
-              constructor() { this.state = 'suspended'; window.audioContexts.push(this); }
-              resume() { this.state = 'running'; return Promise.resolve(); }
-              suspend() { this.state = 'suspended'; return Promise.resolve(); }
-              close() { this.state = 'closed'; return Promise.resolve(); }
-              decodeAudioData() { return Promise.resolve({duration:2}); }
-              createBufferSource() {
-                return {playbackRate:{value:1}, connect(){}, disconnect(){},
-                  start(){ window.sources.push(this); }, stop(){ this.stopped = true; }};
-              }
-            };
-            window.reply = data => {
-              const w = window.workers.at(-1);
-              w.onmessage({data:{id:w.input.id,...(data || {blob:new Blob(['mock'])})}});
-            };
+          await page.goto(server.resolvedUrls.local[0]+"rsvp-test");
+          await page.waitForFunction(()=>window.rsvpTest?.reader.loading===false);
+          const source=await page.evaluate(async()=>{
+            const first=await window.rsvpTest.reader.audiobook.loadSection();
+            const next=await window.rsvpTest.reader.audiobook.loadSection(1,1);
+            return {title:first.title,sentences:first.sentences.map(s=>({text:s.text,paragraph:s.paragraph})),next:next.section,total:first.totalWords};
           });
-          if (process.env.TTS_REAL_KOKORO) {
-            await page.exposeFunction('ttsLog', message => console.log(message));
-            await page.addInitScript(() => {
-              window.sources = []; window.audioContexts = []; window.waveforms = [];
-              const NativeContext = window.AudioContext;
-              window.AudioContext = class extends NativeContext {
-                constructor(...args) { super(...args); window.audioContexts.push(this); }
-                async decodeAudioData(...args) {
-                  const buffer = await super.decodeAudioData(...args);
-                  window.waveforms.push({ duration: buffer.duration, peak: buffer.getChannelData(0).reduce((p,s) => Math.max(p,Math.abs(s)),0) });
-                  return buffer;
-                }
-                createBufferSource() {
-                  const source = super.createBufferSource(); const start = source.start.bind(source);
-                  source.start = (...args) => { window.sources.push(source); return start(...args); };
-                  return source;
-                }
-              };
-              setInterval(() => {
-                const status = document.querySelector('.reader-tts [role="status"]')?.textContent;
-                if (status && status !== window.lastTtsStatus) { window.lastTtsStatus = status; window.ttsLog(status); }
-              }, 2000);
+          assert.equal(source.title,"A Quiet Morning");
+          assert.equal(source.next,2,"non-linear footnote skipped");
+          assert.ok(source.sentences.length>10);
+          assert.equal(source.sentences[0].paragraph,source.sentences[1].paragraph);
+          assert.equal(source.sentences.some(s=>/Hidden text|Footnote/.test(s.text)),false);
+          const anchored = await page.evaluate(async () => {
+            const reader=window.rsvpTest.reader;
+            const doc=document.querySelector('iframe').contentDocument;
+            const range=doc.createRange(); range.selectNodeContents(doc.querySelector('em'));
+            const selection=doc.getSelection(); selection.removeAllRanges(); selection.addRange(range);
+            const loaded=await reader.audiobook.loadSection();
+            selection.removeAllRanges(); reader.closeLookup();
+            return {start:loaded.start,offset:loaded.offset};
+          });
+          assert.deepEqual(anchored,{start:0,offset:7});
+          await page.waitForFunction(()=>!window.rsvpTest.reader.textSelection);
+          await page.getByRole("button",{name:"Reader menu",exact:true}).click();
+          assert.deepEqual(await page.locator("[data-reader-menu] button span").allTextContents(),["Go to page","Review later","Sentence Mode","RSVP Mode","Audiobook Mode","Settings"]);
+          await page.getByRole("button",{name:"Audiobook Mode",exact:true}).click();
+          const mode=page.getByRole("dialog",{name:"Audiobook Mode",exact:true});
+          await mode.getByRole("heading",{name:"A Quiet Morning"}).waitFor();
+          await page.waitForFunction(()=>!document.querySelector('.audiobook-content[aria-busy="true"]'));
+          assert.equal(await mode.locator(".audiobook-content p").count(),5);
+          assert.equal(await mode.locator(".audiobook-sentence.is-active").innerText(),source.sentences[0].text);
+          assert.equal(await mode.getByText(/Kokoro|Generate/).count(),0);
+          assert.equal(await mode.getByRole("combobox").count(),1);
+          assert.equal(await page.evaluate(()=>window.workers),0);
+          async function layout() {
+            const result=await mode.evaluate(element=>{
+              const bounds=element.getBoundingClientRect();
+              const footer=element.querySelector(".audiobook-player").getBoundingClientRect();
+              const controls=[...element.querySelectorAll(".audiobook-control-row button")].map(button=>button.getBoundingClientRect());
+              return {overflow:element.scrollWidth>innerWidth,footer:Math.round(footer.bottom),bottom:Math.round(bounds.bottom),controls:controls.every(r=>r.left>=0&&r.right<=innerWidth&&r.width>=44&&r.height>=44),
+                overlap:controls.some((r,i)=>controls.slice(i+1).some(s=>r.left<s.right&&r.right>s.left&&r.top<s.bottom&&r.bottom>s.top))};
             });
+            assert.equal(result.overflow,false);
+            assert.equal(result.footer,result.bottom);
+            assert.equal(result.controls,true,JSON.stringify(result));
+            assert.equal(result.overlap,false,JSON.stringify(result));
           }
-          await page.goto(server.resolvedUrls.local[0] + "rsvp-test");
-          await page.waitForFunction(() => window.rsvpTest?.reader.loading === false);
-          // Walk the real EPUB independently: paragraph and section boundaries,
-          // non-linear footnotes, hidden text and end-of-book termination.
-          const chunks = await page.evaluate(async () => {
-            const passages = []; let cursor;
-            for (let i=0; i<30; i++) {
-              const passage = await window.rsvpTest.reader.getTtsPassage(cursor);
-              if (!passage) return passages;
-              passages.push(passage.text); cursor = passage.next;
-              if (!cursor) return passages;
+          await layout();
+          if(mobile) {
+            for(const viewport of [{width:320,height:740},{width:844,height:390}]) {
+              await page.setViewportSize(viewport); await layout();
             }
-            throw new Error('TTS source did not terminate');
+            await page.setViewportSize({width:375,height:844});
+          }
+          await mode.getByRole("button",{name:"Play narration",exact:true}).click();
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).text),source.sentences[0].text);
+          assert.equal(await mode.locator(".audiobook-word.is-active").count(),0,"no simulated word timings");
+          await page.evaluate(()=>window.spoken.at(-1).onboundary({name:"word",charIndex:7}));
+          await page.waitForFunction(()=>document.querySelector(".audiobook-word.is-active")?.textContent==="edge");
+          if(process.env.TTS_SCREENSHOT) await page.screenshot({path:process.env.TTS_SCREENSHOT.replace(".png",mobile?"-mobile.png":"-desktop.png")});
+          await page.evaluate(()=>{window.oldEnd=window.spoken.at(-1).onend; window.oldBoundary=window.spoken.at(-1).onboundary;});
+          await mode.getByRole("button",{name:"Pause narration"}).click();
+          await mode.getByRole("button",{name:"Play narration"}).click();
+          assert.match(await page.evaluate(()=>window.spoken.at(-1).text),/^edge of/,"resume from last actual boundary");
+          await page.evaluate(()=>{window.oldEnd();window.oldBoundary({name:"word",charIndex:0});});
+          assert.equal(await mode.locator(".audiobook-word.is-active").innerText(),"edge");
+          await mode.getByRole("button",{name:"Next sentence"}).click();
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).text),source.sentences[1].text);
+          await mode.getByRole("button",{name:"Previous sentence"}).click();
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).text),source.sentences[0].text);
+          await page.evaluate(()=>{
+            window.testVoices=[{voiceURI:"native",name:"A very long installed system narrator name",lang:"en-US"}];
+            speechSynthesis.dispatchEvent(new Event("voiceschanged"));
           });
-          assert.deepEqual(chunks, ['Hello, reading world. Next sentence!', 'Last paragraph.', 'Line', 'break.', 'Second chapter starts here.']);
-          await page.getByRole('button', { name: 'Reader menu', exact: true }).click();
-          const menuLabels = await page.locator('[data-reader-menu] button span').allTextContents();
-          assert.equal(menuLabels[0], 'Go to page');
-          assert.match(menuLabels[1], /review/i);
-          assert.equal(menuLabels[2], 'Sentence Mode');
-          assert.match(menuLabels[3], /RSVP/);
-          assert.equal(menuLabels[4], 'Audiobook Mode');
-          assert.match(menuLabels[5], /settings/i);
-          await page.getByRole('button', { name: 'Audiobook Mode', exact: true }).click();
-          const panel = page.locator('.reader-tts');
-          await page.waitForFunction(() => document.querySelector('.reader-tts-passage')?.textContent === 'Hello, reading world. Next sentence!');
-          assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-          if (mobile && process.env.TTS_SCREENSHOT) await page.screenshot({ path: process.env.TTS_SCREENSHOT });
-          assert.equal(await panel.getByRole('button', { name: /Generate/ }).count(), 0);
-          await panel.getByRole('button', { name: 'Play', exact: true }).click();
-          assert.equal(await page.evaluate(() => window.spoken.at(-1).text), chunks[0]);
-          await panel.getByRole('button', { name: 'Pause', exact: true }).click();
-          await panel.getByRole('button', { name: 'Resume', exact: true }).click();
-          await page.evaluate(() => window.spoken.at(-1).onend());
-          await page.waitForFunction(() => window.spoken.at(-1).text === 'Last paragraph.');
-          // A delayed next passage must stay paused until Resume.
-          await panel.getByRole('button', { name: 'Pause', exact: true }).click();
-          await page.evaluate(() => { window.spoken.at(-1).onend(); });
-          await page.waitForFunction(() => document.querySelector('.reader-tts-passage').textContent === 'Line');
-          assert.equal(await page.evaluate(() => window.spoken.length), 2);
-          await panel.getByRole('button', { name: 'Resume', exact: true }).click();
-          await page.waitForFunction(() => window.spoken.at(-1).text === 'Line');
-          await page.evaluate(() => { window.staleEnd = window.spoken.at(-1).onend; });
-          await panel.getByRole('button', { name: 'Stop', exact: true }).click();
-          await page.evaluate(() => window.staleEnd());
-          assert.equal(await page.evaluate(() => window.spoken.length), 3);
-          await panel.getByRole('button', { name: 'Use current position' }).click();
-          await page.evaluate(() => { window.testVoices = [{voiceURI:'test',name:'Test Voice',lang:'en-US'}]; speechSynthesis.dispatchEvent(new Event('voiceschanged')); });
-          await panel.locator('#tts-voice').click();
-          await page.getByRole('option', { name: 'Test Voice · en-US' }).click();
-          await panel.getByRole('button', { name: 'Play', exact: true }).click();
-          assert.equal(await page.evaluate(() => window.spoken.at(-1).voice.voiceURI), 'test');
-          await page.evaluate(() => window.spoken.at(-1).onerror({error:'interrupted'}));
-          assert.match(await panel.getByRole('alert').innerText(), /interrupted/);
-          await panel.locator('#tts-engine').click();
-          await page.getByRole('option', { name: 'Kokoro · Local AI' }).click();
-          // Voice catalog arrives without downloading/generating the model.
-          await panel.locator('#tts-voice').click();
-          await page.getByRole('option', { name: /Lewis/ }).waitFor();
-          assert.equal(await page.getByRole('option').count(), process.env.TTS_REAL_KOKORO ? 28 : 3);
-          await panel.locator('#tts-voice').press('Escape');
-          await panel.getByRole('button', { name: 'Play', exact: true }).click();
-          if (process.env.TTS_REAL_KOKORO) {
-            await page.waitForFunction(() => window.sources.length >= 1 || !!document.querySelector('.reader-tts [role="alert"]'), null, { timeout: 480000 });
-            assert.equal(await panel.getByRole('alert').count(), 0, await panel.innerText());
-            const waveform = await page.evaluate(() => window.waveforms[0]);
-            console.log('Generated automatically on Play', waveform);
-            assert.ok(waveform.duration > 1 && waveform.peak > 0.01);
-            await panel.getByRole('button', { name: 'Pause', exact: true }).click();
-            await page.waitForFunction(() => window.audioContexts.at(-1).state === 'suspended');
-            await panel.locator('#tts-speed').click();
-            await page.getByRole('option', { name: '1.5×', exact: true }).click();
-            assert.equal(await page.evaluate(() => window.sources.at(-1).playbackRate.value), 1.5);
-            await panel.getByRole('button', { name: 'Resume', exact: true }).click();
-            await page.waitForFunction(() => window.sources.length >= 2 || !!document.querySelector('.reader-tts [role="alert"]'), null, { timeout: 120000 });
-            assert.equal(await panel.getByRole('alert').count(), 0, await panel.innerText());
-            await page.waitForFunction(() => document.querySelector('.reader-tts [role="status"]')?.textContent === 'End of book.' || !!document.querySelector('.reader-tts [role="alert"]'), null, { timeout: 240000 });
-            assert.equal(await panel.getByRole('alert').count(), 0, await panel.innerText());
-            assert.equal(await page.evaluate(() => window.sources.length), chunks.length);
-            console.log('Continuous Kokoro reached end of EPUB across sections:', chunks.length, 'chunks');
-          } else {
-            await page.waitForFunction(() => window.workers.at(-1).inputs.length === 1);
-            assert.equal(await page.evaluate(() => window.workers.at(-1).input.text), chunks[0]);
-            await panel.getByRole('button', { name: 'Pause', exact: true }).click();
-            await page.evaluate(() => window.reply());
-            await page.waitForFunction(() => window.sources.length === 1 && window.workers.at(-1).inputs.length === 2);
-            assert.equal(await page.evaluate(() => window.audioContexts.at(-1).state), 'suspended');
-            assert.equal(await page.evaluate(() => window.workers.at(-1).input.text), chunks[1]);
-            await page.evaluate(() => window.reply());
-            assert.equal(await page.evaluate(() => window.sources.length), 1);
-            await panel.getByRole('button', { name: 'Resume', exact: true }).click();
-            await page.evaluate(() => { const ctx=window.audioContexts.at(-1); ctx.state='suspended'; ctx.onstatechange(); });
-            await panel.getByRole('button', { name: 'Resume', exact: true }).click();
-            assert.equal(await page.evaluate(() => window.audioContexts.at(-1).state), 'running');
-            await page.evaluate(() => window.sources.at(-1).onended());
-            await page.waitForFunction(() => window.sources.length === 2 && document.querySelector('.reader-tts-passage').textContent === 'Last paragraph.');
-            assert.equal(await panel.locator('.reader-tts-passage').innerText(), chunks[1]);
-            // Stop cancels the lookahead and ignores late worker/audio callbacks.
-            await page.evaluate(() => { window.staleWorker = window.workers.at(-1); window.staleMessage = window.staleWorker.onmessage; });
-            await panel.getByRole('button', { name: 'Stop', exact: true }).click();
-            assert.equal(await page.evaluate(() => window.workers.at(-1).terminated), true);
-            assert.equal(await page.evaluate(() => window.audioContexts.at(-1).state), 'closed');
-            await page.evaluate(() => window.staleMessage({data:{id:window.staleWorker.input.id,blob:new Blob(['late'])}}));
-            assert.equal(await page.evaluate(() => window.sources.length), 2);
-            await panel.getByRole('button', { name: 'Play', exact: true }).click();
-            await page.waitForFunction(() => window.workers.at(-1).inputs.length === 1);
-            await page.evaluate(() => window.reply({error:'memory limit'}));
-            assert.match(await panel.getByRole('alert').innerText(), /memory limit/);
-            await panel.getByRole('button', { name: 'Play', exact: true }).click();
-            await page.waitForFunction(() => window.workers.at(-1).inputs.length === 1);
-            await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
-            assert.equal(await page.evaluate(() => window.workers.at(-1).terminated), true);
-            await panel.getByRole('button', { name: 'Play', exact: true }).click();
-            await page.locator('.reader-panel-close').click();
-            assert.equal(await page.evaluate(() => window.workers.at(-1).terminated), true);
-          }
-          if (!process.env.TTS_REAL_KOKORO) {
-            const selected = await page.evaluate(async () => {
-              const doc = document.querySelector('iframe').contentDocument;
-              const range = doc.createRange(); range.selectNodeContents(doc.querySelector('em'));
-              const selection = doc.getSelection(); selection.removeAllRanges(); selection.addRange(range);
-              return window.rsvpTest.reader.getTtsPassage();
-            });
-            assert.equal(selected.text, 'reading world. Next sentence!');
-          }
-        } finally { await browser.close(); }
+          await mode.getByRole("combobox",{name:"Narrator voice"}).click();
+          const voice=page.getByRole("option",{name:/A very long installed/});
+          const voiceBounds=await voice.boundingBox(); assert.ok(voiceBounds.x>=0);
+          await voice.click();
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).voice.voiceURI),"native");
+          await mode.getByRole("button",{name:"Reading speed 1×"}).click();
+          const speed=mode.getByRole("slider",{name:"Reading speed",exact:true});
+          await speed.focus(); await speed.press("ArrowRight");
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).rate),1.1);
+          const popup=await mode.getByRole("dialog",{name:"Reading speed",exact:true}).boundingBox();
+          assert.ok(popup.x>=0 && popup.x+popup.width<=(mobile?375:1280),JSON.stringify(popup));
+          if(process.env.TTS_SCREENSHOT) await page.screenshot({path:process.env.TTS_SCREENSHOT.replace(".png",mobile?"-speed-mobile.png":"-speed-desktop.png")});
+          await speed.press("Escape");
+          assert.equal(await mode.count(),1,"Escape closes only the speed popup");
+          const seek=mode.getByRole("slider",{name:"Estimated section progress"});
+          await seek.focus(); await seek.press("End");
+          assert.match(await page.evaluate(()=>window.spoken.at(-1).text),/write\.$/);
+          await page.evaluate(()=>window.spoken.at(-1).onend());
+          await mode.getByRole("heading",{name:"The Next Day"}).waitFor();
+          await page.waitForFunction(()=>window.spoken.at(-1).text==="A new day began.");
+          assert.equal(await mode.locator(".audiobook-word.is-active").count(),0);
+          await mode.getByRole("button",{name:"Previous sentence"}).click();
+          await mode.getByRole("heading",{name:"A Quiet Morning"}).waitFor();
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).text),source.sentences.at(-1).text);
+          await mode.getByRole("button",{name:"Next sentence"}).click();
+          await mode.getByRole("heading",{name:"The Next Day"}).waitFor();
+          await page.evaluate(()=>window.spoken.at(-1).onend());
+          await page.waitForFunction(()=>window.spoken.at(-1).text==="He opened the window.");
+          await page.evaluate(()=>window.spoken.at(-1).onend());
+          await mode.getByText("End of book",{exact:true}).waitFor();
+          await mode.getByRole("button",{name:"Play narration"}).click();
+          await page.waitForFunction(()=>window.spoken.at(-1).text==="A new day began.");
+          await page.evaluate(()=>{window.lateEnd=window.spoken.at(-1).onend; window.dispatchEvent(new Event("pagehide"));});
+          await mode.getByRole("button",{name:"Play narration"}).waitFor();
+          await page.evaluate(()=>window.lateEnd());
+          assert.equal(await mode.locator(".audiobook-sentence.is-active").innerText(),"A new day began.");
+          await mode.getByRole("button",{name:"Play narration"}).click();
+          await page.evaluate(()=>window.spoken.at(-1).onerror({error:"interrupted"}));
+          await mode.getByRole("alert").waitFor();
+          await mode.getByRole("button",{name:"Play narration"}).click();
+          await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
+          await mode.waitFor({state:"detached"});
+          assert.equal(await page.evaluate(()=>document.body.style.overflow),"");
+          assert.equal(await page.evaluate(()=>[...document.querySelectorAll(".reader-shell [inert]")].length),0);
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).onend),null);
+          assert.equal(await page.evaluate(()=>window.workers),0);
+        } finally {await browser.close();}
       });
-    } finally { await server.close(); }
+    } finally {await server.close();}
   },
 );

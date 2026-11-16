@@ -96,7 +96,7 @@ export function EpubReader({
         {reader.sentenceMode.active && <ReaderSentenceMode reader={reader} bookId={book.id} />}
         {reader.rsvp.active && <ReaderRsvp reader={reader} bookId={book.id} />}
         {!reader.rsvp.active && <ReaderPanels
-          getTtsPassage={reader.getTtsPassage}
+          audiobook={reader.audiobook}
           progressSettings={reader.progressSettings}
           updateProgressSettings={reader.updateProgressSettings}
           progressSaveStatus={reader.progressSaveStatus}
