@@ -124,39 +124,33 @@ For the existing checkout on this PC, start with `cd C:\dev\Roza` and run the in
 
 ## Environment configuration
 
-Create these two files and populate both with the same keys:
+Two complete templates are committed: [root `.env.example`](.env.example) and [backend `.env.example`](backend/.env.example). They contain identical settings, local demo database names, a demo user ID and a demo login secret. API keys are intentionally blank. Replace the demo secret and user ID before using your account.
 
-1. `Roza/.env` in the repository root.
-2. `Roza/backend/.env` in the backend directory.
+For a fresh local setup, copy the backend template (skip this if `backend/.env` already exists):
 
-Example values for a local development setup:
-
-```dotenv
-DB_URL=mongodb://127.0.0.1:27017
-LOCAL_DB_URL=mongodb://127.0.0.1:27017/roza_test
-DEV_DB_NAME=roza_dev
-PROD_DB_NAME=roza_prod
-TEST_DB_NAME=roza_test
-JWT_SECRET_CODE=replace-with-a-long-random-secret
-JWT_EXPIRATION_TIME=7d
+```powershell
+Copy-Item backend/.env.example backend/.env
 ```
 
-| Key | Purpose |
+If launching the backend directly from the repository root, copy the root template to `.env` instead. Do not overwrite existing environment files; add missing settings from the examples while retaining your real values.
+
+The backend calls `dotenv.config()` without an explicit path, so it reads `.env` from its working directory. `npm run dev` and `npm --prefix backend run dev` launch it from `backend/` and load `backend/.env`. Root `.env` is for launches from the root or explicit Docker `--env-file` use. The files are not merged; existing process/container environment variables take precedence.
+
+| Settings | Purpose |
 | --- | --- |
-| `DB_URL` | MongoDB URL used by the application and remote test connections. Replace it with your hosted connection string if applicable. |
-| `LOCAL_DB_URL` | Local test database URL. Include a dedicated test database name in the URL. |
-| `DEV_DB_NAME` | Database selected when `NODE_ENV=development`. |
-| `PROD_DB_NAME` | Database selected when `NODE_ENV=production`. |
-| `TEST_DB_NAME` | Database selected for test mode and remote test connections. |
-| `JWT_SECRET_CODE` | Private secret used to sign and verify authentication tokens. |
-| `JWT_EXPIRATION_TIME` | JWT lifetime, such as `7d`. |
-| `GOOGLE_TRANSLATE_API_KEY` | Optional backend-only Google Cloud Translation Basic v2 key, used when local dictionaries miss. |
+| `DB_URL`, `DEV_DB_NAME`, `PROD_DB_NAME` | Application MongoDB connection and database names. |
+| `LOCAL_DB_URL`, `TEST_DB_NAME` | Dedicated test databases; tests may delete their contents. |
+| `JWT_SECRET_CODE`, `JWT_EXPIRATION_TIME` | Login token signing secret and lifetime. Replace the public demo secret. |
+| `NODE_ENV` | Runtime mode. Existing npm scripts supply it automatically. |
+| `READER_ENABLED`, `READER_ALLOWED_USER_IDS` | Enable EPUB Reader and allow your actual MongoDB user ID (comma-separated for multiple users). |
+| `OPENAI_API_KEY`, `READER_AI_MODEL` | Optional Reader AI chat key and legacy model default; per-user settings can override the model. |
+| `READER_AUDIOBOOK_ENABLED`, `READER_AUDIOBOOK_MODEL` | Optional OpenAI narration flag and server-selected model. Disabled in the examples. |
+| `READER_AUDIOBOOK_OPENAI_API_KEY` | Optional dedicated narration key; empty means reuse `OPENAI_API_KEY`. |
+| `GOOGLE_TRANSLATE_API_KEY` | Optional Google Cloud Translation Basic v2 dictionary fallback. |
 
-The application uses `dotenv.config()` without an explicit path, so it reads `.env` from the process working directory. The documented npm scripts launch the backend from `backend/` and load `backend/.env`; the root copy applies to launches from the repository root. Two files are the documented local convention, but a single backend process reads only the file in its working directory. Keep their settings in sync.
+To enable OpenAI narration, configure a real backend API key, set `READER_AUDIOBOOK_ENABLED=true`, restart the local backend, and reopen Audiobook Mode. System voices need no API key. See [Audiobook setup and limitations](docs/reader-tts-mvp.md).
 
-`NODE_ENV` is supplied by the backend scripts and need not be placed in these files when using those scripts. The server port is hardcoded to `3030`; there is no `PORT` environment setting. The frontend currently has no custom environment variables and does not require a frontend `.env`.
-
-Both `.env` files are ignored by Git and excluded from the root Docker build context. Do not commit real credentials. There is currently no committed `.env.example`.
+The backend port is fixed at `3030`; there is no `PORT` setting. The frontend has no custom environment variables and needs no `.env`. Both real `.env` files are ignored by Git and excluded from the root Docker build context. Keep real credentials out of the example files and browser code. AWS deployment repository variables and server deployment configuration are separate from the application's dotenv settings.
 
 ### Cloudinary configuration
 
