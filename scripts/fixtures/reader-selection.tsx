@@ -1,3 +1,4 @@
+import { ReaderToolbarMenu } from "../../frontend/src/components/Reader/ReaderToolbarMenu";
 // Browser fixture: production selection hooks and epub.js, without the API server.
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
@@ -224,6 +225,7 @@ function Fixture() {
   return (
     <ReaderPassageMarks.Provider value={passageMarks}>
     <div className="reader-shell reader-theme-light">
+      <ReaderToolbarMenu><button>Menu test action</button></ReaderToolbarMenu>
       <div style={{ height: 300, display: "flex" }}><ReaderViewport width="comfortable" loading={false} error=""
         retry={() => {}} move={move} atStart={false} atEnd={false} host={host} /></div>
       <details><summary>Test reader settings</summary><ReaderSettings preferences={preferences} onChange={setPreferences} publisherPagesAvailable={false} /></details>

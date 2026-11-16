@@ -25,6 +25,8 @@ export type ReaderSearchSession = {
 export type ReaderPanel = "tts" | "contents" | "settings" | "search" | "chat" | "annotations" | "review";
 export type ReaderDirection = "next" | "prev";
 export interface ReaderTextSelection {
+  /** Live source geometry; never persisted or sent to the API. */
+  range?: Range;
   text: string;
   word?: string;
   cfi: string;

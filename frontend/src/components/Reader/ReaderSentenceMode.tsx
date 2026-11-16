@@ -1,3 +1,4 @@
+import { bindReaderTouch } from "../../services/readerTouch";
 import { readerSentencePassageOffsets } from "../../services/readerSentencePassageOffsets";
 import {
   measureSentenceLines,
@@ -24,7 +25,6 @@ import {
   FiCopy,
   FiEdit3,
   FiFlag,
-  FiX,
   FiGlobe,
   FiMessageSquare,
 } from "react-icons/fi";
@@ -207,6 +207,28 @@ export function ReaderSentenceMode({
   const wordIndex = wordFocus.cfi === sentence?.cfi ? wordFocus.index : -1;
   const blocked = mode.busy || !!lookup || !!reader.panel;
   const textTarget = selectedText?.cfi === sentence?.cfi ? selectedText : null;
+  useEffect(() => bindReaderTouch(document, {
+    enabled: () => reader.mobile,
+    scope: () => stage.current,
+    nativeContextMenu: true,
+    paginated: () => true,
+    blocked: () => blocked,
+    selected: () => !!selectedText,
+    dismissSelection: () => {},
+    tapPosition: x => {
+      const rect = stage.current?.getBoundingClientRect();
+      if (!rect?.width) return undefined;
+      return x < rect.left + rect.width / 2 ? 0 : 1;
+    },
+    move: direction => {
+      const next = direction === "next";
+      if (next ? mode.canNext : mode.canBack) {
+        pendingWord.current = null;
+        resetVertical();
+        mode.move(next ? 1 : -1);
+      }
+    },
+  }), [reader.mobile, blocked, selectedText, mode]);
   const wordPart = wordIndex >= 0 ? wordIndex * 2 + 1 : -1;
   const actionTarget =
     textTarget ||
@@ -315,7 +337,7 @@ export function ReaderSentenceMode({
             backward,
           },
     );
-    setWordFocus({ cfi: "", index: -1 });
+    setWordFocus(current => current.index === -1 ? current : { cfi: "", index: -1 });
   };
   useEffect(() => {
     document.addEventListener("selectionchange", captureSelection);
@@ -756,11 +778,11 @@ export function ReaderSentenceMode({
     actionTarget,
   ]);
   const openLookup = (translate: boolean) => {
-    const current = selection(true);
+    const current = selection();
     if (current) setLookup({ selection: current, translate });
   };
   const translateDisabled =
-    !actionTarget || actionTarget.text.length > readerAiLimits.passage;
+    !sentence || (actionTarget?.text || sentence.text).length > readerAiLimits.passage;
   const aiDisabled =
     !sentence ||
     (actionTarget?.text || sentence.text).length > readerAiLimits.passage;
@@ -844,9 +866,8 @@ export function ReaderSentenceMode({
             aria-busy={mode.busy}
             dir="auto"
             onPointerDown={() => {
+              // Native iOS handle drags must retain the existing range.
               resetVertical();
-              clearTextSelection();
-              setWordFocus({ cfi: "", index: -1 });
             }}
             onPointerUp={captureSelection}
           >
@@ -906,6 +927,7 @@ export function ReaderSentenceMode({
           </button>
         </div>
       )}
+      <footer className="reader-sentence-controls" aria-label="Sentence mode controls">
       <div className="reader-sentence-progress">
         <span>
           {mode.number} / {mode.count}
@@ -919,41 +941,12 @@ export function ReaderSentenceMode({
           {mode.count ? Math.round((mode.number / mode.count) * 100) : 0}%
         </span>
       </div>
-      <footer className="reader-sentence-controls">
-        <div className="reader-sentence-nav">
-          <button
-            disabled={blocked || !mode.canBack}
-            onClick={() => {
-              pendingWord.current = null;
-              resetVertical();
-              mode.move(-1);
-            }}
-          >
-            <FiChevronLeft />
-            Back
-          </button>
-          <button
-            disabled={blocked || !mode.canNext}
-            onClick={() => {
-              pendingWord.current = null;
-              mode.move(1);
-            }}
-          >
-            Next
-            <FiChevronRight />
-          </button>
-        </div>
+
         <div
           className="reader-sentence-actions"
           ref={actions}
           onMouseDown={(event) => event.preventDefault()}
         >
-          {mode.target && <button disabled={blocked} aria-label="Clear target"
-            title={"Clear target: " + mode.target.text} onClick={mode.clearReadingTarget}>
-            <FiX /><span>Clear target</span>
-          </button>}
-          <button disabled={blocked || !sentence} aria-label="Set reading target" title="Set reading target"
-            onClick={() => void reader.readingTarget.begin()}><FiFlag /><span>Set target</span></button>
           <button
             disabled={blocked || translateDisabled}
             data-shortcut="t"
@@ -1016,7 +1009,7 @@ export function ReaderSentenceMode({
             }}
           >
             <FiEdit3 />
-            <span>Annotate</span>
+            <span>Note</span>
           </button>
           <button
             disabled={blocked || !sentence || !reader.flags.ready || flagging}
@@ -1029,6 +1022,36 @@ export function ReaderSentenceMode({
           >
             <FiFlag />
             <span>Flag</span>
+          </button>
+          <button className="reader-sentence-target" disabled={blocked || !sentence}
+            aria-label={mode.target ? "Clear target" : "Set reading target"}
+            aria-pressed={!!mode.target}
+            title={mode.target ? "Clear target: " + mode.target.text : "Set reading target"}
+            onClick={() => { if (mode.target) mode.clearReadingTarget(); else void reader.readingTarget.begin(); }}>
+            <FiFlag /><span>{mode.target ? "Clear target" : "Set target"}</span>
+          </button>
+        </div>
+        <div className="reader-sentence-nav">
+          <button
+            disabled={blocked || !mode.canBack}
+            onClick={() => {
+              pendingWord.current = null;
+              resetVertical();
+              mode.move(-1);
+            }}
+          >
+            <FiChevronLeft />
+            Back
+          </button>
+          <button
+            disabled={blocked || !mode.canNext}
+            onClick={() => {
+              pendingWord.current = null;
+              mode.move(1);
+            }}
+          >
+            Next
+            <FiChevronRight />
           </button>
         </div>
       </footer>

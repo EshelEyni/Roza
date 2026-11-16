@@ -1,8 +1,8 @@
-# Ticket 47: Read aloud
+# Ticket 47: Audiobook Mode
 
-Open **Reader menu → Read aloud**, choose an engine/voice, and press **Play**. Speech starts from the current rendered EPUB position or selected/keyboard word. Both engines continue through paragraphs and linear EPUB sections to the end of the book. No Generate button or advance book conversion is required.
+Open **Reader menu → Audiobook Mode**, choose an engine/voice, and press **Play**. Speech starts from the current rendered EPUB position or selected/keyboard word. Both engines continue through paragraphs and linear EPUB sections to the end of the book. No Generate button or advance book conversion is required.
 
-The menu order is Go to page, Review later, Sentence Mode, RSVP, Read aloud, Settings. Mobile Reload remains on the toolbar. The existing full-height phone panel keeps playback controls visible.
+The menu order is Go to page, Review later, Sentence Mode, RSVP, Audiobook Mode, Settings. Mobile Reload remains on the toolbar. The existing full-height phone panel keeps playback controls visible.
 
 ## Playback
 
@@ -28,7 +28,7 @@ The AudioContext is created/resumed directly in the Play gesture, before asynchr
 ## Local testing
 
 1. Install with `npm ci --prefix frontend`, configure the existing backend, and run Roza using the normal local setup (`npm run dev`).
-2. Open an English EPUB and choose Reader menu → Read aloud.
+2. Open an English EPUB and choose Reader menu → Audiobook Mode.
 3. Choose System Voices and press Play. Confirm continuous paragraph/section transitions, delayed voice enumeration, voice choice, Pause/Resume/Stop, and speed. OS/browser voice availability varies; an OS voice may itself use network services.
 4. Switch to Kokoro, choose a voice, and press Play once. Allow the initial model download. Confirm playback starts automatically, the next passages follow without interaction, and Stop cancels preparation. Try a long paragraph and crossing a chapter/spine boundary.
 5. Compare voices/engines from the same displayed passage. Test panel switching, leaving the reader, Home/return, and an audio interruption.

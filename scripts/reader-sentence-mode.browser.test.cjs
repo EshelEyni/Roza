@@ -462,7 +462,7 @@ test(
               await page
                 .getByRole("button", { name: "Translate", exact: true })
                 .isDisabled(),
-              true,
+              false,
             );
             assert.equal(
               await page
@@ -867,7 +867,7 @@ test(
                 await page
                   .getByRole("button", { name: "Translate", exact: true })
                   .isDisabled(),
-                true,
+                false,
               );
               await page.keyboard.press("Control+ArrowLeft");
               await page.keyboard.press("ArrowLeft");
@@ -902,7 +902,7 @@ test(
             assert.equal(await page.locator('.reader-sentence-word-active').count(), 0);
             assert.equal(
               await page.getByRole("button", { name: "Translate", exact: true }).isDisabled(),
-              true,
+              false,
               "Ctrl sentence navigation clears selection without focusing a word",
             );
             if (!mobile) {
@@ -960,7 +960,7 @@ test(
                 await page
                   .getByRole("button", { name: "Translate", exact: true })
                   .isDisabled(),
-                true,
+                false,
                 "Translated word remains painted while no active selection is required for other actions",
               );
               await page.keyboard.press("ArrowRight");
@@ -992,6 +992,11 @@ test(
               await page.waitForFunction(
                 () => !document.querySelector('[data-shortcut="t"]').disabled,
               );
+              assert.equal(await page.evaluate(() => {
+                const before = window.getSelection().toString();
+                document.querySelector('.reader-sentence-text').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'touch' }));
+                return !!before && before === window.getSelection().toString();
+              }), true, 'Grabbing native selection handles preserves a multi-word range');
               assert.equal(await page.locator(".reader-dictionary").count(), 0);
               await page
                 .getByRole("button", { name: "Copy", exact: true })
@@ -1331,8 +1336,8 @@ test(
                 };
               });
             if (mobile) {
-              assert.ok(controls.nav[0] < controls.nav[1]);
-              assert.ok(controls.labels.every((d) => d === "none"));
+              assert.equal(controls.nav[0], controls.nav[1]);
+              assert.ok(controls.labels.every((d) => d !== "none"));
             } else {
               assert.equal(controls.nav[0], controls.nav[1]);
               assert.ok(

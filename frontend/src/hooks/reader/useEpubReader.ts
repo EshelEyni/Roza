@@ -9,7 +9,7 @@ import { useReaderKeyboardSettings } from "./useReaderKeyboardSettings";
 import { useReaderSentenceMode } from "./useReaderSentenceMode";
 import { useReaderRsvp } from "./useReaderRsvp";
 import {useTranslation} from "react-i18next";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import type { ReaderBook } from "../../../../shared/types/reader";
 import { useReaderState } from "../useReaderState";
@@ -114,6 +114,15 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     setNotice,
   });
   const sentenceMode = useReaderSentenceMode(runtime, navigation.returnTo);
+  const annotationEditorOpen = useRef(false);
+  useLayoutEffect(() => {
+    const editing = panel === "annotations" && !!annotations.draft;
+    // Save and Cancel clear the draft; dismiss its sheet instead of showing
+    // the annotations list over the book in either reading mode.
+    if (annotationEditorOpen.current && !editing && panel === "annotations")
+      closePanel();
+    annotationEditorOpen.current = editing;
+  }, [panel, annotations.draft, closePanel]);
   useSentencePanelKeyboard(sentenceMode.active);
   const toggleSentenceMode = (startCfi?: string) => {
     const cfi = sentenceMode.active ? undefined : startCfi || sentenceMode.entryCfi();

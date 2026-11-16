@@ -2407,3 +2407,105 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 .reader-tts-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .reader-tts-actions .reader-button { min-height: 44px; padding: 8px 12px; }
 .reader-tts [role="alert"] { color: #a33224; }
+
+@media (max-width: 1024px) {
+  .reader-toolbar-menu-popover { width: max-content; min-width: 0; box-sizing: border-box; }
+  .reader-toolbar-menu-popover .reader-icon-button { width: 100%; min-width: 0; white-space: normal; word-break: normal; overflow-wrap: normal; }
+  .reader-toolbar-menu-popover .reader-icon-button span { min-width: 0; white-space: normal; word-break: normal; overflow-wrap: normal; }
+}
+
+@media (max-width: 1024px) {
+  .reader-selection-docked .reader-dictionary-actions { flex-wrap: nowrap; gap: 4px; }
+  .reader-selection-docked .reader-dictionary-actions > button { display: flex; flex: 1; flex-direction: column; justify-content: center; align-items: center; gap: 3px; width: auto; min-width: 44px; height: auto; min-height: 50px; padding: 4px 2px; }
+  .reader-selection-label { font-size: 10px; line-height: 1.2; white-space: nowrap; word-break: normal; overflow-wrap: normal; }
+}
+
+
+@media (max-width: 1024px) {
+  // Override the toolbar's compact icon width inside the text menu.
+  .reader-shell .reader-toolbar .reader-toolbar-menu-popover .reader-icon-button { width: 100%; }
+}
+
+// Annotation editor, matching the paper-and-ink reference without changing the notes list.
+.reader-annotations.is-editing { padding: 0; min-height: 100%; color: #382d25; background: #fffaf1; }
+.reader-annotation-editor { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; min-height: 100%; display: flex; flex-direction: column; --annotation-editor-line: #e5d9c8; --annotation-editor-muted: #887a6e; }
+.reader-annotation-editor-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 20px 22px 16px; border-bottom: 1px solid var(--annotation-editor-line); }
+.reader-annotation-eyebrow { font-size: 11px; letter-spacing: 1.6px; text-transform: uppercase; color: var(--annotation-editor-muted); font-weight: 700; }
+.reader-annotation-editor-header h2 { margin: 2px 0 0; padding: 0; font: 500 23px Georgia, serif; letter-spacing: -.5px; }
+.reader-annotation-editor-header .reader-icon-button { flex: none; width: 44px; height: 44px; border: 0; background: transparent; border-radius: 50%; color: #786b5e; }
+.reader-annotation-editor-body { flex: 1; min-width: 0; padding: 20px 22px 10px; }
+.reader-annotations .reader-annotation-editor-quote { margin: 0 0 12px; padding: 2px 0; padding-inline-start: 16px; border-inline-start: 3px solid #bd997a; color: #584334; font: italic 17px/1.58 Georgia, 'Times New Roman', serif; white-space: normal; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.reader-annotation-editor-chapter { margin: 0 0 23px; font-size: 12px; color: var(--annotation-editor-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reader-annotations .reader-annotation-swatches { margin: 0 0 26px; padding: 0; border: 0; gap: 10px; }
+.reader-annotation-swatches legend { margin-bottom: 11px; padding: 0; font-size: 13px; font-weight: 650; }
+.reader-annotations .reader-annotation-swatch { box-sizing: border-box; position: relative; display: grid; place-items: center; flex: none; width: 40px; height: 40px; padding: 0; border: 2px solid transparent; border-radius: 50%; background: var(--annotation-fill); color: #594738; cursor: pointer; }
+.reader-annotation-swatch.color-yellow { --annotation-fill: #f5d56b; }
+.reader-annotation-swatch.color-green { --annotation-fill: #a9dfb2; }
+.reader-annotation-swatch.color-blue { --annotation-fill: #a8c7fa; }
+.reader-annotation-swatch.color-pink { --annotation-fill: #efbad4; }
+.reader-annotations .reader-annotation-swatch.color-none { background: transparent; border: 1px solid #d4c7b7; }
+.reader-annotation-swatch.color-none::before { content: ''; position: absolute; width: 20px; height: 1.5px; background: #9b8573; transform: rotate(-40deg); }
+.reader-annotation-swatch svg { width: 17px; height: 17px; opacity: 0; }
+.reader-annotation-swatch[aria-pressed=true] { outline: 2px solid #75604d; outline-offset: 2px; }
+.reader-annotation-swatch[aria-pressed=true] svg { opacity: 1; }
+.reader-annotation-swatch.color-none[aria-pressed=true]::before { display: none; }
+.reader-annotation-note-heading { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.reader-annotation-note-heading label { font-size: 13px; font-weight: 650; }
+.reader-annotation-note-heading span { font-size: 12px; color: var(--annotation-editor-muted); }
+.reader-annotations .reader-annotation-editor textarea { box-sizing: border-box; height: 134px; min-height: 134px; resize: vertical; border: 1px solid #dacbbb; background: #fffdf8; padding: 14px 15px; border-radius: 11px; font: inherit; font-size: 16px; line-height: 1.55; }
+.reader-annotation-editor textarea::placeholder { color: #aea094; }
+.reader-annotation-editor textarea:focus { border-color: #ae876b; box-shadow: 0 0 0 3px #c7a78d35; }
+.reader-annotation-review-toggle { display: flex; gap: 12px; align-items: center; padding: 18px 0 16px; cursor: pointer; }
+.reader-annotation-review-toggle input { flex: none; width: 19px; height: 19px; min-height: 0; margin: 0; accent-color: #79523b; }
+.reader-annotation-review-toggle strong { font-size: 13px; font-weight: 650; }
+.reader-annotation-review-toggle small { display: block; margin-top: 2px; font-size: 12px; color: var(--annotation-editor-muted); }
+.reader-annotations .reader-annotation-editor-footer { position: sticky; bottom: 0; z-index: 2; margin: 0; padding: 15px 22px 17px; border-top: 1px solid var(--annotation-editor-line); background: #fffaf1; justify-content: flex-end; gap: 10px; }
+.reader-annotations .reader-annotation-editor-footer .reader-button { min-height: 43px; padding: 8px 20px; border: 1px solid #d8c8b7; border-radius: 10px; background: transparent; color: #594738; font-size: 14px; font-weight: 650; }
+.reader-annotations .reader-annotation-editor-footer .reader-annotation-editor-save { background: #76513b; border-color: #76513b; color: white; }
+.reader-annotation-editor-remove { margin-inline-end: auto; }
+.reader-annotation-editor button:disabled { opacity: .45; cursor: not-allowed; }
+.reader-annotation-editor :focus-visible { outline: 3px solid #aa7956; outline-offset: 3px; }
+.reader-sheet:has(.reader-annotation-editor) > .reader-panel-close { display: none; }
+.reader-theme-dark .reader-annotations.is-editing, .reader-theme-dark .reader-annotation-editor-footer { background: var(--reader-surface); color: inherit; }
+.reader-theme-dark .reader-annotation-editor { --annotation-editor-line: #716456; --annotation-editor-muted: #c4b6a6; }
+.reader-theme-dark .reader-annotation-editor-quote { color: #e3cdb7; }
+.reader-theme-dark .reader-annotation-editor textarea { background: #242620; color: inherit; }
+.reader-theme-dark .reader-annotation-editor-footer .reader-button:not(.reader-annotation-editor-save) { color: inherit; }
+@media(max-width:1024px) {
+  .reader-annotation-editor-quote { font-size: 18px; }
+  .reader-annotation-editor-footer { padding-bottom: max(17px, env(safe-area-inset-bottom)); }
+}
+
+// The shared sheet normally pads its body; this editor supplies its own spacing.
+.reader-sheet-body:has(> .reader-annotations.is-editing) { padding: 0; }
+.reader-sheet-body > .reader-annotations.is-editing { flex: 1; height: 100%; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.reader-sheet-body .reader-annotation-editor-header h2 { min-height: 0; margin: 2px 0 0; padding: 0; }
+.reader-annotations .reader-annotation-swatch { width: 44px; height: 44px; }
+@media (max-width: 1024px) {
+  .reader-sheet-fullscreen > .reader-sheet-body:has(> .reader-annotations.is-editing) {
+    padding: env(safe-area-inset-top) max(0px, env(safe-area-inset-right)) var(--reader-modal-bottom-inset, env(safe-area-inset-bottom)) max(0px, env(safe-area-inset-left));
+  }
+}
+
+// Sentence Mode footer: progress, six original actions, and one navigation row.
+.reader-sentence-controls { display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 0 max(0px, env(safe-area-inset-right)) env(safe-area-inset-bottom, 0px) max(0px, env(safe-area-inset-left)); background: #f2e9db; border-top: 1px solid #ded2c1; box-shadow: 0 -8px 24px #42301d0b; }
+.reader-sentence-controls .reader-sentence-progress { box-sizing: border-box; width: 100%; max-width: 600px; margin: 0 auto; gap: 13px; padding: 12px 18px 10px; color: #907d69; font-size: 12px; }
+.reader-sentence-progress span:last-child { min-width: 30px; text-align: right; }
+.reader-sentence-controls .reader-sentence-actions { box-sizing: border-box; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); width: calc(100% - 24px); max-width: 576px; margin: 0 auto; padding: 8px 0 12px; border-top: 1px solid #6e53371f; gap: 0; flex: none; }
+.reader-sentence-controls .reader-sentence-actions button { position: relative; width: 100%; min-width: 0; min-height: 60px; padding: 7px 1px 6px; gap: 5px; border: 0; border-radius: 11px; background: transparent; color: #695744; }
+.reader-sentence-controls .reader-sentence-actions button:enabled:hover, .reader-sentence-actions button[aria-pressed=true] { background: #e7dbcb; }
+.reader-sentence-controls .reader-sentence-actions span { display: block; font-size: 10px; color: inherit; white-space: nowrap; }
+.reader-sentence-controls .reader-sentence-actions svg { width: 21px; height: 21px; stroke-width: 1.8; }
+.reader-sentence-target[aria-pressed=true] svg { fill: #c3a27d30; }
+.reader-sentence-target[aria-pressed=true]::after { content: ''; position: absolute; width: 25px; height: 1.8px; background: currentColor; top: 22px; transform: rotate(45deg); }
+.reader-sentence-controls .reader-sentence-nav { box-sizing: border-box; display: flex; flex-direction: row; align-items: center; justify-content: space-between; width: calc(100% - 32px); max-width: 568px; margin: 0 auto; padding: 0 0 13px; gap: 24px; }
+.reader-sentence-controls .reader-sentence-nav button { box-sizing: border-box; width: 112px; max-width: calc(50% - 12px); min-width: 0; min-height: 53px; flex-shrink: 0; border-radius: 14px; gap: 10px; font-size: 15px; font-weight: 700; border: 1px solid #d6c3ac; background: #fffaf2; color: #60462f; }
+.reader-sentence-controls .reader-sentence-nav button:last-child { border-color: #785a40; background: #785a40; color: white; box-shadow: 0 3px 7px #47331d1a; }
+.reader-sentence-controls .reader-sentence-nav button:last-child:enabled:hover { background: #60462f; }
+.reader-sentence-nav svg { width: 18px; height: 18px; }
+.reader-sentence-toast { bottom: calc(190px + env(safe-area-inset-bottom)); }
+@media(max-width:350px) {
+  .reader-sentence-controls .reader-sentence-actions { width: calc(100% - 12px); }
+  .reader-sentence-controls .reader-sentence-actions span { font-size: 9px; }
+  .reader-sentence-controls .reader-sentence-nav { width: calc(100% - 20px); }
+}

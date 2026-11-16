@@ -263,7 +263,7 @@ export function ReaderTts({ getPassage }: {
 
   const systemOptions = [{ value: "", label: "Browser default" }, ...voices.map(item => ({ value: item.voiceURI, label: item.name + " · " + item.lang }))];
   return <section className="reader-tts">
-    <h2>Read aloud</h2>
+    <h2>Audiobook Mode</h2>
     <label id="tts-engine-label">Engine</label>
     <ReaderSelect id="tts-engine" labelId="tts-engine-label" value={engine} options={[{ value: "system", label: "System Voices" }, { value: "kokoro", label: "Kokoro · Local AI" }]} onChange={value => {
       stop(); setError(""); setEngine(value);

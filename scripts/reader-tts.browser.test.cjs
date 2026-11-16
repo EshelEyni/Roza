@@ -221,9 +221,9 @@ test(
           assert.match(menuLabels[1], /review/i);
           assert.equal(menuLabels[2], 'Sentence Mode');
           assert.match(menuLabels[3], /RSVP/);
-          assert.equal(menuLabels[4], 'Read aloud');
+          assert.equal(menuLabels[4], 'Audiobook Mode');
           assert.match(menuLabels[5], /settings/i);
-          await page.getByRole('button', { name: 'Read aloud', exact: true }).click();
+          await page.getByRole('button', { name: 'Audiobook Mode', exact: true }).click();
           const panel = page.locator('.reader-tts');
           await page.waitForFunction(() => document.querySelector('.reader-tts-passage')?.textContent === 'Hello, reading world. Next sentence!');
           assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);

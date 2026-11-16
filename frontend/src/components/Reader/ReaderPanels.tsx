@@ -80,9 +80,9 @@ export function ReaderPanels({
   if (!panel) return null;
   return (
     <ReaderSheet
-      mobileFullscreen={panel === "tts" || panel === "search" || panel === "chat"}
+      mobileFullscreen={panel === "tts" || panel === "search" || panel === "chat" || panel === "annotations"}
       mobileCloseInContent={panel === "search" || panel === "chat"}
-      label={panel === "tts" ? "Read aloud" : t(
+      label={panel === "tts" ? "Audiobook Mode" : t(
         panel === "review" ? "reader.review.title" : panel === "annotations" ? "reader.annotations.title" : panel === "chat"
           ? "reader.chat.title"
           : panel === "contents"

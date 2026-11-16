@@ -322,6 +322,25 @@ test(
               );
             };
             await enter();
+            const footer = page.locator('.reader-sentence-controls');
+            assert.deepEqual(await footer.locator('.reader-sentence-actions span').allTextContents(), ['Translate', 'Ask AI', 'Copy', 'Note', 'Flag', 'Set target']);
+            const checkFooter = async () => {
+              const layout = await footer.evaluate(el => {
+                const actions = [...el.querySelectorAll('.reader-sentence-actions button')].map(b => b.getBoundingClientRect());
+                const progress = el.querySelector('.reader-sentence-progress').getBoundingClientRect();
+                const nav = [...el.querySelectorAll('.reader-sentence-nav button')].map(b => b.getBoundingClientRect());
+                return { actionRow: actions.every(r => Math.abs(r.top - actions[0].top) <= 1), rowOrder: progress.bottom <= actions[0].top && actions[0].bottom <= nav[0].top, navRow: Math.abs(nav[0].top - nav[1].top) <= 1, width: el.clientWidth, scrollWidth: el.scrollWidth };
+              });
+              assert.equal(layout.actionRow && layout.rowOrder && layout.navRow, true, JSON.stringify(layout));
+              assert.ok(layout.scrollWidth <= layout.width + 1, JSON.stringify(layout));
+            };
+            await checkFooter();
+            if (mobile) {
+              await page.setViewportSize({width: 320, height: 700});
+              await checkFooter();
+              await page.setViewportSize({width: 390, height: 844});
+            }
+            if (process.env.SENTENCE_FOOTER_SCREENSHOTS) await page.screenshot({path: path.join(process.env.SENTENCE_FOOTER_SCREENSHOTS, mobile ? 'sentence-footer-mobile.png' : 'sentence-footer-desktop.png')});
             await advance(1, 25);
             const forward = await sentence();
             const stale = await page.evaluate(() =>

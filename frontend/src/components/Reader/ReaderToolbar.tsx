@@ -178,7 +178,7 @@ export function ReaderToolbar({
                 <span>{t("reader.rsvp.mode")}</span>
               </button>
             )}
-            <button className="reader-icon-button" aria-label="Read aloud" title="Read aloud" aria-expanded={panel === "tts"} disabled={loading || !!error} onClick={() => togglePanel("tts")}><FiVolume2 /><span>Read aloud</span></button>
+            <button className="reader-icon-button" aria-label="Audiobook Mode" title="Audiobook Mode" aria-expanded={panel === "tts"} disabled={loading || !!error} onClick={() => togglePanel("tts")}><FiVolume2 /><span>Audiobook Mode</span></button>
             <button
               className={
                 "reader-icon-button " +

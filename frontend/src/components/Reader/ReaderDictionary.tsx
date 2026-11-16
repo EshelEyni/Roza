@@ -236,7 +236,7 @@ export function ReaderDictionary({
   const popupWidth = opened ? 360 : actionWidth;
   const popupTop = `clamp(12px, ${selection.y}px, max(12px, calc(100dvh - ${opened ? 442 : 152}px)))`;
   const [mobilePosition, setMobilePosition] = useState<{
-    left: number; top: number; width: number; maxHeight: number; visibility: "visible" | "hidden";
+    left: number; bottom: number; width: number; maxHeight: number; visibility: "visible" | "hidden";
   }>();
   useEffect(() => {
     if (!mobile || opened) return;
@@ -249,17 +249,15 @@ export function ReaderDictionary({
       const top = viewport?.offsetTop || 0;
       const width = viewport?.width || window.innerWidth;
       const height = viewport?.height || window.innerHeight;
-      const popupWidth = width;
-      // Replace the footer at the bottom of Safari's visible viewport.
-      const bottom = top + height;
-      const maxHeight = Math.max(0, bottom - (top + 12));
-      // Keep the content-sized controls within the visible viewport.
+      // The action bar replaces the footer, independent of the selected passage.
+      // Fixed bottom uses the layout viewport; compensate only for the part
+      // obscured by browser chrome/keyboard outside Safari's visual viewport.
       setMobilePosition({
-        width: popupWidth,
         left,
-        top: Math.max(top + 12, bottom - Math.min(element.scrollHeight + 1, maxHeight)),
-        maxHeight,
-        visibility: "visible",
+        bottom: Math.max(0, window.innerHeight - (top + height)),
+        width,
+        maxHeight: Math.max(0, height),
+        visibility: height > 0 ? "visible" : "hidden",
       });
     };
     const schedule = () => {
@@ -267,21 +265,18 @@ export function ReaderDictionary({
       request = requestAnimationFrame(update);
     };
     update();
-    const observer = new ResizeObserver(schedule);
-    if (dialog.current) observer.observe(dialog.current);
     window.addEventListener("resize", schedule);
     window.addEventListener("scroll", schedule, true);
     viewport?.addEventListener("resize", schedule);
     viewport?.addEventListener("scroll", schedule);
     return () => {
       cancelAnimationFrame(request);
-      observer.disconnect();
       window.removeEventListener("resize", schedule);
       window.removeEventListener("scroll", schedule, true);
       viewport?.removeEventListener("resize", schedule);
       viewport?.removeEventListener("scroll", schedule);
     };
-  }, [mobile, opened, actionWidth]);
+  }, [mobile, opened]);
   const content = (
     <div
       className={"reader-dictionary " + (opened ? "is-open" : mobile ? "reader-selection-docked" : "")}
@@ -332,7 +327,7 @@ export function ReaderDictionary({
                 title={t("reader.lookupHebrew")}
                 onClick={() => void lookup()}
               >
-                <FiBookOpen aria-hidden="true" />
+                <FiBookOpen aria-hidden="true" />{mobile && <span className="reader-selection-label">Look up</span>}
               </button>
             )}
             <button
@@ -343,19 +338,19 @@ export function ReaderDictionary({
               disabled={aiDisabled}
               onClick={() => onAskAi()}
             >
-              <FiMessageSquare aria-hidden="true" />
+              <FiMessageSquare aria-hidden="true" />{mobile && <span className="reader-selection-label">Ask AI</span>}
             </button>
             {onFlag && <button className="reader-icon-button" disabled={busy || !flagReady}
               onMouseDown={event => event.preventDefault()} onClick={onFlag}
               aria-pressed={flagged} aria-label={t(flagged ? "reader.review.removeFlag" : "reader.review.flag")}
               title={t(flagged ? "reader.review.removeFlag" : "reader.review.flag")}>
-              <LuFlag aria-hidden="true" fill={flagged ? "currentColor" : "none"} />
+              <LuFlag aria-hidden="true" fill={flagged ? "currentColor" : "none"} />{mobile && <span className="reader-selection-label">Flag</span>}
             </button>}
             {onAnnotate && <>
               <button className="reader-icon-button reader-selection-annotate" disabled={busy || annotationBusy}
                 onClick={() => onAnnotate(true)} aria-label={t("reader.annotations.addNote")}
                 title={t("reader.annotations.addNote")}>
-                <FiEdit3 aria-hidden="true" />
+                <FiEdit3 aria-hidden="true" />{mobile && <span className="reader-selection-label">Note</span>}
               </button>
             </>}
             <button
@@ -365,7 +360,7 @@ export function ReaderDictionary({
               aria-label={t("reader.selectionCopy")}
               title={t("reader.selectionCopy")}
             >
-              <FiCopy aria-hidden="true" />
+              <FiCopy aria-hidden="true" />{mobile && <span className="reader-selection-label">Copy</span>}
             </button>
           </div>
 

@@ -1,5 +1,7 @@
 interface TouchOptions {
   enabled: () => boolean;
+  scope?: () => Element | null;
+  nativeContextMenu?: boolean;
   paginated: () => boolean;
   blocked: () => boolean;
   selected: () => boolean;
@@ -34,7 +36,7 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
     }
   };
   const suppressContextMenu = (event: Event) => {
-    if (options.enabled() && !options.blocked()) event.preventDefault();
+    if (!options.nativeContextMenu && options.enabled() && !options.blocked()) event.preventDefault();
   };
   const hasSelection = () => !!doc.getSelection()?.toString().trim();
   const start = (event: TouchEvent) => {
@@ -47,6 +49,7 @@ export function bindReaderTouch(doc: Document, options: TouchOptions) {
       )
     )
       return;
+    if (options.scope && !options.scope()?.contains(event.target as Node)) return;
     const touch = event.touches[0];
     gesture = {
       id: touch.identifier,
