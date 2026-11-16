@@ -23,23 +23,29 @@ const HighlightedSentence = memo(function HighlightedSentence({ sentence, index,
 });
 
 /** Inactive paragraphs are plain text. Modal/status changes reuse every paragraph. */
-const ReaderAudiobookParagraph = memo(function ReaderAudiobookParagraph({ paragraph, activeIndex, highlight, offset }: {
-  paragraph: AudiobookParagraphData; activeIndex: number; highlight: number | null; offset: number;
+const ReaderAudiobookParagraph = memo(function ReaderAudiobookParagraph({ paragraph, activeIndex, activeEnd, highlight, offset }: {
+  paragraph: AudiobookParagraphData; activeIndex: number; activeEnd: number; highlight: number | null; offset: number;
 }) {
-  const active = paragraph.items[activeIndex - paragraph.first];
+  const firstIndex = Math.max(activeIndex, paragraph.first);
+  const active = activeIndex < 0 ? undefined : paragraph.items[firstIndex - paragraph.first];
+  const last = paragraph.items[Math.min(activeEnd, paragraph.last) - paragraph.first];
+  const end = last ? last.offset + last.sentence.text.length : 0;
   return <p>
     {active ? <>
       {paragraph.text.slice(0, active.offset)}
-      <HighlightedSentence sentence={active.sentence} index={activeIndex} highlight={highlight} offset={offset} />
-      {paragraph.text.slice(active.offset + active.sentence.text.length)}
+      {firstIndex === activeIndex ? <>
+        <HighlightedSentence sentence={active.sentence} index={activeIndex} highlight={highlight} offset={offset} />
+        {activeEnd > activeIndex && <span className="audiobook-sentence is-active">{paragraph.text.slice(active.offset + active.sentence.text.length, end)}</span>}
+      </> : <span className="audiobook-sentence is-active">{paragraph.text.slice(active.offset, end)}</span>}
+      {paragraph.text.slice(end)}
     </> : paragraph.text}
   </p>;
 });
 
 /** Modal, voice and status state never re-renders the chapter's text subtree. */
-export const ReaderAudiobookText = memo(function ReaderAudiobookText({ section, bookTitle, loading, index, highlight, offset }: {
+export const ReaderAudiobookText = memo(function ReaderAudiobookText({ section, bookTitle, loading, index, passageEnd = index, highlight, offset }: {
   section: AudiobookSection | null; bookTitle: string; loading: boolean;
-  index: number; highlight: number | null; offset: number;
+  index: number; passageEnd?: number; highlight: number | null; offset: number;
 }) {
   const paragraphs = useMemo(() => audiobookParagraphs(section?.sentences || []), [section?.sentences]);
   return <article className="audiobook-content" dir="auto" aria-busy={loading}>
@@ -47,9 +53,9 @@ export const ReaderAudiobookText = memo(function ReaderAudiobookText({ section, 
     <h1 className="audiobook-chapter-title">{section?.title || bookTitle}</h1>
     {loading && <p className="audiobook-loading" role="status">Loading book…</p>}
     {!loading && paragraphs.map(paragraph => {
-      const active = index >= paragraph.first && index <= paragraph.last;
+      const active = index <= paragraph.last && passageEnd >= paragraph.first;
       return <ReaderAudiobookParagraph key={paragraph.paragraph} paragraph={paragraph}
-        activeIndex={active ? index : -1} highlight={active ? highlight : null} offset={active ? offset : 0} />;
+        activeIndex={active ? index : -1} activeEnd={active ? passageEnd : -1} highlight={active ? highlight : null} offset={active ? offset : 0} />;
     })}
   </article>;
 });

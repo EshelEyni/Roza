@@ -107,3 +107,80 @@ test("an interrupted audio context reports the interruption", async () => {
   env.contexts[0].state="suspended"; env.contexts[0].onstatechange();
   assert.equal(interrupted,1); assert.equal(env.sources[0].stopped,true); player.dispose();
 });
+
+test("short sentences and paragraphs share a bounded passage with exact endpoints", () => {
+  const {openAiBlock}=setup();
+  const sentences=["First sentence.","Another sentence.","Next paragraph."].map((text,index)=>({
+    text,paragraph:index<2?0:1,rangeCfi:(a,b)=>`${index}:${a}:${b}`,
+  }));
+  const block=openAiBlock(sentences,0,0,34);
+  assert.equal(block.text,"First sentence. Another sentence.");
+  assert.equal(block.cfi,"0:0:15"); assert.equal(block.endCfi,"1:0:17"); assert.equal(block.endIndex,1);
+  assert.equal(openAiBlock(sentences,0,0,20).text,"First sentence.");
+  assert.equal(openAiBlock(sentences,0,6,600).text,"sentence. Another sentence. Next paragraph.");
+  assert.equal(openAiBlock(sentences,0,0,600).endCfi,"2:0:15");
+  const long=Array.from({length:8},(_,i)=>({text:Array.from({length:i%3?12:100},(_,j)=>`word${i}_${j}`).join(" ")+".",paragraph:i,rangeCfi:(a,b)=>`${i}:${a}:${b}`}));
+  const chunks=[]; let index=0, offset=0;
+  while(index<long.length) {
+    const part=openAiBlock(long,index,offset,600); chunks.push(part.text);
+    assert.ok(part.text.length>0 && part.text.length<=600);
+    index=part.endIndex; offset=part.end;
+    while(/\s/u.test(long[index].text[offset]||"") && offset<long[index].text.length) offset++;
+    if(offset>=long[index].text.length) {index++;offset=0;}
+  }
+  assert.equal(chunks.join(" "),long.map(sentence=>sentence.text).join(" "),"grouping and long-sentence splits never skip or repeat words");
+});
+
+test("look-ahead starts during playback and the next passage reuses its in-flight request", async () => {
+  let finish;
+  const env=setup((url,options)=>options.method==="POST" && JSON.parse(options.body).passageCfi==="next"
+    ? new Promise(resolve=>{finish=resolve;}) : undefined);
+  const player=new env.ReaderOpenAiAudio("book"); await player.unlock();
+  await player.play(passage,"marin",1,()=>{},()=>{});
+  const next={...passage,cfi:"next",endCfi:"next-end"};
+  const ahead=player.prefetch(next,"marin");
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(env.sources[0].stopped,undefined,"prefetch never stops current audio");
+  assert.equal(env.calls.filter(call=>call.method==="POST").length,2);
+  env.sources[0].onended();
+  const following=player.play(next,"marin",1,()=>{},()=>{});
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(env.calls.filter(call=>call.method==="POST").length,2,"wait on the same generation if it is slow");
+  const sent=JSON.parse(env.calls.filter(call=>call.method==="POST")[1].body);
+  assert.equal(sent.passageEndCfi,"next-end");
+  finish({ok:true,json:async()=>({status:"success",data:{text:"Hello world.",chunkId:"a".repeat(64),audioUrl:"/api/reader/book/audiobook/chunks/"+"a".repeat(64)}})});
+  await ahead; await following;
+  assert.equal(env.sources.length,2); player.dispose();
+});
+
+test("failed prefetch lets current audio finish and is not automatically regenerated", async () => {
+  const env=setup((url,options)=>options.method==="POST" && JSON.parse(options.body).passageCfi==="next"
+    ? Promise.resolve({ok:false,status:429,headers:{get:()=>"60"},json:async()=>({message:"Limit reached"})}) : undefined);
+  const player=new env.ReaderOpenAiAudio("book"); await player.unlock();
+  await player.play(passage,"marin",1,()=>{},()=>{});
+  const next={...passage,cfi:"next"};
+  await assert.rejects(player.prefetch(next,"marin"),/Limit reached/);
+  assert.equal(env.sources[0].stopped,undefined);
+  env.sources[0].onended();
+  await assert.rejects(player.play(next,"marin",1,()=>{},()=>{}),/Limit reached/);
+  assert.equal(env.calls.filter(call=>call.method==="POST").length,2);
+  player.dispose();
+});
+
+test("pause aborts look-ahead without allowing stale audio to start", async () => {
+  let finish;
+  const env=setup((url,options)=>options.method==="POST" && JSON.parse(options.body).passageCfi==="next"
+    ? new Promise(resolve=>{finish=resolve;}) : undefined);
+  const player=new env.ReaderOpenAiAudio("book"); await player.unlock();
+  await player.play(passage,"marin",1,()=>{},()=>{});
+  const oldEnd=env.sources[0].onended;
+  const ahead=player.prefetch({...passage,cfi:"next"},"marin");
+  await new Promise(resolve=>setImmediate(resolve)); player.pause();
+  assert.equal(env.calls.find(call=>call.method==="POST" && JSON.parse(call.body).passageCfi==="next").signal.aborted,true);
+  finish({ok:true,json:async()=>({status:"success",data:{text:"Hello world."}})});
+  await ahead; oldEnd();
+  assert.equal(env.sources.length,1);
+  await player.play(passage,"marin",1,()=>{},()=>{});
+  assert.equal(env.calls.filter(call=>call.method==="POST").length,2,"resume keeps the current decoded audio");
+  player.dispose();
+});

@@ -113,7 +113,7 @@ export function ReaderTts({ bookTitle, bookId, loadSection, onClose }: {
     </header>
     <main className="audiobook-reading" ref={reading} tabIndex={0} aria-label="Book text">
       <ReaderAudiobookText section={audio.section} bookTitle={bookTitle} loading={audio.loading}
-        index={audio.index} highlight={audio.highlight} offset={audio.offset} />
+        index={audio.index} passageEnd={audio.passageEnd} highlight={audio.highlight} offset={audio.offset} />
     </main>
     <footer className="audiobook-player">
       <div className="audiobook-player-inner">
@@ -159,7 +159,7 @@ export function ReaderTts({ bookTitle, bookId, loadSection, onClose }: {
           </div>
         </div>
         <div className="audiobook-player-meta" role="status" aria-live="polite"><span className={"audiobook-pulse" + (audio.playing ? " is-live" : "")} aria-hidden="true" /><span>{audio.available ? audio.status : "Selected voice engine is unavailable"}</span></div>
-        <div className="audiobook-timing-note">Estimated section timing · {audio.engine === "openai" ? "AI-generated voice · sentence follow-along" : audio.wordEvents ? "Word follow-along" : "Sentence follow-along; word support varies by voice"}</div>
+        <div className="audiobook-timing-note">Estimated section timing · {audio.engine === "openai" ? "AI-generated voice · passage follow-along" : audio.wordEvents ? "Word follow-along" : "Sentence follow-along; word support varies by voice"}</div>
         {audio.error && <p className="audiobook-error" role="alert">{audio.error}</p>}
       </div>
     </footer>

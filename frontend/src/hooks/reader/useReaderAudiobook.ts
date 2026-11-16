@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { audiobookSpeechSlice, audiobookSeek, audiobookWordAt, type AudiobookSection } from "../../services/readerTts";
-import { loadAudiobookConfig, openAiPassage, ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
+import { loadAudiobookConfig, openAiBlock, ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
 
 export type AudiobookLoader = (target?: number, direction?: 1 | -1) => Promise<AudiobookSection | null>;
 
@@ -16,6 +16,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   if (!ai.current && bookId) ai.current = new ReaderOpenAiAudio(bookId, () => pause("Audio interrupted · press Play to continue"));
   const [section, setSection] = useState<AudiobookSection | null>(null);
   const [index, setIndex] = useState(0);
+  const [passageEnd, setPassageEnd] = useState(0);
   const [offset, setOffset] = useState(0);
   const [highlight, setHighlight] = useState<number | null>(null);
   const [wordEvents, setWordEvents] = useState(false);
@@ -29,6 +30,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   const [speed, setSpeed] = useState(1);
   const position = useRef({ section: null as AudiobookSection | null, index: 0, offset: 0 });
   const loader = useRef(loadSection); loader.current = loadSection;
+  const nextSection = useRef<{ target: number; promise: Promise<AudiobookSection | null> }>();
   const selectedVoice = useRef("");
   const rate = useRef(1);
   const wantPlay = useRef(false);
@@ -37,9 +39,9 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   const utterance = useRef<SpeechSynthesisUtterance>();
   const synth = window.speechSynthesis;
 
-  function cancel(resetAudio = true) {
+  function cancel(resetAudio = true, continuous = false) {
     ++version.current;
-    if (resetAudio) ai.current?.stop(); else ai.current?.pause();
+    if (!continuous) { if (resetAudio) ai.current?.stop(); else ai.current?.pause(); }
     const previous = utterance.current;
     utterance.current = undefined;
     if (previous) {
@@ -61,30 +63,52 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     pause("Playback paused");
     setError(cause instanceof Error ? cause.message : String(cause));
   }
-  function speak() {
+  function speak(continuous = false) {
     const { section: current, index: sentenceIndex, offset: start } = position.current;
     if (!current || !wantPlay.current) return;
-    cancel(false);
+    cancel(false, continuous);
     const run = version.current;
     const sentence = current.sentences[sentenceIndex];
-    const advance = (end: number) => {
+    const advance = (end: number, endIndex = sentenceIndex) => {
       if (version.current !== run || !wantPlay.current) return;
+      const last = current.sentences[endIndex];
       let following = end;
-      while (/\s/u.test(sentence.text[following] || "") && following < sentence.text.length) following++;
-      if (following < sentence.text.length) {
-        position.current.offset = following; setOffset(following); speak();
-      } else if (sentenceIndex + 1 < current.sentences.length) goTo(sentenceIndex + 1, 0);
-      else if (current.next !== null) void load(current.next, 1, true);
+      while (/\s/u.test(last.text[following] || "") && following < last.text.length) following++;
+      if (following < last.text.length) goTo(endIndex, following, true);
+      else if (endIndex + 1 < current.sentences.length) goTo(endIndex + 1, 0, true);
+      else if (current.next !== null) void load(current.next, 1, true, true);
       else completed();
     };
     if (engineRef.current === "openai") {
       try {
         if (!configRef.current?.available || !ai.current) throw new Error("OpenAI narration is unavailable. Choose System voices.");
-        const passage = openAiPassage(sentence, start, configRef.current.maxChars);
+        const passage = openAiBlock(current.sentences, sentenceIndex, start, configRef.current.maxChars);
+        setPassageEnd(passage.endIndex);
         setWordEvents(false); setHighlight(null); setStatus("Preparing OpenAI narration…");
         void ai.current.play(passage, aiVoiceRef.current, rate.current,
-          () => { if (version.current === run) setStatus("Following AI-generated narration"); },
-          () => advance(passage.end)).catch(cause => { if (version.current === run) fail(cause); });
+          () => {
+            if (version.current !== run) return;
+            setStatus("Following AI-generated narration");
+            // Generate exactly one passage ahead while the current audio plays.
+            let nextIndex = passage.endIndex, nextOffset = passage.end;
+            const last = current.sentences[nextIndex];
+            while (/\s/u.test(last.text[nextOffset] || "") && nextOffset < last.text.length) nextOffset++;
+            if (nextOffset >= last.text.length) { nextIndex++; nextOffset = 0; }
+            if (nextIndex < current.sentences.length) {
+              try {
+                const next = openAiBlock(current.sentences, nextIndex, nextOffset, configRef.current!.maxChars);
+                void ai.current!.prefetch(next, aiVoiceRef.current).catch(() => undefined);
+              } catch { /* A source error is reported when playback reaches it. */ }
+            } else if (current.next !== null) {
+              const prepared = { target: current.next, promise: loader.current(current.next, 1) };
+              nextSection.current = prepared;
+              void prepared.promise.then(next => {
+                if (!next || version.current !== run || !wantPlay.current) return;
+                return ai.current!.prefetch(openAiBlock(next.sentences, next.start, next.offset, configRef.current!.maxChars), aiVoiceRef.current);
+              }).catch(() => undefined);
+            }
+          },
+          () => advance(passage.end, passage.endIndex)).catch(cause => { if (version.current === run) fail(cause); });
       } catch (cause) { fail(cause); }
       return;
     }
@@ -115,21 +139,23 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
       synth.resume(); synth.speak(next);
     } catch (cause) { fail(cause); }
   }
-  function goTo(sentence: number, character = 0) {
-    cancel(); setError(""); setEnded(false);
+  function goTo(sentence: number, character = 0, continuous = false) {
+    cancel(true, continuous); setError(""); setEnded(false);
     position.current.index = sentence; position.current.offset = character;
-    setIndex(sentence); setOffset(character); setHighlight(null);
-    if (wantPlay.current) { setStatus("Starting narration…"); speak(); }
+    setIndex(sentence); setPassageEnd(sentence); setOffset(character); setHighlight(null);
+    if (wantPlay.current) { setStatus("Starting narration…"); speak(continuous); }
     else setStatus("Paused · press Play to continue");
   }
-  async function load(target?: number, direction: 1 | -1 = 1, autoplay = false) {
-    cancel();
+  async function load(target?: number, direction: 1 | -1 = 1, autoplay = false, continuous = false) {
+    cancel(true, continuous);
     const request = ++loadVersion.current;
     wantPlay.current = autoplay;
     setPlaying(autoplay); setLoading(true); setError(""); setHighlight(null);
     setStatus("Loading book…");
     try {
-      const next = await loader.current(target, direction);
+      const prepared = target !== undefined && nextSection.current?.target === target ? nextSection.current : undefined;
+      nextSection.current = undefined;
+      const next = await (prepared?.promise || loader.current(target, direction));
       if (request !== loadVersion.current) return;
       if (!next) {
         if (!position.current.section) { setStatus("No readable text in this book section"); return; }
@@ -140,10 +166,10 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
         return;
       }
       position.current = { section: next, index: next.start, offset: next.offset };
-      setSection(next); setIndex(next.start); setOffset(next.offset); setEnded(false);
+      setSection(next); setIndex(next.start); setPassageEnd(next.start); setOffset(next.offset); setEnded(false);
       const shouldPlay = wantPlay.current;
       setStatus(shouldPlay ? "Starting narration…" : autoplay ? "Paused · press Play to continue" : "Ready to listen");
-      if (shouldPlay) speak();
+      if (shouldPlay) speak(continuous);
     } catch (cause) {
       if (request === loadVersion.current) fail(cause);
     } finally {
@@ -236,7 +262,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   const sentence = section?.sentences[index];
   const currentWord = sentence ? sentence.startWord + audiobookWordAt(sentence.words, offset) : 0;
   return {
-    section, index, offset, highlight, wordEvents, playing, ended, loading, status, error,
+    section, index, passageEnd: engine === "openai" ? passageEnd : index, offset, highlight, wordEvents, playing, ended, loading, status, error,
     voices, voice, speed, toggle, move, seek, changeVoice, changeSpeed, pause, resume,
     engine, config, configStatus, aiVoice, changeNarrator,
     available: engine === "openai" ? !!config?.available : !!synth,

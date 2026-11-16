@@ -371,9 +371,10 @@ test(
             if (route.request().method()==="POST") {
               const body=route.request().postDataJSON(); requests.push(body);
               if(failure) return route.fulfill({status:429,headers:{"Retry-After":"60"},json:{status:"fail",message:"Narration limit reached."}});
-              assert.deepEqual(Object.keys(body).sort(),["passageCfi","requestId","voice"]);
-              assert.ok(passages[body.passageCfi],"real EPUB range identifies the submitted passage");
-              return route.fulfill({json:{status:"success",data:{chunkId:"a".repeat(64),audioUrl:"/api/reader/rsvp/audiobook/chunks/"+"a".repeat(64),text:passages[body.passageCfi]}}});
+              assert.deepEqual(Object.keys(body).sort(),body.passageEndCfi ? ["passageCfi","passageEndCfi","requestId","voice"] : ["passageCfi","requestId","voice"]);
+              const key=body.passageCfi+"|"+(body.passageEndCfi||"");
+              assert.ok(passages[key],"real EPUB range identifies the submitted passage");
+              return route.fulfill({json:{status:"success",data:{chunkId:"a".repeat(64),audioUrl:"/api/reader/rsvp/audiobook/chunks/"+"a".repeat(64),text:passages[key]}}});
             }
             return route.fulfill({contentType:"audio/wav",body:Buffer.from("mock audio decoded by fake AudioContext")});
           });
@@ -393,7 +394,8 @@ test(
           await page.waitForFunction(()=>window.rsvpTest?.reader.loading===false);
           const source=await page.evaluate(async()=>{
             const section=await window.rsvpTest.reader.audiobook.loadSection();
-            return section.sentences.map(s=>({text:s.text,cfi:s.rangeCfi(0,s.text.length),partial:s.rangeCfi(7,s.text.length)}));
+            const {openAiBlock}=await import("/frontend/src/services/readerOpenAiAudio.ts");
+            return section.sentences.map((s,index)=>({text:s.text,block:openAiBlock(section.sentences,index,0,600),partial:openAiBlock(section.sentences,index,7,600)}));
           });
           const mapped=await page.evaluate(()=>{
             const doc=new DOMParser().parseFromString('<html xmlns="http://www.w3.org/1999/xhtml"><body><p>Hello   <em>😀 world</em>\t again.</p></body></html>',"application/xhtml+xml");
@@ -402,7 +404,13 @@ test(
             return {text:sentence.text,part:sentence.rangeCfi(6,14)};
           });
           assert.deepEqual(mapped,{text:"Hello 😀 world again.",part:"😀 world"},"normalized UTF-16 ranges map through inline nodes and whitespace");
-          passages=Object.fromEntries(source.flatMap(s=>[[s.cfi,s.text],[s.partial,s.text.slice(7)]]));
+          passages=Object.fromEntries(source.flatMap(s=>[s.block,s.partial].map(block=>[block.cfi+"|"+(block.endCfi||""),block.text])));
+          const following=await page.evaluate(async()=>{
+            const section=await window.rsvpTest.reader.audiobook.loadSection(2,1);
+            const {openAiBlock}=await import("/frontend/src/services/readerOpenAiAudio.ts");
+            return section.sentences.map((_,index)=>openAiBlock(section.sentences,index,0,600));
+          });
+          for(const block of following) passages[block.cfi+"|"+(block.endCfi||"")]=block.text;
           await page.getByRole("button",{name:"Reader menu",exact:true}).click();
           await page.getByRole("button",{name:"Audiobook Mode",exact:true}).click();
           const mode=page.getByRole("dialog",{name:"Audiobook Mode",exact:true});
@@ -419,24 +427,31 @@ test(
           await mode.getByRole("button",{name:"Play narration",exact:true}).click();
           await page.waitForFunction(()=>window.audioSources.length===1);
           assert.equal(requests[0].voice,"cedar");
-          assert.equal(requests[0].passageCfi,source[0].cfi);
+          assert.equal(requests[0].passageCfi,source[0].block.cfi);
+          assert.equal(requests[0].passageEndCfi,source[0].block.endCfi,"multiple short sentences share one request");
+          assert.ok(source[0].block.endIndex>0);
           assert.equal(await mode.locator(".audiobook-word.is-active").count(),0);
-          await mode.getByText(/AI-generated voice · sentence follow-along/).waitFor();
+          await mode.getByText(/AI-generated voice · passage follow-along/).waitFor();
+          await page.waitForFunction(()=>window.audioSources.length===1);
+          await page.waitForTimeout(100);
+          const nextBlock=source[source[0].block.endIndex+1].block;
+          assert.ok(requests.some(request=>request.passageCfi===nextBlock.cfi),"next audio requested before the current audio ends");
           if(process.env.TTS_SCREENSHOT) await page.screenshot({path:process.env.TTS_SCREENSHOT.replace(".png",mobile?"-openai-mobile.png":"-openai-desktop.png")});
           await page.evaluate(()=>window.audioContexts[0].currentTime=3);
           await mode.getByRole("button",{name:"Pause narration"}).click();
           await mode.getByRole("button",{name:"Play narration",exact:true}).click();
           await page.waitForFunction(()=>window.audioSources.length===2);
-          assert.equal(requests.length,1,"resume reuses generated audio");
+          assert.equal(requests.filter(request=>request.passageCfi===source[0].block.cfi).length,1,"resume reuses generated audio");
           assert.equal(await page.evaluate(()=>window.audioSources.at(-1).offset),3);
           await mode.getByRole("button",{name:"Reading speed 1×",exact:true}).click();
           const speed=mode.getByRole("slider",{name:"Reading speed",exact:true}); await speed.focus(); await speed.press("ArrowRight");
           assert.equal(await page.evaluate(()=>window.audioSources.at(-1).playbackRate.value),1.1);
-          assert.equal(requests.length,1,"speed changes do not regenerate audio");
+          assert.equal(requests.filter(request=>request.passageCfi===source[0].block.cfi).length,1,"speed changes do not regenerate audio");
           await mode.getByRole("button",{name:"Reading speed 1.1×",exact:true}).click();
           await page.evaluate(()=>window.audioSources.at(-1).onended());
           await page.waitForFunction(()=>window.audioSources.length===3);
-          assert.equal(requests[1].passageCfi,source[1].cfi,"completion advances automatically");
+          assert.ok(requests.some(request=>request.passageCfi===nextBlock.cfi),"completion advances automatically");
+          assert.equal(requests.filter(request=>request.passageCfi===nextBlock.cfi).length,1,"prefetched audio is consumed without a new request");
           await mode.getByRole("button",{name:"Choose narrator voice"}).click();
           picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.waitFor();
@@ -459,7 +474,21 @@ test(
           await seek.focus(); await seek.press("Home"); await seek.press("ArrowRight"); await seek.press("ArrowRight");
           await mode.getByRole("button",{name:"Play narration",exact:true}).click();
           await page.waitForFunction(()=>window.audioSources.length===5);
-          assert.equal(requests.at(-1).passageCfi,source[0].partial,"seek submits a precise partial source range");
+          assert.ok(requests.some(request=>request.passageCfi===source[0].partial.cfi && request.passageEndCfi===source[0].partial.endCfi),"seek submits a precise partial source range");
+          let chapterPrepared=false;
+          for(let step=0;step<10 && !(await mode.getByRole("heading",{name:"The Next Day",exact:true}).count());step++) {
+            await page.waitForTimeout(100);
+            const active=(await mode.locator(".audiobook-sentence.is-active").allTextContents()).join(" ");
+            if(active.includes(source.at(-1).text)) {
+              assert.ok(requests.some(request=>request.passageCfi===following[0].cfi),"next chapter starts preparing before this chapter ends");
+              chapterPrepared=true;
+            }
+            const before=await page.evaluate(()=>window.audioSources.length);
+            await page.evaluate(()=>window.audioSources.at(-1).onended());
+            await page.waitForFunction(previous=>window.audioSources.length>previous,before);
+          }
+          assert.equal(chapterPrepared,true);
+          await mode.getByRole("heading",{name:"The Next Day",exact:true}).waitFor();
           await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
           assert.equal(await page.evaluate(()=>window.audioContexts[0].state),"closed");
         } finally { await browser.close(); }

@@ -27,14 +27,34 @@ export function openAiPassage(sentence: AudiobookSentence, offset: number, limit
   return { ...part, cfi: sentence.rangeCfi(offset, part.end) };
 }
 
-/** One audio buffer and one cancellable generation request, scoped to this mode. */
+export type OpenAiPassage = { text: string; cfi: string; endCfi?: string };
+
+/** Group adjacent sentences into a bounded passage, retaining exact endpoints. */
+export function openAiBlock(sentences: AudiobookSentence[], index: number, offset: number, limit: number) {
+  const first = openAiPassage(sentences[index], offset, limit);
+  let text = first.text, end = first.end, endIndex = index;
+  let endCfi: string | undefined;
+  while (end === sentences[endIndex].text.length && endIndex + 1 < sentences.length) {
+    const next = sentences[endIndex + 1];
+    // Keep sentence boundaries when possible; split only an oversized sentence.
+    if (text.length + 1 + next.text.length > Math.min(600, limit)) break;
+    const part = openAiPassage(next, 0, limit);
+    text += " " + part.text; end = part.end; endIndex++;
+    endCfi = part.cfi;
+  }
+  return { text, cfi: first.cfi, ...(endCfi ? { endCfi } : {}), end, endIndex };
+}
+
+/** Current and next passage only; one cancellable generation request at a time. */
 export class ReaderOpenAiAudio {
   private context?: AudioContext;
   private source?: AudioBufferSourceNode;
   private pending?: { id: string; abort: AbortController };
   private cancellation: Promise<unknown> = Promise.resolve();
   private revision = 0;
-  private cached?: { key: string; buffer: AudioBuffer };
+  private buffers = new Map<string, AudioBuffer>();
+  private prepared?: { key: string; promise: Promise<AudioBuffer | undefined> };
+  private activeKey = "";
   private cursor = 0;
   private started = 0;
   private rate = 1;
@@ -66,6 +86,7 @@ export class ReaderOpenAiAudio {
   }
   pause() {
     ++this.revision; this.remember(); this.running = false;
+    this.prepared = undefined;
     if (this.source) { this.source.onended = null; this.source.stop(); this.source.disconnect(); this.source = undefined; }
     const pending = this.pending;
     if (pending) {
@@ -76,26 +97,36 @@ export class ReaderOpenAiAudio {
     }
   }
   stop() { this.pause(); this.cursor = 0; }
-  dispose() { this.stop(); this.cached = undefined; void this.context?.close(); }
+  dispose() { this.stop(); this.buffers.clear(); void this.context?.close(); }
 
-  async play(passage: { text: string; cfi: string }, voice: string, speed: number,
-    onStart: () => void, onEnd: () => void) {
-    this.pause();
+  private key(passage: OpenAiPassage, voice: string) {
+    return JSON.stringify([voice, passage.cfi, passage.endCfi]);
+  }
+  prefetch(passage: OpenAiPassage, voice: string) {
+    return this.prepare(passage, voice);
+  }
+  private prepare(passage: OpenAiPassage, voice: string): Promise<AudioBuffer | undefined> {
+    const key = this.key(passage, voice);
+    const cached = this.buffers.get(key);
+    if (cached) return Promise.resolve(cached);
+    if (this.prepared?.key === key) return this.prepared.promise;
     const revision = this.revision;
-    const key = voice + "|" + passage.cfi;
     const context = this.context;
-    if (!context) throw new Error("Press Play to allow audio playback.");
-    await this.ready;
-    await this.cancellation;
-    if (revision !== this.revision) return;
-    if (this.cached?.key !== key) {
-      this.cursor = 0;
+    const previous = this.prepared?.promise;
+    const promise = (async () => {
+      if (!context) throw new Error("Press Play to allow audio playback.");
+      await this.ready;
+      await this.cancellation;
+      // A replacement passage must never overlap an active provider request.
+      await previous?.catch(() => undefined);
+      if (revision !== this.revision) return;
       const pending = { id: crypto.randomUUID(), abort: new AbortController() };
       this.pending = pending;
       try {
         const chunk = await json<{ text: string; audioUrl: string; chunkId: string }>(base(this.book) + "/chunks", {
           method: "POST", signal: pending.abort.signal, headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requestId: pending.id, passageCfi: passage.cfi, voice }),
+          body: JSON.stringify({ requestId: pending.id, passageCfi: passage.cfi,
+            ...(passage.endCfi ? { passageEndCfi: passage.endCfi } : {}), voice }),
         });
         if (revision !== this.revision) return;
         if (chunk.text.replace(/\s+/gu, " ").trim() !== passage.text.trim())
@@ -106,19 +137,40 @@ export class ReaderOpenAiAudio {
         if (!response.ok) throw new Error(`Audio could not be loaded (${response.status}). Press Play to retry or choose System voices.`);
         const buffer = await context.decodeAudioData(await response.arrayBuffer());
         if (revision !== this.revision) return;
-        this.cached = { key, buffer };
+        this.buffers.set(key, buffer);
+        while (this.buffers.size > 2) this.buffers.delete(this.buffers.keys().next().value!);
+        return buffer;
       } finally { if (this.pending === pending) this.pending = undefined; }
+    })();
+    this.prepared = { key, promise };
+    // Prefetch failures surface only when playback reaches that passage, without
+    // interrupting current audio or silently making another paid request.
+    void promise.catch(() => undefined);
+    return promise;
+  }
+  async play(passage: OpenAiPassage, voice: string, speed: number,
+    onStart: () => void, onEnd: () => void) {
+    const revision = this.revision;
+    const key = this.key(passage, voice);
+    if (this.source) {
+      this.remember(); this.running = false;
+      this.source.onended = null; this.source.stop(); this.source.disconnect(); this.source = undefined;
     }
-    if (revision !== this.revision || !this.cached) return;
+    if (key !== this.activeKey) this.cursor = 0;
+    this.activeKey = key;
+    this.rate = speed;
+    const buffer = await this.prepare(passage, voice);
+    if (revision !== this.revision || !buffer) return;
+    const context = this.context!;
     if (context.state !== "running") throw new Error("Audio was interrupted. Press Play to continue.");
     const source = context.createBufferSource();
-    source.buffer = this.cached.buffer; source.playbackRate.value = speed;
+    source.buffer = buffer; source.playbackRate.value = this.rate;
     source.connect(context.destination);
     source.onended = () => {
-      if (revision !== this.revision) return;
+      if (revision !== this.revision || this.source !== source) return;
       this.running = false; this.cursor = 0; this.source = undefined; source.disconnect(); onEnd();
     };
-    this.source = source; this.rate = speed; this.started = context.currentTime; this.running = true;
+    this.source = source; this.started = context.currentTime; this.running = true;
     source.start(0, Math.min(this.cursor, source.buffer.duration)); onStart();
   }
 }
