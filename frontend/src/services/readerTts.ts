@@ -1,21 +1,26 @@
 import type { RsvpWord } from "./readerRsvp";
 
-/** Bound inference to one paragraph (or 400 characters), starting at the CFI word. */
-export function ttsPassage(words: RsvpWord[], start: number, limit = 400) {
+export type TtsCursor = { section: number; word: number; offset: number };
+export type TtsPassage = { text: string; next: TtsCursor | null };
+
+/** One bounded paragraph chunk, with an exact continuation even for oversized tokens. */
+export function ttsChunk(words: RsvpWord[], start: number, offset = 0, limit = 400) {
   let text = "";
-  for (let i = Math.max(0, start); i < words.length; i++) {
-    const next = text ? text + " " + words[i].text : words[i].text;
-    if (next.length > limit) return text || words[i].text.slice(0, limit);
-    text = next;
-    if (words[i].paragraphEnd) break;
+  let word = Math.max(0, start);
+  let remainingOffset = offset;
+  for (; word < words.length; word++) {
+    const part = words[word].text.slice(remainingOffset);
+    const separator = text ? " " : "";
+    if (text && text.length + separator.length + part.length > limit) break;
+    const available = limit - text.length - separator.length;
+    text += separator + part.slice(0, available);
+    if (part.length > available) return { text, word, offset: remainingOffset + available };
+    remainingOffset = 0;
+    if (words[word].paragraphEnd) { word++; break; }
   }
-  return text;
+  return { text, word, offset: 0 };
 }
 
-export const kokoroVoices = [
-  { value: "af_heart", label: "Heart · American English" },
-  { value: "af_bella", label: "Bella · American English" },
-  { value: "am_michael", label: "Michael · American English" },
-  { value: "bf_emma", label: "Emma · British English" },
-  { value: "bm_george", label: "George · British English" },
-];
+export function ttsPassage(words: RsvpWord[], start: number, limit = 400) {
+  return ttsChunk(words, start, 0, limit).text;
+}

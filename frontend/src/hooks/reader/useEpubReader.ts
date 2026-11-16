@@ -1,5 +1,6 @@
-import { extractRsvpWords, rsvpStart } from "../../services/readerRsvp";
-import { ttsPassage } from "../../services/readerTts";
+import type { Book } from "epubjs";
+import { extractRsvpWords, rsvpStart, type RsvpWord } from "../../services/readerRsvp";
+import { ttsChunk, type TtsCursor, type TtsPassage } from "../../services/readerTts";
 import { useSentencePanelKeyboard } from "./useSentencePanelKeyboard";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { useReaderProgressSettings } from "./useReaderProgressSettings";
@@ -30,6 +31,7 @@ import { useReaderAnnotations } from "./useReaderAnnotations";
 
 /** Compose reader concerns; DOM and EPUB lifecycle work live in dedicated hooks. */
 export function useEpubReader(book: ReaderBook, userId: string) {
+  const ttsCache = useRef<{ book: Book; section: number; words: RsvpWord[] }>();
   const {t} = useTranslation();
   const mobile = useReaderMobile();
   const { state, updateState, saveStatus, retrySave } = useReaderState(
@@ -174,15 +176,35 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     retry();
   }
   return {
-    getTtsPassage: async () => {
+    getTtsPassage: async (cursor?: TtsCursor): Promise<TtsPassage | null> => {
       const book = runtime.epubRef.current;
       const cfi = sentenceMode.entryCfi();
-      if (!book || !cfi) throw new Error("Book is not ready");
-      const section = book.spine.get(cfi);
-      if (!section) return "";
-      await section.load(book.load.bind(book));
-      const words = extractRsvpWords(section);
-      return ttsPassage(words, rsvpStart(words, cfi));
+      if (!book || (!cursor && !cfi)) throw new Error("Book is not ready");
+      let section = book.spine.get(cursor ? cursor.section : cfi);
+      let word = cursor?.word || 0;
+      let offset = cursor?.offset || 0;
+      while (section) {
+        if (section.linear !== false) {
+          let cached = ttsCache.current;
+          if (!cached || cached.book !== book || cached.section !== section.index) {
+            await section.load(book.load.bind(book));
+            cached = { book, section: section.index, words: extractRsvpWords(section) };
+            ttsCache.current = cached;
+          }
+          if (!cursor) word = rsvpStart(cached.words, cfi);
+          const chunk = ttsChunk(cached.words, word, offset);
+          if (chunk.text) return {
+            text: chunk.text,
+            next: chunk.word < cached.words.length
+              ? { section: section.index, word: chunk.word, offset: chunk.offset }
+              : { section: section.index + 1, word: 0, offset: 0 },
+          };
+        }
+        section = book.spine.get(section.index + 1);
+        cursor = { section: section?.index || 0, word: 0, offset: 0 };
+        word = 0; offset = 0;
+      }
+      return null;
     },
     flags,
     review: { annotations, onOpenAnnotation: (id: string) => {

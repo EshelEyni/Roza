@@ -18,3 +18,24 @@ test('caps long passages without splitting normal words', () => {
   assert.equal(exportsTts.ttsPassage([{text:'x'.repeat(800),paragraphEnd:true}], 0).length, 400);
   assert.ok(exportsTts.ttsPassage(Array.from({length:1000}, () => ({text:'hello',paragraphEnd:false})),0).length <= 400);
 });
+
+test('continuation consumes long paragraphs without dropping or repeating words', () => {
+  const words = Array.from({length:210}, (_, i) => ({text:'word'+i, paragraphEnd:i===209}));
+  const parts = []; let cursor = {word:0,offset:0};
+  while (cursor.word < words.length) {
+    const chunk = exportsTts.ttsChunk(words,cursor.word,cursor.offset);
+    assert.ok(chunk.text.length > 0 && chunk.text.length <= 400);
+    assert.ok(chunk.word > cursor.word || chunk.offset > cursor.offset);
+    parts.push(chunk.text); cursor = chunk;
+  }
+  assert.equal(parts.join(' '),words.map(w=>w.text).join(' '));
+});
+test('oversized tokens resume at exact character offsets', () => {
+  const words = [{text:'abc'.repeat(350),paragraphEnd:true}];
+  let cursor = {word:0,offset:0}; let text = '';
+  while(cursor.word < words.length) {
+    const chunk = exportsTts.ttsChunk(words,cursor.word,cursor.offset);
+    assert.ok(chunk.text.length <= 400); text += chunk.text; cursor = chunk;
+  }
+  assert.equal(text,words[0].text);
+});

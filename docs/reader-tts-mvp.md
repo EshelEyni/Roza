@@ -1,31 +1,53 @@
-# Ticket 47: Read aloud experiment
+# Ticket 47: Read aloud
 
-The speaker button in the EPUB toolbar opens the existing reader sheet (full-height on phones so the controls are visible). Mobile Reload moves into the reader menu to preserve 44px touch targets. The sheet captures the current rendered position (or selected/keyboard word via the existing position helper), reuses RSVP's DOM/CFI extraction, and reads from that word to the paragraph end, capped at 400 characters. Long paragraphs stop early; this experiment does not advance automatically.
+Open **Reader menu → Read aloud**, choose an engine/voice, and press **Play**. Speech starts from the current rendered EPUB position or selected/keyboard word. Both engines continue through paragraphs and linear EPUB sections to the end of the book. No Generate button or advance book conversion is required.
 
-The passage stays fixed when changing engines or voices. **Use current position** explicitly refreshes it. Closing the sheet, opening another panel/mode, leaving the book, stopping generation, or hiding the app cancels playback/work. There is no persisted audio or audiobook progress, chapter generation, highlighting, or server/database change.
+The menu order is Go to page, Review later, Sentence Mode, RSVP, Read aloud, Settings. Mobile Reload remains on the toolbar. The existing full-height phone panel keeps playback controls visible.
 
-## Local use
+## Playback
 
-1. Install dependencies with `npm ci --prefix frontend` and the existing backend setup. Start Roza using its usual local environment (`npm run dev` from the repository root).
-2. Open an English EPUB at a paragraph and tap the speaker button.
-3. Choose **System Voices**, choose a voice, and tap **Play**. Voices update on `voiceschanged`; Browser default remains usable when the browser does not enumerate voices. Test Pause, Resume, Stop, and speed. Changing system speed stops the utterance; Play restarts the same passage at the new speed. Voice availability, pronunciation, and pause support depend on the OS/browser; an OS voice may itself use network services.
-4. Switch to **Kokoro · Local AI**, select one of the five bundled English voice choices, and tap **Generate**. Wait for **Audio ready. Tap Play.**, then tap **Play**. Generation and playback deliberately use separate gestures to accommodate Safari's autoplay policy. Pause/Resume/Stop use the generated WAV through HTML audio; speed changes its playback rate. Generating again, changing voice/engine/passage, or closing discards the in-memory audio.
+- **Play** starts or restarts the displayed passage and automatically continues.
+- **Pause/Resume** holds playback, including while the next Kokoro passage is being prepared.
+- **Stop** cancels playback and pending preparation; Play restarts the current passage.
+- Engine/voice changes stop playback and retain the current passage for comparison.
+- **Use current position** stops playback and reads the current visual reading position again.
+- Changing System speed stops speech; Play restarts the current passage at the new speed. Kokoro speed updates the active and subsequent Web Audio sources; this changes playback rate and pitch.
 
-Kokoro uses upstream [`kokoro-js`](https://github.com/hexgrad/kokoro/tree/main/kokoro.js) 1.2.1 with `onnx-community/Kokoro-82M-v1.0-ONNX`, q8, WASM, in a module worker. Inference stays on the device; EPUB text is not sent to a TTS endpoint. Initial use needs internet for model/tokenizer/voice assets from Hugging Face and runtime assets from jsDelivr. Expect roughly 100+ MB of downloads and substantial RAM/initialization time. Upstream libraries may cache model/voice files using browser storage; Roza adds no generated-audio cache or download feature. Stop terminates an in-flight worker. Model resources are released when the sheet is closed or the engine changes. The large worker/WASM assets are intentionally outside the PWA's default precache size limit; offline Kokoro is not promised.
+Text extraction reuses the existing RSVP DOM/CFI mapping. Each request is bounded to one paragraph or 400 characters; exact word/character continuation prevents lost text in long paragraphs. The loader caches one section's mapped words and skips empty/non-linear spine resources, such as standalone footnotes. Audio does not advance visual pages, add highlighting, or persist listening progress.
 
-## iPhone / PWA limitations
+Kokoro automatically prepares one passage ahead while the current one plays. It keeps the model loaded for the listening session and holds at most the current and next audio chunks. It never converts the entire book in advance. On slow devices, generation can fall behind playback and cause gaps. Closing the panel, switching engines/modes, leaving the book, Stop, or hiding the app terminates the worker and releases audio resources.
 
-No physical iPhone Safari or installed iPhone PWA validation was available. Mobile Chromium emulation checks layout and interaction only. WASM is used without requiring WebGPU or cross-origin-isolation/server changes, but iPhone memory pressure or slow inference may prevent Kokoro from completing. If generation fails, the sheet explains the failure and offers System Voices as the minimal same-device alternative; desktop Edge/Chrome is the comparison path for genuine Kokoro. No browser voice is presented as Kokoro audio.
+## Kokoro voices and model
 
-Keep the screen active. Hiding the app stops speech/audio and in-flight inference; Play restarts the passage after returning. Background, lock-screen, Bluetooth/call interruption recovery and OS audio routing are not guaranteed. On a physical iPhone, test Safari and installed PWA separately: voice enumeration, a cold Kokoro download, ready-to-Play gesture, both engines' Pause/Resume/Stop, speed, rotation, panel switching, Home/return, and call/audio interruption. If native Pause/Resume is ineffective, use Stop then Play.
+This uses upstream [kokoro-js](https://github.com/hexgrad/kokoro/tree/main/kokoro.js) 1.2.1, the free `onnx-community/Kokoro-82M-v1.0-ONNX` model, q8 WASM, and a module worker. The voice dropdown comes directly from the library's supported catalog: **all 28 English voices**, rather than the earlier five-voice subset. Names, language, and gender come from that catalog. Additional multilingual voice files shipped in the package are not automatically usable: this library version exposes/validates only its English catalog. Choosing a different engine/library would be needed to support those other languages.
 
-## Validation
+Inference runs on the device; EPUB text is not sent to a TTS endpoint. Initial use needs internet for model/tokenizer/voice files from Hugging Face and runtime assets from jsDelivr. Expect roughly 100+ MB of downloads, significant RAM, and a first-use delay. Later passages reuse the loaded model. Upstream libraries may cache model/voice files in browser storage; Roza adds no generated-audio cache, downloads, cloud TTS, database changes, or server infrastructure.
 
-Verified on 2026-11-16: production build and focused ESLint passed; 10 focused/security/RSVP regression checks passed. Real Kokoro inference in desktop Edge at desktop and narrow viewports produced a 2.875-second WAV (peak amplitude 0.477), decoded to non-silent samples, advanced HTML audio playback, paused/resumed/stopped and accepted 1.5× speed. This verifies a media path, not a human listening evaluation. Audible OS voice output and physical iPhone behavior remain unverified. Build warnings note large chunks and the intentionally non-precached Kokoro assets.
+The AudioContext is created/resumed directly in the Play gesture, before asynchronous downloads or generation. Generated WAVs are decoded and played automatically through that unlocked context, so there is no second Play/Generate gesture. The worker/WASM bundle remains outside the PWA's default precache size limit; offline operation is not promised.
 
-- `node --test scripts/reader-tts.test.cjs`: paragraph/length bounds and starting-word behavior.
-- `node --test --test-force-exit scripts/reader-tts.browser.test.cjs`: real EPUB fixture and rendered selection/CFI extraction; 375px and desktop layouts; identical passage for both engines; delayed voices, voice choice, system error, Pause/Resume/Stop, worker cancellation, generation errors and panel cleanup. Speech/audio/worker APIs are mocked in this default run, so this does not verify audible OS speech.
-- Set `TTS_REAL_KOKORO=1` for real worker/model generation and WAV decoding/playback checks in desktop Edge (including a narrow viewport). This still mocks system speech. Requires internet and enough memory. The test accepts `PLAYWRIGHT_MODULE` for an external Playwright installation and `PLAYWRIGHT_CHANNEL` (default `msedge`).
+## Local testing
+
+1. Install with `npm ci --prefix frontend`, configure the existing backend, and run Roza using the normal local setup (`npm run dev`).
+2. Open an English EPUB and choose Reader menu → Read aloud.
+3. Choose System Voices and press Play. Confirm continuous paragraph/section transitions, delayed voice enumeration, voice choice, Pause/Resume/Stop, and speed. OS/browser voice availability varies; an OS voice may itself use network services.
+4. Switch to Kokoro, choose a voice, and press Play once. Allow the initial model download. Confirm playback starts automatically, the next passages follow without interaction, and Stop cancels preparation. Try a long paragraph and crossing a chapter/spine boundary.
+5. Compare voices/engines from the same displayed passage. Test panel switching, leaving the reader, Home/return, and an audio interruption.
+
+## iPhone / PWA limits
+
+Physical iPhone Safari and installed iPhone PWA behavior remain **untested**. Narrow Chromium viewports validate layout/interaction, not iOS audio policy, memory limits, or performance. The synchronous Web Audio unlock is intended for Safari but is not a device verification. WASM requires neither WebGPU nor new cross-origin-isolation headers, but memory pressure or slow inference may make Kokoro impractical on some phones; use System Voices on those devices.
+
+Keep the screen active. Hiding the app stops playback/preparation; after returning, Play continues from the displayed passage. Background/lock-screen playback, call/Bluetooth interruption recovery, gapless output, persisted audiobook position and automatic text/page following are not guaranteed.
+
+## Automated validation
+
+- `node --test scripts/reader-tts.test.cjs`: paragraph limits, exact continuation through long paragraphs/oversized tokens, no skipped or repeated words.
+- `node --test --test-force-exit scripts/reader-tts.browser.test.cjs`: real EPUB extraction, section/footnote/end-of-book handling, menu order, desktop/375px layouts, delayed system voices, continuation, errors, Pause/Resume while buffering, one-chunk lookahead, Stop/close/hide cancellation and ignored late callbacks. Default speech/audio/worker APIs are mocked.
+- Set `TTS_REAL_KOKORO=1` for genuine worker/model inference, all 28 library voices, decoded non-silent audio, one-click automatic playback, Pause/Resume/rate changes and continuous playback through the test EPUB to its end. This still mocks system speech. Requires network and sufficient memory.
+- Browser tests accept `PLAYWRIGHT_MODULE` for an external Playwright installation and `PLAYWRIGHT_CHANNEL` (default `msedge`). Optional `TTS_SCREENSHOT` saves a mobile screenshot.
 - `npm run build --prefix frontend`: TypeScript, production bundle and PWA generation.
+- Focused ESLint checks cover the new TTS component/services; existing RSVP and reader-content-security tests cover nearby reader behavior.
 
-Automated media playback cannot establish subjective voice quality. Listen manually on the target devices before deciding whether to develop Stage 2.
+Automated decoded samples and playback checks establish a working audio path, not subjective voice quality. Audible OS speech and physical iPhone testing still require manual listening.
+
+Verified on 2026-11-16: production build, focused ESLint and 12 focused/security/RSVP checks passed. Genuine Kokoro in desktop Edge at desktop and 375px viewports started automatically from one Play click and reached the end of the five-passage EPUB across sections. Decoded first audio was 2.875 seconds with peak amplitude 0.477; pause/resume and 1.5× rate also passed. This is desktop Chromium evidence, not physical iPhone verification. Build warnings note large chunks and the intentionally non-precached Kokoro assets.
