@@ -318,6 +318,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
       selectionDocument.current = contents.document;
       const next = {
         text,
+        range,
         suppressTooltip: popupSuppressed.current,
         word,
         cfi,

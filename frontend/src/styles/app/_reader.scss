@@ -2421,3 +2421,7 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
   .reader-selection-docked .reader-dictionary-actions > button { display: flex; flex: 1; flex-direction: column; justify-content: center; align-items: center; gap: 3px; width: auto; min-width: 44px; height: auto; min-height: 50px; padding: 4px 2px; }
   .reader-selection-label { font-size: 10px; line-height: 1.2; white-space: nowrap; word-break: normal; overflow-wrap: normal; }
 }
+
+@media (max-width: 1024px) {
+  .reader-dictionary.reader-selection-docked { max-width: calc(100dvw - 16px); border: 1px solid #b7a58a; border-radius: 12px; box-shadow: 0 8px 28px #0002; padding: 6px; }
+}
