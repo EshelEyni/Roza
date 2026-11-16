@@ -1,5 +1,7 @@
 import { AppError } from "../error/errorService";
 
+export const readerSpeechPreviewText = "The morning arrived quietly, and the world seemed full of possibility.";
+
 export const readerSpeechVoices = [
   "alloy",
   "ash",

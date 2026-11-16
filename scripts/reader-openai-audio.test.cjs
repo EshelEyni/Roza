@@ -184,3 +184,12 @@ test("pause aborts look-ahead without allowing stale audio to start", async () =
   assert.equal(env.calls.filter(call=>call.method==="POST").length,2,"resume keeps the current decoded audio");
   player.dispose();
 });
+
+test("OpenAI preview requests use the fixed server sample endpoint without client text", async () => {
+  const env=setup(), player=new env.ReaderOpenAiAudio("book"); await player.unlock();
+  await player.play({...passage,preview:true},"cedar",1,()=>{},()=>{});
+  const request=env.calls.find(call=>call.method==="POST");
+  assert.equal(request.url,"/api/reader/book/audiobook/preview");
+  assert.deepEqual(Object.keys(JSON.parse(request.body)).sort(),["requestId","voice"]);
+  player.dispose();
+});

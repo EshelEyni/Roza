@@ -24,6 +24,10 @@ export function ReaderTts({ bookTitle, bookId, loadSection, onClose }: {
   const speedButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const exit = () => onClose(audio.cfi);
+  useEffect(() => {
+    if (!audio.narratorWarning) return;
+    resumeAfterVoice.current = false; setSpeedOpen(false); setVoiceOpen(true);
+  }, [audio.narratorWarning]);
 
   useEffect(() => {
     const mode = root.current;
@@ -64,10 +68,8 @@ export function ReaderTts({ bookTitle, bookId, loadSection, onClose }: {
   useEffect(() => {
     if (!voiceOpen) return;
     const hide = () => { resumeAfterVoice.current = false; };
-    const visibility = () => { if (document.hidden) hide(); };
-    document.addEventListener("visibilitychange", visibility);
     window.addEventListener("pagehide", hide);
-    return () => { document.removeEventListener("visibilitychange", visibility); window.removeEventListener("pagehide", hide); };
+    return () => { window.removeEventListener("pagehide", hide); };
   }, [voiceOpen]);
   useEffect(() => {
     if (!speedOpen) return;
@@ -83,7 +85,7 @@ export function ReaderTts({ bookTitle, bookId, loadSection, onClose }: {
   // Web Speech exposes no exact duration: these are explicitly text-based estimates.
   const secondsPerWord = 60 / (180 * audio.speed);
   const selectedVoice = audio.voices.find(voice => voice.voiceURI === audio.voice);
-  const narratorName = audio.engine === "openai" ? "OpenAI · " + audio.aiVoice : selectedVoice?.name;
+  const narratorName = audio.engine === "openai" ? "OpenAI · " + audio.aiVoice : selectedVoice?.name || (audio.voice === "browser-default" ? "Browser default" : undefined);
   return <div className="reader-audiobook" ref={root} role="dialog" aria-modal="true" aria-label="Audiobook Mode" tabIndex={-1}
     onKeyDown={event => {
       if (event.defaultPrevented || voiceOpen) return;
@@ -163,10 +165,13 @@ export function ReaderTts({ bookTitle, bookId, loadSection, onClose }: {
         {audio.error && <p className="audiobook-error" role="alert">{audio.error}</p>}
       </div>
     </footer>
-    {voiceOpen && <ReaderAudiobookVoices voices={audio.voices} selected={audio.voice} engine={audio.engine} aiVoice={audio.aiVoice} config={audio.config} configStatus={audio.configStatus} onClose={(selected, engine) => {
-      if (selected !== undefined) audio.changeNarrator(engine || "system", selected);
+    {voiceOpen && <ReaderAudiobookVoices voices={audio.voices} selected={audio.voice} engine={audio.engine} aiVoice={audio.aiVoice} config={audio.config} configStatus={audio.configStatus} bookId={bookId} warning={audio.narratorWarning} beforePreview={audio.waitForAudioCancellation} onApplyGesture={audio.unlockNarrator} onClose={async (selected, engine) => {
+      if (selected !== undefined) {
+        if (!await audio.changeNarrator(engine || "system", selected)) return false;
+      } else if (audio.narratorWarning) { exit(); return true; }
       setVoiceOpen(false); voiceButton.current?.focus({ preventScroll: true });
       if (resumeAfterVoice.current) { resumeAfterVoice.current = false; audio.resume(); }
+      return true;
     }} />}
   </div>;
 }

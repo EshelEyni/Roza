@@ -22,7 +22,15 @@ export type ReaderState = {
   preferences: ReaderPreferences;
 };
 
+export type ReaderAudiobookNarrator = {
+  engine: "system" | "openai";
+  voice: string;
+  name: string;
+  lang: string;
+};
+
 export type ReaderBook = {
+  audiobookNarrator?: ReaderAudiobookNarrator;
   archived?: boolean;
   id: string;
   title: string;

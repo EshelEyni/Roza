@@ -2,7 +2,7 @@ import express, { Request, Response, NextFunction } from "express";
 import request from "supertest";
 import { ReaderBookModel } from "../../models/reader/readerBookModel";
 import { generateReaderSpeech, readerSpeechWav } from "../../services/reader/readerSpeechProvider";
-import { readerSpeechLimits } from "../../services/reader/readerSpeechConfig";
+import { readerSpeechLimits, readerSpeechPreviewText } from "../../services/reader/readerSpeechConfig";
 import { AppError } from "../../services/error/errorService";
 import readerRouter from "./readerRouter";
 
@@ -11,13 +11,14 @@ const owner = "507f1f77bcf86cd799439011",
   bookId = "507f191e810c19729de860ea";
 let sourceText = "Hello world.",
   edition = 0;
+let narrator: { engine: string; voice: string; name: string; lang: string } | undefined;
 jest.mock("../../services/ALSService", () => ({ getLoggedInUserIdFromReq: () => mockUser }));
 jest.mock("../../middlewares/authGuards/authGuardsMiddleware", () => ({
   checkUserAuthentication: (req: Request, res: Response, next: NextFunction) =>
     req.headers.authorization ? next() : res.status(401).json({ status: "fail" }),
 }));
 jest.mock("../../models/reader/readerBookModel", () => ({
-  ReaderBookModel: { findOne: jest.fn() },
+  ReaderBookModel: { findOne: jest.fn(), findOneAndUpdate: jest.fn() },
 }));
 jest.mock("../../services/reader/readerSpeechProvider", () => {
   const actual = jest.requireActual("../../services/reader/readerSpeechProvider");
@@ -81,6 +82,7 @@ describe("backend-only audiobook API", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     sourceText = "Hello world.";
+    narrator = undefined;
     mockUser = owner;
     edition++;
     process.env.READER_ENABLED = "true";
@@ -94,11 +96,16 @@ describe("backend-only audiobook API", () => {
         String(filter._id) === bookId && filter.userId === owner
           ? {
               _id: bookId,
+              audiobookNarrator: narrator,
               fileId: ("000000000000000000000000" + edition.toString(16)).slice(-24),
             }
           : null,
       ),
     }));
+    (ReaderBookModel.findOneAndUpdate as jest.Mock).mockImplementation(async (_filter, update) => {
+      narrator = update.$set.audiobookNarrator;
+      return { audiobookNarrator: narrator };
+    });
     (generateReaderSpeech as jest.Mock).mockImplementation(async ({ text }) => ({
       wav: readerSpeechWav(Buffer.alloc(4800, 1)),
       transcript: text,
@@ -157,6 +164,52 @@ describe("backend-only audiobook API", () => {
     });
     expect(response.body.data.voices).toHaveLength(10);
     expect(JSON.stringify(response.body)).not.toContain("test-only-secret");
+    expect(generateReaderSpeech).not.toHaveBeenCalled();
+  });
+  it("saves the narrator on the owned book without replacing reading progress", async () => {
+    process.env.READER_AUDIOBOOK_ENABLED = "false";
+    const choice = { engine: "system", voice: "device-alex", name: "Alex", lang: "en-GB" };
+    const response = await request(app).patch(base + "/narrator").set("Authorization", "test").send(choice);
+    expect(response.status).toBe(200);
+    expect(ReaderBookModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: bookId, userId: owner }, { $set: { audiobookNarrator: choice } }, { new: true, runValidators: true },
+    );
+    expect((await get(base + "/config")).body.data.narrator).toEqual(choice);
+    expect(generateReaderSpeech).not.toHaveBeenCalled();
+  });
+  it.each([
+    {engine:"other",voice:"marin",name:"Marin",lang:""},
+    {engine:"openai",voice:"unknown",name:"Unknown",lang:""},
+    {engine:"system",voice:"",name:"Alex",lang:"en"},
+    {engine:"system",voice:"alex",name:"x".repeat(257),lang:"en"},
+    {engine:"system",voice:"alex",name:"Alex",lang:"en",userId:owner},
+  ])("rejects invalid narrator settings %j", async choice => {
+    expect((await request(app).patch(base + "/narrator").set("Authorization", "test").send(choice)).status).toBe(400);
+    expect(ReaderBookModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+  it("generates the fixed shared preview text, caches audio, and forbids supplied text", async () => {
+    const preview = (data: object) => request(app).post(base + "/preview").set("Authorization", "test").send(data);
+    expect((await get(base + "/config")).body.data.previewText).toBe(readerSpeechPreviewText);
+    const response = await preview({requestId:"voice-preview-123456",voice:"cedar"});
+    expect(response.status).toBe(201);
+    expect(response.body.data.text).toBe(readerSpeechPreviewText);
+    expect(generateReaderSpeech).toHaveBeenCalledWith(
+      {text:readerSpeechPreviewText,voice:"cedar",userId:owner}, expect.objectContaining({signal:expect.anything()}),
+    );
+    expect((await binary(response.body.data.audioUrl)).body.toString("ascii",0,4)).toBe("RIFF");
+    expect((await preview({requestId:"voice-preview-123457",voice:"cedar"})).status).toBe(200);
+    expect(generateReaderSpeech).toHaveBeenCalledTimes(1);
+    expect((await preview({requestId:"voice-preview-123458",voice:"cedar",text:"arbitrary"})).status).toBe(400);
+    expect((await preview({requestId:"voice-preview-123459",voice:"other"})).status).toBe(400);
+    expect(generateReaderSpeech).toHaveBeenCalledTimes(1);
+  });
+  it("guards preview generation and narrator writes with authentication and ownership", async () => {
+    expect((await request(app).post(base+"/preview").send({})).status).toBe(401);
+    expect((await request(app).patch(base+"/narrator").send({})).status).toBe(401);
+    mockUser = "507f1f77bcf86cd799439012"; process.env.READER_ALLOWED_USER_IDS = mockUser;
+    expect((await request(app).post(base+"/preview").set("Authorization","test").send({})).status).toBe(404);
+    expect((await request(app).patch(base+"/narrator").set("Authorization","test").send({})).status).toBe(404);
+    expect(ReaderBookModel.findOneAndUpdate).not.toHaveBeenCalled();
     expect(generateReaderSpeech).not.toHaveBeenCalled();
   });
   it("derives speech from the owned EPUB and returns an authenticated audio URL", async () => {

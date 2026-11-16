@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { audiobookSpeechSlice, audiobookSeek, audiobookWordAt, type AudiobookSection } from "../../services/readerTts";
-import { loadAudiobookConfig, openAiBlock, ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
+import { loadAudiobookConfig, saveAudiobookNarrator, openAiBlock, ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
+import type { ReaderAudiobookNarrator } from "../../../../shared/types/reader";
 
 export type AudiobookLoader = (target?: number, direction?: 1 | -1) => Promise<AudiobookSection | null>;
 
@@ -9,6 +10,13 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   const [config, setConfig] = useState<AudiobookConfig>();
   const [configStatus, setConfigStatus] = useState("Checking OpenAI availability…");
   const [aiVoice, setAiVoice] = useState("");
+  const [narratorLoaded, setNarratorLoaded] = useState(!bookId);
+  const [savedNarrator, setSavedNarrator] = useState<ReaderAudiobookNarrator | null>(null);
+  const saved = useRef<ReaderAudiobookNarrator | null>(null);
+  const [narratorWarning, setNarratorWarning] = useState("");
+  const warning = useRef("");
+  const saves = useRef<Promise<unknown>>(Promise.resolve());
+  const [voicesSettled, setVoicesSettled] = useState(false);
   const engineRef = useRef<AudiobookEngine>("system");
   const aiVoiceRef = useRef("");
   const configRef = useRef<AudiobookConfig>();
@@ -38,6 +46,12 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   const loadVersion = useRef(0);
   const utterance = useRef<SpeechSynthesisUtterance>();
   const synth = window.speechSynthesis;
+  function warn(message: string) { warning.current = message; setNarratorWarning(message); }
+  function persist(narrator: ReaderAudiobookNarrator) {
+    const request = saves.current.then(() => bookId ? saveAudiobookNarrator(bookId, narrator) : narrator);
+    saves.current = request.catch(() => undefined);
+    return request;
+  }
 
   function cancel(resetAudio = true, continuous = false) {
     ++version.current;
@@ -115,6 +129,9 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     const part = audiobookSpeechSlice(sentence.text, start);
     try {
       if (!synth) throw new Error("System speech is unavailable in this browser.");
+      if (selectedVoice.current && selectedVoice.current !== "browser-default" && !synth.getVoices().some(item => item.voiceURI === selectedVoice.current)) {
+        pause("Choose an available narrator to continue"); warn("Your saved voice is unavailable. Choose another narrator in audiobook settings."); return;
+      }
       const next = new SpeechSynthesisUtterance(part.text);
       next.voice = synth.getVoices().find(item => item.voiceURI === selectedVoice.current) || null;
       if (next.voice) next.lang = next.voice.lang;
@@ -133,7 +150,10 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
         advance(part.end);
       };
       next.onerror = event => {
-        if (version.current === run) fail(new Error("System speech: " + event.error + ". Press Play to retry or choose another voice."));
+        if (version.current !== run) return;
+        if (event.error === "voice-unavailable" || event.error === "language-unavailable") {
+          pause("Choose an available narrator to continue"); warn("This system voice is unavailable. Choose another narrator in audiobook settings.");
+        } else fail(new Error("System speech: " + event.error + ". Press Play to retry or choose another voice."));
       };
       utterance.current = next;
       synth.resume(); synth.speak(next);
@@ -178,6 +198,14 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   }
   function resume() {
     if (!position.current.section) return;
+    if (!narratorLoaded || warning.current || (saved.current?.engine === "system" && saved.current.voice !== "browser-default" && !voices.length && !voicesSettled)) return;
+    if (engineRef.current === "system" && !selectedVoice.current) {
+      const first = synth?.getVoices().find(item => item.default) || synth?.getVoices()[0];
+      selectedVoice.current = first?.voiceURI || "browser-default"; setVoice(selectedVoice.current);
+      const narrator: ReaderAudiobookNarrator = { engine: "system", voice: selectedVoice.current, name: first?.name || "Browser default", lang: first?.lang || "" };
+      if (bookId) void persist(narrator).then(value => { saved.current = value; setSavedNarrator(value); })
+        .catch(() => { pause("Narrator settings could not be saved"); warn("Your narrator could not be saved to this book. Choose a voice in audiobook settings and try again."); });
+    }
     if (engineRef.current === "openai") {
       try { void ai.current?.unlock().catch(cause => fail(cause)); }
       catch (cause) { fail(cause); return; }
@@ -211,12 +239,24 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     selectedVoice.current = value; setVoice(value); setWordEvents(false);
     if (position.current.section) goTo(position.current.index, position.current.offset);
   }
-  function changeNarrator(next: AudiobookEngine, value: string) {
+  async function changeNarrator(next: AudiobookEngine, value: string) {
+    const systemVoice = synth?.getVoices().find(item => item.voiceURI === value);
+    if ((next === "openai" && (!config?.available || !config.voices.includes(value))) || (next === "system" && !systemVoice && !(value === "browser-default" && synth))) {
+      warn("That voice is no longer available. Choose another narrator."); return false;
+    }
+    const narrator: ReaderAudiobookNarrator = { engine: next, voice: value, name: next === "openai" ? value : systemVoice?.name || "Browser default", lang: next === "openai" ? "" : systemVoice?.lang || "" };
+    try {
+      await persist(narrator);
+      saved.current = narrator; setSavedNarrator(narrator); warn("");
+    } catch {
+      warn("Your narrator could not be saved to this book. Check your connection and try again."); return false;
+    }
     cancel(); engineRef.current = next; setEngine(next); setWordEvents(false); setHighlight(null);
     if (next === "system") { selectedVoice.current = value; setVoice(value); }
     else { aiVoiceRef.current = value; setAiVoice(value); }
     setError("");
     if (wantPlay.current) resume();
+    return true;
   }
   function changeSpeed(value: number) {
     rate.current = Math.max(0.5, Math.min(2.5, value)); setSpeed(rate.current);
@@ -228,22 +268,44 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     const controller = new AbortController();
     if (bookId) void loadAudiobookConfig(bookId, controller.signal).then(value => {
       configRef.current = value; setConfig(value);
-      aiVoiceRef.current = value.defaultVoice; setAiVoice(value.defaultVoice);
+      const narrator = value.narrator || null;
+      saved.current = narrator; setSavedNarrator(narrator);
+      aiVoiceRef.current = narrator?.engine === "openai" ? narrator.voice : value.defaultVoice;
+      setAiVoice(aiVoiceRef.current);
+      if (narrator) {
+        engineRef.current = narrator.engine; setEngine(narrator.engine);
+        if (narrator.engine === "system") { selectedVoice.current = narrator.voice; setVoice(narrator.voice); }
+      }
+      setNarratorLoaded(true);
       setConfigStatus(value.available ? "AI-generated voices · requires internet" : "OpenAI narration is not enabled on this server.");
-    }).catch(() => { if (!controller.signal.aborted) setConfigStatus("OpenAI availability could not be checked. System voices remain available."); });
+    }).catch(() => { if (!controller.signal.aborted) { setNarratorLoaded(true); setConfigStatus("OpenAI availability could not be checked. System voices remain available."); warn("Saved narrator settings could not be loaded. Choose a narrator before playing."); } });
     else setConfigStatus("OpenAI narration is unavailable for this book.");
     return () => controller.abort();
   }, [bookId]);
   useEffect(() => {
+    if (!narratorLoaded || !savedNarrator) return;
+    let unavailable = false;
+    if (savedNarrator.engine === "openai") unavailable = !config?.available || !config.voices?.includes(savedNarrator.voice);
+    else {
+      if (!voices.length && !voicesSettled && synth) return;
+      unavailable = !synth || (savedNarrator.voice !== "browser-default" && !voices.some(item => item.voiceURI === savedNarrator.voice));
+    }
+    if (unavailable) {
+      pause("Choose an available narrator to continue");
+      warn(`Saved narrator “${savedNarrator.name}” is unavailable. Choose a voice in audiobook settings.`);
+    }
+    // Never silently replace a missing saved narrator with a different voice.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [narratorLoaded, savedNarrator, config, voices, voicesSettled]);
+  useEffect(() => {
     void load();
     const updateVoices = () => setVoices(Array.from(new Map((synth?.getVoices() || []).filter(item => item.voiceURI).map(item => [item.voiceURI, item])).values()));
     updateVoices(); synth?.addEventListener("voiceschanged", updateVoices);
+    const voiceTimer = window.setTimeout(() => setVoicesSettled(true), 2000);
     const hide = () => {
       wantPlay.current = false; setPlaying(false);
-      pause("Paused while the app was hidden · press Play to continue");
+      pause("Paused while leaving this page · press Play to continue");
     };
-    const visibility = () => { if (document.hidden) hide(); };
-    document.addEventListener("visibilitychange", visibility);
     window.addEventListener("pagehide", hide);
     return () => {
       // These refs invalidate pending requests; they are not DOM refs.
@@ -252,7 +314,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
       wantPlay.current = false; cancel();
       ai.current?.dispose();
       synth?.removeEventListener("voiceschanged", updateVoices);
-      document.removeEventListener("visibilitychange", visibility);
+      window.clearTimeout(voiceTimer);
       window.removeEventListener("pagehide", hide);
     };
     // Load once per book/mode mount; mutable playback work uses refs.
@@ -265,7 +327,10 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     section, index, passageEnd: engine === "openai" ? passageEnd : index, offset, highlight, wordEvents, playing, ended, loading, status, error,
     voices, voice, speed, toggle, move, seek, changeVoice, changeSpeed, pause, resume,
     engine, config, configStatus, aiVoice, changeNarrator,
-    available: engine === "openai" ? !!config?.available : !!synth,
+    narratorWarning,
+    waitForAudioCancellation: () => ai.current?.waitForCancellation() || Promise.resolve(),
+    unlockNarrator: (next: AudiobookEngine) => { if (next === "openai") { try { void ai.current?.unlock().catch(() => undefined); } catch { /* Playback reports unsupported audio. */ } } },
+    available: narratorLoaded && !narratorWarning && !(savedNarrator?.engine === "system" && savedNarrator.voice !== "browser-default" && !voices.length && !voicesSettled) && (engine === "openai" ? !!config?.available : !!synth),
     currentWord: ended ? section?.totalWords || 0 : currentWord,
     cfi: sentence?.cfi,
   };

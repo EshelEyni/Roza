@@ -12,6 +12,7 @@ import {
   readerSpeechVoices,
   normalizeReaderSpeechText,
   readerSpeechTranscriptKey,
+  readerSpeechPreviewText,
   type ReaderSpeechVoice,
 } from "../../services/reader/readerSpeechConfig";
 import { readerSpeechStore, type SpeechEntry } from "../../services/reader/readerSpeechStore";
@@ -27,6 +28,7 @@ async function ownedBook(req: Request) {
     bookId: String(book._id),
     fileId: book.fileId,
     scope: JSON.stringify([userId, String(book._id), String(book.fileId)]),
+    narrator: book.audiobookNarrator || null,
   };
 }
 function requestId(value: unknown): value is string {
@@ -44,7 +46,7 @@ function metadata(
   entry: SpeechEntry,
   bookId: string,
   cacheHit: boolean,
-  passageCfi: string,
+  passageCfi?: string,
   passageEndCfi?: string,
 ) {
   return {
@@ -73,13 +75,15 @@ function metadata(
   };
 }
 export const getAudiobookConfig = asyncErrorCatcher(async (req: Request, res: Response) => {
-  await ownedBook(req);
+  const owner = await ownedBook(req);
   const config = readerSpeechConfig();
   res.setHeader("Cache-Control", "no-store");
   res.json({
     status: "success",
     data: {
       enabled: config.enabled,
+      narrator: owner.narrator,
+      previewText: readerSpeechPreviewText,
       available: config.available,
       provider: "openai",
       model: config.model,
@@ -99,7 +103,28 @@ export const getAudiobookConfig = asyncErrorCatcher(async (req: Request, res: Re
     },
   });
 });
-export const createAudiobookChunk = asyncErrorCatcher(async (req: Request, res: Response) => {
+export const saveAudiobookNarrator = asyncErrorCatcher(async (req: Request, res: Response) => {
+  const owner = await ownedBook(req);
+  const body = req.body;
+  if (!body || typeof body !== "object" || Array.isArray(body)
+    || Object.keys(body).some(key => !["engine", "voice", "name", "lang"].includes(key))
+    || !["system", "openai"].includes(body.engine)
+    || typeof body.voice !== "string" || !body.voice.trim() || body.voice.length > 1024
+    || typeof body.name !== "string" || !body.name.trim() || body.name.length > 256
+    || typeof body.lang !== "string" || body.lang.length > 32
+    || (body.engine === "openai" && !readerSpeechVoices.includes(body.voice)))
+    throw new AppError("Choose an available narrator voice.", 400);
+  const narrator = { engine: body.engine, voice: body.voice, name: body.name, lang: body.lang };
+  const updated = await ReaderBookModel.findOneAndUpdate(
+    { _id: owner.bookId, userId: owner.userId }, { $set: { audiobookNarrator: narrator } },
+    { new: true, runValidators: true },
+  );
+  if (!updated) throw new AppError("Book not found.", 404);
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ status: "success", data: narrator });
+});
+
+function createAudio(preview: boolean) { return asyncErrorCatcher(async (req: Request, res: Response) => {
   const owner = await ownedBook(req);
   const config = requireReaderSpeech();
   const body = req.body;
@@ -108,23 +133,26 @@ export const createAudiobookChunk = asyncErrorCatcher(async (req: Request, res: 
     typeof body !== "object" ||
     Array.isArray(body) ||
     Object.keys(body).some(
-      key => !["requestId", "passageCfi", "passageEndCfi", "voice"].includes(key),
+      key => !(preview ? ["requestId", "voice"] : ["requestId", "passageCfi", "passageEndCfi", "voice"]).includes(key),
     ) ||
     !requestId(body.requestId) ||
-    !cfi(body.passageCfi) ||
+    (!preview && !cfi(body.passageCfi)) ||
     (body.passageEndCfi !== undefined && !cfi(body.passageEndCfi)) ||
     (body.voice !== undefined && !readerSpeechVoices.includes(body.voice))
   )
     throw new AppError(
-      "Supply a requestId, a selected EPUB range, and a supported narrator voice.",
+      preview ? "Supply a requestId and a supported narrator voice. Preview text is fixed."
+        : "Supply a requestId, a selected EPUB range, and a supported narrator voice.",
       400,
     );
-  const context = await cachedReaderContext(String(owner.fileId), async () => {
-    const pieces = await getReaderBucket().openDownloadStream(owner.fileId).toArray();
-    return Buffer.concat(pieces);
-  });
-  const passage = context.passage(body.passageCfi, body.passageEndCfi);
-  const text = normalizeReaderSpeechText(passage.text);
+  let text = readerSpeechPreviewText;
+  if (!preview) {
+    const context = await cachedReaderContext(String(owner.fileId), async () => {
+      const pieces = await getReaderBucket().openDownloadStream(owner.fileId).toArray();
+      return Buffer.concat(pieces);
+    });
+    text = normalizeReaderSpeechText(context.passage(body.passageCfi, body.passageEndCfi).text);
+  }
   if (
     !readerSpeechTranscriptKey(text) ||
     text.length > readerSpeechLimits.maxChars ||
@@ -193,7 +221,9 @@ export const createAudiobookChunk = asyncErrorCatcher(async (req: Request, res: 
     res.removeListener("close", disconnected);
     job.release();
   }
-});
+}); }
+export const createAudiobookChunk = createAudio(false);
+export const createAudiobookPreview = createAudio(true);
 export const getAudiobookAudio = asyncErrorCatcher(async (req: Request, res: Response) => {
   const owner = await ownedBook(req);
   requireReaderSpeech();

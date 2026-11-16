@@ -1,6 +1,6 @@
 # OpenAI audiobook backend — frontend handoff
 
-Backend API contract, now connected to the reader's Audiobook Mode frontend. See [frontend behavior and local testing](../../docs/reader-tts-mvp.md). No Docker, nginx, database schema or production settings are changed. Kokoro is absent. This runs in the existing Node backend; there is no model inference on EC2 and no second container.
+Backend API contract, connected to the reader's Audiobook Mode frontend. See [frontend behavior and local testing](../../docs/reader-tts-mvp.md). A book may now store an optional `audiobookNarrator` preference; existing books require no migration. No Docker, nginx or production settings are changed. Kokoro is absent. This runs in the existing Node backend; there is no model inference on EC2 and no second container.
 
 ## Enable deliberately
 
@@ -27,6 +27,14 @@ All routes below require normal Roza login, the existing Reader allowlist, and o
 ## API contract
 
 Base: `/api/reader/:bookId/audiobook`.
+
+### Narrator persistence and previews
+
+`GET /config` also returns `narrator` (saved `{ engine, voice, name, lang }` or `null`) and `previewText` (the server-owned sample). Reading these settings never generates speech.
+
+`PATCH /narrator` accepts only `{ engine: "system" | "openai", voice, name, lang }`. Voice/name are bounded nonempty strings; language is bounded and may be empty. OpenAI voice names must be supported. The authenticated owner is checked and only the book's `audiobookNarrator` field is updated, independently of progress/state writes. Returns the saved preference. Saving System preferences works with OpenAI disabled and makes no provider call. System voice availability is checked by the client, after asynchronous enumeration.
+
+`POST /preview` accepts only `{ requestId, voice? }`, using the same request-ID validation, supported voices, authenticated owner/allowlist, feature flag, quota, cancellation and cache as narration. The fixed server text is “The morning arrived quietly, and the world seemed full of possibility.” Arbitrary text, CFIs, instructions and models are rejected. Returns the normal chunk metadata and authenticated `/chunks/:chunkId` WAV URL; passage CFI fields are absent. The default voice is marin. Previews may incur API charges. Stop/close cancels through the existing `DELETE /requests/:requestId` endpoint. Samples are scoped to the book owner and edition, and repeated previews can reuse the temporary cache.
 
 ### GET /config
 

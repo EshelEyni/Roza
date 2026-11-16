@@ -5,6 +5,15 @@ const readerBookSchema = new Schema<IReaderBook>(
   {
     userId: { type: Schema.Types.ObjectId, required: true, index: true },
     archived: { type: Boolean, default: false },
+    audiobookNarrator: {
+      type: new Schema({
+        engine: { type: String, enum: ["system", "openai"], required: true },
+        voice: { type: String, required: true, maxlength: 1024 },
+        name: { type: String, required: true, maxlength: 256 },
+        lang: { type: String, maxlength: 32 },
+      }, { _id: false }),
+      default: undefined,
+    },
     title: { type: String, required: true },
     author: { type: String, default: "" },
     cover: { type: String, default: "" },

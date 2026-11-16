@@ -1,8 +1,10 @@
 import { audiobookSpeechSlice, type AudiobookSentence } from "./readerTts";
+import type { ReaderAudiobookNarrator } from "../../../shared/types/reader";
 
 export type AudiobookConfig = {
   available: boolean; unavailableReason: string | null; voices: string[];
   defaultVoice: string; maxChars: number;
+  narrator?: ReaderAudiobookNarrator | null; previewText?: string;
 };
 export type AudiobookEngine = "system" | "openai";
 const base = (book: string) => `/api/reader/${encodeURIComponent(book)}/audiobook`;
@@ -19,6 +21,10 @@ async function json<T>(url: string, options?: RequestInit): Promise<T> {
 }
 export const loadAudiobookConfig = (book: string, signal: AbortSignal) =>
   json<AudiobookConfig>(base(book) + "/config", { signal });
+export const saveAudiobookNarrator = (book: string, narrator: ReaderAudiobookNarrator) =>
+  json<ReaderAudiobookNarrator>(base(book) + "/narrator", {
+    method: "PATCH", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(narrator),
+  });
 
 /** Only source CFIs go to the server; narration text comes from the owned EPUB. */
 export function openAiPassage(sentence: AudiobookSentence, offset: number, limit: number) {
@@ -27,7 +33,7 @@ export function openAiPassage(sentence: AudiobookSentence, offset: number, limit
   return { ...part, cfi: sentence.rangeCfi(offset, part.end) };
 }
 
-export type OpenAiPassage = { text: string; cfi: string; endCfi?: string };
+export type OpenAiPassage = { text: string; cfi: string; endCfi?: string; preview?: boolean };
 
 /** Group adjacent sentences into a bounded passage, retaining exact endpoints. */
 export function openAiBlock(sentences: AudiobookSentence[], index: number, offset: number, limit: number) {
@@ -97,10 +103,11 @@ export class ReaderOpenAiAudio {
     }
   }
   stop() { this.pause(); this.cursor = 0; }
+  waitForCancellation() { return this.cancellation; }
   dispose() { this.stop(); this.buffers.clear(); void this.context?.close(); }
 
   private key(passage: OpenAiPassage, voice: string) {
-    return JSON.stringify([voice, passage.cfi, passage.endCfi]);
+    return JSON.stringify([voice, passage.cfi, passage.endCfi, !!passage.preview]);
   }
   prefetch(passage: OpenAiPassage, voice: string) {
     return this.prepare(passage, voice);
@@ -123,10 +130,10 @@ export class ReaderOpenAiAudio {
       const pending = { id: crypto.randomUUID(), abort: new AbortController() };
       this.pending = pending;
       try {
-        const chunk = await json<{ text: string; audioUrl: string; chunkId: string }>(base(this.book) + "/chunks", {
+        const chunk = await json<{ text: string; audioUrl: string; chunkId: string }>(base(this.book) + (passage.preview ? "/preview" : "/chunks"), {
           method: "POST", signal: pending.abort.signal, headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ requestId: pending.id, passageCfi: passage.cfi,
-            ...(passage.endCfi ? { passageEndCfi: passage.endCfi } : {}), voice }),
+          body: JSON.stringify({ requestId: pending.id,
+            ...(!passage.preview ? { passageCfi: passage.cfi, ...(passage.endCfi ? { passageEndCfi: passage.endCfi } : {}) } : {}), voice }),
         });
         if (revision !== this.revision) return;
         if (chunk.text.replace(/\s+/gu, " ").trim() !== passage.text.trim())

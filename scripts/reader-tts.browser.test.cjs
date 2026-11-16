@@ -52,6 +52,7 @@ test(
     );
     let file = await epub();
     const saves = [];
+    let storedNarrator = null;
     const lookups = [];
     const aliases = [
       "react",
@@ -90,6 +91,14 @@ test(
       let body = "";
       req.on("data", (chunk) => (body += chunk));
       req.on("end", () => {
+        if(req.url.endsWith("/audiobook/config")) {
+          res.setHeader("Content-Type","application/json");
+          res.end(JSON.stringify({status:"success",data:{available:false,voices:[],defaultVoice:"marin",maxChars:600,narrator:storedNarrator}})); return;
+        }
+        if(req.url.endsWith("/audiobook/narrator") && req.method==="PATCH") {
+          storedNarrator=JSON.parse(body); res.setHeader("Content-Type","application/json");
+          res.end(JSON.stringify({status:"success",data:storedNarrator})); return;
+        }
         if (body && req.url.includes("/state")) saves.push(body);
         if (req.url.includes("dictionary")) lookups.push(JSON.parse(body));
         res.setHeader("Content-Type", "application/json");
@@ -131,6 +140,7 @@ test(
     await server.listen();
     try {
       for (const mobile of [false, true]) await t.test(mobile ? "mobile system follow-along" : "desktop system follow-along", async () => {
+        storedNarrator=null;
         saves.length = 0;
         const browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || "msedge" });
         try {
@@ -241,7 +251,7 @@ test(
           await picker.getByRole("button",{name:"Cancel",exact:true}).click();
           await picker.waitFor({state:"detached"});
           assert.equal(await page.evaluate(()=>window.spoken.at(-1).voice),null,"Cancel retains default narration");
-          assert.match(await mode.getByRole("button",{name:"Choose narrator voice"}).innerText(),/Choose voice/);
+          assert.match(await mode.getByRole("button",{name:"Choose narrator voice"}).innerText(),/Browser default/);
           await mode.getByRole("button",{name:"Choose narrator voice"}).click();
           picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.waitFor();
@@ -362,11 +372,21 @@ test(
         const browser = await chromium.launch({ channel: process.env.PLAYWRIGHT_CHANNEL || "msedge" });
         try {
           const page = await browser.newPage({ viewport: { width: mobile ? 375 : 1280, height: 844 }, hasTouch: mobile, isMobile: mobile });
-          const requests = [];
-          let passages = {}, failure = false;
+          const requests = [], previewRequests=[];
+          let passages = {}, failure = false, narrator = null, saveFailure=false;
+          const sample="The morning arrived quietly, and the world seemed full of possibility.";
           await page.route("**/audiobook/**", async route => {
             const url = new URL(route.request().url());
-            if (url.pathname.endsWith("/config")) return route.fulfill({json:{status:"success",data:{available:true,voices:["marin","cedar"],defaultVoice:"marin",maxChars:600}}});
+            if (url.pathname.endsWith("/config")) return route.fulfill({json:{status:"success",data:{available:true,voices:["marin","cedar"],defaultVoice:"marin",maxChars:600,narrator,previewText:sample}}});
+            if(url.pathname.endsWith("/narrator")) {
+              if(saveFailure) return route.fulfill({status:500,json:{status:"fail",message:"Save failed"}});
+              narrator=route.request().postDataJSON(); return route.fulfill({json:{status:"success",data:narrator}});
+            }
+            if(url.pathname.endsWith("/preview")) {
+              const body=route.request().postDataJSON(); previewRequests.push(body);
+              assert.deepEqual(Object.keys(body).sort(),["requestId","voice"]);
+              return route.fulfill({json:{status:"success",data:{text:sample,chunkId:"b".repeat(64),audioUrl:"/api/reader/rsvp/audiobook/chunks/"+"b".repeat(64)}}});
+            }
             if (route.request().method()==="DELETE") return route.fulfill({status:204});
             if (route.request().method()==="POST") {
               const body=route.request().postDataJSON(); requests.push(body);
@@ -380,7 +400,9 @@ test(
           });
           await page.addInitScript(() => {
             window.audioSources=[]; window.audioContexts=[]; window.spoken=[];
-            const synth=new EventTarget(); synth.getVoices=()=>[{voiceURI:"native",name:"Native",lang:"en-US",default:true,localService:true}];
+            const synth=new EventTarget();
+            window.availableVoices=location.search.includes("delayed=1")?[]:[{voiceURI:"native",name:"Native",lang:"en-US",default:true,localService:true}];
+            synth.getVoices=()=>window.availableVoices;
             synth.speak=u=>{window.spoken.push(u);u.onstart?.();}; synth.cancel=()=>{}; synth.resume=()=>{};
             Object.defineProperty(window,"speechSynthesis",{value:synth}); window.SpeechSynthesisUtterance=class{constructor(text){this.text=text;}};
             window.AudioContext=class {
@@ -420,12 +442,19 @@ test(
           await picker.getByRole("button",{name:/OpenAI voices/}).click();
           await picker.getByText(/These voices are generated by AI/).waitFor();
           if(process.env.TTS_SCREENSHOT) await page.screenshot({path:process.env.TTS_SCREENSHOT.replace(".png",mobile?"-openai-voices-mobile.png":"-openai-voices-desktop.png")});
-          assert.equal(await picker.getByRole("button",{name:/Preview/}).count(),0,"no paid requests while browsing voices");
+          assert.equal(await picker.getByRole("button",{name:/Preview/}).count(),2);
+          assert.equal(previewRequests.length,0,"browsing does not generate paid previews");
           await picker.getByRole("radio",{name:/cedar/}).check();
           await picker.getByRole("button",{name:"Use this voice"}).click();
+          await picker.waitFor({state:"detached"});
+          assert.equal(narrator.voice,"cedar","voice is saved to the book before closing settings");
           assert.equal(requests.length,0);
           await mode.getByRole("button",{name:"Play narration",exact:true}).click();
           await page.waitForFunction(()=>window.audioSources.length===1);
+          await page.evaluate(()=>{Object.defineProperty(document,"hidden",{configurable:true,value:true});document.dispatchEvent(new Event("visibilitychange"));});
+          await mode.getByRole("button",{name:"Pause narration"}).waitFor();
+          assert.equal(await page.evaluate(()=>window.audioSources[0].stopped),undefined,"visibility alone does not stop narration");
+          await page.evaluate(()=>{Object.defineProperty(document,"hidden",{configurable:true,value:false});document.dispatchEvent(new Event("visibilitychange"));});
           assert.equal(requests[0].voice,"cedar");
           assert.equal(requests[0].passageCfi,source[0].block.cfi);
           assert.equal(requests[0].passageEndCfi,source[0].block.endCfi,"multiple short sentences share one request");
@@ -489,11 +518,64 @@ test(
           }
           assert.equal(chapterPrepared,true);
           await mode.getByRole("heading",{name:"The Next Day",exact:true}).waitFor();
+          await mode.getByRole("button",{name:"Choose narrator voice"}).click();
+          picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await picker.getByText(/Preview text:/).waitFor();
+          const beforePreview=await page.evaluate(()=>window.audioSources.length);
+          await picker.getByRole("button",{name:"Preview marin",exact:true}).click();
+          await page.waitForFunction(before=>window.audioSources.length>before,beforePreview);
+          assert.equal(previewRequests.at(-1).voice,"marin");
+          assert.equal(narrator.voice,"cedar","preview does not replace the saved narrator");
+          await page.evaluate(()=>{Object.defineProperty(document,"hidden",{configurable:true,value:true});document.dispatchEvent(new Event("visibilitychange"));});
+          await picker.getByRole("button",{name:"Stop preview of marin",exact:true}).waitFor();
+          await picker.getByRole("button",{name:"Stop preview of marin",exact:true}).click();
+          await page.evaluate(()=>{Object.defineProperty(document,"hidden",{configurable:true,value:false});document.dispatchEvent(new Event("visibilitychange"));});
+          await picker.getByRole("button",{name:"Cancel",exact:true}).click();
+          await picker.waitFor({state:"detached"});
           await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
           assert.equal(await page.evaluate(()=>window.audioContexts[0].state),"closed");
+          await page.reload();
+          await page.waitForFunction(()=>window.rsvpTest?.reader.loading===false);
+          await page.getByRole("button",{name:"Reader menu",exact:true}).click(); await page.getByRole("button",{name:"Audiobook Mode",exact:true}).click();
+          await mode.getByRole("button",{name:"Choose narrator voice"}).filter({hasText:"cedar"}).waitFor();
+          await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
+          narrator={engine:"system",voice:"missing-device-voice",name:"Unavailable narrator",lang:"en-US"};
+          await page.reload(); await page.waitForFunction(()=>window.rsvpTest?.reader.loading===false);
+          await page.getByRole("button",{name:"Reader menu",exact:true}).click(); await page.getByRole("button",{name:"Audiobook Mode",exact:true}).click();
+          picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await picker.getByRole("alert").filter({hasText:/Saved narrator.*unavailable/}).waitFor();
+          assert.equal(await mode.getByRole("button",{name:"Play narration",exact:true}).isDisabled(),true);
+          await picker.getByRole("button",{name:/OpenAI voices/}).click();
+          await picker.getByRole("radio",{name:/marin/}).check();
+          saveFailure=true;
+          await picker.getByRole("button",{name:"Use this voice"}).click();
+          await picker.getByRole("alert").filter({hasText:/could not be saved/}).waitFor();
+          assert.equal(await picker.isVisible(),true,"failed save keeps settings open");
+          saveFailure=false;
+          await picker.getByRole("button",{name:"Use this voice"}).click(); await picker.waitFor({state:"detached"});
+          assert.equal(narrator.voice,"marin");
+          await mode.getByRole("button",{name:"Play narration",exact:true}).waitFor();
+          await mode.getByRole("button",{name:"Choose narrator voice"}).click();
+          picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await picker.getByRole("button",{name:/System voices/}).click();
+          await picker.getByRole("button",{name:"Use this voice"}).click(); await picker.waitFor({state:"detached"});
+          assert.equal(narrator.engine,"system"); assert.equal(narrator.voice,"native");
+          await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
+          await page.goto(server.resolvedUrls.local[0]+"rsvp-test?delayed=1");
+          await page.waitForFunction(()=>window.rsvpTest?.reader.loading===false);
+          await page.getByRole("button",{name:"Reader menu",exact:true}).click(); await page.getByRole("button",{name:"Audiobook Mode",exact:true}).click();
+          await mode.getByRole("heading",{name:"A Quiet Morning"}).waitFor();
+          assert.equal(await page.getByRole("dialog",{name:"Choose a narrator",exact:true}).count(),0,"delayed voice enumeration is not immediately treated as missing");
+          await page.evaluate(()=>{window.availableVoices=[{voiceURI:"native",name:"Native",lang:"en-US",default:true,localService:true}];speechSynthesis.dispatchEvent(new Event("voiceschanged"));});
+          await mode.getByRole("button",{name:"Play narration",exact:true}).click();
+          assert.equal(await page.evaluate(()=>window.spoken.at(-1).voice.voiceURI),"native","saved system voice is restored after asynchronous enumeration");
+          await page.evaluate(()=>{Object.defineProperty(document,"hidden",{configurable:true,value:true});document.dispatchEvent(new Event("visibilitychange"));});
+          await mode.getByRole("button",{name:"Pause narration",exact:true}).waitFor();
+          await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
         } finally { await browser.close(); }
       });
       await t.test("long chapter keeps complete native scrolling with bounded highlight DOM", async () => {
+        storedNarrator=null;
         const archive=await JSZip.loadAsync(file);
         const original=await archive.file("a.xhtml").async("string");
         const paragraph=original.match(/<p>[\s\S]*?<\/p>/)[0];
