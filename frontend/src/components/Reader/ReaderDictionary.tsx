@@ -332,7 +332,7 @@ export function ReaderDictionary({
                 title={t("reader.lookupHebrew")}
                 onClick={() => void lookup()}
               >
-                <FiBookOpen aria-hidden="true" />
+                <FiBookOpen aria-hidden="true" />{mobile && <span className="reader-selection-label">Look up</span>}
               </button>
             )}
             <button
@@ -343,19 +343,19 @@ export function ReaderDictionary({
               disabled={aiDisabled}
               onClick={() => onAskAi()}
             >
-              <FiMessageSquare aria-hidden="true" />
+              <FiMessageSquare aria-hidden="true" />{mobile && <span className="reader-selection-label">Ask AI</span>}
             </button>
             {onFlag && <button className="reader-icon-button" disabled={busy || !flagReady}
               onMouseDown={event => event.preventDefault()} onClick={onFlag}
               aria-pressed={flagged} aria-label={t(flagged ? "reader.review.removeFlag" : "reader.review.flag")}
               title={t(flagged ? "reader.review.removeFlag" : "reader.review.flag")}>
-              <LuFlag aria-hidden="true" fill={flagged ? "currentColor" : "none"} />
+              <LuFlag aria-hidden="true" fill={flagged ? "currentColor" : "none"} />{mobile && <span className="reader-selection-label">Flag</span>}
             </button>}
             {onAnnotate && <>
               <button className="reader-icon-button reader-selection-annotate" disabled={busy || annotationBusy}
                 onClick={() => onAnnotate(true)} aria-label={t("reader.annotations.addNote")}
                 title={t("reader.annotations.addNote")}>
-                <FiEdit3 aria-hidden="true" />
+                <FiEdit3 aria-hidden="true" />{mobile && <span className="reader-selection-label">Note</span>}
               </button>
             </>}
             <button
@@ -365,7 +365,7 @@ export function ReaderDictionary({
               aria-label={t("reader.selectionCopy")}
               title={t("reader.selectionCopy")}
             >
-              <FiCopy aria-hidden="true" />
+              <FiCopy aria-hidden="true" />{mobile && <span className="reader-selection-label">Copy</span>}
             </button>
           </div>
 

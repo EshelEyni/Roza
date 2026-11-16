@@ -2415,3 +2415,9 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
   .reader-toolbar-menu-popover .reader-icon-button { width: 100%; min-width: 0; white-space: normal; word-break: normal; overflow-wrap: normal; }
   .reader-toolbar-menu-popover .reader-icon-button span { min-width: 0; white-space: normal; word-break: normal; overflow-wrap: normal; }
 }
+
+@media (max-width: 1024px) {
+  .reader-selection-docked .reader-dictionary-actions { flex-wrap: nowrap; gap: 4px; }
+  .reader-selection-docked .reader-dictionary-actions > button { display: flex; flex: 1; flex-direction: column; justify-content: center; align-items: center; gap: 3px; width: auto; min-width: 44px; height: auto; min-height: 50px; padding: 4px 2px; }
+  .reader-selection-label { font-size: 10px; line-height: 1.2; white-space: nowrap; word-break: normal; overflow-wrap: normal; }
+}
