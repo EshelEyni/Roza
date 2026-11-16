@@ -1,3 +1,5 @@
+import { bindReaderTouch } from "../../services/readerTouch";
+import { ReaderToolbarMenu } from "./ReaderToolbarMenu";
 import { readerSentencePassageOffsets } from "../../services/readerSentencePassageOffsets";
 import {
   measureSentenceLines,
@@ -207,6 +209,28 @@ export function ReaderSentenceMode({
   const wordIndex = wordFocus.cfi === sentence?.cfi ? wordFocus.index : -1;
   const blocked = mode.busy || !!lookup || !!reader.panel;
   const textTarget = selectedText?.cfi === sentence?.cfi ? selectedText : null;
+  useEffect(() => bindReaderTouch(document, {
+    enabled: () => reader.mobile,
+    scope: () => stage.current,
+    nativeContextMenu: true,
+    paginated: () => true,
+    blocked: () => blocked,
+    selected: () => !!selectedText,
+    dismissSelection: () => {},
+    tapPosition: x => {
+      const rect = stage.current?.getBoundingClientRect();
+      if (!rect?.width) return undefined;
+      return x < rect.left + rect.width / 2 ? 0 : 1;
+    },
+    move: direction => {
+      const next = direction === "next";
+      if (next ? mode.canNext : mode.canBack) {
+        pendingWord.current = null;
+        resetVertical();
+        mode.move(next ? 1 : -1);
+      }
+    },
+  }), [reader.mobile, blocked, selectedText, mode]);
   const wordPart = wordIndex >= 0 ? wordIndex * 2 + 1 : -1;
   const actionTarget =
     textTarget ||
@@ -948,12 +972,14 @@ export function ReaderSentenceMode({
           ref={actions}
           onMouseDown={(event) => event.preventDefault()}
         >
+          <ReaderToolbarMenu label="More" mobileOnly>
           {mode.target && <button disabled={blocked} aria-label="Clear target"
             title={"Clear target: " + mode.target.text} onClick={mode.clearReadingTarget}>
             <FiX /><span>Clear target</span>
           </button>}
           <button disabled={blocked || !sentence} aria-label="Set reading target" title="Set reading target"
             onClick={() => void reader.readingTarget.begin()}><FiFlag /><span>Set target</span></button>
+          </ReaderToolbarMenu>
           <button
             disabled={blocked || translateDisabled}
             data-shortcut="t"
@@ -1016,7 +1042,7 @@ export function ReaderSentenceMode({
             }}
           >
             <FiEdit3 />
-            <span>Annotate</span>
+            <span>Note</span>
           </button>
           <button
             disabled={blocked || !sentence || !reader.flags.ready || flagging}

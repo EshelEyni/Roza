@@ -1,7 +1,9 @@
+import { useReaderMobile } from "../../hooks/useReaderMobile";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { FiMoreVertical } from "react-icons/fi";
 
-export function ReaderToolbarMenu({ children, onBeforeOpen }: { children: ReactNode; onBeforeOpen?: () => void }) {
+export function ReaderToolbarMenu({ children, onBeforeOpen, label, mobileOnly }: { children: ReactNode; label?: string; mobileOnly?: boolean; onBeforeOpen?: () => void }) {
+  const mobile = useReaderMobile();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
@@ -15,6 +17,7 @@ export function ReaderToolbarMenu({ children, onBeforeOpen }: { children: ReactN
     document.addEventListener("pointerdown", outside);
     return () => document.removeEventListener("pointerdown", outside);
   }, [open]);
+  if (mobileOnly && !mobile) return <>{children}</>;
   return <div className="reader-toolbar-menu" ref={root}
     onBlur={event => { if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}
     onKeyDown={event => {
@@ -34,7 +37,7 @@ export function ReaderToolbarMenu({ children, onBeforeOpen }: { children: ReactN
       aria-label="Reader menu" title="Reader menu" aria-expanded={open} aria-controls={open ? id : undefined}
       onPointerDown={() => { if (!open) onBeforeOpen?.(); }}
       onKeyDown={event => { if (!open && ["Enter", " "].includes(event.key)) onBeforeOpen?.(); }}
-      onClick={() => setOpen(value => !value)}><FiMoreVertical aria-hidden="true" /></button>
+      onClick={() => setOpen(value => !value)}><FiMoreVertical aria-hidden="true" />{label && <span>{label}</span>}</button>
     {open && <div id={id} data-reader-menu className="reader-book-menu-popover reader-toolbar-menu-popover"
       role="group" aria-label="Reader menu" onClick={event => {
         if ((event.target as Element).closest('button:not(:disabled)')) { setOpen(false); trigger.current?.focus(); }
