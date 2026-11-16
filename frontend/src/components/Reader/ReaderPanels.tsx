@@ -77,7 +77,7 @@ export function ReaderPanels({
   if (!panel) return null;
   return (
     <ReaderSheet
-      mobileFullscreen={panel === "search" || panel === "chat"}
+      mobileFullscreen={panel === "search" || panel === "chat" || panel === "annotations"}
       mobileCloseInContent={panel === "search" || panel === "chat"}
       label={t(
         panel === "review" ? "reader.review.title" : panel === "annotations" ? "reader.annotations.title" : panel === "chat"
