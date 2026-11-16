@@ -1,3 +1,4 @@
+import readerAudiobookRouter from "./readerAudiobookRouter";
 import express from "express";
 import { listAnnotations, saveAnnotation, deleteAnnotation } from "../../controllers/reader/readerAnnotationController";
 import { checkUserAuthentication } from "../../middlewares/authGuards/authGuardsMiddleware";
@@ -41,6 +42,7 @@ const router = express.Router();
 router.use(checkUserAuthentication);
 router.get("/access", getReaderAccess);
 router.use(checkReaderAccess);
+router.use("/:id/audiobook", readerAudiobookRouter);
 router.get("/progress-settings", getProgressSettings);
 router.patch("/progress-settings", updateProgressSettings);
 router.get("/:id/review", getReview);
