@@ -1,0 +1,22 @@
+{
+  "name": "roza-desktop",
+  "productName": "Roza",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Roza Reader and Writing Studio for Windows",
+  "author": "Roza",
+  "main": "main.cjs",
+  "repository": "https://github.com/EshelEyni/Roza.git",
+  "scripts": {
+    "build:frontend": "npm --prefix ../frontend run build -- --mode desktop --outDir ../desktop/renderer --emptyOutDir",
+    "start": "npm run build:frontend && electron .",
+    "dist:win": "npm run build:frontend && electron-builder --win nsis --x64 --publish never"
+  },
+  "dependencies": {
+    "electron-updater": "6.8.12"
+  },
+  "devDependencies": {
+    "electron": "45.3.4",
+    "electron-builder": "26.18.1"
+  }
+}

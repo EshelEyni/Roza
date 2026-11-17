@@ -1,0 +1,89 @@
+name: Build Roza for Windows
+
+on:
+  workflow_dispatch:
+    inputs:
+      draft_release:
+        description: Upload a draft GitHub release for review
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: roza-windows-release
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            frontend/package-lock.json
+            desktop/package-lock.json
+      - run: npm ci --prefix frontend
+      - run: npm ci --prefix desktop
+      - name: Build Windows installer
+        run: npm --prefix desktop run dist:win
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+      - name: Verify release files and create stable download alias
+        shell: pwsh
+        run: |
+          $version = node -p "require('./desktop/package.json').version"
+          $installer = "Roza-Setup-$version-x64.exe"
+          foreach ($file in @($installer, "$installer.blockmap", "latest.yml")) {
+            if (!(Test-Path -LiteralPath "desktop/dist/$file")) {
+              throw "Missing release asset $file"
+            }
+          }
+          Copy-Item -LiteralPath "desktop/dist/$installer" -Destination "desktop/dist/Roza-Setup-x64.exe"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Roza-Windows-x64
+          if-no-files-found: error
+          path: |
+            desktop/dist/*.exe
+            desktop/dist/*.exe.blockmap
+            desktop/dist/latest.yml
+
+  draft:
+    if: github.ref == 'refs/heads/main' && inputs.draft_release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v4
+        with:
+          name: Roza-Windows-x64
+          path: release
+      - name: Upload draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(node -p "require('./desktop/package.json').version")
+          tag="v$version"
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Use a stable desktop version (MAJOR.MINOR.PATCH)."
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "Tag $tag already exists. Bump the desktop version before releasing."
+            exit 1
+          else
+            result=$?
+            if [[ "$result" != 2 ]]; then exit "$result"; fi
+          fi
+          gh release create "$tag" release/* --draft --target "$GITHUB_SHA" \
+            --title "Roza $version for Windows" --generate-notes
