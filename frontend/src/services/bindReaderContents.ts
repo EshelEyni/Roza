@@ -1,3 +1,4 @@
+import { readerCaretRange } from "./readerCaretRange";
 import type { Contents } from "epubjs";
 import { readerSelectionEdge } from "./readerSelectionEdge";
 import { bindReaderTouch } from "./readerTouch";
@@ -63,21 +64,8 @@ export function bindReaderContents(
   let dragAnchor: Range | undefined;
   let dragButton = 1;
   let restartLocalDrag = false;
-  const caretAt = (event: MouseEvent) => {
-    const doc = contents.document as Document & {
-      caretPositionFromPoint?: (x: number, y: number) =>
-        { offsetNode: Node; offset: number } | null;
-      caretRangeFromPoint?: (x: number, y: number) => Range | null;
-    };
-    const position = doc.caretPositionFromPoint?.(event.clientX, event.clientY);
-    if (position) {
-      const range = doc.createRange();
-      range.setStart(position.offsetNode, position.offset);
-      range.collapse(true);
-      return range;
-    }
-    return doc.caretRangeFromPoint?.(event.clientX, event.clientY) ?? null;
-  };
+  const caretAt = (event: MouseEvent) =>
+    readerCaretRange(contents.document, event.clientX, event.clientY);
   const updateRightSelection = (event: MouseEvent) => {
     if (!dragAnchor || selection.isExtending?.()) return;
     const focus = caretAt(event);

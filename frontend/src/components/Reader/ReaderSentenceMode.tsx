@@ -1,3 +1,5 @@
+import { readerWordPattern } from "../../services/readerWordPattern";
+import { readerMarkTextColor, readerSelectionColor } from "../../services/readerMarkColors";
 import { bindReaderTouch } from "../../services/readerTouch";
 import { readerSentencePassageOffsets } from "../../services/readerSentencePassageOffsets";
 import {
@@ -97,7 +99,7 @@ export function ReaderSentenceMode({
   const actions = useRef<HTMLDivElement>(null);
   const sentence = mode.sentence;
   const parts =
-    sentence?.text.split(/([\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*)/gu) || [];
+    sentence?.text.split(readerWordPattern) || [];
   let partOffset = 0;
   const partOffsets = parts.map((part) => {
     const start = partOffset;
@@ -508,7 +510,7 @@ export function ReaderSentenceMode({
     resetVertical();
     visualLines.current = null;
     const count = Math.floor(
-      (sentence?.text.split(/([\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*)/gu)
+      (sentence?.text.split(readerWordPattern)
         .length || 0) / 2,
     );
     setWordFocus(
@@ -794,13 +796,13 @@ export function ReaderSentenceMode({
       style={
         {
           "--sentence-selection-color":
-            reader.state.preferences.selectionColor || "#719bd8",
+            reader.state.preferences.selectionColor || readerSelectionColor,
           "--sentence-selection-text-color":
-            reader.state.preferences.selectionTextColor || "#28231e",
+            reader.state.preferences.selectionTextColor || readerMarkTextColor,
           "--sentence-translation-color":
             reader.state.preferences.translationColor || "#a3c2ff",
           "--sentence-translation-text-color":
-            reader.state.preferences.translationTextColor || "#28231e",
+            reader.state.preferences.translationTextColor || readerMarkTextColor,
         } as CSSProperties
       }
     >
@@ -903,10 +905,10 @@ export function ReaderSentenceMode({
                             ? {
                                 backgroundColor:
                                   reader.state.preferences.selectionColor ||
-                                  "#719bd8",
+                                  readerSelectionColor,
                                 color:
                                   reader.state.preferences.selectionTextColor ||
-                                  "#28231e",
+                                  readerMarkTextColor,
                               }
                             : undefined
                         }
