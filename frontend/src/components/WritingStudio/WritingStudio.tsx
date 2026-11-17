@@ -383,7 +383,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
 
   return (
     <main
-      className={`ws ws-studio ${tasks ? "ws-tasks-open" : ""} ${dark ? "ws-dark" : ""} ${focus ? "ws-focus" : ""} ${activeDraft ? "ws-draft-mode" : ""}`}
+      className={`ws ws-studio ${tasks ? "ws-tasks-open" : ""} ${dark && !focus ? "ws-dark" : ""} ${focus ? "ws-focus" : ""} ${activeDraft ? "ws-draft-mode" : ""}`}
       style={{ "--ws-font-size": `${size}px` } as React.CSSProperties}
     >
       {confirmationDialog}
@@ -451,6 +451,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           }
         </button>
         <button
+          className="ws-focus-toggle"
           onClick={() => setFocus(!focus)}
           aria-pressed={focus}
           title="Focus mode (Ctrl/Cmd+Shift+F)"
@@ -882,7 +883,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                         {Math.max(1, Math.ceil(words(visibleText) / 200))} min
                         read
                       </span>
-                      <span>
+                      <span className={preview ? undefined : "ws-writing-prompt"}>
                         {preview
                           ? "Reading preview"
                           : "Make room for your next idea."}

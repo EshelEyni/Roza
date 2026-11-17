@@ -703,23 +703,6 @@
   display: none !important;
 }
 
-.ws-focus .ws-sidebar,
-.ws-focus .ws-document-actions,
-.ws-focus .ws-toolbar,
-.ws-focus .ws-mobile-nav {
-  display: none;
-}
-
-.ws-focus .ws-page {
-  max-width: 850px;
-  margin-top: 40px;
-  background: transparent;
-}
-
-.ws-focus .ws-header {
-  background: var(--ws-bg);
-}
-
 @media (min-width: 1500px) {
   .ws-page {
     margin-top: 28px;
@@ -947,15 +930,6 @@
     max-height: 32dvh;
     overflow: auto;
     padding: 12px 16px;
-  }
-
-  .ws-focus .ws-mobile-nav {
-    display: none !important;
-  }
-
-  .ws-focus .ws-page {
-    margin: 0;
-    padding-top: 36px;
   }
 
   .ws-empty {
@@ -2174,4 +2148,139 @@ padding: 6px 10px;
   border-color: var(--ws-accent);
   background: var(--ws-accent);
   color: var(--ws-paper);
+}
+
+/* Focus Mode uses the same warm paper from the header to the manuscript. */
+.ws-focus {
+  background: var(--ws-paper);
+}
+
+.ws-focus .ws-layout .ws-sidebar,
+.ws-focus .ws-document-actions,
+.ws-focus .ws-toolbar {
+  display: none;
+}
+
+.ws-focus .ws-mobile-nav {
+  display: none !important;
+}
+
+.ws-focus .ws-header {
+  min-height: 60px;
+  gap: clamp(4px, 1vw, 14px);
+  padding: 6px clamp(12px, 3vw, 40px);
+  border-color: color-mix(in srgb, var(--ws-line) 32%, transparent);
+}
+
+.ws-focus .ws-header .ws-back {
+  border: 0 !important;
+  border-radius: 5px !important;
+}
+
+.ws-focus .ws-book-heading .ws-eyebrow {
+  display: none;
+}
+
+.ws-focus .ws-book-heading input {
+  font-size: 14px;
+}
+
+.ws-focus .ws-header button {
+  min-height: 40px;
+  white-space: nowrap;
+}
+
+.ws-focus .ws-header .ws-focus-toggle {
+  background: color-mix(in srgb, var(--ws-accent) 10%, var(--ws-paper));
+  font-weight: 600;
+}
+
+.ws-focus .ws-header .ws-focus-toggle:hover {
+  background: color-mix(in srgb, var(--ws-accent) 18%, var(--ws-paper));
+}
+
+.ws-focus .ws-header .ws-save {
+  max-width: none;
+}
+
+.ws-focus .ws-writing {
+  scrollbar-gutter: stable both-edges;
+}
+
+.ws-focus:not(.ws-draft-mode) .ws-page:not(.ws-chapter-bible-page, .ws-summary-mode) {
+  --ws-editor-min-height: 55dvh;
+  width: 100%;
+  max-width: 52rem;
+  min-height: 100%;
+  margin: 0 auto;
+  padding-block: clamp(36px, 8vh, 88px) max(32px, env(safe-area-inset-bottom));
+  padding-inline: clamp(24px, 6vw, 74px);
+}
+
+.ws-focus:not(.ws-draft-mode) .ws-page:has(.ws-annotation-rail) {
+  max-width: calc(52rem + var(--ws-focus-annotation-space, 292px));
+}
+
+.ws-focus .ws-annotated-editor:not(:has(.ws-annotation-rail)) {
+  --ws-annotation-space: 0px;
+}
+
+.ws-focus .ws-annotated-editor > .ws-prose {
+  margin-right: var(--ws-annotation-space);
+}
+
+.ws-focus .ws-page .ws-chapter-title {
+  font-size: clamp(30px, 4vw, 48px);
+  line-height: 1.15;
+  margin-bottom: clamp(20px, 4vh, 38px);
+  text-overflow: ellipsis;
+}
+
+.ws-focus .ws-prose:not(.sp-page) {
+  line-height: 1.8;
+}
+
+.ws-focus .ws-page-footer {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.ws-focus .ws-writing-prompt {
+  display: none;
+}
+
+@media (max-width: 1050px) and (min-width: 761px) {
+  .ws-focus {
+    --ws-focus-annotation-space: 222px;
+  }
+}
+
+@media (max-width: 760px) {
+  .ws-focus {
+    --ws-focus-annotation-space: 0px;
+  }
+
+  .ws-focus:not(.ws-draft-mode) .ws-page:has(.ws-annotated-editor):not(.ws-chapter-bible-page, .ws-summary-mode) {
+    padding-left: 46px;
+    padding-right: 18px;
+  }
+}
+
+@media (max-width: 700px) {
+  .ws-focus .ws-header {
+    min-height: 0;
+  }
+
+  .ws-focus .ws-book-heading {
+    flex-basis: calc(100% - 52px);
+  }
+
+  .ws-focus .ws-header button {
+    min-height: 44px;
+    padding-inline: 8px;
+  }
+
+  .ws-focus .ws-writing {
+    scrollbar-gutter: auto;
+  }
 }
