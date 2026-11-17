@@ -176,6 +176,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       });
     setDrawer(false);
     setFocus(false);
+    setPreview(false);
     setSearch("");
     setNotes(true);
     setSummary(false);
@@ -213,7 +214,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const activeDraft = chapter?.drafts?.find(d => d.id === draftId);
   function openDraft(id: string) {
     setVisitedDrafts(ids => ids.includes(id) ? ids : [...ids, id]);
-    setDraftId(id); setSummary(false); setChapterBible(false); setDrawer(false); setFocus(false); setMobilePane("draft");
+    setDraftId(id); setSummary(false); setChapterBible(false); setDrawer(false); setFocus(false); setPreview(false); setMobilePane("draft");
   }
   function editChapter(change: (chapter: Chapter) => Chapter, chapterId = chapter?.id) {
     if (!chapterId) return;
@@ -578,7 +579,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           </p>
         </section>
       )}
-      <div className="ws-layout">
+      <div className={`ws-layout ${preview && item && !overview && !tasks ? "ws-reading" : ""}`}>
         <button
           className="ws-mobile-nav"
           onClick={() => setDrawer(!drawer)}
@@ -712,6 +713,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     disabled={!!activeDraft}
                     onClick={() => {
                       setChapterBible(false);
+                      setDrawer(false);
                       setPreview(!preview);
                     }}
                     aria-pressed={preview}
@@ -847,6 +849,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                           aiEditing={{ bookId: book.id, chapterId: item.id, summary: true }}
                           placeholder="Summarize what happens in this chapter…"
                           readOnly={preview || !!store.recovery}
+                          reading={preview}
                           onChange={description => updateItem({ description })}
                         />
                       </section>
@@ -859,6 +862,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                         value={text}
                         aiEditing={chapter ? { bookId: book.id, chapterId: chapter.id, annotations: chapter.annotations, onDraft: aiDraft } : undefined}
                         readOnly={preview || !!store.recovery || !!activeDraft}
+                        reading={preview}
                         annotations={
                           item.type === "chapters"
                             ? item.annotations || []

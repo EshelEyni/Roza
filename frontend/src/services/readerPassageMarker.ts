@@ -1,3 +1,4 @@
+import { readerMarkTextColor, readerPassageColor } from "./readerMarkColors";
 import { bindNativeHighlight } from "./readerNativeHighlight";
 import type { Rendition } from "epubjs";
 import type { ReaderPassage } from "../../../shared/types/readerChat";
@@ -49,7 +50,7 @@ export class ReaderPassageMarker {
       let cleanup = () => {};
       const draw = () => {
         cleanup();
-        const background = this.markerColor?.(color) || (color === "blue" ? "#a3c2ff" : "#f2e66b");
+        const background = this.markerColor?.(color) || (color === "blue" ? "#a3c2ff" : readerPassageColor);
         const annotation = rendition.annotations.highlight(
         cfi,
         {},
@@ -62,7 +63,7 @@ export class ReaderPassageMarker {
           "pointer-events": "none",
         },
       );
-        cleanup = bindNativeHighlight(annotation, background, this.markerTextColor?.(color) || "#28231e");
+        cleanup = bindNativeHighlight(annotation, background, this.markerTextColor?.(color) || readerMarkTextColor);
       };
       let byRange = layers.get(rendition);
       if (!byRange) { byRange = new Map(); layers.set(rendition, byRange); }

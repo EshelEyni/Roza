@@ -688,7 +688,9 @@ test(
       await page.screenshot({ path: path.join(screenshots, 'chapter-overview-grid.png') });
       await toggleOverview(page);
       await page.setViewportSize({ width: 1365, height: 900 });
-      const writingMenu = page.locator('.ws-writing .ws-item-menu');
+      const writingMenu = page.locator('.ws-writing .ws-item-menu').filter({
+        has: page.locator('summary').filter({ hasText: /^More$/ }),
+      });
       await writingMenu.locator('summary').click();
       assert.equal(await writingMenu.getByRole('button', { name: /^(Move up|Move down|Duplicate)$/ }).count(), 0);
       await page.getByRole('button', { name: 'Read', exact: true }).focus();
@@ -744,10 +746,58 @@ test(
           .isVisible(),
       );
       await page.keyboard.press("Escape");
+      const firstSentence = "A fresh start began at the coast where the windows held the pale afternoon light.";
+      await editor.fill(firstSentence);
+      await editor.press("End");
+      await editor.press("Enter");
+      await page.keyboard.insertText("Another paragraph. A final sentence.");
+      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      const clickManuscriptWord = async (word) => {
+        const point = await editor.evaluate((element, word) => {
+          const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+          for (let leaf = walker.nextNode(); leaf; leaf = walker.nextNode()) {
+            const start = leaf.textContent.indexOf(word);
+            if (start < 0) continue;
+            const range = document.createRange();
+            range.setStart(leaf, start);
+            range.setEnd(leaf, start + word.length);
+            const rect = range.getClientRects()[0];
+            return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
+          }
+          throw new Error(`Word not found: ${word}`);
+        }, word);
+        await page.mouse.click(point.x, point.y);
+      };
+      const manuscriptMarks = () => editor.evaluate(element =>
+        [...CSS.highlights.entries()].flatMap(([name, highlight]) =>
+          [...highlight].filter(range => element.contains(range.startContainer)).map(range => ({
+            text: range.toString(),
+            priority: highlight.priority,
+            color: [...document.head.querySelectorAll("style")]
+              .find(style => style.textContent.startsWith(`::highlight(${name})`))
+              ?.textContent.match(/background-color:([^;]+);/)?.[1],
+            lines: new Set([...range.getClientRects()].map(rect => rect.top)).size,
+          })),
+        ),
+      );
       await page.getByRole("button", { name: "Read", exact: true }).click();
       assert.equal(await editor.getAttribute("contenteditable"), "false");
-      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      assert.equal(await page.locator(".ws-sidebar").isVisible(), false);
+      await clickManuscriptWord("fresh");
+      assert.deepEqual((await manuscriptMarks()).map(({ lines, ...mark }) => mark), [
+        { text: firstSentence, priority: 0, color: "#f2e66b" },
+        { text: "fresh", priority: 1, color: "#719bd8" },
+      ]);
       await page.setViewportSize({ width: 390, height: 844 });
+      assert.equal(await page.locator(".ws-mobile-nav").isVisible(), false);
+      assert.ok((await manuscriptMarks())[0].lines > 1);
+      await clickManuscriptWord("paragraph");
+      assert.deepEqual((await manuscriptMarks()).map(mark => mark.text), [
+        "Another paragraph.", "paragraph",
+      ]);
+      await page.getByRole("button", { name: "Edit", exact: true }).click();
+      assert.deepEqual(await manuscriptMarks(), []);
+      assert.equal(await editor.getAttribute("contenteditable"), "true");
       await page.getByRole("button", { name: /☰/ }).click();
       await page.getByRole("button", { name: /The house by the sea/ }).click();
       assert.ok(await editor.isVisible());

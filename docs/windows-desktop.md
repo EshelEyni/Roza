@@ -15,7 +15,7 @@ Use an x64 Windows machine with Node.js 24 and npm. From the repository root:
 npm ci --prefix frontend
 npm ci --prefix desktop
 npm --prefix desktop start
-npm --prefix desktop run dist:win
+npm run build:desktop
 ```
 
 The last command builds `desktop/dist/Roza-Setup-0.1.0-x64.exe` for version

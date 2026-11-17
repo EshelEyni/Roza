@@ -1,3 +1,4 @@
+import { readerWordPattern } from "./readerWordPattern";
 import { readerNoteReference } from "./readerNoteReference";
 
 /** Map a displayed sentence word back to its EPUB text nodes, including inline markup. */
@@ -33,7 +34,7 @@ export function readerSentenceWordRange(
   const text = nodes
     .map((part) => part.node.data.slice(part.start, part.end))
     .join("");
-  const word = [...text.matchAll(/[\p{L}\p{N}]+(?:['’‘-][\p{L}\p{N}]+)*/gu)][
+  const word = [...text.matchAll(readerWordPattern)][
     wordIndex
   ];
   if (!word || word.index === undefined) return null;

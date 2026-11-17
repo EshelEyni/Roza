@@ -1,4 +1,5 @@
 import { AiEdit, AiEditingContext } from "./AiEdit";
+import { useManuscriptReadingMarks } from "./useManuscriptReadingMarks";
 import { ScreenplayToolbar } from "./ScreenplayToolbar";
 import {
   isScreenplay,
@@ -113,6 +114,7 @@ export function ManuscriptEditor({
   format = "prose",
   onChange,
   readOnly = false,
+  reading = false,
   label = "Manuscript",
   placeholder = "Begin here. The next sentence is yours.",
   annotations,
@@ -133,9 +135,11 @@ export function ManuscriptEditor({
   legacyNotes?: ReactNode;
   onRevealAnnotations?: () => void;
   readOnly?: boolean;
+  reading?: boolean;
   label?: string;
   placeholder?: string;
 }) {
+  const readingMarks = useManuscriptReadingMarks(reading);
   const [activeNote, setActiveNote] = useState<string | null>(null);
   const [hoveredPath, setHoveredPath] = useState<string | null>(null);
   const activeAnchor = annotations?.find(
@@ -243,7 +247,9 @@ export function ManuscriptEditor({
             value.every((node) => Node.string(node) === "")
           }
           className={`ws-prose ${format === "screenplay" ? "sp-page" : ""}`}
+          onClick={readingMarks.onClick}
           onKeyDown={(event) => {
+            if (reading && event.key === "Escape") readingMarks.clear();
             if (readOnly || event.nativeEvent.isComposing) return;
             if (event.ctrlKey || event.metaKey) {
               const button = btns
