@@ -184,6 +184,8 @@ export function useEpubReader(book: ReaderBook, userId: string) {
   return {
     audiobook: {
       bookTitle: book.title,
+      bookAuthor: book.author || "",
+      epub: () => runtime.epubRef.current,
       loadSection: async (target?: number, direction: 1 | -1 = 1) => {
         const epub = runtime.epubRef.current;
         const cfi = sentenceMode.entryCfi();

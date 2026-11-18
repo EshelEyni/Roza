@@ -7,7 +7,7 @@ export type AudiobookConfig = {
   narrator?: ReaderAudiobookNarrator | null; previewText?: string;
   wordTimings?: boolean;
 };
-export type AudiobookEngine = "system" | "openai";
+export type AudiobookEngine = "system" | "openai" | "kokoro";
 const base = (book: string) => `/api/reader/${encodeURIComponent(book)}/audiobook`;
 
 async function json<T>(url: string, options?: RequestInit): Promise<T> {
@@ -93,6 +93,8 @@ export class ReaderOpenAiAudio {
   private cursor = 0;
   private started = 0;
   private rate = 1;
+  private volume = 1;
+  private gain?: GainNode;
   private running = false;
   private ready: Promise<void> = Promise.resolve();
   constructor(private book: string, private interrupted: () => void = () => {}) {}
@@ -112,6 +114,17 @@ export class ReaderOpenAiAudio {
       this.source.playbackRate.setValueAtTime(value, this.context.currentTime);
       this.started = this.context.currentTime;
     }
+  }
+  setVolume(value: number) {
+    this.volume = value;
+    if (this.gain) this.gain.gain.value = value;
+  }
+  /** Narration goes through one gain node, so volume changes apply to the playing passage. */
+  private output(context: AudioContext): AudioNode {
+    if (typeof context.createGain !== "function") return context.destination;
+    if (!this.gain) { this.gain = context.createGain(); this.gain.connect(context.destination); }
+    this.gain.gain.value = this.volume;
+    return this.gain;
   }
   private remember() {
     if (this.running && this.context) {
@@ -224,7 +237,7 @@ export class ReaderOpenAiAudio {
     if (context.state !== "running") throw new Error("Audio was interrupted. Press Play to continue.");
     const source = context.createBufferSource();
     source.buffer = buffer; source.playbackRate.value = this.rate;
-    source.connect(context.destination);
+    source.connect(this.output(context));
     source.onended = () => {
       if (revision !== this.revision || this.source !== source) return;
       this.stopWordClock();

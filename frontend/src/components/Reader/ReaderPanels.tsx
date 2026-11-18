@@ -1,4 +1,3 @@
-import { ReaderTts } from "./ReaderTts";
 import { useEffect, useState } from "react";
 import { ReaderWorkspace } from "./ReaderWorkspace";
 import { ReaderPanelResize } from "./ReaderPanelResize";
@@ -13,7 +12,6 @@ import { ReaderAnnotations } from "./ReaderAnnotations";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
 type Props = Pick<
   EpubReaderController,
-  | "audiobook"
   | "progressSettings"
   | "updateProgressSettings"
   | "progressSaveStatus"
@@ -43,7 +41,6 @@ type Props = Pick<
   | "publisherPagesAvailable"
 >;
 export function ReaderPanels({
-  audiobook,
   progressSettings, updateProgressSettings, progressSaveStatus, retryProgressSettings,
   keyboardSettings,
   updateKeyboardSettings,
@@ -78,7 +75,8 @@ export function ReaderPanels({
     return () => query.removeEventListener("change", update);
   }, []);
   if (!panel) return null;
-  if (panel === "tts") return <ReaderTts key={review.bookId} bookId={review.bookId} bookTitle={audiobook.bookTitle} loadSection={audiobook.loadSection} onClose={cfi => { if (cfi) onNavigate(cfi); else closePanel(); }} />;
+  // Audiobook Mode is owned by ReaderAudiobookHost, so narration can continue in its mini player.
+  if (panel === "tts") return null;
   return (
     <ReaderSheet
       mobileFullscreen={panel === "search" || panel === "chat" || panel === "annotations"}
