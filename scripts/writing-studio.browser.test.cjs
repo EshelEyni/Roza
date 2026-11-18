@@ -728,6 +728,7 @@ test(
       await page.getByRole("button", { name: "Options", exact: true }).click();
       const studioOptions = page.getByRole("dialog", { name: "Studio options" });
       assert.equal(await studioOptions.isVisible(), true);
+      assert.ok((await studioOptions.boundingBox()).width > 400);
       const downloadEvent = page.waitForEvent("download");
       await page
         .getByRole("button", { name: "Export manuscript (.html)", exact: true })
@@ -779,6 +780,7 @@ test(
               text: range.toString(),
               priority: highlight.priority,
               color: style.backgroundColor,
+              foreground: style.color,
               lines: new Set([...range.getClientRects()].map(rect => rect.top)).size,
             };
           }),
@@ -791,8 +793,8 @@ test(
       assert.equal((await manuscriptMarks())[1]?.text, "A");
       await clickManuscriptWord("fresh");
       assert.deepEqual((await manuscriptMarks()).map(({ lines, ...mark }) => mark), [
-        { text: firstSentence, priority: 0, color: "rgb(242, 230, 107)" },
-        { text: "fresh", priority: 1, color: "rgb(113, 155, 216)" },
+        { text: firstSentence, priority: 0, color: "rgb(242, 230, 107)", foreground: "rgb(40, 35, 30)" },
+        { text: "fresh", priority: 1, color: "rgb(113, 155, 216)", foreground: "rgb(40, 35, 30)" },
       ]);
       await page.keyboard.press("ArrowRight");
       assert.equal((await manuscriptMarks())[1]?.text, "start");
@@ -809,12 +811,16 @@ test(
       await page.keyboard.press("ArrowUp");
       assert.equal((await manuscriptMarks())[1]?.text, "fresh");
       await page.getByRole("button", { name: "Options", exact: true }).click();
-      await studioOptions.getByLabel("Word highlight color").fill("#793a96");
-      await studioOptions.getByLabel("Sentence highlight color").fill("#84e0a1");
+      assert.ok((await studioOptions.boundingBox()).width < 390);
+      await studioOptions.getByLabel("Word highlight color").selectOption("#cbb8eb");
+      await studioOptions.getByLabel("Word text color").selectOption("#183153");
+      await studioOptions.getByLabel("Sentence highlight color").selectOption("#b8dca7");
+      await studioOptions.getByLabel("Sentence text color").selectOption("#842f45");
       await page.keyboard.press("Escape");
       assert.equal(await studioOptions.isVisible(), false);
-      assert.deepEqual((await manuscriptMarks()).map(mark => mark.color), [
-        "rgb(132, 224, 161)", "rgb(121, 58, 150)",
+      assert.deepEqual((await manuscriptMarks()).map(({ color, foreground }) => [color, foreground]), [
+        ["rgb(184, 220, 167)", "rgb(132, 47, 69)"],
+        ["rgb(203, 184, 235)", "rgb(24, 49, 83)"],
       ]);
       await clickManuscriptWord("light");
       await page.keyboard.press("ArrowRight");
@@ -861,8 +867,10 @@ test(
       await editor.waitFor();
       assert.equal(await editor.innerText(), "The first words.");
       await page.getByRole("button", { name: "Options", exact: true }).click();
-      assert.equal(await studioOptions.getByLabel("Word highlight color").inputValue(), "#793a96");
-      assert.equal(await studioOptions.getByLabel("Sentence highlight color").inputValue(), "#84e0a1");
+      assert.equal(await studioOptions.getByLabel("Word highlight color").inputValue(), "#cbb8eb");
+      assert.equal(await studioOptions.getByLabel("Word text color").inputValue(), "#183153");
+      assert.equal(await studioOptions.getByLabel("Sentence highlight color").inputValue(), "#b8dca7");
+      assert.equal(await studioOptions.getByLabel("Sentence text color").inputValue(), "#842f45");
       await studioOptions.getByRole("button", { name: "Close", exact: true }).click();
       assert.ok(saveCount >= 6);
       await page.setViewportSize({ width: 820, height: 1180 });
