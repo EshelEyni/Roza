@@ -10,20 +10,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.bookSchema = void 0;
-exports.isWordGoal = isWordGoal;
-const taskBoardSchema_1 = require("./taskBoardSchema");
 const mongoose_1 = require("mongoose");
 const chapterScehma_1 = require("./chapterScehma");
 const characterSchema_1 = require("./characterSchema");
 const themeSchema_1 = require("./themeSchema");
 const plotlineScheme_1 = require("./plotlineScheme");
 const noteSchema_1 = require("./noteSchema");
-const minWordGoal = 1;
-const maxWordGoal = 10000000;
-function isWordGoal(value) {
-    return typeof value === "number" && Number.isInteger(value) &&
-        value >= minWordGoal && value <= maxWordGoal;
-}
 const bookSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.Schema.Types.ObjectId,
@@ -34,7 +26,6 @@ const bookSchema = new mongoose_1.Schema({
         required: [true, "Please provide a name"],
         trim: true,
     },
-    taskBoard: { type: taskBoardSchema_1.taskBoardSchema, default: undefined },
     chapters: [chapterScehma_1.chapterSchema],
     characters: [characterSchema_1.characterSchema],
     themes: [themeSchema_1.themeSchema],
@@ -52,12 +43,6 @@ const bookSchema = new mongoose_1.Schema({
     isReadMode: {
         type: Boolean,
         default: false,
-    },
-    wordGoal: {
-        type: Number,
-        min: minWordGoal,
-        max: maxWordGoal,
-        validate: Number.isInteger,
     },
 }, {
     toObject: {

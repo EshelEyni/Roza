@@ -9,10 +9,6 @@ const noteSchema = new mongoose_1.Schema({
         type: mongoose_1.Schema.Types.ObjectId,
         required: [true, "Please provide a book id"],
     },
-    name: {
-        type: String,
-        default: "",
-    },
     text: {
         type: [slateElementSchema_1.SlateCustomElementSchema],
         default: (0, utilService_1.getDefaultSlateElement)(),

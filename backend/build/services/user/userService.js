@@ -26,9 +26,9 @@ function query(queryString) {
 }
 function getUsers(...userIds) {
     return __awaiter(this, void 0, void 0, function* () {
-        const users = (yield userModel_1.UserModel.find({ _id: { $in: userIds } })
+        const users = yield userModel_1.UserModel.find({ _id: { $in: userIds } })
             .lean()
-            .exec());
+            .exec();
         return users;
     });
 }
@@ -63,7 +63,6 @@ function update(id, user) {
             "email",
             "lastVisitedPage",
             "language",
-            "entityFilterOrder",
         ];
         const filteredUser = (0, utilService_1.filterObj)(user, ...allowedFields);
         const updatedUser = yield userModel_1.UserModel.findByIdAndUpdate(id, filteredUser, {
