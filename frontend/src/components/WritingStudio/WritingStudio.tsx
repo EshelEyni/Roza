@@ -598,23 +598,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               }}
             />
           </label>
-          {([
-            ["Word highlight color", "highlight", wordColorKey, wordColor, setWordColor],
-            ["Word text color", "text", wordTextColorKey, wordForeground, setWordTextColor],
-            ["Sentence highlight color", "highlight", sentenceColorKey, sentenceColor, setSentenceColor],
-            ["Sentence text color", "text", sentenceTextColorKey, sentenceForeground, setSentenceTextColor],
-          ] as const).map(([label, kind, key, value, setColor]) => {
-            const labelId = `${optionsTitle}-${key}`;
-            return (
-              <div className="ws-option-color" key={key}>
-                <span id={labelId}>{label}</span>
-                <ReaderColorSelect labelId={labelId} kind={kind} value={value} onChange={color => {
-                  setColor(color);
-                  remember(key, color);
-                }} />
-              </div>
-            );
-          })}
           <button onClick={() => download(book, "json")}>
             Download backup (.json)
           </button>
@@ -636,6 +619,23 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             undo · Ctrl/Cmd+Shift+F focus · Esc exit focus. Browser find remains
             available.
           </p>
+          {([
+            ["Word highlight color", "highlight", wordColorKey, wordColor, setWordColor],
+            ["Word text color", "text", wordTextColorKey, wordForeground, setWordTextColor],
+            ["Sentence highlight color", "highlight", sentenceColorKey, sentenceColor, setSentenceColor],
+            ["Sentence text color", "text", sentenceTextColorKey, sentenceForeground, setSentenceTextColor],
+          ] as const).map(([label, kind, key, value, setColor]) => {
+            const labelId = `${optionsTitle}-${key}`;
+            return (
+              <div className="ws-option-color" key={key}>
+                <span id={labelId}>{label}</span>
+                <ReaderColorSelect labelId={labelId} kind={kind} value={value} onChange={color => {
+                  setColor(color);
+                  remember(key, color);
+                }} />
+              </div>
+            );
+          })}
         </div>
       </dialog>
       <div className={`ws-layout ${preview && item && !overview && !tasks ? "ws-reading" : ""}`}>
