@@ -655,6 +655,30 @@ dialog.ws.cp-entity-dialog {
 }
 
 /* Chapter notes: a quiet writing surface with a clear action hierarchy. */
+.cp-inline-notes-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-block: 0.6rem;
+  cursor: pointer;
+  color: var(--ws-muted);
+  font-size: 0.85rem;
+}
+.cp-inline-notes-toggle input { accent-color: var(--ws-accent); }
+.cp-notes.cp-inline-notes { margin-top: 1.5rem; }
+.cp-note-context {
+  margin-bottom: 0.75rem;
+  color: var(--ws-muted);
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+.cp-note-context blockquote {
+  margin: 0.35rem 0 0;
+  padding-inline-start: 0.65rem;
+  border-inline-start: 2px solid var(--ws-line);
+  white-space: pre-wrap;
+}
+
 .cp-notes { max-width: 1080px; margin: 0 auto; padding: 4px 0 32px; }
 .cp-notes-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-bottom: 28px; }
 .cp-notes-title { display: flex; align-items: center; gap: 12px; }

@@ -227,10 +227,20 @@ test(
         await b.getByLabel('New task in '+title,{exact:true}).press('Enter');
         await save(); await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
       }
+      const bibleButton = page.getByRole("button", { name: "Chapter Bible", exact: true });
+      const bible = page.getByRole("region", { name: "Chapter Bible", exact: true });
+      async function openChapterNotes() {
+        await bibleButton.click();
+        await bible.getByRole("button", { name: "Notes", exact: true }).click();
+      }
       async function note(text) {
-        const action=page.getByRole('button',{name:'+ General Note',exact:true});
-        if(!await action.isVisible()) await page.getByRole('button',{name:'Annotations',exact:true}).click();
-        await action.click(); await page.locator('.ws-annotation-card.is-active').getByLabel('Annotation text').fill(text); await save();
+        await openChapterNotes();
+        const notes = bible.getByRole("region", { name: "Chapter notes" });
+        const addNote = notes.getByRole("button", { name: "Add note", exact: true });
+        await addNote.click();
+        await notes.getByRole("textbox").last().fill(text);
+        await save();
+        await bibleButton.click();
       }
       await board('First list'); await note('First general note'); await note('Second general note');
       await page.locator('.ws-chapters').getByRole('button',{name:/An unopened letter/}).click();
@@ -242,16 +252,61 @@ test(
       await page.reload();
       await page.locator('.ws-chapters').getByRole('button',{name:/The house by the sea/}).click();
       assert.equal(saved.chapters[0].annotations.length,2);
-      const general=page.getByRole('button',{name:'+ General Note',exact:true});
-      if(!await general.isVisible()) await page.getByRole('button',{name:'Annotations',exact:true}).click();
-      await page.locator('.ws-annotation-card').first().locator('.ws-note-select').click();
-      await page.locator('.ws-annotation-card.is-active').getByLabel('Annotation text').fill('Edited general note'); await save();
-      await page.locator('.ws-annotation-card.is-active').getByRole('button',{name:'Delete',exact:true}).click();
-      await page.getByRole('button',{name:'Delete note',exact:true}).click(); await save();
+      await openChapterNotes();
+      const generalNotes = bible.getByRole("region", { name: "Chapter notes" });
+      await generalNotes.getByRole("textbox", { name: "Note 1", exact: true }).fill("Edited general note");
+      await save();
+      await generalNotes.getByRole("button", { name: "Delete note", exact: true }).first().click();
+      await page.getByRole("dialog", { name: "Delete note?" }).getByRole("button", { name: "Delete note", exact: true }).click();
+      await save();
+      await bibleButton.click();
       assert.equal(saved.chapters[0].annotations.length,1);
       assert.equal(saved.chapters[1].annotations[0].content,'Other chapter note');
       assert.equal(saved.chapters[1].annotations[0].anchor,null);
       assert.equal(saved.chapters[1].annotations[0].general,true);
+      const manuscript = page.getByLabel("Manuscript", { exact: true });
+      await manuscript.locator("p").first().hover();
+      await page.getByRole("button", { name: "Add note to paragraph 1", exact: true }).click();
+      const activeAnnotation = page.locator(".ws-annotation-card.is-active");
+      const annotationText = activeAnnotation.getByLabel("Annotation text");
+      await annotationText.fill("Check the opening.");
+      await save();
+      const inlineId = saved.chapters[0].annotations.find(note => !note.general).id;
+
+      const toggle = bible.getByRole("checkbox", { name: "Show inline notes" });
+      const inlineNotes = bible.getByRole("region", { name: "Inline notes" });
+      const inlineNote = inlineNotes.getByRole("textbox", { name: "Inline note 1" });
+      await bibleButton.click();
+      assert.equal(await toggle.isChecked(), false);
+      assert.equal(await inlineNotes.count(), 0);
+      await toggle.check();
+      assert.equal(await inlineNote.inputValue(), "Check the opening.");
+      assert.match(await inlineNotes.locator("blockquote").innerText(), /When Mara returned/);
+      await bible.getByRole("button", { name: "Notes", exact: true }).click();
+      assert.equal(await bible.getByRole("region", { name: "Chapter notes" }).getByRole("textbox").count(), 1);
+      assert.equal(await inlineNotes.getByRole("textbox").count(), 1);
+      await toggle.uncheck();
+      assert.equal(await inlineNotes.count(), 0);
+      assert.equal(saved.chapters[0].annotations.filter(note => note.id === inlineId).length, 1);
+      await toggle.check();
+
+      await page.locator(".ws-chapters").getByRole("button", { name: /An unopened letter/ }).click();
+      await bibleButton.click();
+      await inlineNotes.getByText("No inline notes in this chapter.").waitFor();
+      await page.locator(".ws-chapters").getByRole("button", { name: /The house by the sea/ }).click();
+      await page.locator(`[data-annotation-id="${inlineId}"] .ws-note-select`).click();
+      await annotationText.fill("Opening revised.");
+      await save();
+      await bibleButton.click();
+      assert.equal(await inlineNote.inputValue(), "Opening revised.");
+      await bibleButton.click();
+      await page.locator(`[data-annotation-id="${inlineId}"] .ws-note-select`).click();
+      await activeAnnotation.getByRole("button", { name: "Delete", exact: true }).click();
+      await page.getByRole("button", { name: "Delete note", exact: true }).click();
+      await save();
+      await bibleButton.click();
+      await inlineNotes.getByText("No inline notes in this chapter.").waitFor();
+      assert.deepEqual(saved.chapters[0].annotations.map(note => note.general), [true]);
       assert.deepEqual(errors,[]);
     } finally {await browser?.close();await server.close();}
   },

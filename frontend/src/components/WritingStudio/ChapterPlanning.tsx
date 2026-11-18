@@ -103,11 +103,15 @@ export function ChapterPlanning({
   onTask,
   summaryElsewhere = false,
   page = false,
+  showInlineNotes = false,
+  onShowInlineNotesChange,
 }: {
   store: DraftStore;
   chapter: Chapter;
   summaryElsewhere?: boolean;
   page?: boolean;
+  showInlineNotes?: boolean;
+  onShowInlineNotesChange?: (show: boolean) => void;
 } & PlanningNavigation) {
   const [active, setActive] = useState<StoryKind | "tasks" | "summary" | "general-notes">(
     "characters",
@@ -201,6 +205,14 @@ export function ChapterPlanning({
               </button>
             ))}
           </nav>
+          <label className="cp-inline-notes-toggle">
+            <input
+              type="checkbox"
+              checked={showInlineNotes}
+              onChange={event => onShowInlineNotesChange?.(event.target.checked)}
+            />
+            Show inline notes
+          </label>
         </>
       ) : (
         <summary>
@@ -543,6 +555,9 @@ export function ChapterPlanning({
               </PlanningGroup>
             ))}
           </fieldset>
+          {page && showInlineNotes && (
+            <ChapterGeneralNotes store={store} chapter={chapter} inline />
+          )}
         </div>
       )}
     </Container>

@@ -212,6 +212,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const [notes, setNotes] = useState(true);
   const [summary, setSummary] = useState(false);
   const [chapterBible, setChapterBible] = useState(false);
+  const [showInlineNotes, setShowInlineNotes] = useState(false);
   const [search, setSearch] = useState("");
   const [dark, setDark] = useState(
     () => preference("roza:studio:theme", "light") === "dark",
@@ -884,6 +885,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     <ChapterPlanning
                       key={`bible:${item.id}`}
                       page
+                      showInlineNotes={showInlineNotes}
+                      onShowInlineNotesChange={setShowInlineNotes}
                       store={store}
                       chapter={item}
                       {...planningNavigation}
