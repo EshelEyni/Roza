@@ -13,6 +13,7 @@ import {
   StudioSection,
 } from "./studioNavigation";
 import { useConfirmation } from "../Modals/useConfirmation";
+import { ReaderColorSelect } from "../Reader/ReaderColorSelect";
 import "../Modals/confirmDialog.css";
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from "react";
 import { readerMarkTextColor, readerPassageColor, readerSelectionColor } from "../../services/readerMarkColors";
@@ -61,6 +62,8 @@ function remember(key: string, value: string) {
 }
 const wordColorKey = "roza:studio:word-highlight";
 const sentenceColorKey = "roza:studio:sentence-highlight";
+const wordTextColorKey = "roza:studio:word-highlight-text";
+const sentenceTextColorKey = "roza:studio:sentence-highlight-text";
 function colorPreference(key: string, fallback: string) {
   const value = preference(key, fallback);
   return /^#[a-f0-9]{6}$/i.test(value) ? value : fallback;
@@ -72,7 +75,7 @@ function markForeground(color: string) {
     return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
   });
   return red * 0.2126 + green * 0.7152 + blue * 0.0722 < 0.23
-    ? "#fff"
+    ? "#ffffff"
     : readerMarkTextColor;
 }
 const itemName = (item: BookDataItem, index: number) =>
@@ -221,6 +224,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const optionsTitle = useId();
   const [wordColor, setWordColor] = useState(() => colorPreference(wordColorKey, readerSelectionColor));
   const [sentenceColor, setSentenceColor] = useState(() => colorPreference(sentenceColorKey, readerPassageColor));
+  const [wordTextColor, setWordTextColor] = useState(() => colorPreference(wordTextColorKey, ""));
+  const [sentenceTextColor, setSentenceTextColor] = useState(() => colorPreference(sentenceTextColorKey, ""));
+  const wordForeground = wordTextColor || markForeground(wordColor);
+  const sentenceForeground = sentenceTextColor || markForeground(sentenceColor);
   const [formatChapter, setFormatChapter] = useState<string | null>(null);
   const [restoreKey, setRestoreKey] = useState(0);
   const [archived, setArchived] = useState<BookDataItem[]>([]);
@@ -408,9 +415,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       style={{
         "--ws-font-size": `${size}px`,
         "--ws-word-highlight": wordColor,
-        "--ws-word-highlight-text": markForeground(wordColor),
+        "--ws-word-highlight-text": wordForeground,
         "--ws-sentence-highlight": sentenceColor,
-        "--ws-sentence-highlight-text": markForeground(sentenceColor),
+        "--ws-sentence-highlight-text": sentenceForeground,
       } as React.CSSProperties}
     >
       {confirmationDialog}
@@ -591,28 +598,23 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               }}
             />
           </label>
-          <label>
-            Word highlight color
-            <input
-              type="color"
-              value={wordColor}
-              onChange={event => {
-                setWordColor(event.target.value);
-                remember(wordColorKey, event.target.value);
-              }}
-            />
-          </label>
-          <label>
-            Sentence highlight color
-            <input
-              type="color"
-              value={sentenceColor}
-              onChange={event => {
-                setSentenceColor(event.target.value);
-                remember(sentenceColorKey, event.target.value);
-              }}
-            />
-          </label>
+          {([
+            ["Word highlight color", "highlight", wordColorKey, wordColor, setWordColor],
+            ["Word text color", "text", wordTextColorKey, wordForeground, setWordTextColor],
+            ["Sentence highlight color", "highlight", sentenceColorKey, sentenceColor, setSentenceColor],
+            ["Sentence text color", "text", sentenceTextColorKey, sentenceForeground, setSentenceTextColor],
+          ] as const).map(([label, kind, key, value, setColor]) => {
+            const labelId = `${optionsTitle}-${key}`;
+            return (
+              <div className="ws-option-color" key={key}>
+                <span id={labelId}>{label}</span>
+                <ReaderColorSelect labelId={labelId} kind={kind} value={value} onChange={color => {
+                  setColor(color);
+                  remember(key, color);
+                }} />
+              </div>
+            );
+          })}
           <button onClick={() => download(book, "json")}>
             Download backup (.json)
           </button>

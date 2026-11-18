@@ -1,4 +1,5 @@
 import { useTranslation } from "react-i18next";
+import "./readerColorSelect.css";
 const warmOptions = [["sand", "#e7d8bd"], ["oat", "#d8c3a5"], ["caramel", "#b88a60"], ["walnut", "#6b4f3a"]];
 const backgroundOptions = [
   ["ivory", "#fffefa"], ["sepia", "#f3e8d5"], ["charcoal", "#242622"], ["gray", "#e5e7eb"],

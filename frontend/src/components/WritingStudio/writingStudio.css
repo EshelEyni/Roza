@@ -671,6 +671,10 @@
   color: var(--ws-ink);
 }
 
+dialog.ws-options-dialog {
+  width: min(480px, calc(100vw - 32px));
+}
+
 .ws-options-dialog > header {
   display: flex;
   align-items: center;
@@ -688,7 +692,8 @@ dialog.ws-options-dialog > header h2 {
   gap: 12px;
 }
 
-.ws-options label {
+.ws-options label,
+.ws-option-color {
   display: flex;
   flex-direction: column;
   gap: 5px;
@@ -700,11 +705,14 @@ dialog.ws-options-dialog > header h2 {
   text-align: start;
 }
 
-.ws-options input[type="color"] {
-  width: 100%;
-  min-height: 38px;
-  padding: 4px;
-  cursor: pointer;
+.ws-option-color .reader-color-control {
+  flex: auto;
+}
+
+.ws-option-color select {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: inherit;
 }
 
 dialog.ws-options-dialog .ws-options p {
