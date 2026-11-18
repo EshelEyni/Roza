@@ -1,15 +1,25 @@
 const { app, BrowserWindow, session, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
-const { readdirSync } = require("node:fs");
+const { existsSync, readdirSync } = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { createKokoroDesktop } = require("./kokoro/index.cjs");
 
 const origin = "https://roza.esheleyni.com";
 const renderer = path.join(__dirname, "renderer");
-// Development only: point /api at another backend (e.g. http://localhost:3030) to test unreleased
-// backend changes from the desktop app. Ignored in packaged builds.
-const devApiOrigin = !app.isPackaged && process.env.ROZA_API_ORIGIN ? new URL(process.env.ROZA_API_ORIGIN).origin : null;
+// Development-only command-line switches (ignored in packaged builds; see "npm run desktop:dev"):
+//   --api-origin=http://localhost:3030   send /api to that backend instead of production
+//   --data-dir=Roza-Dev                  keep app data (sign-in, local voices, saved audio) in this folder,
+//                                        relative to %APPDATA% unless absolute
+function devSwitch(name) {
+  if (app.isPackaged) return null;
+  const prefix = "--" + name + "=";
+  const value = process.argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length).trim();
+  return value || null;
+}
+const devApiOrigin = devSwitch("api-origin") ? new URL(devSwitch("api-origin")).origin : null;
+const devDataDir = devSwitch("data-dir");
+if (devDataDir) app.setPath("userData", path.resolve(app.getPath("appData"), devDataDir));
 let mainWindow = null;
 const kokoro = createKokoroDesktop({ app, origin, getWindow: () => mainWindow });
 const csp = [
@@ -31,6 +41,9 @@ function isApi(url) {
 }
 
 function registerRenderer(browserSession) {
+  if (!existsSync(path.join(renderer, "index.html"))) {
+    throw new Error("The page files are missing (desktop/renderer). Run npm run desktop:dev:build once.");
+  }
   const files = new Set(readdirSync(renderer, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => path.relative(renderer, path.join(entry.parentPath, entry.name))

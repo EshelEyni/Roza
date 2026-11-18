@@ -18,7 +18,7 @@ const PREVIEW_TEXT = "The morning arrived quietly, and the world seemed full of 
  * @param {{ app: Electron.App, origin: string, getWindow: () => Electron.BrowserWindow | null }} options
  */
 function createKokoroDesktop({ app, origin, getWindow }) {
-  const root = process.env.ROZA_KOKORO_DIR || path.join(app.getPath("userData"), "kokoro");
+  const root = path.join(app.getPath("userData"), "kokoro");
   const runtimeDir = path.join(root, "runtime");
   const audioDir = path.join(root, "audio");
   const booksDir = path.join(root, "books");

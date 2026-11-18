@@ -10,6 +10,8 @@
   "scripts": {
     "build:frontend": "npm --prefix ../frontend run build -- --mode desktop --outDir ../desktop/renderer --emptyOutDir",
     "start": "npm run build:frontend && electron .",
+    "dev": "electron . --api-origin=http://localhost:3030 --data-dir=Roza-Dev",
+    "dev:build": "npm run build:frontend && npm run dev",
     "dist:win": "npm run build:frontend && electron-builder --win nsis --x64 --publish never"
   },
   "dependencies": {
