@@ -33,7 +33,7 @@ import {
 import { useGetBook } from "../../hooks/reactQuery/get/useGetBook";
 import bookApi from "../../services/bookApiService";
 import { getDefaultBookDataItem } from "../../services/bookUtilService";
-import { DraftStore } from "./draftStore";
+import { DraftStore, maxWordGoal } from "./draftStore";
 import {
   download,
   manuscriptWords,
@@ -216,9 +216,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const [dark, setDark] = useState(
     () => preference("roza:studio:theme", "light") === "dark",
   );
-  const [goal, setGoal] = useState(
-    () => Number(preference(`${scope}:goal`, "50000")) || 50000,
-  );
+  const [goalInput, setGoalInput] = useState<string | null>(null);
+  const goal = store.wordGoal;
   const [size, setSize] = useState(() => preference("roza:studio:font", "20"));
   const optionsDialog = useRef<HTMLDialogElement>(null);
   const optionsTitle = useId();
@@ -279,6 +278,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     summary && item?.type === "chapters" ? item.description : text;
 
   useEffect(() => store.subscribe(render), [store]);
+  const recovery = store.recovery;
+  useEffect(() => {
+    if (recovery) return;
+    const migration = setTimeout(store.migrateWordGoal, 0);
+    return () => clearTimeout(migration);
+  }, [store, recovery]);
   useEffect(() => {
     if (category === "chapters" && selected)
       remember(`${scope}:chapter`, selected);
@@ -589,12 +594,13 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             <input
               type="number"
               min="1"
-              max="10000000"
-              value={goal}
+              max={maxWordGoal}
+              value={goalInput ?? goal}
+              disabled={!!store.recovery}
+              onBlur={() => setGoalInput(null)}
               onChange={event => {
-                const value = Math.max(1, Number(event.target.value));
-                setGoal(value);
-                remember(`${scope}:goal`, String(value));
+                setGoalInput(event.target.value);
+                store.setWordGoal(event.target.valueAsNumber);
               }}
             />
           </label>

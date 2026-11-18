@@ -38,6 +38,59 @@ const storage = () => {
     removeItem: (key) => map.delete(key),
   };
 };
+test("defaults without writing and resolves goals independently for each book", async () => {
+  const mem = storage();
+  const calls = [];
+  const save = async snapshot => { calls.push(snapshot); return snapshot; };
+  mem.setItem("roza:studio:owner:other:goal", "12345");
+  const first = new DraftStore(book(), save, mem);
+  const other = new DraftStore({ ...book(), id: "other", wordGoal: 92_000 }, save, mem);
+  first.migrateWordGoal();
+  other.migrateWordGoal();
+  await first.flush();
+  await other.flush();
+  assert.equal(first.wordGoal, 50_000);
+  assert.equal(other.wordGoal, 92_000);
+  assert.equal(calls.length, 0);
+});
+
+test("keeps a legacy goal until the server confirms it and does not migrate again", async () => {
+  const key = "roza:studio:owner:book:goal";
+  const mem = storage();
+  mem.setItem(key, "73500");
+  const calls = [];
+  const store = new DraftStore(book(), async snapshot => {
+    calls.push(snapshot);
+    if (calls.length === 1) throw new Error("offline");
+    return snapshot;
+  }, mem);
+  assert.equal(store.wordGoal, 73_500);
+  store.migrateWordGoal();
+  await store.flush();
+  assert.equal(mem.getItem(key), "73500");
+  assert.equal(store.state, "error");
+  await store.flush();
+  assert.equal(mem.getItem(key), null);
+  assert.equal(calls[1].wordGoal, 73_500);
+  store.migrateWordGoal();
+  await store.flush();
+  assert.equal(calls.length, 2);
+});
+
+test("the next save sends only the latest valid goal from consecutive edits", async () => {
+  const calls = [];
+  const store = new DraftStore(book(), async snapshot => {
+    calls.push(snapshot);
+    return snapshot;
+  }, storage());
+  store.setWordGoal(7);
+  store.setWordGoal(75_000);
+  store.setWordGoal(10_000_001);
+  assert.equal(calls.length, 0);
+  await store.flush();
+  assert.deepEqual(calls.map(snapshot => snapshot.wordGoal), [75_000]);
+});
+
 test("serializes delayed saves and carries edits made while saving into the next request", async () => {
   const calls = [];
   let release;

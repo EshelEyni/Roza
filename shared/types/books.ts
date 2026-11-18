@@ -64,6 +64,7 @@ export interface Book {
   updatedAt: Date | string;
   isArchived: boolean;
   isReadMode: boolean;
+  wordGoal?: number;
 }
 
 export interface BasicBookDataItem {

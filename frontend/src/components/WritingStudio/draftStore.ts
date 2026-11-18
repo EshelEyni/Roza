@@ -2,6 +2,11 @@ import { Book } from "../../../../shared/types/books";
 
 export type SaveState = "saved" | "pending" | "saving" | "error";
 export type Recovery = { book: Book; base: string };
+export const maxWordGoal = 10_000_000;
+
+function isWordGoal(value: number) {
+  return Number.isInteger(value) && value >= 1 && value <= maxWordGoal;
+}
 
 // One writer per mounted manuscript. Requests are serialized; newer local edits
 // are never replaced by a response to an older snapshot.
@@ -20,6 +25,8 @@ export class DraftStore {
   private timer: ReturnType<typeof setTimeout> | undefined;
   private listeners = new Set<() => void>();
   readonly key: string;
+  private readonly legacyGoalKey: string;
+  private legacyGoalRaw: string | null = null;
 
   constructor(
     book: Book,
@@ -29,6 +36,15 @@ export class DraftStore {
     this.book = structuredClone(book);
     this.base = String(book.updatedAt);
     this.key = `roza:writing-draft:${book.userId}:${book.id}`;
+    this.legacyGoalKey = `roza:studio:${book.userId}:${book.id}:goal`;
+    if (book.wordGoal === undefined) {
+      try {
+        const raw = storage.getItem(this.legacyGoalKey);
+        if (isWordGoal(Number(raw))) this.legacyGoalRaw = raw;
+      } catch {
+        // The server value and default are still available without local storage.
+      }
+    }
     try {
       const raw = storage.getItem(this.key);
       if (raw) {
@@ -58,6 +74,17 @@ export class DraftStore {
   get dirty() {
     return this.revision !== this.savedRevision;
   }
+  get wordGoal() {
+    return this.book.wordGoal ?? (this.legacyGoalRaw === null ? 50_000 : Number(this.legacyGoalRaw));
+  }
+  setWordGoal = (wordGoal: number) => {
+    if (isWordGoal(wordGoal) && this.book.wordGoal !== wordGoal)
+      this.edit(book => ({ ...book, wordGoal }));
+  };
+  migrateWordGoal = () => {
+    if (!this.recovery && this.book.wordGoal === undefined && this.legacyGoalRaw !== null)
+      this.setWordGoal(Number(this.legacyGoalRaw));
+  };
   private persist() {
     try {
       this.storage.setItem(
@@ -93,7 +120,7 @@ export class DraftStore {
     if (!this.recovery || this.recovery.base !== this.base) return;
     const draft = this.recovery.book;
     this.recovery = null;
-    this.edit(() => draft);
+    this.edit(book => ({ ...draft, wordGoal: draft.wordGoal ?? book.wordGoal }));
   };
   discardRecovery = () => {
     try {
@@ -130,6 +157,17 @@ export class DraftStore {
           throw new Error("The server did not confirm the save.");
         this.base = String(saved.updatedAt);
         this.book = { ...this.book, updatedAt: saved.updatedAt };
+        if (snapshot.wordGoal !== undefined && saved.wordGoal !== snapshot.wordGoal)
+          throw new Error("The server did not confirm the manuscript word goal.");
+        if (saved.wordGoal !== undefined && this.legacyGoalRaw !== null) {
+          try {
+            if (this.storage.getItem(this.legacyGoalKey) === this.legacyGoalRaw)
+              this.storage.removeItem(this.legacyGoalKey);
+            this.legacyGoalRaw = null;
+          } catch {
+            // The saved value now takes precedence even if cleanup is unavailable.
+          }
+        }
         this.savedRevision = revision;
         if (this.dirty) this.persist();
         else {

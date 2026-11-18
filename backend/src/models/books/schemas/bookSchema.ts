@@ -7,6 +7,14 @@ import { themeSchema } from "./themeSchema";
 import { plotlineSchema } from "./plotlineScheme";
 import { noteSchema } from "./noteSchema";
 
+const minWordGoal = 1;
+const maxWordGoal = 10_000_000;
+
+export function isWordGoal(value: unknown): value is number {
+  return typeof value === "number" && Number.isInteger(value) &&
+    value >= minWordGoal && value <= maxWordGoal;
+}
+
 const bookSchema = new Schema<IBook>(
   {
     userId: {
@@ -36,6 +44,12 @@ const bookSchema = new Schema<IBook>(
     isReadMode: {
       type: Boolean,
       default: false,
+    },
+    wordGoal: {
+      type: Number,
+      min: minWordGoal,
+      max: maxWordGoal,
+      validate: Number.isInteger,
     },
   },
   {

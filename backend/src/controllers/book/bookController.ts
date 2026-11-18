@@ -1,6 +1,7 @@
 import { validatePlanning } from "./planningValidation";
 import { Types } from "mongoose";
 import { BookModel } from "../../models/books/bookModel";
+import { isWordGoal } from "../../models/books/schemas/bookSchema";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
 import { NextFunction, Request, Response } from "express";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
@@ -43,6 +44,7 @@ const getBookById = asyncErrorCatcher(async (req: Request, res: Response, next: 
 
 const addBook = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
   const loggedInUserId = getLoggedInUserIdFromReq();
+  validateWordGoal(req.body.wordGoal);
   try {
     validatePlanning(req.body, String(req.body.id || req.body._id || ""));
   } catch (error) {
@@ -91,7 +93,9 @@ const updateBook = asyncErrorCatcher(async (req: Request, res: Response, next: N
     "filterBy",
     "isArchived",
     "isReadMode",
+    "wordGoal",
   ];
+  validateWordGoal(req.body.wordGoal);
   const changes: Record<string, unknown> = {};
   for (const field of fields) {
     if (req.body[field] === undefined) continue;
@@ -134,5 +138,10 @@ const updateBook = asyncErrorCatcher(async (req: Request, res: Response, next: N
 
   res.json({ status: "success", data: book });
 });
+
+function validateWordGoal(value: unknown) {
+  if (value !== undefined && !isWordGoal(value))
+    throw new AppError("Manuscript word goal must be a whole number from 1 to 10,000,000.", 400);
+}
 
 export { getBooks, getBookById, addBook, updateBook };

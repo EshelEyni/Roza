@@ -1,18 +1,20 @@
 import express from "express";
 import request from "supertest";
-import { Types } from "mongoose";
-import { updateBook } from "./bookController";
+import { model, Types } from "mongoose";
+import { getBookById, updateBook } from "./bookController";
 import { BookModel } from "../../models/books/bookModel";
+import { bookSchema } from "../../models/books/schemas/bookSchema";
 
 jest.mock("../../services/ALSService", () => ({
   getLoggedInUserIdFromReq: () => "111111111111111111111111",
 }));
 jest.mock("../../models/books/bookModel", () => ({
-  BookModel: { collection: { findOne: jest.fn() }, findOneAndUpdate: jest.fn() },
+  BookModel: { collection: { findOne: jest.fn() }, findOne: jest.fn(), findOneAndUpdate: jest.fn() },
 }));
 const app = express();
 app.use(express.json());
 app.patch("/:id", updateBook);
+app.get("/:id", getBookById);
 app.use(
   (
     error: { statusCode?: number; message: string },
@@ -27,6 +29,7 @@ const id = "222222222222222222222222";
 const date = new Date("2026-11-01T12:00:00.000Z");
 const read = BookModel.collection.findOne as jest.Mock;
 const write = BookModel.findOneAndUpdate as jest.Mock;
+const SchemaBook = model("WordGoalSchemaTest", bookSchema);
 beforeEach(() => {
   jest.clearAllMocks();
   read.mockResolvedValue({
@@ -37,6 +40,43 @@ beforeEach(() => {
     ],
   });
   write.mockResolvedValue({ id, updatedAt: new Date(date.getTime() + 1) });
+});
+
+test("book schema stores a goal only when supplied and accepts the inclusive bounds", () => {
+  const fields = { name: "Novel", userId: "111111111111111111111111" };
+  const unset = new SchemaBook(fields);
+  expect(unset.validateSync()).toBeUndefined();
+  expect(unset.toJSON()).not.toHaveProperty("wordGoal");
+  for (const wordGoal of [1, 10_000_000]) {
+    const book = new SchemaBook({ ...fields, wordGoal });
+    expect(book.validateSync()).toBeUndefined();
+    expect(book.toJSON()).toHaveProperty("wordGoal", wordGoal);
+  }
+  for (const wordGoal of [0, 10_000_001, 2.5, null])
+    expect(new SchemaBook({ ...fields, wordGoal }).validateSync()?.errors.wordGoal).toBeDefined();
+});
+
+test("updates and returns the book word goal through the existing endpoints", async () => {
+  const wordGoal = 72_000;
+  const book = { id, wordGoal, updatedAt: new Date(date.getTime() + 1) };
+  write.mockResolvedValueOnce(book);
+  (BookModel.findOne as jest.Mock).mockResolvedValueOnce(book);
+  const response = await request(app).patch(`/${id}`).send({ wordGoal, updatedAt: date.toISOString() });
+  expect(response.status).toBe(200);
+  expect(response.body.data.wordGoal).toBe(wordGoal);
+  expect(write.mock.calls[0][1].$set.wordGoal).toBe(wordGoal);
+  const fetched = await request(app).get(`/${id}`);
+  expect(fetched.status).toBe(200);
+  expect(fetched.body.data.wordGoal).toBe(wordGoal);
+});
+
+test("rejects invalid goal updates before writing and leaves the goal alone when omitted", async () => {
+  for (const wordGoal of [0, 10_000_001, 1.5, "50000", null]) {
+    expect((await request(app).patch(`/${id}`).send({ wordGoal })).status).toBe(400);
+  }
+  expect(write).not.toHaveBeenCalled();
+  expect((await request(app).patch(`/${id}`).send({ name: "Renamed" })).status).toBe(200);
+  expect(write.mock.calls[0][1].$set).not.toHaveProperty("wordGoal");
 });
 test("rejects stale whole-book updates without writing", async () => {
   const response = await request(app)
