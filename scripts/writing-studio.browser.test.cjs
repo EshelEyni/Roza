@@ -820,6 +820,19 @@ test(
         { text: firstSentence, priority: 0, color: "rgb(242, 230, 107)", foreground: "rgb(40, 35, 30)" },
         { text: "fresh", priority: 1, color: "rgb(113, 155, 216)", foreground: "rgb(40, 35, 30)" },
       ]);
+      await page.keyboard.press("Control+ArrowLeft");
+      assert.equal((await manuscriptMarks())[1]?.text, "fresh");
+      await page.keyboard.press("Control+ArrowRight");
+      assert.deepEqual((await manuscriptMarks()).map(mark => mark.text), ["Another paragraph.", "Another"]);
+      await page.keyboard.press("Control+ArrowRight");
+      assert.deepEqual((await manuscriptMarks()).map(mark => mark.text), ["A final sentence.", "A"]);
+      await page.keyboard.press("Control+ArrowRight");
+      assert.equal((await manuscriptMarks())[0]?.text, "A final sentence.");
+      await page.keyboard.press("Control+ArrowLeft");
+      assert.equal((await manuscriptMarks())[1]?.text, "Another");
+      await page.keyboard.press("Control+ArrowLeft");
+      assert.deepEqual((await manuscriptMarks()).map(mark => mark.text), [firstSentence, "A"]);
+      await clickManuscriptWord("fresh");
       await page.keyboard.press("ArrowRight");
       assert.equal((await manuscriptMarks())[1]?.text, "start");
       await page.keyboard.press("ArrowLeft");

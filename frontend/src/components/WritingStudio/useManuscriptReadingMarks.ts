@@ -43,6 +43,25 @@ function readBlock(block: Element) {
 
 type ReadingBlock = ReturnType<typeof readBlock>;
 
+function sentences(data: ReadingBlock) {
+  return readerSentenceSpans(
+    data.text.replace(/\r?\n(?:[\t ]*\r?\n)+/g, breaks => "\u2029".repeat(breaks.length)),
+    data.block.closest("[lang]")?.getAttribute("lang") || data.block.ownerDocument.documentElement.lang || "en",
+  );
+}
+
+function sentenceWordIndex(data: ReadingBlock, direction: number, currentIndex?: number) {
+  const spans = sentences(data);
+  const word = currentIndex === undefined ? undefined : data.words[currentIndex];
+  if (direction < 0) spans.reverse();
+  for (const span of spans) {
+    if (word && (direction > 0 ? span.start < word.end : span.end > word.start)) continue;
+    const index = data.words.findIndex(word => span.start <= word.start && span.end >= word.end);
+    if (index >= 0) return index;
+  }
+  return -1;
+}
+
 export function useManuscriptReadingMarks(enabled: boolean) {
   const root = useRef<HTMLDivElement>(null);
   const active = useRef<{ block: Element; index: number }>();
@@ -69,10 +88,7 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     removeMarks();
     active.current = { block: data.block, index };
     const word = data.words[index];
-    const sentence = readerSentenceSpans(
-      data.text.replace(/\r?\n(?:[\t ]*\r?\n)+/g, breaks => "\u2029".repeat(breaks.length)),
-      data.block.closest("[lang]")?.getAttribute("lang") || data.block.ownerDocument.documentElement.lang || "en",
-    ).find(span => span.start <= word.start && span.end >= word.end);
+    const sentence = sentences(data).find(span => span.start <= word.start && span.end >= word.end);
     const wordRange = data.rangeFor(word);
     markedSentence.current = sentence && data.rangeFor(sentence);
     const sentenceMark = markedSentence.current && paintNativeHighlight(
@@ -111,11 +127,13 @@ export function useManuscriptReadingMarks(enabled: boolean) {
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") clear();
-    if (event.ctrlKey || event.altKey || event.metaKey || event.shiftKey || event.nativeEvent.isComposing) return;
+    if (event.altKey || event.metaKey || event.shiftKey || event.nativeEvent.isComposing) return;
+    const sentenceJump = event.ctrlKey && (event.key === "ArrowLeft" || event.key === "ArrowRight");
+    if (event.ctrlKey && !sentenceJump) return;
     const direction = event.key === "ArrowRight" || event.key === "ArrowDown" ? 1 :
       event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 0;
     if (!direction) return;
-    event.preventDefault();
+
     const vertical = event.key === "ArrowDown" || event.key === "ArrowUp";
     if (!vertical) column.current = undefined;
     const blocks = [...new Set(Array.from(event.currentTarget.querySelectorAll(stringSelector),
@@ -143,9 +161,13 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     const current = active.current;
     let blockIndex = current ? blocks.indexOf(current.block) : -1;
     let data = blockIndex >= 0 ? readBlock(blocks[blockIndex]) : undefined;
+    if (sentenceJump && (!current || !data?.words[current.index])) return;
+    event.preventDefault();
     let index = -1;
     if (current && data?.words[current.index]) {
-      if (vertical) {
+      if (sentenceJump) {
+        index = sentenceWordIndex(data, direction, current.index);
+      } else if (vertical) {
         const lines = data.visualLines();
         const matching = lines.flatMap((line, i) =>
           line.words.some(word => word.index === current.index) ? [i] : [],
@@ -169,12 +191,16 @@ export function useManuscriptReadingMarks(enabled: boolean) {
         blockIndex += direction;
         if (!blocks[blockIndex]) return;
         data = readBlock(blocks[blockIndex]);
-      } while (!data.words.length);
-      const x = column.current;
-      const lines = vertical && x !== undefined ? data.visualLines() : [];
-      const line = direction > 0 ? lines[0] : lines[lines.length - 1];
-      index = line && x !== undefined ? closestSentenceWord(line, x) :
-        direction > 0 ? 0 : data.words.length - 1;
+        if (sentenceJump) {
+          index = sentenceWordIndex(data, direction);
+        } else if (data.words.length) {
+          const x = column.current;
+          const lines = vertical && x !== undefined ? data.visualLines() : [];
+          const line = direction > 0 ? lines[0] : lines[lines.length - 1];
+          index = line && x !== undefined ? closestSentenceWord(line, x) :
+            direction > 0 ? 0 : data.words.length - 1;
+        }
+      } while (index < 0);
     }
     if (!data) return;
     selection?.removeAllRanges();
