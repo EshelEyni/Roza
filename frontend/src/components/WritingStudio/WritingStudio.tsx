@@ -6,6 +6,7 @@ import { ChapterFormatDialog } from "./ChapterFormatDialog";
 import { proseBlocks, screenplayStart } from "./screenplay";
 import { downloadScreenplayPdf } from "./screenplayPdf";
 import { ItemMenu } from "./ItemMenu";
+import { SaveStatus } from "./SaveStatus";
 import { CategorySelect } from "./CategorySelect";
 import {
   sectionLabel,
@@ -275,12 +276,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const text = item ? ("text" in item ? item.text : item.description) : [];
   const visibleText =
     summary && item?.type === "chapters" ? item.description : text;
-  const saveLabel = {
-    saved: "All changes saved",
-    pending: "Unsaved changes · click to save",
-    saving: "Saving…",
-    error: "Save failed · click to retry",
-  }[store.state];
   const pageControls = !!item && !overview && !tasks;
   const isChapter = item?.type === "chapters";
   const view: "write" | "read" | "summary" | "bible" =
@@ -539,17 +534,11 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           </div>
         )}
         <div className="ws-header-end">
-          <button
-            className={`ws-save ws-save-${store.state}`}
-            onClick={() => void store.flush()}
-            title={saveLabel}
-            aria-live="polite"
-          >
-            <span aria-hidden="true">
-              {{ saved: "✓", pending: "●", saving: "⋯", error: "!" }[store.state]}
-            </span>
-            <span className="ws-visually-hidden">{saveLabel}</span>
-          </button>
+          <SaveStatus
+            state={store.state}
+            savedAt={store.savedAt}
+            onSave={() => void store.flush()}
+          />
           {chapter && (
             <ItemMenu>
               <summary className="ws-version" title="Chapter versions">

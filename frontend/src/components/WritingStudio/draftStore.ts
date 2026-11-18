@@ -13,6 +13,8 @@ function isWordGoal(value: number) {
 export class DraftStore {
   book: Book;
   state: SaveState = "saved";
+  /** When the last save finished in this session, or null before the first one. */
+  savedAt: number | null = null;
   error = "";
   storageError = false;
   recovery: Recovery | null = null;
@@ -192,6 +194,7 @@ export class DraftStore {
       }
     }
     this.state = "saved";
+    this.savedAt = Date.now();
     this.emit();
   }
   dispose() {
