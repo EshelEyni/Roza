@@ -1,8 +1,15 @@
-import { FiTrash2 } from "react-icons/fi";
-import { ConfirmDialog } from "../Modals/ConfirmDialog";
+import {
+  FiChevronDown,
+  FiChevronUp,
+  FiCopy,
+  FiCornerDownLeft,
+  FiMoreHorizontal,
+  FiTrash2,
+} from "react-icons/fi";
 import {
   ReactNode,
   useCallback,
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -14,6 +21,16 @@ import { layoutAnnotations, validAnchor } from "./annotations";
 
 type Line = { number: number; top: number; range: Range };
 type Position = { x: number; y: number };
+
+const UNDO_MS = 5000;
+const DRAG_THRESHOLD = 4;
+
+/** Lets the note text box fit its content instead of showing a resize grip. */
+const fitText = (element: HTMLTextAreaElement | null) => {
+  if (!element) return;
+  element.style.height = "auto";
+  element.style.height = `${element.scrollHeight + 2}px`;
+};
 
 export function AnnotationMargin({
   notes,
@@ -37,7 +54,10 @@ export function AnnotationMargin({
   onReveal?: () => void;
 }) {
   const editor = useSlate();
-  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [deleted, setDeleted] = useState<{ note: ChapterAnnotation; index: number } | null>(null);
+  const undoTimer = useRef<number>();
+  const suppressClick = useRef(false);
   const root = useRef<HTMLDivElement>(null);
   const [lines, setLines] = useState<Line[]>([]);
   const [positions, setPositions] = useState<{ id: string; top: number; height: number }[]>([]);
@@ -58,6 +78,7 @@ export function AnnotationMargin({
     top: number;
     width: number;
     height: number;
+    moved: boolean;
   } | null>(null);
   const measure = useCallback(() => {
     const container = root.current?.parentElement;
@@ -208,12 +229,81 @@ export function AnnotationMargin({
       }
     }
   };
+  /** Scrolls the note's paragraph to the middle of the screen and flashes it. */
+  const jump = (note: ChapterAnnotation) => {
+    select(note);
+    if (!validAnchor(editor, note.anchor)) return;
+    try {
+      const point = Range.start(note.anchor);
+      const block = ReactEditor.toDOMNode(
+        editor,
+        Node.get(editor, point.path.slice(0, -1)),
+      );
+      const still = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      block.scrollIntoView({ block: "center", behavior: still ? "auto" : "smooth" });
+      if (!still)
+        block.animate(
+          [
+            { backgroundColor: "color-mix(in srgb, var(--ws-accent) 28%, transparent)" },
+            { backgroundColor: "transparent" },
+          ],
+          { duration: 1100, easing: "ease-out" },
+        );
+    } catch {
+      /* unmounted range */
+    }
+  };
   const closeNote = (note: ChapterAnnotation) => {
+    setMenuFor(null);
     if (!readOnly && !note.content.trim()) {
       onChange(notes.filter(entry => entry.id !== note.id));
     }
     setActive(null);
   };
+  const returnToMargin = (id: string) =>
+    setFloating(current => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  const remove = (note: ChapterAnnotation) => {
+    setMenuFor(null);
+    if (active === note.id) setActive(null);
+    setDeleted({ note, index: notes.findIndex(entry => entry.id === note.id) });
+    onChange(notes.filter(entry => entry.id !== note.id));
+    window.clearTimeout(undoTimer.current);
+    undoTimer.current = window.setTimeout(() => setDeleted(null), UNDO_MS);
+  };
+  const undoDelete = () => {
+    if (!deleted) return;
+    window.clearTimeout(undoTimer.current);
+    const next = notes.filter(entry => entry.id !== deleted.note.id);
+    next.splice(Math.min(Math.max(deleted.index, 0), next.length), 0, deleted.note);
+    onChange(next);
+    setDeleted(null);
+  };
+  useEffect(() => () => window.clearTimeout(undoTimer.current), []);
+  useEffect(() => {
+    if (!menuFor) return;
+    const close = (event: PointerEvent | KeyboardEvent) => {
+      if (event instanceof KeyboardEvent) {
+        if (event.key !== "Escape") return;
+        event.stopPropagation();
+        root.current
+          ?.querySelector<HTMLElement>(`[data-annotation-id="${menuFor}"] .ws-note-more`)
+          ?.focus();
+      } else if ((event.target as HTMLElement | null)?.closest(".ws-note-menu, .ws-note-more")) {
+        return;
+      }
+      setMenuFor(null);
+    };
+    document.addEventListener("pointerdown", close);
+    document.addEventListener("keydown", close, true);
+    return () => {
+      document.removeEventListener("pointerdown", close);
+      document.removeEventListener("keydown", close, true);
+    };
+  }, [menuFor]);
   const add = (line: Line) => {
     onReveal?.();
     const note: ChapterAnnotation = {
@@ -264,18 +354,13 @@ export function AnnotationMargin({
           : undefined,
       }}
     >
-      {pendingDelete && (
-        <ConfirmDialog
-          title="Delete this note?"
-          message="This will permanently remove the note. Your manuscript text will stay unchanged."
-          confirmLabel="Delete note"
-          onCancel={() => setPendingDelete(null)}
-          onConfirm={() => {
-            onChange(notes.filter(note => note.id !== pendingDelete));
-            setPendingDelete(null);
-            setActive(null);
-          }}
-        />
+      {deleted && (
+        <div className="ws-note-toast" role="status">
+          <span>Note deleted</span>
+          <button type="button" onClick={undoDelete}>
+            Undo
+          </button>
+        </div>
       )}
       <div className="ws-line-gutter" aria-label="Paragraph numbers and notes">
         {lines.map(line => {
@@ -331,12 +416,21 @@ export function AnnotationMargin({
                 Range.start(note.anchor!).path.slice(0, -1).join("."),
               );
             const temp = floating[note.id];
+            const menuOpen = menuFor === note.id;
+            const moveTo = (rect: DOMRect, x: number, y: number) =>
+              setFloating(current => ({
+                ...current,
+                [note.id]: {
+                  x: Math.max(8, Math.min(window.innerWidth - rect.width - 8, x)),
+                  y: Math.max(8, Math.min(window.innerHeight - rect.height - 8, y)),
+                },
+              }));
             return (
               <section
                 key={note.id}
                 data-annotation-id={note.id}
                 ref={expanded ? activeCard : undefined}
-                className={`ws-annotation-card ${expanded ? "is-active" : ""} ${temp ? "is-floating" : ""} ${dragging === note.id ? "is-dragging" : ""}`}
+                className={`ws-annotation-card ${expanded ? "is-active" : ""} ${detached ? "is-detached" : ""} ${temp ? "is-floating" : ""} ${dragging === note.id ? "is-dragging" : ""}`}
                 style={
                   temp
                     ? {
@@ -344,9 +438,9 @@ export function AnnotationMargin({
                         left: temp.x,
                         top: temp.y,
                         zIndex:
-                          dragging === note.id ? 102 : expanded ? 101 : 100,
+                          dragging === note.id ? 102 : expanded || menuOpen ? 101 : 100,
                       }
-                    : { top: position.top, zIndex: expanded ? 3 : 1 }
+                    : { top: position.top, zIndex: menuOpen ? 4 : expanded ? 3 : 1 }
                 }
                 aria-label={
                   note.general ? "General note" : detached
@@ -354,170 +448,231 @@ export function AnnotationMargin({
                     : `Note on paragraph ${line ? line.number : ""}`
                 }
               >
-                <header style={{ height: position.height ? position.height - 2 : undefined, minHeight: position.height ? position.height - 2 : undefined }}>
-                  <button
-                    type="button"
-                    className="ws-note-drag"
-                    aria-label="Drag note"
-                    title="Drag note; use arrow keys to move, Escape to return to margin"
-                    onKeyDown={event => {
-                      if (event.key === "Escape") {
-                        setFloating(current => {
-                          const next = { ...current };
-                          delete next[note.id];
-                          return next;
-                        });
+                <header
+                  className="ws-note-head"
+                  tabIndex={0}
+                  aria-label="Move note"
+                  title="Drag to move. Arrow keys move it, Escape returns it to the margin."
+                  style={{ height: position.height ? position.height - 2 : undefined, minHeight: position.height ? position.height - 2 : undefined }}
+                  onKeyDown={event => {
+                    if (event.target !== event.currentTarget) return;
+                    if (event.key === "Escape") {
+                      returnToMargin(note.id);
+                      return;
+                    }
+                    const delta: Record<string, Position> = {
+                      ArrowLeft: { x: -16, y: 0 },
+                      ArrowRight: { x: 16, y: 0 },
+                      ArrowUp: { x: 0, y: -16 },
+                      ArrowDown: { x: 0, y: 16 },
+                    };
+                    if (!delta[event.key]) return;
+                    event.preventDefault();
+                    const rect = event.currentTarget
+                      .closest("section")!
+                      .getBoundingClientRect();
+                    moveTo(rect, rect.left + delta[event.key].x, rect.top + delta[event.key].y);
+                  }}
+                  onPointerDown={event => {
+                    if (event.button !== 0) return;
+                    if ((event.target as HTMLElement).closest(".ws-note-tools, .ws-note-menu")) return;
+                    const rect = event.currentTarget
+                      .closest("section")!
+                      .getBoundingClientRect();
+                    drag.current = {
+                      id: note.id,
+                      x: event.clientX,
+                      y: event.clientY,
+                      left: rect.left,
+                      top: rect.top,
+                      width: rect.width,
+                      height: rect.height,
+                      moved: false,
+                    };
+                  }}
+                  onPointerMove={event => {
+                    const start = drag.current;
+                    if (!start || start.id !== note.id) return;
+                    if (!start.moved) {
+                      if (
+                        Math.hypot(event.clientX - start.x, event.clientY - start.y) <
+                        DRAG_THRESHOLD
+                      )
                         return;
-                      }
-                      const delta: Record<string, Position> = {
-                        ArrowLeft: { x: -16, y: 0 },
-                        ArrowRight: { x: 16, y: 0 },
-                        ArrowUp: { x: 0, y: -16 },
-                        ArrowDown: { x: 0, y: 16 },
-                      };
-                      if (!delta[event.key]) return;
-                      event.preventDefault();
-                      const rect = event.currentTarget
-                        .closest("section")!
-                        .getBoundingClientRect();
-                      setFloating(current => ({
-                        ...current,
-                        [note.id]: {
-                          x: Math.max(
-                            8,
-                            Math.min(
-                              window.innerWidth - rect.width - 8,
-                              rect.left + delta[event.key].x,
-                            ),
-                          ),
-                          y: Math.max(
-                            8,
-                            Math.min(
-                              window.innerHeight - rect.height - 8,
-                              rect.top + delta[event.key].y,
-                            ),
-                          ),
-                        },
-                      }));
-                    }}
-                    onPointerDown={event => {
-                      if (event.button !== 0) return;
-                      event.preventDefault();
-                      const rect = event.currentTarget
-                        .closest("section")!
-                        .getBoundingClientRect();
-                      drag.current = {
-                        id: note.id,
-                        x: event.clientX,
-                        y: event.clientY,
-                        left: rect.left,
-                        top: rect.top,
-                        width: rect.width,
-                        height: rect.height,
-                      };
+                      start.moved = true;
+                      setMenuFor(null);
                       setDragging(note.id);
                       event.currentTarget.setPointerCapture(event.pointerId);
-                    }}
-                    onPointerMove={event => {
-                      const start = drag.current;
-                      if (!start || start.id !== note.id) return;
-                      setFloating(current => ({
-                        ...current,
-                        [note.id]: {
-                          x: Math.max(
-                            8,
-                            Math.min(
-                              window.innerWidth - start.width - 8,
-                              start.left + event.clientX - start.x,
-                            ),
-                          ),
-                          y: Math.max(
-                            8,
-                            Math.min(
-                              window.innerHeight - start.height - 8,
-                              start.top + event.clientY - start.y,
-                            ),
-                          ),
-                        },
-                      }));
-                    }}
-                    onPointerUp={() => {
-                      drag.current = null;
-                      setDragging(null);
-                    }}
-                    onPointerCancel={() => {
-                      drag.current = null;
-                      setDragging(null);
-                    }}
-                  >
-                    ⠿
-                  </button>
+                    }
+                    moveTo(
+                      new DOMRect(0, 0, start.width, start.height),
+                      start.left + event.clientX - start.x,
+                      start.top + event.clientY - start.y,
+                    );
+                  }}
+                  onPointerUp={() => {
+                    if (drag.current?.moved) {
+                      // A drag that ends over the preview must not also open the note.
+                      suppressClick.current = true;
+                      window.setTimeout(() => (suppressClick.current = false));
+                    }
+                    drag.current = null;
+                    setDragging(null);
+                  }}
+                  onPointerCancel={() => {
+                    drag.current = null;
+                    setDragging(null);
+                  }}
+                  onClickCapture={event => {
+                    if (!suppressClick.current) return;
+                    suppressClick.current = false;
+                    event.preventDefault();
+                    event.stopPropagation();
+                  }}
+                  onClick={event => {
+                    // Clicking anywhere on a closed card's header opens it; its buttons handle themselves.
+                    if (!expanded && !(event.target as HTMLElement).closest("button"))
+                      select(note);
+                  }}
+                >
+                  <span className="ws-note-anchor">
+                    ¶ {detached ? "–" : line ? line.number : ""}
+                  </span>
                   {!expanded && (
                     <button
                       type="button"
-                      className="ws-note-select"
+                      className="ws-note-preview"
                       aria-expanded={false}
                       onClick={() => select(note)}
                     >
-                      {detached && <span>Unattached · text removed</span>}
-                      <span className="ws-note-preview">{note.content || "New note"}</span>
-                      <span aria-hidden="true">+</span>
+                      {note.content || "New note"}
                     </button>
                   )}
-                  {expanded && !readOnly && (
+                  <div className="ws-note-tools">
                     <button
                       type="button"
-                      className="ws-note-delete"
-                      aria-label="Delete"
-                      title="Delete note"
-                      onClick={() => setPendingDelete(note.id)}
+                      className="ws-note-icon"
+                      aria-label={expanded ? "Close note" : "Open note"}
+                      title={expanded ? "Close (Esc)" : "Open note"}
+                      aria-expanded={expanded}
+                      onClick={() => (expanded ? closeNote(note) : select(note))}
                     >
-                      <FiTrash2 size={15} aria-hidden="true" />
+                      {expanded ? (
+                        <FiChevronUp size={15} aria-hidden="true" />
+                      ) : (
+                        <FiChevronDown size={15} aria-hidden="true" />
+                      )}
                     </button>
-                  )}
+                    <button
+                      type="button"
+                      className="ws-note-icon ws-note-more"
+                      aria-label="More actions"
+                      aria-haspopup="menu"
+                      aria-expanded={menuOpen}
+                      onClick={() => setMenuFor(menuOpen ? null : note.id)}
+                    >
+                      <FiMoreHorizontal size={15} aria-hidden="true" />
+                    </button>
+                  </div>
                 </header>
-                {expanded && (
-                  <div className="ws-note-body">
-                    {note.quote && (
-                      <blockquote title={note.quote}>{note.quote}</blockquote>
-                    )}
-                    {detached && (
-                      <p>The original text was removed. Your note is safe.</p>
-                    )}
-                    {detached && !readOnly && (
+                {menuOpen && (
+                  <div className="ws-note-menu" role="menu" aria-label="Note actions">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      autoFocus
+                      onClick={() => {
+                        navigator.clipboard?.writeText(note.content).catch(() => {});
+                        setMenuFor(null);
+                      }}
+                    >
+                      <FiCopy size={14} aria-hidden="true" />
+                      Copy note
+                    </button>
+                    {temp && (
                       <button
                         type="button"
-                        disabled={
-                          !editor.selection ||
-                          Range.isCollapsed(editor.selection)
-                        }
+                        role="menuitem"
                         onClick={() => {
-                          if (
-                            !editor.selection ||
-                            Range.isCollapsed(editor.selection)
-                          )
-                            return;
-                          const anchor = structuredClone(editor.selection);
-                          onChange(
-                            notes.map(entry =>
-                              entry.id === note.id
-                                ? {
-                                    ...entry,
-                                    anchor,
-                                    quote: Editor.string(editor, anchor).slice(
-                                      0,
-                                      500,
-                                    ),
-                                  }
-                                : entry,
-                            ),
-                          );
+                          returnToMargin(note.id);
+                          setMenuFor(null);
                         }}
                       >
-                        Attach to selected text
+                        <FiCornerDownLeft size={14} aria-hidden="true" />
+                        Return to margin
                       </button>
                     )}
+                    {!readOnly && (
+                      <>
+                        <hr />
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="ws-note-danger"
+                          onClick={() => remove(note)}
+                        >
+                          <FiTrash2 size={14} aria-hidden="true" />
+                          Delete note
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+                {expanded && (
+                  <div className="ws-note-body">
+                    {note.quote && !detached && (
+                      <button
+                        type="button"
+                        className="ws-note-quote"
+                        title="Show in text"
+                        onClick={() => jump(note)}
+                      >
+                        {note.quote}
+                      </button>
+                    )}
+                    {detached && (
+                      <div className="ws-note-detached">
+                        <strong>The original text was removed.</strong>
+                        Your note is safe.
+                        {!readOnly && " Select text in the chapter to pin it there."}
+                        {!readOnly && (
+                          <button
+                            type="button"
+                            disabled={
+                              !editor.selection ||
+                              Range.isCollapsed(editor.selection)
+                            }
+                            onClick={() => {
+                              if (
+                                !editor.selection ||
+                                Range.isCollapsed(editor.selection)
+                              )
+                                return;
+                              const anchor = structuredClone(editor.selection);
+                              onChange(
+                                notes.map(entry =>
+                                  entry.id === note.id
+                                    ? {
+                                        ...entry,
+                                        anchor,
+                                        quote: Editor.string(editor, anchor).slice(
+                                          0,
+                                          500,
+                                        ),
+                                      }
+                                    : entry,
+                                ),
+                              );
+                            }}
+                          >
+                            Attach to selected text
+                          </button>
+                        )}
+                      </div>
+                    )}
                     <textarea
+                      ref={fitText}
+                      rows={1}
                       autoFocus={!readOnly && !note.content}
                       aria-label="Annotation text"
                       placeholder="Leave a thought…"
@@ -534,32 +689,17 @@ export function AnnotationMargin({
                         event.stopPropagation();
                         closeNote(note);
                       }}
-                      onChange={event =>
+                      onChange={event => {
+                        fitText(event.target);
                         onChange(
                           notes.map(entry =>
                             entry.id === note.id
                               ? { ...entry, content: event.target.value }
                               : entry,
                           ),
-                        )
-                      }
+                        );
+                      }}
                     />
-                    {temp && (
-                      <footer>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFloating(current => {
-                              const next = { ...current };
-                              delete next[note.id];
-                              return next;
-                            })
-                          }
-                        >
-                          Return to margin
-                        </button>
-                      </footer>
-                    )}
                   </div>
                 )}
               </section>

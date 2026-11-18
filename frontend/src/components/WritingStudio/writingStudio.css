@@ -1730,93 +1730,216 @@ padding: 6px 10px;
   background: var(--ws-paper);
   color: var(--ws-ink);
 }
-
 .ws-annotation-card.is-active {
   border-color: var(--ws-accent);
   box-shadow: 0 3px 12px #0000000a;
 }
-
+.ws-annotation-card.is-detached {
+  border-style: dashed;
+}
+.ws-annotation-card:not(.is-active):hover {
+  border-color: var(--ws-accent);
+}
 .ws-annotation-card.is-dragging {
   box-shadow: 0 6px 20px #0002;
   user-select: none;
 }
-.ws-annotation-card header {
+
+/* Header: paragraph tag, one-line preview when closed, actions. The whole header drags. */
+.ws-note-head {
   display: flex;
   align-items: center;
-  min-height: 42px;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 2px 0 10px;
+  border-radius: 8px;
+  cursor: grab;
+  user-select: none;
 }
-.ws-annotation-card .ws-note-select {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-  flex: 1;
-  padding: 10px;
-  font-size: 11px;
-  text-align: left;
+.ws-annotation-card.is-dragging .ws-note-head {
+  cursor: grabbing;
 }
-.ws-note-select > span:not(.ws-note-preview):first-child {
+.ws-note-head:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 2px;
+}
+@media (min-width: 761px) {
+  .ws-note-head {
+    touch-action: none;
+  }
+}
+.ws-note-anchor {
   flex-shrink: 0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--ws-soft);
   color: var(--ws-accent);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
-.ws-note-select > span:last-child {
-  margin-left: auto;
-}
-.ws-note-preview {
+.ws .ws-annotation-card .ws-note-preview {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  text-align: start;
+  font-size: 12px;
   color: var(--ws-muted);
 }
-.ws-annotation-card .ws-note-drag {
-  cursor: grab;
-  touch-action: none;
-  padding: 8px;
-  font-size: 18px;
+.ws .ws-annotation-card .ws-note-preview:hover {
+  background: transparent;
+  color: var(--ws-ink);
+}
+.ws-note-tools {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.ws-annotation-card:hover .ws-note-tools,
+.ws-annotation-card:focus-within .ws-note-tools,
+.ws-annotation-card.is-active .ws-note-tools {
+  opacity: 1;
+}
+@media (hover: none) {
+  .ws-note-tools {
+    opacity: 1;
+  }
+}
+.ws .ws-annotation-card .ws-note-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 4px;
   color: var(--ws-muted);
 }
-.ws-annotation-card.is-dragging .ws-note-drag {
-  cursor: grabbing;
+.ws .ws-annotation-card .ws-note-icon:hover,
+.ws .ws-annotation-card .ws-note-more[aria-expanded="true"] {
+  background: var(--ws-soft);
+  color: var(--ws-ink);
 }
+
+/* Actions menu */
+.ws-note-menu {
+  position: absolute;
+  top: 30px;
+  right: 2px;
+  z-index: 5;
+  min-width: 170px;
+  padding: 4px;
+  border: 1px solid var(--ws-line);
+  border-radius: 8px;
+  background: var(--ws-paper);
+  box-shadow: 0 6px 20px #0002;
+  font: 13px/1.4 system-ui;
+}
+.ws .ws-note-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 4px;
+  text-align: start;
+}
+.ws .ws-note-menu .ws-note-danger {
+  color: #9b3b26;
+}
+.ws-note-menu hr {
+  margin: 4px 0;
+  border: 0;
+  border-top: 1px solid var(--ws-line);
+}
+
+/* Body */
 .ws-note-body {
-  padding: 0 12px 12px;
+  padding: 2px 12px 10px;
 }
-.ws-note-body blockquote {
+.ws .ws-annotation-card .ws-note-quote {
+  display: -webkit-box;
+  width: 100%;
+  margin: 0 0 8px;
+  padding: 0 0 0 8px;
+  border: 0;
+  border-left: 2px solid var(--ws-line);
+  border-radius: 0;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  text-align: start;
   font:
     italic 12px/1.5 Georgia,
     serif;
   color: var(--ws-muted);
-  border-left: 2px solid var(--ws-line);
-  padding-left: 8px;
-  margin: 0 0 10px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow-wrap: anywhere;
+}
+.ws .ws-annotation-card .ws-note-quote:hover {
+  background: transparent;
+  border-left-color: var(--ws-accent);
+  color: var(--ws-ink);
+}
+.ws-note-detached {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--ws-muted);
+}
+.ws-note-detached strong {
+  display: block;
+  font-weight: 600;
+  color: var(--ws-ink);
+}
+.ws .ws-note-detached button {
+  display: block;
+  margin-top: 6px;
+  padding: 4px 7px;
+  border: 1px solid var(--ws-line);
+  border-radius: 4px;
+  font-size: 11px;
 }
 .ws-note-body textarea {
   display: block;
   width: 100%;
-  min-height: 96px;
+  min-height: 2.4em;
   max-height: 40vh;
-  resize: vertical;
+  resize: none;
+  overflow-y: auto;
   border: 0;
-  padding: 4px 0;
+  padding: 2px 0;
   background: transparent;
   color: var(--ws-ink);
   font: 13px/1.6 system-ui;
 }
-.ws-note-body footer {
+/* Undo after delete */
+.ws-note-toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  z-index: 120;
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 4px;
-  margin-top: 8px;
+  gap: 14px;
+  padding: 6px 6px 6px 14px;
+  transform: translateX(-50%);
+  border: 1px solid var(--ws-line);
+  border-radius: 8px;
+  background: var(--ws-paper);
+  color: var(--ws-ink);
+  box-shadow: 0 6px 20px #0002;
+  font: 13px/1.4 system-ui;
+  pointer-events: auto;
 }
-.ws-note-body footer button {
-  font-size: 11px;
-  padding: 4px 7px;
+.ws .ws-note-toast button {
+  padding: 4px 10px;
+  font-weight: 600;
+  color: var(--ws-accent);
 }
 .ws-previous-notes {
   position: absolute;
@@ -1931,9 +2054,6 @@ padding: 6px 10px;
 
 .ws-legacy-note, .ws-notes { --ws-editor-min-height: 100px; }
 
-.ws-note-body textarea {
-  padding: 2px;
-}
 .ws-delete-note-dialog {
   pointer-events: auto;
   position: fixed;
@@ -1984,7 +2104,6 @@ padding: 6px 10px;
 .ws .ws-note-body textarea,
 .ws .ws-note-body textarea:focus,
 .ws .ws-note-body textarea:focus-visible { border: 0; outline: none; box-shadow: none; }
-.ws-annotation-card .ws-note-delete { display: grid; place-items: center; flex-shrink: 0; margin-left: auto; padding: 6px 9px; color: var(--ws-muted); }
 
 .ws-page.ws-summary-mode { max-width: 1180px; width: 100%; }
 .ws-summary-mode .ws-chapter-summary { --ws-editor-min-height: 42vh; margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
@@ -2139,14 +2258,7 @@ padding: 6px 10px;
   box-shadow: 0 1px 3px color-mix(in srgb, var(--ws-ink) 15%, transparent);
 }
 
-/* Compact annotation cards share one hover surface. */
-.ws-annotation-card header { min-height: 30px; }
-.ws-annotation-card .ws-note-select { padding: 4px 10px; }
-.ws-annotation-card .ws-note-drag { padding: 4px 8px; line-height: 20px; }
-.ws .ws-annotation-card:not(.is-active):hover { background: var(--ws-soft); }
-.ws .ws-annotation-card header button:hover { background: transparent; }
 
-.ws-annotation-card .ws-note-drag { font-size: 13px; line-height: 16px; padding: 2px 8px; }
 
 /* Draft actions use the same button treatment as AI review actions. */
 .ws .ws-draft-header > button,
