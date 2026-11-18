@@ -42,6 +42,7 @@ export function AnnotationMargin({
   legacyNotes,
   onActive,
   onReveal,
+  onConfirm,
 }: {
   notes: ChapterAnnotation[];
   active: string | null;
@@ -52,6 +53,7 @@ export function AnnotationMargin({
   legacyNotes?: ReactNode;
   onActive: (id: string | null) => void;
   onReveal?: () => void;
+  onConfirm?: (note: ChapterAnnotation) => void;
 }) {
   const editor = useSlate();
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -688,6 +690,7 @@ export function AnnotationMargin({
                         event.preventDefault();
                         event.stopPropagation();
                         closeNote(note);
+                        if (plainEnter) onConfirm?.(note);
                       }}
                       onChange={event => {
                         fitText(event.target);

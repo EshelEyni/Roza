@@ -837,6 +837,18 @@ test(
       assert.equal((await manuscriptMarks())[1]?.text, "start");
       await page.keyboard.press("ArrowLeft");
       assert.equal((await manuscriptMarks())[1]?.text, "fresh");
+      await page.keyboard.press("Control+Alt+n");
+      const readingNote = page.getByRole("textbox", { name: "Annotation text", exact: true });
+      await readingNote.fill("Keep this sentence marked.");
+      await readingNote.press("Enter");
+      await readingNote.waitFor({ state: "hidden" });
+      await page.waitForFunction(sentence =>
+        [...CSS.highlights.values()].some(highlight =>
+          [...highlight].some(range => range.toString() === sentence)
+        ), firstSentence);
+      assert.deepEqual((await manuscriptMarks()).map(mark => mark.text), [firstSentence, "A"]);
+      await page.keyboard.press("Control+ArrowRight");
+      assert.equal((await manuscriptMarks())[0]?.text, "Another paragraph.");
       await selectManuscriptWord("coast");
       await page.keyboard.press("ArrowRight");
       assert.equal((await manuscriptMarks())[1]?.text, "where");

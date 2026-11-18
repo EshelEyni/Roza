@@ -102,6 +102,19 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     return wordRange;
   };
 
+  const markRange = (range: Range) => {
+    const block = range.startContainer.parentElement?.closest(blockSelector);
+    if (!block || !root.current?.contains(block)) return;
+    const data = readBlock(block);
+    const part = data.parts.find(part => part.node === range.startContainer);
+    if (!part) return;
+    const start = part.start + range.startOffset;
+    const index = data.words.findIndex(word => word.end > start);
+    if (index < 0) return;
+    column.current = undefined;
+    mark(data, index);
+  };
+
   const onClick = (event: MouseEvent<HTMLDivElement>) => {
     const { currentTarget, clientX, clientY } = event;
     const doc = currentTarget.ownerDocument;
@@ -212,5 +225,5 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     else if (word.bottom > bounds.bottom) scroller.scrollBy(0, word.bottom - bounds.bottom);
   };
 
-  return { root, markedSentence, clear, onClick: enabled ? onClick : undefined, onKeyDown: enabled ? onKeyDown : undefined };
+  return { root, markedSentence, clear, markRange, onClick: enabled ? onClick : undefined, onKeyDown: enabled ? onKeyDown : undefined };
 }

@@ -196,6 +196,18 @@ export function ManuscriptEditor({
     });
     return annotationSentenceRange(editor, anchor);
   };
+  const resumeReadingAtNote = (note: ChapterAnnotation) => {
+    const sentence = annotationSentenceRange(editor, note.anchor);
+    if (!sentence) return;
+    // Closing the card removes its Slate decoration and changes the DOM text leaves.
+    requestAnimationFrame(() => {
+      const editable = readingMarks.root.current?.querySelector<HTMLElement>("[data-slate-editor]");
+      if (!editable || !validAnchor(editor, sentence)) return;
+      editable.focus({ preventScroll: true });
+      editable.ownerDocument.getSelection()?.removeAllRanges();
+      readingMarks.markRange(ReactEditor.toDOMRange(editor, sentence));
+    });
+  };
   const addSelectionNote = (readingAnchor?: Range) => {
     if (!canAddNote) return;
     if (readingAnchor) {
@@ -395,6 +407,7 @@ export function ManuscriptEditor({
             active={activeNote}
             hoveredPath={hoveredPath}
             onActive={setActiveNote}
+            onConfirm={reading ? resumeReadingAtNote : undefined}
             onReveal={onRevealAnnotations}
             visible={showAnnotations}
             readOnly={annotationsReadOnly}
