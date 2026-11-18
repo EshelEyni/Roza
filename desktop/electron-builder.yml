@@ -2,7 +2,12 @@ appId: com.esheleyni.roza
 artifactName: 'Roza-Setup-${version}-x64.${ext}'
 files:
   - main.cjs
+  - preload.cjs
+  - kokoro/*.cjs
   - renderer/**/*
+extraResources:
+  - from: kokoro/service.py
+    to: kokoro/service.py
 win:
   icon: renderer/images/icon-512x512.png
   target: nsis

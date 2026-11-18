@@ -3,9 +3,15 @@ const { autoUpdater } = require("electron-updater");
 const { readdirSync } = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { createKokoroDesktop } = require("./kokoro/index.cjs");
 
 const origin = "https://roza.esheleyni.com";
 const renderer = path.join(__dirname, "renderer");
+// Development only: point /api at another backend (e.g. http://localhost:3030) to test unreleased
+// backend changes from the desktop app. Ignored in packaged builds.
+const devApiOrigin = !app.isPackaged && process.env.ROZA_API_ORIGIN ? new URL(process.env.ROZA_API_ORIGIN).origin : null;
+let mainWindow = null;
+const kokoro = createKokoroDesktop({ app, origin, getWindow: () => mainWindow });
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -41,8 +47,16 @@ function registerRenderer(browserSession) {
       if (["document", "iframe", "frame"].includes(request.headers.get("sec-fetch-dest"))) {
         return new Response(null, { status: 403 });
       }
+      if (devApiOrigin) {
+        const body = ["GET", "HEAD"].includes(request.method) ? undefined : await request.arrayBuffer();
+        return fetchNetwork(devApiOrigin + url.pathname + url.search, {
+          method: request.method, headers: request.headers, body, credentials: "include", redirect: "error", cache: "no-store",
+        });
+      }
       return fetchNetwork(request, { credentials: "include", redirect: "error", cache: "no-store" });
     }
+    const kokoroAudio = await kokoro.handleAudio(request, url);
+    if (kokoroAudio) return kokoroAudio;
     if (request.method !== "GET") return new Response(null, { status: 405 });
 
     const asset = url.pathname.slice(1);
@@ -73,6 +87,7 @@ app.whenReady().then(async () => {
   browserSession.setPermissionCheckHandler(() => false);
   browserSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   registerRenderer(browserSession);
+  kokoro.register();
 
   const window = new BrowserWindow({
     width: 1280,
@@ -82,8 +97,10 @@ app.whenReady().then(async () => {
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(__dirname, "preload.cjs"),
     },
   });
+  mainWindow = window;
 
   window.webContents.on("will-navigate", (event, url) => {
     const target = new URL(url);
@@ -110,3 +127,4 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => app.quit());
+app.on("before-quit", () => kokoro.shutdown());
