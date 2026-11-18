@@ -1,6 +1,6 @@
 // Kokoro voices the desktop app may synthesize. Keep in step with
-// frontend/src/services/audiobook/kokoroVoices.ts and backend/src/services/reader/readerKokoroVoices.ts
-// (scripts/reader-kokoro-voices.test.cjs checks that they match).
+// frontend/src/services/narration/kokoroVoices.ts and backend/src/services/reader/readerKokoroVoices.ts
+// (scripts/desktop-kokoro.test.cjs checks that they match).
 const kokoroVoices = [
   "af_heart", "af_alloy", "af_aoede", "af_bella", "af_jessica", "af_kore", "af_nicole", "af_nova",
   "af_river", "af_sarah", "af_sky", "am_adam", "am_echo", "am_eric", "am_fenrir", "am_liam",

@@ -1,10 +1,11 @@
 // Installs the local voices runtime on first use, entirely inside one folder:
 //   uv (pinned, checksum-verified) → Python 3.11 → kokoro + spaCy English + ffmpeg → model + all voices → self-test.
 // Nothing goes to PATH or the user's global caches, so "Remove local voices" removes everything.
-const { spawn } = require("node:child_process");
+const { execFileSync, spawn } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const { createWriteStream, existsSync } = require("node:fs");
-const { mkdir, readFile, rm, statfs, writeFile } = require("node:fs/promises");
+const { mkdir, readdir, readFile, rm, statfs, writeFile } = require("node:fs/promises");
+const os = require("node:os");
 const path = require("node:path");
 const { createInterface } = require("node:readline");
 const { Readable, Transform } = require("node:stream");
@@ -35,6 +36,27 @@ for index, name in enumerate(files, 1):
     print(f"{index}/{len(files)}", flush=True)
 `;
 
+const isAscii = (text) => /^[ -~]+$/.test(text);
+
+/**
+ * The 8.3 short form of an existing folder ("C:\Users\D0EF~1\…"). uv cannot set up Python inside a
+ * folder whose path has non-ASCII letters (a Hebrew user name, say), and the short form is also shorter,
+ * which helps packages that build from source stay under Windows' 260-character limit.
+ * Returns null when the drive has short names turned off.
+ */
+function windowsShortPath(folder) {
+  if (process.platform !== "win32") return folder;
+  if (isAscii(folder)) return folder;
+  try {
+    const out = execFileSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", `"for %A in ("${folder}") do @echo %~sA"`], {
+      encoding: "utf8", windowsHide: true, windowsVerbatimArguments: true,
+    }).trim();
+    return isAscii(out) && existsSync(out) ? out : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * @param {{ runtimeDir: string, script: string, onProgress: (status: object) => void }} options
  */
@@ -43,14 +65,22 @@ function createInstaller({ runtimeDir, script, onProgress }) {
   const uvExe = path.join(runtimeDir, "uv", "uv.exe");
   let marker = null;
   let job = null;
+  // uv works inside the runtime folder by its short ASCII path when the drive has short names
+  // (shorter paths, and no surprises from non-ASCII user names).
+  let uvRoot = null;
+  const pythonDir = () => path.join(uvRoot || runtimeDir, "python");
+  // uv's download cache lives in Temp only while installing. With the cache and Python both under the
+  // roaming profile, uv 0.13 fails to set up Python ("Missing expected target directory"); a short
+  // Temp path also keeps packages that build from source under Windows' 260-character limit.
+  const uvCache = path.join(windowsShortPath(os.tmpdir()) || os.tmpdir(), "roza-kokoro-uv");
 
   const env = (extra = {}) => ({
     ...process.env,
     PYTHONUNBUFFERED: "1",
     PYTHONUTF8: "1",
     PYTHONIOENCODING: "utf-8",
-    UV_PYTHON_INSTALL_DIR: path.join(runtimeDir, "python"),
-    UV_CACHE_DIR: path.join(runtimeDir, "uv-cache"),
+    UV_PYTHON_INSTALL_DIR: pythonDir(),
+    UV_CACHE_DIR: uvCache,
     UV_NO_CONFIG: "1",
     HF_HOME: path.join(runtimeDir, "hf"),
     HF_HUB_DISABLE_TELEMETRY: "1",
@@ -146,6 +176,7 @@ function createInstaller({ runtimeDir, script, onProgress }) {
       }
       await rm(path.join(runtimeDir, MARKER), { force: true });
       marker = null;
+      uvRoot = windowsShortPath(runtimeDir);
 
       // 1. uv
       if (!existsSync(uvExe)) {
@@ -162,7 +193,17 @@ function createInstaller({ runtimeDir, script, onProgress }) {
       // 2. Python
       report("python", "Setting up Python…", 6);
       if (!existsSync(venvPython)) {
-        await run(uvExe, ["venv", "--python", "3.11", "--python-preference", "only-managed", path.join(runtimeDir, ".venv")]);
+        // On some Windows profiles uv 0.13 installs Python correctly but then fails its own check of the
+        // "minor version" link ("Missing expected target directory"). The venv is made from the exact
+        // interpreter instead, so that link is never needed.
+        await run(uvExe, ["python", "install", "3.11", "--no-bin"]).catch((error) => {
+          if (!/minor version link/i.test(error.message)) throw error;
+        });
+        const installed = (await readdir(pythonDir()).catch(() => []))
+          .filter((name) => /^cpython-3\.11\.\d+-windows-x86_64-none$/.test(name)).sort().pop();
+        const interpreter = installed && path.join(pythonDir(), installed, "python.exe");
+        if (!interpreter || !existsSync(interpreter)) throw new Error("Python could not be installed.");
+        await run(uvExe, ["venv", "--python", interpreter, path.join(uvRoot || runtimeDir, ".venv")]);
       }
 
       // 3. Packages (torch is the big one)
@@ -199,6 +240,7 @@ function createInstaller({ runtimeDir, script, onProgress }) {
       report("test", "Testing a voice…", 96);
       await selfTest();
 
+      await rm(uvCache, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
       marker = { version: RUNTIME_VERSION, installedAt: new Date().toISOString(), ffmpeg: ffmpeg ? ffmpeg.trim() : null, formats };
       await writeFile(path.join(runtimeDir, MARKER), JSON.stringify(marker, null, 2));
     })()
@@ -274,6 +316,7 @@ function createInstaller({ runtimeDir, script, onProgress }) {
   async function remove() {
     cancel();
     await rm(runtimeDir, { recursive: true, force: true, maxRetries: 3, retryDelay: 300 });
+    await rm(uvCache, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
     marker = null;
     lastError = null;
     onProgress(status());
