@@ -277,6 +277,22 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const text = item ? ("text" in item ? item.text : item.description) : [];
   const visibleText =
     summary && item?.type === "chapters" ? item.description : text;
+  const pageControls = !!item && !overview && !tasks;
+  const isChapter = item?.type === "chapters";
+  const view: "write" | "read" | "summary" | "bible" =
+    isChapter && chapterBible ? "bible" : isChapter && summary ? "summary" : preview ? "read" : "write";
+  const pageContext = item
+    ? category === "chapters"
+      ? `CHAPTER ${String(items.indexOf(item) + 1).padStart(2, "0")} · ${words(text).toLocaleString()} WORDS`
+      : category.toUpperCase()
+    : "WRITING STUDIO";
+  function showView(next: typeof view) {
+    if (next === "bible") setDraftId("");
+    if (next === "read") setDrawer(false);
+    setChapterBible(next === "bible");
+    setSummary(next === "summary");
+    setPreview(next === "read");
+  }
 
   useEffect(() => store.subscribe(render), [store]);
   const recovery = store.recovery;
@@ -456,7 +472,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           ← <span>Library</span>
         </button>
         <div className="ws-book-heading">
-          <span className="ws-eyebrow">ROZA / WRITING STUDIO</span>
+          <span className="ws-eyebrow">{pageContext}</span>
           <input
             aria-label="Book title"
             value={book.name}
@@ -476,31 +492,160 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             }}
           />
         </div>
-        <button
-          className={`ws-save ws-save-${store.state}`}
-          onClick={() => void store.flush()}
-          aria-live="polite"
-        >
-          {
+        {pageControls && (
+          <div className="ws-header-views">
+            <div className="ws-segmented" role="group" aria-label="Page view">
+              <button aria-pressed={view === "write"} onClick={() => showView("write")}>
+                Write
+              </button>
+              <button
+                aria-pressed={view === "read"}
+                disabled={!!activeDraft}
+                onClick={() => showView("read")}
+              >
+                Read
+              </button>
+              {isChapter && (
+                <button
+                  aria-pressed={view === "summary"}
+                  aria-controls="ws-chapter-summary"
+                  disabled={!!activeDraft}
+                  onClick={() => showView("summary")}
+                >
+                  Summary
+                </button>
+              )}
+              {isChapter && (
+                <button
+                  aria-pressed={view === "bible"}
+                  aria-controls="ws-chapter-bible"
+                  aria-label="Chapter Bible"
+                  onClick={() => showView("bible")}
+                >
+                  Bible
+                </button>
+              )}
+            </div>
+            {isChapter && (
+              <button
+                className="ws-check-toggle"
+                aria-pressed={notes && (view === "write" || view === "read")}
+                disabled={!!activeDraft}
+                onClick={() => {
+                  if (view === "summary" || view === "bible") {
+                    setSummary(false);
+                    setChapterBible(false);
+                    setNotes(true);
+                  } else setNotes(!notes);
+                }}
+              >
+                <span aria-hidden="true" />
+                Annotations
+              </button>
+            )}
+          </div>
+        )}
+        <div className="ws-header-end">
+          <button
+            className={`ws-save ws-save-${store.state}`}
+            onClick={() => void store.flush()}
+            aria-live="polite"
+          >
             {
-              saved: "✓ All changes saved",
-              pending: "Unsaved changes",
-              saving: "Saving…",
-              error: "Save failed · retry",
-            }[store.state]
-          }
-        </button>
-        <button
-          className="ws-focus-toggle"
-          onClick={() => setFocus(!focus)}
-          aria-pressed={focus}
-          title="Focus mode (Ctrl/Cmd+Shift+F)"
-        >
-          {focus ? "Exit focus" : "Focus"}
-        </button>
-        <button onClick={() => optionsDialog.current?.showModal()} aria-haspopup="dialog">
-          Options
-        </button>
+              {
+                saved: "✓ All changes saved",
+                pending: "Unsaved changes",
+                saving: "Saving…",
+                error: "Save failed · retry",
+              }[store.state]
+            }
+          </button>
+          {focus && (
+            <button
+              className="ws-focus-toggle"
+              onClick={() => setFocus(false)}
+              aria-pressed={focus}
+              title="Exit focus mode (Esc)"
+            >
+              Exit focus
+            </button>
+          )}
+          {chapter && (
+            <ItemMenu>
+              <summary className="ws-version" title="Chapter versions">
+                {activeDraft?.name || "Main"}
+                <small> · {chapter.drafts?.length || 0} drafts</small> ▾
+              </summary>
+              <div className="ws-version-menu">
+                <span className="ws-eyebrow">VERSIONS</span>
+                <button aria-current={!activeDraft || undefined} onClick={() => setDraftId("")}>
+                  Main
+                </button>
+                {chapter.drafts?.map(d => (
+                  <button
+                    key={d.id}
+                    aria-current={d.id === activeDraft?.id || undefined}
+                    onClick={() => openDraft(d.id)}
+                  >
+                    {d.name}
+                  </button>
+                ))}
+                <hr />
+                <button disabled={!!store.recovery} onClick={() => addDraft()}>
+                  Create draft from Main
+                </button>
+                <button disabled={!!store.recovery} onClick={() => addDraft(true)}>
+                  Create blank draft
+                </button>
+              </div>
+            </ItemMenu>
+          )}
+          <ItemMenu>
+            <summary className="ws-more" aria-label="More" title="More">
+              •••
+            </summary>
+            <div className="ws-more-menu">
+              {pageControls && item && (
+                <>
+                  <span className="ws-eyebrow">
+                    {category === "chapters" ? "THIS CHAPTER" : "THIS PAGE"}
+                  </span>
+                  {item.type === "chapters" && !preview && (
+                    <button
+                      type="button"
+                      disabled={!!store.recovery || !!activeDraft}
+                      onClick={() => setFormatChapter(item.id)}
+                    >
+                      Chapter Format
+                    </button>
+                  )}
+                  <button type="button" onClick={() => void leave(`/book/${book.id}`)}>
+                    Go to details
+                  </button>
+                  <button disabled={!!store.recovery} onClick={archive}>
+                    Archive page
+                  </button>
+                  <hr />
+                </>
+              )}
+              <span className="ws-eyebrow">STUDIO</span>
+              <button
+                type="button"
+                onClick={() => setFocus(!focus)}
+                title="Ctrl/Cmd+Shift+F"
+              >
+                {focus ? "Exit focus mode" : "Focus mode"}
+              </button>
+              <button
+                type="button"
+                onClick={() => optionsDialog.current?.showModal()}
+                aria-haspopup="dialog"
+              >
+                Options
+              </button>
+            </div>
+          </ItemMenu>
+        </div>
       </header>
       {store.state === "error" && (
         <div className="ws-notice ws-error" role="alert">
@@ -768,94 +913,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         >
           {item ? (
             <>
-              <div className="ws-document-actions">
-                <span className="ws-eyebrow">
-                  {category === "chapters"
-                    ? `CHAPTER ${String(items.indexOf(item) + 1).padStart(2, "0")}`
-                    : category.toUpperCase()}
-                </span>
-                <div>
-                  <button
-                    disabled={!!activeDraft}
-                    onClick={() => {
-                      setChapterBible(false);
-                      setDrawer(false);
-                      setPreview(!preview);
-                    }}
-                    aria-pressed={preview}
-                  >
-                    {preview ? "Edit" : "Read"}
-                  </button>
-                  {category === "chapters" && (
-                    <button
-                      disabled={!!activeDraft}
-                      type="button"
-                      onClick={() => {
-                        setChapterBible(false);
-                        setSummary(value => !value);
-                      }}
-                      aria-expanded={summary}
-                      aria-controls="ws-chapter-summary"
-                    >
-                      {summary ? "Text" : "Summary"}
-                    </button>
-                  )}
-                  {category === "chapters" && (
-                    <button
-                      disabled={!!activeDraft}
-                      onClick={() => {
-                        setChapterBible(false);
-                        setNotes(summary ? true : !notes);
-                        setSummary(false);
-                      }}
-                      aria-pressed={notes}
-                    >
-                      Annotations
-                    </button>
-                  )}
-                  {item.type === "chapters" && (
-                    <button
-                      aria-pressed={chapterBible}
-                      aria-controls="ws-chapter-bible"
-                      onClick={() => {
-                        setDraftId("");
-                        setChapterBible(value => !value);
-                        setSummary(false);
-                      }}
-                    >
-                      Chapter Bible
-                    </button>
-                  )}
-                  {chapter && <ItemMenu><summary>Drafts ({chapter.drafts?.length || 0})</summary><div>
-                    <button disabled={!!store.recovery} onClick={() => addDraft()}>Create draft from Main</button>
-                    <button disabled={!!store.recovery} onClick={() => addDraft(true)}>Create blank draft</button>
-                    {chapter.drafts?.map(d => <button key={d.id} onClick={() => openDraft(d.id)}>{d.name}</button>)}
-                  </div></ItemMenu>}
-                  <ItemMenu>
-                    <summary>More</summary>
-                    <div>
-                      {item.type === "chapters" && !preview && (
-                        <button
-                          type="button"
-                          disabled={!!store.recovery || !!activeDraft}
-                          onClick={() => setFormatChapter(item.id)}
-                        >
-                          Chapter Format
-                        </button>
-                      )}
-                      <button
-                        type="button"
-                        onClick={() => void leave(`/book/${book.id}`)}
-                      >
-                        Go to details
-                      </button>
-                      <button disabled={!!store.recovery} onClick={archive}>
-                        Archive page
-                      </button>
-                    </div>
-                  </ItemMenu>
-                </div>
-              </div>
               {activeDraft && <nav className="ws-draft-mobile-switch" aria-label="Writing panel"><button aria-pressed={mobilePane === "main"} onClick={() => setMobilePane("main")}>Main</button><button aria-pressed={mobilePane === "draft"} onClick={() => setMobilePane("draft")}>Draft</button></nav>}
               <div className={`ws-draft-layout ws-show-${mobilePane}`}>
               <article

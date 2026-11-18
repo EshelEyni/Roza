@@ -239,7 +239,7 @@ test(
           exact: true,
         });
         await editor.waitFor();
-        await page.locator(".ws-item-menu > summary").click();
+        await page.locator(".ws-more").click();
         await page
           .getByRole("button", { name: "Chapter Format", exact: true })
           .click();
@@ -292,7 +292,7 @@ test(
         return;
       }
       const openFormat = async () => {
-        await page.locator(".ws-item-menu > summary").click();
+        await page.locator(".ws-more").click();
         await page
           .getByRole("button", { name: "Chapter Format", exact: true })
           .click();

@@ -342,7 +342,7 @@ test(
       await page.getByRole("button", { name: "Reject", exact: true }).click();
       aiDelay = 0;
       // Drafts edit independently and preserve pending changes on switches.
-      await page.getByText("Drafts (0)", { exact: true }).click();
+      await page.locator(".ws-version").click();
       await page
         .getByRole("button", { name: "Create draft from Main", exact: true })
         .click();
@@ -365,7 +365,7 @@ test(
       assert.equal(await main.innerText(), mainText);
       await page.getByLabel("Draft name", { exact: true }).fill("Alternative");
       await page.getByLabel("Draft name", { exact: true }).press("Tab");
-      await page.getByText("Drafts (1)", { exact: true }).click();
+      await page.locator(".ws-version").click();
       await page
         .getByRole("button", { name: "Create blank draft", exact: true })
         .click();
@@ -586,6 +586,7 @@ test(
         return Math.abs((text.top+text.height/2)-(card.top+card.height/2));
       });
       assert.ok(alignment<4, 'Note should align with its attached row, offset='+alignment);
+      await page.locator('.ws-more').click();
       await page.getByRole('button', {name:'Options', exact:true}).click();
       for (const size of ['18','24','20']) {
         await page.locator('.ws-options select').nth(1).selectOption(size);
