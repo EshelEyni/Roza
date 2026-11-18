@@ -10,12 +10,12 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateBook = exports.addBook = exports.getBookById = exports.getBooks = void 0;
+const planningValidation_1 = require("./planningValidation");
+const mongoose_1 = require("mongoose");
 const bookModel_1 = require("../../models/books/bookModel");
+const bookSchema_1 = require("../../models/books/schemas/bookSchema");
 const errorService_1 = require("../../services/error/errorService");
 const ALSService_1 = require("../../services/ALSService");
-// interface BookWithScore extends Book {
-//   score: number;
-// }
 const getBooks = (0, errorService_1.asyncErrorCatcher)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const loggedInUserId = (0, ALSService_1.getLoggedInUserIdFromReq)();
     if (!loggedInUserId)
@@ -29,39 +29,6 @@ const getBooks = (0, errorService_1.asyncErrorCatcher)((req, res, next) => __awa
         query.sort({ score: { $meta: "textScore" } });
     }
     const books = (yield query.exec());
-    // let sortedBooks = books;
-    // if (searchTerm && typeof searchTerm === "string") {
-    //   sortedBooks = (books as BookWithScore[]).sort((a, b) => {
-    //     const aNameMatch = a.name.includes(searchTerm) ? 1 : 0;
-    //     const bNameMatch = b.name.includes(searchTerm) ? 1 : 0;
-    //     // Sort by name match first
-    //     if (aNameMatch !== bNameMatch) return bNameMatch - aNameMatch;
-    //     const aChaptersMatch = a.chapters.some(c => c.text.includes(searchTerm)) ? 1 : 0;
-    //     const bChaptersMatch = b.chapters.some(c => c.text.includes(searchTerm)) ? 1 : 0;
-    //     if (aChaptersMatch !== bChaptersMatch) {
-    //       return bChaptersMatch - aChaptersMatch; // Sort by chapters match next
-    //     }
-    //     const aCharactersMatch = a.characters.some(c => c.description.includes(searchTerm)) ? 1 : 0;
-    //     const bCharactersMatch = b.characters.some(c => c.description.includes(searchTerm)) ? 1 : 0;
-    //     if (aCharactersMatch !== bCharactersMatch) {
-    //       return bCharactersMatch - aCharactersMatch; // Sort by characters match next
-    //     }
-    //     const aThemesMatch = a.themes.some(t => t.description.includes(searchTerm)) ? 1 : 0;
-    //     const bThemesMatch = b.themes.some(t => t.description.includes(searchTerm)) ? 1 : 0;
-    //     // Sort by themes match next
-    //     if (aThemesMatch !== bThemesMatch) return bThemesMatch - aThemesMatch;
-    //     const aPlotlinesMatch = a.plotlines.some(p => p.description.includes(searchTerm)) ? 1 : 0;
-    //     const bPlotlinesMatch = b.plotlines.some(p => p.description.includes(searchTerm)) ? 1 : 0;
-    //     // Sort by plotlines match next
-    //     if (aPlotlinesMatch !== bPlotlinesMatch) return bPlotlinesMatch - aPlotlinesMatch;
-    //     const aNotesMatch = a.notes.some(n => n.text.includes(searchTerm)) ? 1 : 0;
-    //     const bNotesMatch = b.notes.some(n => n.text.includes(searchTerm)) ? 1 : 0;
-    //     // Sort by notes match next
-    //     if (aNotesMatch !== bNotesMatch) return bNotesMatch - aNotesMatch;
-    //     // Use text score as the final tie-breaker
-    //     return (b.score || 0) - (a.score || 0);
-    //   });
-    // }
     res.json({
         status: "success",
         requestedAt: new Date().toISOString(),
@@ -84,6 +51,13 @@ const getBookById = (0, errorService_1.asyncErrorCatcher)((req, res, next) => __
 exports.getBookById = getBookById;
 const addBook = (0, errorService_1.asyncErrorCatcher)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const loggedInUserId = (0, ALSService_1.getLoggedInUserIdFromReq)();
+    validateWordGoal(req.body.wordGoal);
+    try {
+        (0, planningValidation_1.validatePlanning)(req.body, String(req.body.id || req.body._id || ""));
+    }
+    catch (error) {
+        throw new errorService_1.AppError(error.message, 400);
+    }
     const book = yield bookModel_1.BookModel.create(Object.assign(Object.assign({}, req.body), { userId: loggedInUserId }));
     res.status(201).json({
         status: "success",
@@ -94,14 +68,78 @@ exports.addBook = addBook;
 const updateBook = (0, errorService_1.asyncErrorCatcher)((req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     const { id } = req.params;
     const loggedInUserId = (0, ALSService_1.getLoggedInUserIdFromReq)();
-    const book = yield bookModel_1.BookModel.findOneAndUpdate({ _id: id, userId: loggedInUserId }, req.body, {
-        new: true,
-        runValidators: true,
+    if (!loggedInUserId)
+        throw new errorService_1.AppError("User not logged in", 401);
+    // Read raw storage because find middleware hides archived children.
+    const current = yield bookModel_1.BookModel.collection.findOne({
+        _id: new mongoose_1.Types.ObjectId(id),
+        userId: new mongoose_1.Types.ObjectId(loggedInUserId),
+        isArchived: { $ne: true },
     });
-    res.json({
-        status: "success",
-        data: book,
-    });
+    if (!current)
+        throw new errorService_1.AppError("Book not found", 404);
+    const expected = req.body.updatedAt;
+    if (expected && new Date(expected).getTime() !== new Date(current.updatedAt).getTime())
+        throw new errorService_1.AppError("This manuscript changed in another session. Export your draft, then reload to review the latest version.", 409);
+    if (!expected &&
+        ["chapters", "characters", "themes", "plotlines", "notes", "taskBoard"].some(field => field === "taskBoard" ? req.body[field] !== undefined : Array.isArray(req.body[field])))
+        throw new errorService_1.AppError("Reload the manuscript before saving its contents.", 409);
+    const fields = [
+        "taskBoard",
+        "name",
+        "chapters",
+        "characters",
+        "themes",
+        "plotlines",
+        "notes",
+        "filterBy",
+        "isArchived",
+        "isReadMode",
+        "wordGoal",
+    ];
+    validateWordGoal(req.body.wordGoal);
+    const changes = {};
+    for (const field of fields) {
+        if (req.body[field] === undefined)
+            continue;
+        if (["chapters", "characters", "themes", "plotlines", "notes"].includes(field)) {
+            if (!Array.isArray(req.body[field]))
+                throw new errorService_1.AppError("Invalid manuscript items", 400);
+            const incoming = req.body[field].map((item) => {
+                const copy = Object.assign({}, item);
+                if (typeof item.id === "string" && /^[a-f0-9]{24}$/i.test(item.id))
+                    copy._id = item.id;
+                delete copy.id;
+                return copy;
+            });
+            const ids = new Set(incoming.map((item) => String(item._id)));
+            const stored = current[field] ||
+                [];
+            changes[field] = [
+                ...incoming,
+                ...stored.filter(item => item.isArchived && !ids.has(String(item._id))),
+            ];
+        }
+        else
+            changes[field] = req.body[field];
+    }
+    try {
+        (0, planningValidation_1.validatePlanning)(Object.assign(Object.assign({}, current), changes), id);
+    }
+    catch (error) {
+        throw new errorService_1.AppError(error.message, 400);
+    }
+    // Atomic compare-and-swap protects simultaneous requests too.
+    const book = yield bookModel_1.BookModel.findOneAndUpdate({ _id: id, userId: loggedInUserId, updatedAt: current.updatedAt }, {
+        $set: Object.assign(Object.assign({}, changes), { updatedAt: new Date(Math.max(Date.now(), new Date(current.updatedAt).getTime() + 1)) }),
+    }, { new: true, runValidators: true, timestamps: false });
+    if (!book)
+        throw new errorService_1.AppError("This manuscript changed while saving. Export your draft and reload.", 409);
+    res.json({ status: "success", data: book });
 }));
 exports.updateBook = updateBook;
+function validateWordGoal(value) {
+    if (value !== undefined && !(0, bookSchema_1.isWordGoal)(value))
+        throw new errorService_1.AppError("Manuscript word goal must be a whole number from 1 to 10,000,000.", 400);
+}
 //# sourceMappingURL=bookController.js.map

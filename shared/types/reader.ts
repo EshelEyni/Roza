@@ -23,7 +23,7 @@ export type ReaderState = {
 };
 
 export type ReaderAudiobookNarrator = {
-  engine: "system" | "openai";
+  engine: "system" | "openai" | "kokoro";
   voice: string;
   name: string;
   lang: string;

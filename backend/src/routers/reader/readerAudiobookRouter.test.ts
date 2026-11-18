@@ -181,9 +181,18 @@ describe("backend-only audiobook API", () => {
     expect((await get(base + "/config")).body.data.narrator).toEqual(choice);
     expect(generateReaderSpeech).not.toHaveBeenCalled();
   });
+  it("saves a local Kokoro narrator without calling OpenAI", async () => {
+    process.env.READER_AUDIOBOOK_ENABLED = "false";
+    const choice = { engine: "kokoro", voice: "bf_emma", name: "Emma", lang: "en-GB" };
+    const response = await request(app).patch(base + "/narrator").set("Authorization", "test").send(choice);
+    expect(response.status).toBe(200);
+    expect((await get(base + "/config")).body.data.narrator).toEqual(choice);
+    expect(generateReaderSpeech).not.toHaveBeenCalled();
+  });
   it.each([
     {engine:"other",voice:"marin",name:"Marin",lang:""},
     {engine:"openai",voice:"unknown",name:"Unknown",lang:""},
+    {engine:"kokoro",voice:"marin",name:"Unknown",lang:""},
     {engine:"system",voice:"",name:"Alex",lang:"en"},
     {engine:"system",voice:"alex",name:"x".repeat(257),lang:"en"},
     {engine:"system",voice:"alex",name:"Alex",lang:"en",userId:owner},

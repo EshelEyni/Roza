@@ -17,7 +17,7 @@ const postRequestLimiter = (0, express_rate_limit_1.default)({
 });
 const patchRequestLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000,
-    max: 500,
+    max: 2000,
     message: "Too many PATCH requests, please try again later",
 });
 const putRequestLimiter = (0, express_rate_limit_1.default)({

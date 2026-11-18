@@ -1,0 +1,227 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.MAX_EPUB_SIZE = void 0;
+exports.parseEpub = parseEpub;
+const adm_zip_1 = __importDefault(require("adm-zip"));
+const fast_xml_parser_1 = require("fast-xml-parser");
+const sanitize_html_1 = __importDefault(require("sanitize-html"));
+const path_1 = __importDefault(require("path"));
+const errorService_1 = require("../error/errorService");
+const MAX_EPUB_SIZE = 25 * 1024 * 1024;
+exports.MAX_EPUB_SIZE = MAX_EPUB_SIZE;
+const MAX_EXPANDED_SIZE = 100 * 1024 * 1024;
+const MAX_ENTRY_SIZE = 10 * 1024 * 1024;
+const parser = new fast_xml_parser_1.XMLParser({
+    ignoreAttributes: false,
+    removeNSPrefix: true,
+    processEntities: false,
+});
+const contentPolicy = "default-src 'none'; img-src blob: data:; style-src 'unsafe-inline' blob:; font-src blob: data:; base-uri 'none'; form-action 'none';";
+function asArray(value) {
+    return value === undefined ? [] : Array.isArray(value) ? value : [value];
+}
+function text(value) {
+    if (typeof value === "string" || typeof value === "number")
+        return String(value);
+    if (value && typeof value === "object" && "#text" in value)
+        return text(value["#text"]);
+    return "";
+}
+function resolveEntry(base, href) {
+    let decoded;
+    try {
+        decoded = decodeURIComponent(href.split("#")[0]);
+    }
+    catch (_a) {
+        throw new errorService_1.AppError("Invalid EPUB resource path.", 400);
+    }
+    if (/^[a-z][a-z\d+.-]*:|^[/\\]|\\|\0/i.test(decoded))
+        throw new errorService_1.AppError("External or unsafe EPUB resources are not supported.", 400);
+    const resolved = path_1.default.posix.normalize(path_1.default.posix.join(path_1.default.posix.dirname(base), decoded));
+    if (resolved === ".." || resolved.startsWith("../"))
+        throw new errorService_1.AppError("Invalid EPUB resource path.", 400);
+    return resolved;
+}
+function cleanCss(css) {
+    // Remove escape/comment obfuscation before eliminating imports and resource loads.
+    return css
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/\\(?:[0-9a-f]{1,6}\s?|.)/gi, "")
+        .replace(/@import[^;]*(;|$)/gi, "")
+        .replace(/url\s*\([^)]*\)/gi, "none")
+        .replace(/expression\s*\([^)]*\)/gi, "");
+}
+function cleanDocument(source) {
+    const body = (0, sanitize_html_1.default)(source, {
+        // EPUB XHTML uses empty anchors such as <a id="note1"/>.
+        // Respect their closing slash so following prose is not wrapped in an anchor.
+        parser: { recognizeSelfClosing: true },
+        allowedTags: [
+            "html",
+            "head",
+            "title",
+            "body",
+            "link",
+            "style",
+            ...sanitize_html_1.default.defaults.allowedTags,
+            "img",
+            "figure",
+            "figcaption",
+            "section",
+            "article",
+            "nav",
+            "aside",
+            "header",
+            "footer",
+            "main",
+            "hr",
+            "br",
+        ],
+        allowedAttributes: {
+            "*": ["id", "class", "lang", "dir", "title", "epub:type", "role", "hidden"],
+            html: ["xmlns", "xmlns:epub", "lang", "dir"],
+            a: ["href", "name"],
+            img: ["src", "alt", "width", "height"],
+            link: ["href", "rel", "type"],
+            td: ["colspan", "rowspan"],
+            th: ["colspan", "rowspan"],
+        },
+        allowedSchemes: [],
+        allowProtocolRelative: false,
+        allowVulnerableTags: true,
+        transformTags: {
+            nav: (_tag, attributes) => ({
+                tagName: "nav",
+                attribs: Object.assign(Object.assign({}, attributes), ("hidden" in attributes ? { hidden: "hidden" } : {})),
+            }),
+            // Common EPUB covers wrap a raster image in SVG. Keep the image without SVG active content.
+            svg: () => ({ tagName: "div", attribs: {} }),
+            image: (_tag, attributes) => ({
+                tagName: "img",
+                attribs: { src: attributes["xlink:href"] || attributes.href || "", alt: "" },
+            }),
+            style: (_tag, attributes) => ({ tagName: "style", attribs: attributes }),
+            a: (_tag, attributes) => {
+                const attribs = Object.assign({}, attributes);
+                // Note targets are anchors, but must not become links with an empty href.
+                if (!attribs.href || /^(?:[a-z][a-z\d+.-]*:|\/\/)/i.test(attribs.href))
+                    delete attribs.href;
+                return { tagName: "a", attribs };
+            },
+        },
+        exclusiveFilter: frame => frame.tag === "link" && frame.attribs.rel !== "stylesheet",
+    });
+    const styled = body.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (_match, css) => "<style>" + cleanCss(css) + "</style>");
+    const meta = '<meta http-equiv="Content-Security-Policy" content="' + contentPolicy + '"/>';
+    const result = /<head[^>]*>/i.test(styled)
+        ? styled.replace(/<head[^>]*>/i, match => match + meta)
+        : '<html xmlns="http://www.w3.org/1999/xhtml"><head>' +
+            meta +
+            "</head><body>" +
+            styled +
+            "</body></html>";
+    return result.replace(/<((?:img|br|hr|link))\b([^>]*?)(?:\s*\/)?\s*>/gi, "<$1$2 />");
+}
+function parseEpub(buffer, filename) {
+    var _a, _b, _c, _d, _e, _f;
+    if (!buffer.length || buffer.length > MAX_EPUB_SIZE)
+        throw new errorService_1.AppError("Upload an EPUB smaller than 25 MiB.", 400);
+    try {
+        const zip = new adm_zip_1.default(buffer);
+        const entries = zip.getEntries();
+        if (!entries.length || entries.length > 2000)
+            throw new errorService_1.AppError("Too many EPUB resources.", 400);
+        const names = new Set();
+        let expandedSize = 0;
+        for (const entry of entries) {
+            const name = entry.entryName;
+            if (name.startsWith("/") ||
+                name.includes("\\") ||
+                name.split("/").includes("..") ||
+                /^[a-z]:/i.test(name) ||
+                names.has(name) ||
+                entry.header.flags & 1)
+                throw new errorService_1.AppError("Unsafe or encrypted EPUB archive.", 400);
+            names.add(name);
+            expandedSize += entry.header.size;
+            if (entry.header.size > MAX_ENTRY_SIZE || expandedSize > MAX_EXPANDED_SIZE)
+                throw new errorService_1.AppError("EPUB expands beyond the supported size.", 400);
+        }
+        if (zip.getEntry("META-INF/encryption.xml"))
+            throw new errorService_1.AppError("Encrypted EPUB resources are not supported. Upload a DRM-free EPUB.", 400);
+        if (zip.readAsText("mimetype").trim() !== "application/epub+zip")
+            throw new errorService_1.AppError("This file is not a valid EPUB.", 400);
+        function readXml(name) {
+            const entry = zip.getEntry(name);
+            if (!entry)
+                throw new errorService_1.AppError("EPUB resource is missing: " + name, 400);
+            const source = entry.getData().toString("utf8");
+            if (/<!DOCTYPE|<!ENTITY/i.test(source) || fast_xml_parser_1.XMLValidator.validate(source) !== true)
+                throw new errorService_1.AppError("Invalid EPUB XML.", 400);
+            return parser.parse(source);
+        }
+        const container = readXml("META-INF/container.xml");
+        const rootfile = asArray((_b = (_a = container.container) === null || _a === void 0 ? void 0 : _a.rootfiles) === null || _b === void 0 ? void 0 : _b.rootfile)[0];
+        const opfPath = resolveEntry("container.xml", (rootfile === null || rootfile === void 0 ? void 0 : rootfile["@_full-path"]) || "");
+        const pkg = readXml(opfPath).package;
+        if (!(pkg === null || pkg === void 0 ? void 0 : pkg.manifest) || !(pkg === null || pkg === void 0 ? void 0 : pkg.spine))
+            throw new errorService_1.AppError("EPUB has no readable content.", 400);
+        const metas = asArray((_c = pkg.metadata) === null || _c === void 0 ? void 0 : _c.meta);
+        if (metas.some(meta => meta["@_property"] === "rendition:layout" && text(meta) === "pre-paginated"))
+            throw new errorService_1.AppError("Fixed-layout EPUBs are not supported yet.", 400);
+        const items = asArray(pkg.manifest.item);
+        const spine = asArray(pkg.spine.itemref);
+        const resources = new Map();
+        for (const item of items) {
+            const name = resolveEntry(opfPath, item["@_href"] || "");
+            if (!zip.getEntry(name))
+                throw new errorService_1.AppError("EPUB is missing a declared resource.", 400);
+            resources.set(item["@_id"], { name, media: item["@_media-type"] || "" });
+        }
+        if (!spine.length ||
+            spine.some(item => { var _a; return ((_a = resources.get(item["@_idref"])) === null || _a === void 0 ? void 0 : _a.media) !== "application/xhtml+xml"; }))
+            throw new errorService_1.AppError("EPUB has an invalid reading order.", 400);
+        const coverId = (_d = metas.find(meta => meta["@_name"] === "cover")) === null || _d === void 0 ? void 0 : _d["@_content"];
+        const coverItem = items.find(item => (item["@_properties"] || "").split(" ").includes("cover-image")) ||
+            items.find(item => item["@_id"] === coverId);
+        const coverResource = coverItem && resources.get(coverItem["@_id"]);
+        let cover = "";
+        if (coverResource && /^image\/(png|jpeg|gif|webp)$/.test(coverResource.media)) {
+            const image = zip.getEntry(coverResource.name);
+            if (image.header.size <= 2 * 1024 * 1024)
+                cover = "data:" + coverResource.media + ";base64," + image.getData().toString("base64");
+        }
+        // Sanitize every HTML/CSS archive member, including unlisted resources.
+        for (const entry of entries) {
+            if (entry.isDirectory)
+                continue;
+            const declared = Array.from(resources.values()).find(resource => resource.name === entry.entryName);
+            if (/\.(xhtml|html|htm)$/i.test(entry.entryName) ||
+                (declared === null || declared === void 0 ? void 0 : declared.media) === "application/xhtml+xml")
+                zip.updateFile(entry.entryName, Buffer.from(cleanDocument(entry.getData().toString("utf8"))));
+            else if (/\.css$/i.test(entry.entryName) || (declared === null || declared === void 0 ? void 0 : declared.media) === "text/css")
+                zip.updateFile(entry.entryName, Buffer.from(cleanCss(entry.getData().toString("utf8"))));
+        }
+        const title = text(asArray((_e = pkg.metadata) === null || _e === void 0 ? void 0 : _e.title)[0]).trim().slice(0, 300) ||
+            filename
+                .replace(/\.epub$/i, "")
+                .replace(/[_-]/g, " ")
+                .slice(0, 300) ||
+            "Untitled book";
+        const author = asArray((_f = pkg.metadata) === null || _f === void 0 ? void 0 : _f.creator)
+            .map(text)
+            .filter(Boolean)
+            .join(", ")
+            .slice(0, 500);
+        return { title, author, cover, buffer: zip.toBuffer() };
+    }
+    catch (error) {
+        if (error instanceof errorService_1.AppError)
+            throw error;
+        throw new errorService_1.AppError("Could not read this EPUB. Check that it is a valid, DRM-free book.", 400);
+    }
+}
+//# sourceMappingURL=epubService.js.map

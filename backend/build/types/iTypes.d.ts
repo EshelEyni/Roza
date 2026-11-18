@@ -1,3 +1,4 @@
+import { ReaderState } from "../../../shared/types/reader";
 import mongoose, { Document } from "mongoose";
 import { BooKDataItemType, SlateCustomElement, SlateCustomText } from "../../../shared/types/books";
 export interface IUser extends Document {
@@ -12,6 +13,10 @@ export interface IUser extends Document {
     fullname: string;
     roles: string[];
     lastVisitedPage: string;
+    entityFilterOrder: {
+        books: string;
+        bookReviews: string;
+    };
     createdAt: Date;
     updatedAt: Date;
     active: boolean;
@@ -22,6 +27,7 @@ export interface IUser extends Document {
     lockedUntil: number;
 }
 export interface IBook extends Document {
+    taskBoard?: import("../../../shared/types/books").TaskBoard;
     userId: mongoose.Types.ObjectId;
     name: string;
     chapters: IChapter[];
@@ -34,6 +40,7 @@ export interface IBook extends Document {
     updatedAt: Date;
     isArchived: boolean;
     isReadMode: boolean;
+    wordGoal?: number;
 }
 export interface IBasicBookDataItem extends Document {
     bookId: mongoose.Types.ObjectId;
@@ -42,6 +49,11 @@ export interface IBasicBookDataItem extends Document {
     updatedAt: Date;
 }
 export interface IChapter extends IBasicBookDataItem {
+    drafts?: import("../../../shared/types/books").ChapterDraft[];
+    taskBoard?: import("../../../shared/types/books").TaskBoard;
+    planning?: import("../../../shared/types/books").ChapterPlanning;
+    format?: "prose" | "screenplay";
+    annotations?: import("../../../shared/types/books").ChapterAnnotation[];
     name: string;
     description: ISlateCustomElement[];
     text: ISlateCustomElement[];
@@ -53,18 +65,29 @@ export interface ICharacter extends IBasicBookDataItem {
     type: "characters";
 }
 export interface ITheme extends IBasicBookDataItem {
+    color?: string;
     name: string;
     description: ISlateCustomElement[];
     type: "themes";
 }
 export interface IPlotline extends IBasicBookDataItem {
+    color?: string;
     name: string;
     description: ISlateCustomElement[];
     type: "plotlines";
 }
 export interface INote extends IBasicBookDataItem {
+    name?: string;
     text: ISlateCustomElement[];
     type: "notes";
+}
+export interface IChapterNote {
+    chapterId: mongoose.Types.ObjectId;
+    noteId: mongoose.Types.ObjectId;
+    text: string;
+    isArchived: boolean;
+    createdAt: Date;
+    updatedAt: Date;
 }
 export interface IBookReview extends Document {
     userId: mongoose.Types.ObjectId;
@@ -95,4 +118,51 @@ export interface IReference extends Document {
 }
 export type ISlateCustomElement = SlateCustomElement & Document;
 export interface ISlateCustomText extends SlateCustomText, Document {
+}
+export interface IReaderBook extends Document {
+    audiobookNarrator?: import("../../../shared/types/reader").ReaderAudiobookNarrator;
+    archived: boolean;
+    userId: mongoose.Types.ObjectId;
+    title: string;
+    author: string;
+    cover: string;
+    filename: string;
+    size: number;
+    fileId: mongoose.Types.ObjectId;
+    originalFileId: mongoose.Types.ObjectId;
+    state: ReaderState;
+}
+export interface IReaderConversation extends Document {
+    memorySummary?: import("../services/reader/readerMemoryService").ReaderMemorySummary;
+    contextSummaryFailed?: boolean;
+    contextOmittedTurns?: number;
+    userId: mongoose.Types.ObjectId;
+    bookId: mongoose.Types.ObjectId;
+    title: string;
+    passage?: {
+        cfi: string;
+        text: string;
+        endCfi?: string;
+    };
+    spoilersAllowed: boolean;
+    lockedUntil: Date;
+    lockToken?: string;
+    turns: {
+        id: string;
+        question: string;
+        answer: string;
+        status: "pending" | "completed" | "failed";
+        currentCfi: string;
+        passage?: {
+            cfi: string;
+            endCfi?: string;
+            text: string;
+        };
+        excerpts?: {
+            label: string;
+            text: string;
+        }[];
+        spoilersAllowed: boolean;
+        createdAt: Date;
+    }[];
 }

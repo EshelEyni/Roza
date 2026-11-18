@@ -1,0 +1,11 @@
+import { Request, Response } from "express";
+declare const getReaderAccess: (req: Request, res: Response, next: import("express").NextFunction) => void;
+declare const getReaderBooks: (req: Request, res: Response, next: import("express").NextFunction) => void;
+declare const addReaderBook: (req: Request, res: Response, next: import("express").NextFunction) => void;
+declare const updateReaderBookArchive: (req: Request, res: Response, next: import("express").NextFunction) => void;
+declare const renameReaderBook: (req: Request, res: Response, next: import("express").NextFunction) => void;
+declare const deleteReaderBook: (req: Request, res: Response, next: import("express").NextFunction) => void;
+declare const getReaderBook: (req: Request, res: Response, next: import("express").NextFunction) => void;
+declare const getReaderFile: (req: Request, res: Response, next: import("express").NextFunction) => void;
+declare const updateReaderState: (req: Request, res: Response, next: import("express").NextFunction) => void;
+export { getReaderAccess, getReaderBooks, addReaderBook, getReaderBook, getReaderFile, updateReaderState, updateReaderBookArchive, renameReaderBook, deleteReaderBook, };

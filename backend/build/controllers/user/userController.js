@@ -24,7 +24,14 @@ const getUserById = (0, factoryService_1.getOne)(userModel_1.UserModel);
 exports.getUserById = getUserById;
 const addUser = (0, factoryService_1.createOne)(userModel_1.UserModel);
 exports.addUser = addUser;
-const updateUser = (0, factoryService_1.updateOne)(userModel_1.UserModel, ["username", "email", "fullname", "imgUrl", "email"]);
+const updateUser = (0, factoryService_1.updateOne)(userModel_1.UserModel, [
+    "username",
+    "email",
+    "fullname",
+    "imgUrl",
+    "email",
+    "entityFilterOrder",
+]);
 exports.updateUser = updateUser;
 const removeUser = (0, factoryService_1.deleteOne)(userModel_1.UserModel);
 exports.removeUser = removeUser;

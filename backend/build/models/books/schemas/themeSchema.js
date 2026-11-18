@@ -5,6 +5,7 @@ const mongoose_1 = require("mongoose");
 const slateElementSchema_1 = require("../../schemas/slateElementSchema");
 const utilService_1 = require("../../../services/util/utilService");
 const themeSchema = new mongoose_1.Schema({
+    color: { type: String, default: "", validate: (v) => !v || /^#[0-9a-f]{6}$/i.test(v) },
     bookId: {
         type: mongoose_1.Schema.Types.ObjectId,
         required: [true, "Please provide a book id"],

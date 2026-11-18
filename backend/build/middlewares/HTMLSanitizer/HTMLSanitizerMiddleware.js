@@ -31,6 +31,11 @@ function _sanitizeQuery(query) {
     }
 }
 function requestSanitizer(req, res, next) {
+    // AI manuscript input is plain text rendered by React/Slate, never HTML.
+    // Sanitizing it would silently change the author's source before editing.
+    if (req.method === "POST" && /^\/api\/book\/[a-f0-9]{24}\/chapters\/[a-f0-9]{24}\/ai-edit\/?$/i.test(req.path)) {
+        return next();
+    }
     const { body } = req;
     const { params } = req;
     const { query } = req;
