@@ -274,6 +274,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   }
   const total = useMemo(() => manuscriptWords(book), [book]);
   const text = item ? ("text" in item ? item.text : item.description) : [];
+  const chapterText = category === "chapters" ? plainText(text).trim() : "";
+  const chapterLineCount = chapterText ? chapterText.split(/\r\n?|\n/).length : 0;
   const visibleText =
     summary && item?.type === "chapters" ? item.description : text;
   const pageControls = !!item && !overview && !tasks;
@@ -282,7 +284,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     isChapter && chapterBible ? "bible" : isChapter && summary ? "summary" : preview ? "read" : "write";
   const pageContext = item
     ? category === "chapters"
-      ? `CHAPTER ${String(items.indexOf(item) + 1).padStart(2, "0")} · ${words(text).toLocaleString()} WORDS`
+      ? `CHAPTER ${String(items.indexOf(item) + 1).padStart(2, "0")} · ${words(text).toLocaleString()} WORDS · ${chapterLineCount.toLocaleString()} LINES`
       : category.toUpperCase()
     : "WRITING STUDIO";
   function showView(next: typeof view) {
