@@ -412,7 +412,7 @@ test(
       await chapterModal.getByRole('textbox', { name: 'Chapter manuscript', exact: true }).fill('Modal chapter revision.');
       await page.screenshot({ path: path.join(screenshots, 'chapter-edit-modal.png') });
       await chapterModal.getByRole('button', { name: 'Done', exact: true }).click();
-      await page.getByRole('button', { name: '✓ All changes saved' }).waitFor();
+      await page.getByRole('button', { name: 'All changes saved' }).waitFor();
       assert.equal(saved.chapters[0].text[0].children[0].text, 'Modal chapter revision.');
       assert.equal(await editor.innerText(), 'Modal chapter revision.');
       assert.equal(await board.isVisible(), true);
@@ -457,7 +457,7 @@ test(
       await previewDialog.getByText('Chapter 1 of 2 · Reading preview').waitFor();
       assert.match(await previewDialog.locator('.ws-preview-summary').innerText(), /Reviewed in preview/);
       assert.equal(await previewDialog.locator('.ws-chapter-reading').evaluate(node => node.scrollTop), 0);
-      await page.getByRole('button', { name: '✓ All changes saved' }).waitFor();
+      await page.getByRole('button', { name: 'All changes saved' }).waitFor();
       assert.equal(saved.chapters[0].description.map(node => node.children.map(leaf => leaf.text).join('')).join('\n'), 'Reviewed in preview.\nA second line.');
       await page.keyboard.press('ArrowRight');
       assert.match(
@@ -472,7 +472,7 @@ test(
         .getByRole("textbox", { name: "Chapter summary", exact: true })
         .fill("The letter changes everything.");
       await page.getByRole("button", { name: "Done", exact: true }).click();
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       if (process.env.PREVIEW_ACTIONS_ONLY === '1') {
         await board.getByRole('button', { name: 'Preview An unopened letter' }).click();
         const footer = page.getByRole('dialog').locator('footer');
@@ -497,7 +497,7 @@ test(
         assert.ok(bounds.width <= 390 && bounds.height <= 844);
         assert.equal(await page.getByRole('dialog').evaluate(node => node.scrollHeight <= node.clientHeight), true);
         await page.getByRole('dialog').getByRole('button', { name: 'Done', exact: true }).click();
-        await page.getByRole('button', { name: '✓ All changes saved' }).waitFor();
+        await page.getByRole('button', { name: 'All changes saved' }).waitFor();
         assert.equal(saved.chapters[1].description[0].children[0].text, 'Mobile review.');
         return;
       }
@@ -521,7 +521,7 @@ test(
           document.querySelector(".ws-board-card h2")?.textContent ===
           "An unopened letter",
       );
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].name, "An unopened letter");
       assert.equal(
         saved.chapters[0].description[0].children[0].text,
@@ -564,7 +564,7 @@ test(
       assert.equal(saved.chapters[0].name, "An unopened letter");
       fail = false;
       await page.getByRole("button", { name: "Save failed · retry" }).click();
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].name, "The house by the sea");
       await board.locator(".ws-drag-handle").first().focus();
       await page.keyboard.press("Space");
@@ -573,7 +573,7 @@ test(
       await page.keyboard.press("ArrowRight");
       await page.waitForTimeout(300);
       await page.keyboard.press("Space");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       // Pointer dragging restores the original sequence and persists it.
       await page.waitForTimeout(300);
       const secondHandle = board.getByRole("button", {
@@ -602,7 +602,7 @@ test(
       await page.waitForTimeout(100);
       await page.mouse.up();
       await page.waitForFunction(() => document.querySelector(".ws-board-card h2")?.textContent === "The house by the sea");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].name, "The house by the sea");
       await chooseWorkspace(page, "Chapters");
       assert.equal(await editor.innerText(), "Unsaved overview context.");
@@ -629,7 +629,7 @@ test(
       await editor.fill("First chapter revised.");
       await page.getByRole("button", { name: /An unopened letter/ }).click();
       await editor.fill("Second chapter revised.");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.equal(
         saved.chapters[0].text[0].children[0].text,
         "First chapter revised.",
@@ -645,7 +645,7 @@ test(
       await editor.fill("While saving");
       await page.keyboard.press("Control+s");
       await editor.fill("Newest draft during save");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.equal(
         saved.chapters[1].text[0].children[0].text,
         "Newest draft during save",
@@ -666,7 +666,7 @@ test(
       assert.equal(await editor.innerText(), "Recover after interruption");
       fail = false;
       await page.keyboard.press("Control+s");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       await editor.click();
       await page.keyboard.press("End");
       await page.keyboard.type(" Extra");
@@ -726,7 +726,7 @@ test(
       await page
         .getByRole("button", { name: "Undo archive", exact: true })
         .click();
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.ok(
         saved.chapters.some((c) => c.name === "New chapter" && !c.isArchived),
       );
@@ -753,7 +753,7 @@ test(
       await page.getByLabel("Appearance").selectOption("dark");
       await studioOptions.getByRole("button", { name: "Close", exact: true }).click();
       assert.equal(await studioOptions.isVisible(), false);
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.equal(saved.wordGoal, 82_000);
       assert.equal(saveCount, savesBeforeGoal + 1);
       const secondSession = await browser.newPage();
@@ -770,19 +770,12 @@ test(
       await page.screenshot({
         path: path.join(screenshots, "studio-dark.png"),
       });
-      await page.keyboard.press("Control+Shift+f");
-      assert.ok(
-        await page
-          .getByRole("button", { name: "Exit focus", exact: true })
-          .isVisible(),
-      );
-      await page.keyboard.press("Escape");
       const firstSentence = "A fresh start began at the coast where the windows held the pale afternoon light.";
       await editor.fill(firstSentence);
       await editor.press("End");
       await editor.press("Enter");
       await page.keyboard.insertText("Another paragraph. A final sentence.");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       const clickManuscriptWord = async (word, clickCount = 1) => {
         const point = await editor.evaluate((element, word) => {
           const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
@@ -916,7 +909,7 @@ test(
         .getByRole("button", { name: "＋ Create a chapter", exact: true })
         .click();
       await editor.fill("The first words.");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       await page.reload();
       await editor.waitFor();
       assert.equal(await editor.innerText(), "The first words.");
@@ -935,7 +928,7 @@ test(
       );
       await editor.fill(longText);
       await page.keyboard.press("Control+s");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].text[0].children[0].text, longText);
       assert.equal(
         await page.evaluate(
@@ -965,7 +958,7 @@ test(
         .fill("פרק ראשון — מסע הביתה");
       await editor.fill("זהו סיפור חדש. המילים נשמרות גם מימין לשמאל.");
       await page.keyboard.press("Control+s");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       await page.screenshot({
         path: path.join(screenshots, "studio-tablet-rtl.png"),
       });

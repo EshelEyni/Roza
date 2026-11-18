@@ -196,7 +196,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         return nextParams;
       });
     setDrawer(false);
-    setFocus(false);
     setPreview(false);
     setSearch("");
     setNotes(true);
@@ -207,7 +206,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const [visitedDrafts, setVisitedDrafts] = useState<string[]>([]);
   const [mobilePane, setMobilePane] = useState("draft");
   const [drawer, setDrawer] = useState(false);
-  const [focus, setFocus] = useState(false);
   const [preview, setPreview] = useState(false);
   const [notes, setNotes] = useState(true);
   const [summary, setSummary] = useState(false);
@@ -242,7 +240,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const activeDraft = chapter?.drafts?.find(d => d.id === draftId);
   function openDraft(id: string) {
     setVisitedDrafts(ids => ids.includes(id) ? ids : [...ids, id]);
-    setDraftId(id); setSummary(false); setChapterBible(false); setDrawer(false); setFocus(false); setPreview(false); setMobilePane("draft");
+    setDraftId(id); setSummary(false); setChapterBible(false); setDrawer(false); setPreview(false); setMobilePane("draft");
   }
   function editChapter(change: (chapter: Chapter) => Chapter, chapterId = chapter?.id) {
     if (!chapterId) return;
@@ -277,6 +275,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const text = item ? ("text" in item ? item.text : item.description) : [];
   const visibleText =
     summary && item?.type === "chapters" ? item.description : text;
+  const saveLabel = {
+    saved: "All changes saved",
+    pending: "Unsaved changes · click to save",
+    saving: "Saving…",
+    error: "Save failed · click to retry",
+  }[store.state];
   const pageControls = !!item && !overview && !tasks;
   const isChapter = item?.type === "chapters";
   const view: "write" | "read" | "summary" | "bible" =
@@ -340,18 +344,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         event.preventDefault();
         void store.flush();
       }
-      if (
-        (event.ctrlKey || event.metaKey) &&
-        event.shiftKey &&
-        event.key.toLowerCase() === "f"
-      ) {
-        event.preventDefault();
-        setFocus(value => !value);
-      }
-      if (event.key === "Escape") {
-        setFocus(false);
-        setDrawer(false);
-      }
+      if (event.key === "Escape") setDrawer(false);
     };
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
@@ -433,7 +426,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
 
   return (
     <main
-      className={`ws ws-studio ${tasks ? "ws-tasks-open" : ""} ${dark && !focus ? "ws-dark" : ""} ${focus ? "ws-focus" : ""} ${activeDraft ? "ws-draft-mode" : ""}`}
+      className={`ws ws-studio ${tasks ? "ws-tasks-open" : ""} ${dark ? "ws-dark" : ""} ${activeDraft ? "ws-draft-mode" : ""}`}
       style={{
         "--ws-font-size": `${size}px`,
         "--ws-word-highlight": wordColor,
@@ -549,27 +542,14 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           <button
             className={`ws-save ws-save-${store.state}`}
             onClick={() => void store.flush()}
+            title={saveLabel}
             aria-live="polite"
           >
-            {
-              {
-                saved: "✓ All changes saved",
-                pending: "Unsaved changes",
-                saving: "Saving…",
-                error: "Save failed · retry",
-              }[store.state]
-            }
+            <span aria-hidden="true">
+              {{ saved: "✓", pending: "●", saving: "⋯", error: "!" }[store.state]}
+            </span>
+            <span className="ws-visually-hidden">{saveLabel}</span>
           </button>
-          {focus && (
-            <button
-              className="ws-focus-toggle"
-              onClick={() => setFocus(false)}
-              aria-pressed={focus}
-              title="Exit focus mode (Esc)"
-            >
-              Exit focus
-            </button>
-          )}
           {chapter && (
             <ItemMenu>
               <summary className="ws-version" title="Chapter versions">
@@ -629,13 +609,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 </>
               )}
               <span className="ws-eyebrow">STUDIO</span>
-              <button
-                type="button"
-                onClick={() => setFocus(!focus)}
-                title="Ctrl/Cmd+Shift+F"
-              >
-                {focus ? "Exit focus mode" : "Focus mode"}
-              </button>
               <button
                 type="button"
                 onClick={() => optionsDialog.current?.showModal()}
@@ -768,7 +741,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           </p>
           <p>
             Shortcuts: Ctrl/Cmd+S save · Ctrl/Cmd+B/I/U formatting · Ctrl/Cmd+Z
-            undo · Ctrl/Cmd+Shift+F focus · Esc exit focus. Browser find remains
+            undo. Browser find remains
             available.
           </p>
           {([

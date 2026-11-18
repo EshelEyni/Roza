@@ -271,7 +271,7 @@ test(
         .getByRole("button", { name: "Done", exact: true })
         .click();
       await page
-        .getByRole("button", { name: "✓ All changes saved", exact: true })
+        .getByRole("button", { name: "All changes saved", exact: true })
         .waitFor();
       assert.equal(
         saved.taskBoard.lists[0].cards[0].description,
@@ -297,7 +297,7 @@ test(
       await page.keyboard.press("Space");
       await page.waitForTimeout(100);
       await page
-        .getByRole("button", { name: "✓ All changes saved", exact: true })
+        .getByRole("button", { name: "All changes saved", exact: true })
         .waitFor();
       assert.equal(saved.taskBoard.lists[1].title, "To Do");
       for (const target of [2, 0]) {
@@ -328,7 +328,7 @@ test(
           target,
         );
         await page
-          .getByRole("button", { name: "✓ All changes saved", exact: true })
+          .getByRole("button", { name: "All changes saved", exact: true })
           .waitFor();
         assert.equal(
           saved.taskBoard.lists[target].cards[0].title,
@@ -344,7 +344,7 @@ test(
         .last()
         .fill("Revision");
       await page
-        .getByRole("button", { name: "✓ All changes saved", exact: true })
+        .getByRole("button", { name: "All changes saved", exact: true })
         .waitFor();
       await page.screenshot({
         path: path.join(screenshots, "tasks-desktop.png"),
@@ -382,7 +382,7 @@ test(
         .click();
 
       await page
-        .getByRole("button", { name: "✓ All changes saved", exact: true })
+        .getByRole("button", { name: "All changes saved", exact: true })
         .waitFor();
       assert.equal(saved.taskBoard.lists.flatMap((l) => l.cards).length, 0);
       await chooseWorkspace(page, "Chapters");

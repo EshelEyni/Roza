@@ -525,7 +525,7 @@ test(
         })
         .click();
       await page
-        .getByRole("button", { name: "✓ All changes saved", exact: true })
+        .getByRole("button", { name: "All changes saved", exact: true })
         .waitFor();
       const persisted = structuredClone(saved);
       assert.ok(

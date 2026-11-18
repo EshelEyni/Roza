@@ -350,7 +350,7 @@ test(
       assert.equal(await page.getByLabel('Task chapter').inputValue(),initial.chapters[0].id);
       await page.getByRole('dialog').getByRole('button',{name:'Done',exact:true}).click();
       await page.getByRole('button',{name:/All changes saved|Unsaved changes|Saving…/}).first().click();
-      await page.getByRole('button',{name:'✓ All changes saved',exact:true}).waitFor();
+      await page.getByRole('button',{name:'All changes saved',exact:true}).waitFor();
       const mara=saved.characters.find(c=>c.name==='Mara');
       assert.ok(saved.characters.find(c=>c.name==='Jonah'));
       assert.equal(saved.chapters[0].planning.characters.length,1);
@@ -379,7 +379,7 @@ test(
       await inspector.getByLabel('Complete Research the harbour').uncheck();
       await preview.getByRole('button',{name:'Done',exact:true}).click();
       await page.getByRole('button',{name:/All changes saved|Unsaved changes|Saving…/}).first().click();
-      await page.getByRole('button',{name:'✓ All changes saved',exact:true}).waitFor();
+      await page.getByRole('button',{name:'All changes saved',exact:true}).waitFor();
       await page.getByLabel('Filter chapter planning').selectOption('characters:'+mara.id);
       assert.equal(await page.locator('.ws-board-card').count(),2);
       await page.setViewportSize({width:768,height:1024});await page.screenshot({path:path.join(screenshots,'planning-tablet.png')});

@@ -215,7 +215,7 @@ test(
       await page.goto(base + "books");
       await page.getByRole('link',{name:'Write The Shape of Quiet',exact:true}).click();
 
-      const save=async()=>{ await page.getByRole('button',{name:/All changes saved|Unsaved changes|Saving…/}).first().click(); await page.getByRole('button',{name:'✓ All changes saved',exact:true}).waitFor(); };
+      const save=async()=>{ await page.getByRole('button',{name:/All changes saved|Unsaved changes|Saving…/}).first().click(); await page.getByRole('button',{name:'All changes saved',exact:true}).waitFor(); };
       async function board(title) {
         await page.getByRole('button',{name:'Chapter Bible',exact:true}).click();
         await page.getByRole('region',{name:'Chapter Bible',exact:true}).getByRole('button',{name:'Tasks',exact:true}).click();
