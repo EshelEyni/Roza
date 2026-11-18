@@ -117,6 +117,26 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     if (!vertical) column.current = undefined;
     const blocks = [...new Set(Array.from(event.currentTarget.querySelectorAll(stringSelector),
       leaf => leaf.closest(blockSelector)))].filter((block): block is Element => !!block);
+    const selection = event.currentTarget.ownerDocument.getSelection();
+    // Drag, double-click, and touch selections can bypass click-to-mark.
+    if (selection?.rangeCount && !selection.isCollapsed &&
+        event.currentTarget.contains(selection.anchorNode) &&
+        event.currentTarget.contains(selection.focusNode)) {
+      const range = selection.getRangeAt(0);
+      const block = range.startContainer.parentElement?.closest(blockSelector);
+      if (block && blocks.includes(block)) {
+        const data = readBlock(block);
+        const part = data.parts.find(part => part.node === range.startContainer);
+        if (part) {
+          const offset = part.start + range.startOffset;
+          const index = data.words.findIndex(word => word.start <= offset && offset < word.end);
+          if (index >= 0) {
+            active.current = { block, index };
+            column.current = undefined;
+          }
+        }
+      }
+    }
     const current = active.current;
     let blockIndex = current ? blocks.indexOf(current.block) : -1;
     let data = blockIndex >= 0 ? readBlock(blocks[blockIndex]) : undefined;
@@ -154,7 +174,7 @@ export function useManuscriptReadingMarks(enabled: boolean) {
         direction > 0 ? 0 : data.words.length - 1;
     }
     if (!data) return;
-    event.currentTarget.ownerDocument.getSelection()?.removeAllRanges();
+    selection?.removeAllRanges();
     const word = mark(data, index).getBoundingClientRect();
     const scroller = event.currentTarget.closest(".ws-writing");
     if (!scroller) return;

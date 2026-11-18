@@ -783,7 +783,7 @@ test(
       await editor.press("Enter");
       await page.keyboard.insertText("Another paragraph. A final sentence.");
       await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
-      const clickManuscriptWord = async (word) => {
+      const clickManuscriptWord = async (word, clickCount = 1) => {
         const point = await editor.evaluate((element, word) => {
           const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
           for (let leaf = walker.nextNode(); leaf; leaf = walker.nextNode()) {
@@ -797,7 +797,11 @@ test(
           }
           throw new Error(`Word not found: ${word}`);
         }, word);
-        await page.mouse.click(point.x, point.y);
+        await page.mouse.click(point.x, point.y, { clickCount });
+      };
+      const selectManuscriptWord = async (word) => {
+        await clickManuscriptWord(word, 2);
+        assert.equal(await page.evaluate(() => window.getSelection().toString().trim()), word);
       };
       const manuscriptMarks = () => editor.evaluate(element =>
         [...CSS.highlights.entries()].flatMap(([name, highlight]) =>
@@ -827,10 +831,25 @@ test(
       assert.equal((await manuscriptMarks())[1]?.text, "start");
       await page.keyboard.press("ArrowLeft");
       assert.equal((await manuscriptMarks())[1]?.text, "fresh");
+      await selectManuscriptWord("coast");
+      await page.keyboard.press("ArrowRight");
+      assert.equal((await manuscriptMarks())[1]?.text, "where");
+      await page.keyboard.press("ArrowRight");
+      assert.equal((await manuscriptMarks())[1]?.text, "the");
+      await selectManuscriptWord("coast");
+      await page.keyboard.press("ArrowLeft");
+      assert.equal((await manuscriptMarks())[1]?.text, "the");
+      await clickManuscriptWord("fresh");
       await page.setViewportSize({ width: 390, height: 844 });
       assert.equal(await page.locator(".ws-mobile-nav").isVisible(), false);
       assert.ok((await manuscriptMarks())[0].lines > 1);
       const scrollBefore = await page.locator(".ws-writing").evaluate(el => el.scrollTop);
+      await page.keyboard.press("Escape");
+      await editor.evaluate(element => {
+        const text = element.querySelector("[data-slate-string]").firstChild;
+        const start = text.textContent.indexOf("fresh");
+        window.getSelection().setBaseAndExtent(text, start, text, start + "fresh".length);
+      });
       await page.keyboard.press("ArrowDown");
       assert.equal((await manuscriptMarks())[0]?.text, firstSentence);
       assert.notEqual((await manuscriptMarks())[1]?.text, "fresh");
@@ -849,7 +868,7 @@ test(
         ["rgb(184, 220, 167)", "rgb(132, 47, 69)"],
         ["rgb(203, 184, 235)", "rgb(24, 49, 83)"],
       ]);
-      await clickManuscriptWord("light");
+      await selectManuscriptWord("light");
       await page.keyboard.press("ArrowRight");
       assert.deepEqual((await manuscriptMarks()).map(mark => mark.text), [
         "Another paragraph.", "Another",
