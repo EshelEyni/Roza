@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
 import { readerCaretRange } from "../../services/readerCaretRange";
-import { readerMarkTextColor, readerPassageColor, readerSelectionColor } from "../../services/readerMarkColors";
 import { paintNativeHighlight } from "../../services/readerNativeHighlight";
 import { closestSentenceWord, groupSentenceWordRects } from "../../services/readerSentenceGeometry";
 import { readerSentenceSpans } from "../../services/readerSentenceSpans";
@@ -73,8 +72,12 @@ export function useManuscriptReadingMarks(enabled: boolean) {
       data.block.closest("[lang]")?.getAttribute("lang") || data.block.ownerDocument.documentElement.lang || "en",
     ).find(span => span.start <= word.start && span.end >= word.end);
     const wordRange = data.rangeFor(word);
-    const sentenceMark = sentence && paintNativeHighlight(data.rangeFor(sentence), readerPassageColor, readerMarkTextColor);
-    const wordMark = paintNativeHighlight(wordRange, readerSelectionColor, readerMarkTextColor, 1);
+    const sentenceMark = sentence && paintNativeHighlight(
+      data.rangeFor(sentence), "var(--ws-sentence-highlight)", "var(--ws-sentence-highlight-text)",
+    );
+    const wordMark = paintNativeHighlight(
+      wordRange, "var(--ws-word-highlight)", "var(--ws-word-highlight-text)", 1,
+    );
     if (sentenceMark) marks.current.push(sentenceMark);
     if (wordMark) marks.current.push(wordMark);
     return wordRange;

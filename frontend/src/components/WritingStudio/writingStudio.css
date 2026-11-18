@@ -671,31 +671,45 @@
   color: var(--ws-ink);
 }
 
-.ws-options {
+.ws-options-dialog > header {
   display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-  padding: 20px 28px;
-  border-bottom: 1px solid var(--ws-line);
-  max-height: 45dvh;
-  overflow: auto;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+dialog.ws-options-dialog > header h2 {
+  margin: 0;
+}
+
+.ws-options {
+  display: grid;
+  gap: 12px;
 }
 
 .ws-options label {
   display: flex;
   flex-direction: column;
   gap: 5px;
-  font-size: 12px;
+  font-size: 14px;
 }
 
-.ws-options p {
+.ws-options button {
+  border-color: var(--ws-line);
+  text-align: start;
+}
+
+.ws-options input[type="color"] {
   width: 100%;
-  font-size: 12px;
-  color: var(--ws-muted);
+  min-height: 38px;
+  padding: 4px;
+  cursor: pointer;
 }
 
-.ws-options input {
-  max-width: 170px;
+dialog.ws-options-dialog .ws-options p {
+  margin: 0;
+  font-size: 12px;
 }
 
 .ws-loading {
@@ -926,10 +940,6 @@
 
   .ws-page-footer {
     padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .ws-options {
-    padding: 16px;
   }
 
   .ws-notice {
