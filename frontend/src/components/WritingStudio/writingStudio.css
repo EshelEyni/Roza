@@ -577,6 +577,12 @@
   white-space: pre-wrap;
 }
 
+.ws-prose-reading::selection {
+  background-color: var(--ws-word-highlight);
+  color: var(--ws-word-highlight-text);
+  text-shadow: none;
+}
+
 .ws-prose p {
   margin: 0;
 }

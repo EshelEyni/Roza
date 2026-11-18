@@ -869,6 +869,11 @@ test(
         ["rgb(203, 184, 235)", "rgb(24, 49, 83)"],
       ]);
       await selectManuscriptWord("light");
+      assert.deepEqual(await editor.evaluate(element => {
+        const selected = element.ownerDocument.getSelection().anchorNode.parentElement;
+        const style = getComputedStyle(selected, "::selection");
+        return [style.backgroundColor, style.color];
+      }), ["rgb(203, 184, 235)", "rgb(24, 49, 83)"]);
       await page.keyboard.press("ArrowRight");
       assert.deepEqual((await manuscriptMarks()).map(mark => mark.text), [
         "Another paragraph.", "Another",
