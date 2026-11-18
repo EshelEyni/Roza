@@ -14,7 +14,7 @@ Follow-up: [the first review fixes](review-fixes.md) replace the original palett
 
 The previous flow separated book details, category lists, and individual edit forms. Chapter descriptions appeared before the manuscript; the editor had a short internal scroll area, dense controls, no history plugin, and no save feedback. Render-created debounces sent stale whole-book snapshots without sequencing or conflict checks.
 
-The library now opens directly into a dedicated writing workspace. A persistent sidebar keeps chapters and planning pages within reach. The paper-like editing surface uses a comfortable line length, serif typography and restrained sage/warm-paper colors. Focus mode hides navigation and formatting controls; reading preview disables editing. Mobile has an explicit chapter drawer; tablet and RTL layouts use logical positioning. The app header remains on other routes.
+The library now opens directly into a dedicated writing workspace. A persistent sidebar keeps chapters and planning pages within reach. The paper-like editing surface uses a comfortable line length, serif typography and restrained sage/warm-paper colors. Reading preview disables editing. Mobile has an explicit chapter drawer; tablet and RTL layouts use logical positioning. The app header remains on other routes.
 
 Screenshots use synthetic manuscripts, not personal books:
 
@@ -42,7 +42,7 @@ The original implementation was audited in source; no before screenshot was capt
 - Keyboard-accessible chapter reordering via Move up/down, duplication, and per-page word counts.
 - Manuscript search across titles and content within the chosen category.
 - Last selected chapter, text size, light/dark appearance and manuscript target remembered on this browser.
-- Manuscript word-goal progress, reading-time estimate, focus mode and read-only preview.
+- Manuscript word-goal progress, reading-time estimate and read-only preview.
 - Explicit local draft recovery after refresh or navigation. Recovery never auto-overwrites a newer server version.
 - Full-fidelity JSON download of the current book, including planning content and locally available archived items.
 - Escaped, formatted HTML manuscript export in chapter order. Open the HTML in a browser and print/save as PDF. This does not depend on a paid service.

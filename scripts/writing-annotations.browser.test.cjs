@@ -212,7 +212,7 @@ test(
       // Empty Slate placeholders must not collapse the writing area or move its footer.
       await page.getByRole("button", { name: /An unopened letter/ }).click();
       await editor.fill("");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       await page.waitForTimeout(100);
       const emptyHeight = (await editor.boundingBox()).height;
       const footer = page.locator(".ws-page-footer");
@@ -234,7 +234,7 @@ test(
       await editor.fill(
         "The letter had waited twenty years. One more morning would not hurt.",
       );
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       await page.getByRole("button", { name: /The house by the sea/ }).click();
 
       const noteText = page.getByRole("textbox", {
@@ -260,7 +260,7 @@ test(
       assert.equal(await page.locator('.ws-annotation-card.is-active header').getByRole('button', {name:'Delete',exact:true}).count(), 1);
       assert.equal(await page.getByRole('button', {name:'Save',exact:true}).count(), 0);
       await noteText.fill("Keep the voice intimate.");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.equal(
         saved.chapters[0].annotations[0].content,
         "Keep the voice intimate.",
@@ -277,7 +277,7 @@ test(
         1,
       );
       await noteText.press("Enter");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       const cards = page.locator(".ws-annotation-card");
       const first = await cards.nth(0).boundingBox(),
         second = await cards.nth(1).boundingBox();
@@ -316,7 +316,7 @@ test(
       await editor.click();
       await page.keyboard.press("Control+Home");
       await page.keyboard.press("Enter");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.deepEqual(
         saved.chapters[0].annotations[0].anchor.anchor.path,
         [2, 0],
@@ -338,7 +338,7 @@ test(
       await page.waitForTimeout(100);
       await page.locator('#ws-chapter-summary').getByRole('button',{name:'bold',exact:true}).click();
       await summaryEditor.locator('strong').waitFor();
-      await page.getByRole('button',{name:'✓ All changes saved'}).waitFor();
+      await page.getByRole('button',{name:'All changes saved'}).waitFor();
       assert.equal(saved.chapters[0].description[0].children[0].text,'A revised chapter summary.');
       assert.equal(saved.chapters[0].description[0].children[0].bold,true);
       assert.equal(JSON.stringify(saved.chapters[0].text),originalText);
@@ -444,7 +444,7 @@ test(
       await page.screenshot({
         path: path.join(screenshots, "mobile-after-delete.png"),
       });
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].annotations.length, 80);
       await page.setViewportSize({ width: 1365, height: 900 });
       await cards
@@ -463,18 +463,18 @@ test(
       await page
         .getByRole("button", { name: "Attach to selected text", exact: true })
         .click();
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.ok(
         saved.chapters[0].annotations.find((n) => n.id === "orphan").anchor,
       );
       await noteText.press("Enter");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       await editor.click();
       await page.keyboard.press("Control+Home");
       await page.keyboard.press("Control+Shift+ArrowRight");
       await page.getByRole("button", { name: "+ Note", exact: true }).click();
       await noteText.fill("A precise passage note.");
-      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].annotations.length, 81);
       assert.ok(saved.chapters[0].annotations.at(-1).quote.length < 30);
       await page.getByRole("button", { name: "Options", exact: true }).click();
