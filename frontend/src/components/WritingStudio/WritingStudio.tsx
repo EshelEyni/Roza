@@ -13,7 +13,9 @@ import {
   StudioSection,
 } from "./studioNavigation";
 import { useConfirmation } from "../Modals/useConfirmation";
-import { useEffect, useMemo, useReducer, useState } from "react";
+import "../Modals/confirmDialog.css";
+import { useEffect, useId, useMemo, useReducer, useRef, useState } from "react";
+import { readerMarkTextColor, readerPassageColor, readerSelectionColor } from "../../services/readerMarkColors";
 import {
   Link,
   useNavigate,
@@ -56,6 +58,22 @@ function remember(key: string, value: string) {
   } catch {
     /* Preferences are optional. */
   }
+}
+const wordColorKey = "roza:studio:word-highlight";
+const sentenceColorKey = "roza:studio:sentence-highlight";
+function colorPreference(key: string, fallback: string) {
+  const value = preference(key, fallback);
+  return /^#[a-f0-9]{6}$/i.test(value) ? value : fallback;
+}
+
+function markForeground(color: string) {
+  const [red, green, blue] = [1, 3, 5].map(start => {
+    const channel = parseInt(color.slice(start, start + 2), 16) / 255;
+    return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+  });
+  return red * 0.2126 + green * 0.7152 + blue * 0.0722 < 0.23
+    ? "#fff"
+    : readerMarkTextColor;
 }
 const itemName = (item: BookDataItem, index: number) =>
   item.name?.trim() ||
@@ -199,7 +217,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     () => Number(preference(`${scope}:goal`, "50000")) || 50000,
   );
   const [size, setSize] = useState(() => preference("roza:studio:font", "20"));
-  const [settings, setSettings] = useState(false);
+  const optionsDialog = useRef<HTMLDialogElement>(null);
+  const optionsTitle = useId();
+  const [wordColor, setWordColor] = useState(() => colorPreference(wordColorKey, readerSelectionColor));
+  const [sentenceColor, setSentenceColor] = useState(() => colorPreference(sentenceColorKey, readerPassageColor));
   const [formatChapter, setFormatChapter] = useState<string | null>(null);
   const [restoreKey, setRestoreKey] = useState(0);
   const [archived, setArchived] = useState<BookDataItem[]>([]);
@@ -301,7 +322,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       if (event.key === "Escape") {
         setFocus(false);
         setDrawer(false);
-        setSettings(false);
       }
     };
     window.addEventListener("keydown", keydown);
@@ -385,7 +405,13 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   return (
     <main
       className={`ws ws-studio ${tasks ? "ws-tasks-open" : ""} ${dark && !focus ? "ws-dark" : ""} ${focus ? "ws-focus" : ""} ${activeDraft ? "ws-draft-mode" : ""}`}
-      style={{ "--ws-font-size": `${size}px` } as React.CSSProperties}
+      style={{
+        "--ws-font-size": `${size}px`,
+        "--ws-word-highlight": wordColor,
+        "--ws-word-highlight-text": markForeground(wordColor),
+        "--ws-sentence-highlight": sentenceColor,
+        "--ws-sentence-highlight-text": markForeground(sentenceColor),
+      } as React.CSSProperties}
     >
       {confirmationDialog}
       {formatChapter &&
@@ -459,7 +485,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         >
           {focus ? "Exit focus" : "Focus"}
         </button>
-        <button onClick={() => setSettings(!settings)} aria-expanded={settings}>
+        <button onClick={() => optionsDialog.current?.showModal()} aria-haspopup="dialog">
           Options
         </button>
       </header>
@@ -513,8 +539,17 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           </button>
         </div>
       )}
-      {settings && (
-        <section className="ws-options" aria-label="Studio options">
+      <dialog
+        ref={optionsDialog}
+        className="app-confirm-dialog ws-options-dialog"
+        aria-labelledby={optionsTitle}
+        onKeyDown={event => { if (event.key === "Escape") event.stopPropagation(); }}
+      >
+        <header>
+          <h2 id={optionsTitle}>Studio options</h2>
+          <button type="button" onClick={() => optionsDialog.current?.close()}>Close</button>
+        </header>
+        <div className="ws-options">
           <label>
             Appearance{" "}
             <select
@@ -556,6 +591,28 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               }}
             />
           </label>
+          <label>
+            Word highlight color
+            <input
+              type="color"
+              value={wordColor}
+              onChange={event => {
+                setWordColor(event.target.value);
+                remember(wordColorKey, event.target.value);
+              }}
+            />
+          </label>
+          <label>
+            Sentence highlight color
+            <input
+              type="color"
+              value={sentenceColor}
+              onChange={event => {
+                setSentenceColor(event.target.value);
+                remember(sentenceColorKey, event.target.value);
+              }}
+            />
+          </label>
           <button onClick={() => download(book, "json")}>
             Download backup (.json)
           </button>
@@ -577,8 +634,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             undo · Ctrl/Cmd+Shift+F focus · Esc exit focus. Browser find remains
             available.
           </p>
-        </section>
-      )}
+        </div>
+      </dialog>
       <div className={`ws-layout ${preview && item && !overview && !tasks ? "ws-reading" : ""}`}>
         <button
           className="ws-mobile-nav"
