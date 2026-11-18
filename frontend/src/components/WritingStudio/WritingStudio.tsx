@@ -930,6 +930,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                         value={text}
                         aiEditing={chapter ? { bookId: book.id, chapterId: chapter.id, annotations: chapter.annotations, onDraft: aiDraft } : undefined}
                         readOnly={preview || !!store.recovery || !!activeDraft}
+                        annotationsReadOnly={!!store.recovery || !!activeDraft}
                         reading={preview}
                         annotations={
                           item.type === "chapters"

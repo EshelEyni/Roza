@@ -12,7 +12,7 @@ import { ReactNode, useMemo, useRef, useState } from "react";
 import { createEditor, Editor, Range, Text, Transforms, Node } from "slate";
 import { ChapterAnnotation } from "../../../../shared/types/books";
 import { AnnotationMargin } from "./AnnotationMargin";
-import { transformAnnotations, validAnchor } from "./annotations";
+import { annotationSentenceRange, transformAnnotations, validAnchor } from "./annotations";
 import { Editable, ReactEditor, Slate, useSlate, withReact } from "slate-react";
 import { HistoryEditor, withHistory } from "slate-history";
 import { SlateCustomElement } from "../../../../shared/types/books";
@@ -115,6 +115,7 @@ export function ManuscriptEditor({
   onChange,
   readOnly = false,
   reading = false,
+  annotationsReadOnly = readOnly,
   label = "Manuscript",
   placeholder = "Begin here. The next sentence is yours.",
   annotations,
@@ -136,6 +137,7 @@ export function ManuscriptEditor({
   onRevealAnnotations?: () => void;
   readOnly?: boolean;
   reading?: boolean;
+  annotationsReadOnly?: boolean;
   label?: string;
   placeholder?: string;
 }) {
@@ -176,19 +178,38 @@ export function ManuscriptEditor({
     };
     return instance;
   }, []);
+  const activeSentence = annotationSentenceRange(editor, activeAnchor ?? null);
   const persistNotes = (next: ChapterAnnotation[]) => {
     notes.current = next;
     onChange(editor.children as SlateCustomElement[], next);
   };
-  const addSelectionNote = () => {
+  const canAddNote = annotations !== undefined && !annotationsReadOnly;
+  const selectedReadingSentence = (editable: HTMLElement) => {
+    const selection = editable.ownerDocument.getSelection();
+    const nativeRange = selection?.rangeCount && !selection.isCollapsed
+      ? selection.getRangeAt(0)
+      : readingMarks.markedSentence.current;
+    if (!nativeRange || !editable.contains(nativeRange.commonAncestorContainer)) return;
+    const anchor = ReactEditor.toSlateRange(editor, nativeRange, {
+      exactMatch: false,
+      suppressThrow: true,
+    });
+    return annotationSentenceRange(editor, anchor);
+  };
+  const addSelectionNote = (readingAnchor?: Range) => {
+    if (!canAddNote) return;
+    if (readingAnchor) {
+      readingMarks.clear();
+      readingMarks.root.current?.ownerDocument.getSelection()?.removeAllRanges();
+    }
     const selection = editor.selection;
-    const anchor =
+    const anchor = readingAnchor ?? (
       selection && Range.isExpanded(selection)
         ? selection
         : Editor.range(
             editor,
             selection ? selection.anchor.path.slice(0, -1) : [0],
-          );
+          ));
     const note: ChapterAnnotation = {
       id: crypto.randomUUID(),
       content: "",
@@ -232,8 +253,23 @@ export function ManuscriptEditor({
           screenplayControls={
             format === "screenplay" ? <ScreenplayToolbar /> : undefined
           }
-          onAddNote={annotations !== undefined && (showAnnotations || onRevealAnnotations) ? addSelectionNote : undefined}
+          onAddNote={canAddNote && (showAnnotations || onRevealAnnotations) ? () => addSelectionNote() : undefined}
         />
+      )}
+      {reading && canAddNote && (
+        <button
+          type="button"
+          className="ws-add-selection-note"
+          aria-keyshortcuts="Control+Alt+N"
+          title="Add a note to the selected sentence (Ctrl+Alt+N)"
+          onMouseDown={event => event.preventDefault()}
+          onClick={() => {
+            const editable = readingMarks.root.current?.querySelector<HTMLElement>("[data-slate-editor]");
+            addSelectionNote(editable ? selectedReadingSentence(editable) : undefined);
+          }}
+        >
+          + Note
+        </button>
       )}
       <div
         ref={reading ? readingMarks.root : undefined}
@@ -250,7 +286,19 @@ export function ManuscriptEditor({
           className={`ws-prose ${reading ? "ws-prose-reading" : ""} ${format === "screenplay" ? "sp-page" : ""}`}
           tabIndex={reading ? 0 : undefined}
           onClick={readingMarks.onClick}
-          onKeyDownCapture={readingMarks.onKeyDown}
+          onKeyDownCapture={event => {
+            if (reading && canAddNote && !event.repeat && !event.nativeEvent.isComposing &&
+                event.ctrlKey && event.altKey && !event.shiftKey && !event.metaKey &&
+                !event.getModifierState("AltGraph") && event.code === "KeyN") {
+              const sentence = selectedReadingSentence(event.currentTarget);
+              if (sentence) {
+                event.preventDefault();
+                addSelectionNote(sentence);
+                return;
+              }
+            }
+            readingMarks.onKeyDown?.(event);
+          }}
           onKeyDown={(event) => {
             if (readOnly || event.nativeEvent.isComposing) return;
             if (event.ctrlKey || event.metaKey) {
@@ -319,15 +367,10 @@ export function ManuscriptEditor({
           onMouseLeave={() => setHoveredPath(null)}
           renderElement={(props) => <TextEditorElement {...props} />}
           decorate={([node, path]) => {
-            if (
-              !Text.isText(node) ||
-              !activeAnchor ||
-              !validAnchor(editor, activeAnchor)
-            )
-              return [];
+            if (!Text.isText(node) || !activeSentence) return [];
             const intersection = Range.intersection(
               Editor.range(editor, path),
-              activeAnchor,
+              activeSentence,
             );
             return intersection
               ? [{ ...intersection, annotationActive: true }]
@@ -354,7 +397,7 @@ export function ManuscriptEditor({
             onActive={setActiveNote}
             onReveal={onRevealAnnotations}
             visible={showAnnotations}
-            readOnly={readOnly}
+            readOnly={annotationsReadOnly}
             onChange={persistNotes}
             legacyNotes={legacyNotes}
           />

@@ -1,5 +1,6 @@
-import { Editor, Operation, Range, Text } from "slate";
+import { Editor, Element, Operation, Range, Text } from "slate";
 import { ChapterAnnotation } from "../../../../shared/types/books";
+import { readerSentenceSpans } from "../../services/readerSentenceSpans";
 
 export function validAnchor(
   editor: Editor,
@@ -14,6 +15,42 @@ export function validAnchor(
     );
   });
 }
+export function annotationSentenceRange(
+  editor: Editor,
+  anchor: Range | null,
+  language?: string,
+): Range | undefined {
+  if (!validAnchor(editor, anchor)) return;
+  const start = Range.start(anchor);
+  const block = Editor.above(editor, {
+    at: start,
+    match: node => Element.isElement(node) && Editor.isBlock(editor, node),
+  });
+  if (!block) return;
+
+  const [, path] = block;
+  const text = Editor.string(editor, path);
+  const offset = Editor.string(editor, Editor.range(editor, Editor.start(editor, path), start)).length;
+  const sentence = readerSentenceSpans(
+    text.replace(/\r?\n(?:[\t ]*\r?\n)+/g, breaks => "\u2029".repeat(breaks.length)),
+    language,
+  ).find(span => span.end > offset);
+  if (!sentence) return;
+
+  let leafStart = 0;
+  let sentenceStart: Range["anchor"] | undefined;
+  for (const [leaf, leafPath] of Editor.nodes<Text>(editor, { at: path, match: Text.isText })) {
+    const leafEnd = leafStart + leaf.text.length;
+    if (!sentenceStart && sentence.start < leafEnd) {
+      sentenceStart = { path: leafPath, offset: sentence.start - leafStart };
+    }
+    if (sentenceStart && sentence.end <= leafEnd) {
+      return { anchor: sentenceStart, focus: { path: leafPath, offset: sentence.end - leafStart } };
+    }
+    leafStart = leafEnd;
+  }
+}
+
 export function transformAnnotations(
   notes: ChapterAnnotation[],
   operation: Operation,

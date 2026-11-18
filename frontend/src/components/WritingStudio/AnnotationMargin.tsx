@@ -1,3 +1,4 @@
+import { FiTrash2 } from "react-icons/fi";
 import { ConfirmDialog } from "../Modals/ConfirmDialog";
 import {
   ReactNode,
@@ -6,7 +7,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Editor, Element, Node, Range, Transforms } from "slate";
+import { Editor, Element, Node, Range } from "slate";
 import { ReactEditor, useSlate } from "slate-react";
 import { ChapterAnnotation } from "../../../../shared/types/books";
 import { layoutAnnotations, validAnchor } from "./annotations";
@@ -197,7 +198,6 @@ export function AnnotationMargin({
     onReveal?.();
     setActive(note.id);
     if (validAnchor(editor, note.anchor)) {
-      Transforms.select(editor, note.anchor);
       try {
         ReactEditor.toDOMRange(
           editor,
@@ -207,6 +207,12 @@ export function AnnotationMargin({
         /* unmounted range */
       }
     }
+  };
+  const closeNote = (note: ChapterAnnotation) => {
+    if (!readOnly && !note.content.trim()) {
+      onChange(notes.filter(entry => entry.id !== note.id));
+    }
+    setActive(null);
   };
   const add = (line: Line) => {
     onReveal?.();
@@ -329,9 +335,6 @@ export function AnnotationMargin({
               <section
                 key={note.id}
                 data-annotation-id={note.id}
-                onBlur={event => {
-                  if (!event.currentTarget.contains(event.relatedTarget as HTMLElement | null)) setActive(null);
-                }}
                 ref={expanded ? activeCard : undefined}
                 className={`ws-annotation-card ${expanded ? "is-active" : ""} ${temp ? "is-floating" : ""} ${dragging === note.id ? "is-dragging" : ""}`}
                 style={
@@ -352,29 +355,6 @@ export function AnnotationMargin({
                 }
               >
                 <header style={{ height: position.height ? position.height - 2 : undefined, minHeight: position.height ? position.height - 2 : undefined }}>
-                  <button
-                    type="button"
-                    className="ws-note-select"
-                    aria-expanded={expanded}
-                    onClick={() => (expanded ? setActive(null) : select(note))}
-                  >
-                    {detached && <span>Unattached · text removed</span>}
-                    {!expanded && (
-                      <span className="ws-note-preview">
-                        {note.content || "New note"}
-                      </span>
-                    )}
-                    <span aria-hidden="true">{expanded ? "−" : "+"}</span>
-                  </button>
-                  {expanded && !readOnly && (
-                    <button
-                      type="button"
-                      className="ws-note-delete"
-                      onClick={() => setPendingDelete(note.id)}
-                    >
-                      Delete
-                    </button>
-                  )}
                   <button
                     type="button"
                     className="ws-note-drag"
@@ -472,6 +452,29 @@ export function AnnotationMargin({
                   >
                     ⠿
                   </button>
+                  {!expanded && (
+                    <button
+                      type="button"
+                      className="ws-note-select"
+                      aria-expanded={false}
+                      onClick={() => select(note)}
+                    >
+                      {detached && <span>Unattached · text removed</span>}
+                      <span className="ws-note-preview">{note.content || "New note"}</span>
+                      <span aria-hidden="true">+</span>
+                    </button>
+                  )}
+                  {expanded && !readOnly && (
+                    <button
+                      type="button"
+                      className="ws-note-delete"
+                      aria-label="Delete"
+                      title="Delete note"
+                      onClick={() => setPendingDelete(note.id)}
+                    >
+                      <FiTrash2 size={15} aria-hidden="true" />
+                    </button>
+                  )}
                 </header>
                 {expanded && (
                   <div className="ws-note-body">
@@ -523,12 +526,13 @@ export function AnnotationMargin({
                       value={note.content}
                       onFocus={() => setActive(note.id)}
                       onKeyDown={event => {
-                        if (event.key !== "Escape") return;
+                        if (event.nativeEvent.isComposing) return;
+                        const plainEnter = event.key === "Enter" &&
+                          !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey;
+                        if (event.key !== "Escape" && !plainEnter) return;
                         event.preventDefault();
                         event.stopPropagation();
-                        if (!note.content.trim() && !readOnly)
-                          onChange(notes.filter(entry => entry.id !== note.id));
-                        setActive(null);
+                        closeNote(note);
                       }}
                       onChange={event =>
                         onChange(
@@ -540,8 +544,8 @@ export function AnnotationMargin({
                         )
                       }
                     />
-                    <footer>
-                      {temp && (
+                    {temp && (
+                      <footer>
                         <button
                           type="button"
                           onClick={() =>
@@ -554,9 +558,8 @@ export function AnnotationMargin({
                         >
                           Return to margin
                         </button>
-                      )}
-                      <span>Saves automatically with manuscript</span>
-                    </footer>
+                      </footer>
+                    )}
                   </div>
                 )}
               </section>

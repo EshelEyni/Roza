@@ -181,7 +181,7 @@ test(
       page.on("dialog", (dialog) => { errors.push("Unexpected native browser dialog"); void dialog.dismiss(); });
       saved.chapters[0].text = [
         "The opening line.",
-        "A thought worth annotating.",
+        "A thought worth annotating. A second sentence on the same paragraph.",
         "The final paragraph.",
       ].map((text) => ({ type: "paragraph", children: [{ text }] }));
       const base = server.resolvedUrls.local[0];
@@ -269,14 +269,14 @@ test(
         saved.chapters[0].annotations[0].anchor.anchor.path,
         [1, 0],
       );
-      assert.ok(await editor.locator("mark").count());
+      assert.equal((await editor.locator(".ws-annotation-highlight").allTextContents()).join(""), "A thought worth annotating.");
       await add(2).click({ force: true });
       await noteText.fill("Check the pacing here.");
       assert.equal(
         await page.locator(".ws-annotation-card.is-active").count(),
         1,
       );
-      await page.locator(".ws-annotation-card.is-active .ws-note-select").click();
+      await noteText.press("Enter");
       await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
       const cards = page.locator(".ws-annotation-card");
       const first = await cards.nth(0).boundingBox(),
@@ -306,7 +306,7 @@ test(
       assert.equal(await page.locator(".is-floating").count(), 0);
       await cards.nth(0).locator(".ws-note-select").click();
       assert.equal(await noteText.inputValue(), "Keep the voice intimate.");
-      await cards.nth(0).locator(".ws-note-select").click();
+      await noteText.press("Enter");
       await editor.locator("p").nth(1).click();
       assert.equal(await noteText.count(), 0);
       assert.equal(
@@ -451,9 +451,15 @@ test(
         .filter({ hasText: "Preserved deleted passage" })
         .locator(".ws-note-select")
         .click();
-      await editor.click();
-      await page.keyboard.press("Control+Home");
-      await page.keyboard.press("Control+Shift+ArrowRight");
+      await editor.evaluate(element => {
+        element.focus();
+        const leaf = Array.from(element.querySelectorAll("[data-slate-string]"))
+          .find(span => span.textContent.trim()).firstChild;
+        const firstWord = /\S+/.exec(leaf.textContent);
+        window.getSelection().setBaseAndExtent(
+          leaf, firstWord.index, leaf, firstWord.index + firstWord[0].length,
+        );
+      });
       await page
         .getByRole("button", { name: "Attach to selected text", exact: true })
         .click();
@@ -461,7 +467,7 @@ test(
       assert.ok(
         saved.chapters[0].annotations.find((n) => n.id === "orphan").anchor,
       );
-      await page.locator(".ws-annotation-card.is-active .ws-note-select").click();
+      await noteText.press("Enter");
       await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
       await editor.click();
       await page.keyboard.press("Control+Home");
@@ -473,10 +479,34 @@ test(
       assert.ok(saved.chapters[0].annotations.at(-1).quote.length < 30);
       await page.getByRole("button", { name: "Options", exact: true }).click();
       await page.getByLabel("Appearance").selectOption("dark");
-      await page.getByRole("button", { name: "Options", exact: true }).click();
+      await page.getByRole("dialog", { name: "Studio options" }).getByRole("button", { name: "Close", exact: true }).click();
       await page.screenshot({
         path: path.join(screenshots, "dark-annotations.png"),
       });
+
+      await page.getByRole("button", { name: "Read", exact: true }).click();
+      assert.equal(await editor.getAttribute("contenteditable"), "false");
+      const noteField = page.getByRole("textbox", { name: "Annotation text", exact: true });
+      const manuscriptBeforeNote = await editor.innerText();
+      const selectedSentence = await editor.evaluate(element => {
+        const leaf = element.querySelector("[data-slate-string]").firstChild;
+        element.focus();
+        const end = leaf.textContent.indexOf(".") + 1;
+        window.getSelection().setBaseAndExtent(leaf, 0, leaf, end);
+        return leaf.textContent.slice(0, end);
+      });
+      await page.getByRole("button", { name: "+ Note", exact: true }).click();
+      await noteField.fill("A note from the Read Mode button.");
+      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      assert.equal(saved.chapters[0].annotations.at(-1).quote, selectedSentence);
+
+      await editor.focus();
+      await page.keyboard.press("ArrowRight");
+      await page.keyboard.press("Control+Alt+n");
+      await noteField.fill("A note from the Read Mode shortcut.");
+      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      assert.equal(saved.chapters[0].annotations.at(-1).quote, selectedSentence);
+      assert.equal(await editor.innerText(), manuscriptBeforeNote);
       assert.deepEqual(errors, []);
     } finally {
       await browser?.close();

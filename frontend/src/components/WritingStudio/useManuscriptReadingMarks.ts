@@ -47,10 +47,12 @@ export function useManuscriptReadingMarks(enabled: boolean) {
   const root = useRef<HTMLDivElement>(null);
   const active = useRef<{ block: Element; index: number }>();
   const column = useRef<number>();
+  const markedSentence = useRef<Range>();
   const marks = useRef<(() => void)[]>([]);
   const removeMarks = useCallback(() => {
     marks.current.forEach(remove => remove());
     marks.current = [];
+    markedSentence.current = undefined;
   }, []);
   const clear = useCallback(() => {
     removeMarks();
@@ -72,8 +74,9 @@ export function useManuscriptReadingMarks(enabled: boolean) {
       data.block.closest("[lang]")?.getAttribute("lang") || data.block.ownerDocument.documentElement.lang || "en",
     ).find(span => span.start <= word.start && span.end >= word.end);
     const wordRange = data.rangeFor(word);
-    const sentenceMark = sentence && paintNativeHighlight(
-      data.rangeFor(sentence), "var(--ws-sentence-highlight)", "var(--ws-sentence-highlight-text)",
+    markedSentence.current = sentence && data.rangeFor(sentence);
+    const sentenceMark = markedSentence.current && paintNativeHighlight(
+      markedSentence.current, "var(--ws-sentence-highlight)", "var(--ws-sentence-highlight-text)",
     );
     const wordMark = paintNativeHighlight(
       wordRange, "var(--ws-word-highlight)", "var(--ws-word-highlight-text)", 1,
@@ -183,5 +186,5 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     else if (word.bottom > bounds.bottom) scroller.scrollBy(0, word.bottom - bounds.bottom);
   };
 
-  return { root, onClick: enabled ? onClick : undefined, onKeyDown: enabled ? onKeyDown : undefined };
+  return { root, markedSentence, clear, onClick: enabled ? onClick : undefined, onKeyDown: enabled ? onKeyDown : undefined };
 }
