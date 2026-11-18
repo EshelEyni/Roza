@@ -316,12 +316,18 @@ test(
       await page.screenshot({
         path: path.join(screenshots, "book-overview-mobile.png"),
       });
+      const legacyGoalKey = `roza:studio:${initial.userId}:${initial.id}:goal`;
+      await page.evaluate(key => localStorage.setItem(key, "73600"), legacyGoalKey);
       await page
         .getByRole("link", { name: "Continue writing →", exact: true })
         .click();
       await page.setViewportSize({ width: 1365, height: 900 });
       const editor = page.locator('[aria-label="Manuscript"]');
       await editor.waitFor();
+      const goalMeter = page.getByRole("progressbar", { name: "Manuscript goal" });
+      assert.equal(await goalMeter.getAttribute("max"), "73600");
+      await page.waitForFunction(key => localStorage.getItem(key) === null, legacyGoalKey);
+      assert.equal(saved.wordGoal, 73_600);
       await page.screenshot({
         path: path.join(screenshots, "studio-desktop.png"),
       });
@@ -729,6 +735,13 @@ test(
       const studioOptions = page.getByRole("dialog", { name: "Studio options" });
       assert.equal(await studioOptions.isVisible(), true);
       assert.ok((await studioOptions.boundingBox()).width > 400);
+      const goalInput = studioOptions.getByLabel("Manuscript word goal");
+      assert.equal(await goalInput.inputValue(), "73600");
+      const savesBeforeGoal = saveCount;
+      await goalInput.fill("8");
+      await goalInput.fill("82000");
+      assert.equal(saveCount, savesBeforeGoal);
+      await page.waitForFunction(() => document.querySelector('progress[aria-label="Manuscript goal"]').max === 82000);
       const downloadEvent = page.waitForEvent("download");
       await page
         .getByRole("button", { name: "Export manuscript (.html)", exact: true })
@@ -740,6 +753,20 @@ test(
       await page.getByLabel("Appearance").selectOption("dark");
       await studioOptions.getByRole("button", { name: "Close", exact: true }).click();
       assert.equal(await studioOptions.isVisible(), false);
+      await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
+      assert.equal(saved.wordGoal, 82_000);
+      assert.equal(saveCount, savesBeforeGoal + 1);
+      const secondSession = await browser.newPage();
+      try {
+        await secondSession.goto(page.url());
+        const secondGoal = secondSession.getByRole("progressbar", { name: "Manuscript goal" });
+        await secondGoal.waitFor();
+        assert.equal(await secondGoal.getAttribute("max"), "82000");
+        assert.equal(await secondSession.evaluate(key => localStorage.getItem(key), legacyGoalKey), null);
+        assert.equal(saveCount, savesBeforeGoal + 1);
+      } finally {
+        await secondSession.close();
+      }
       await page.screenshot({
         path: path.join(screenshots, "studio-dark.png"),
       });
@@ -858,6 +885,9 @@ test(
       await page
         .getByRole("button", { name: "Create manuscript", exact: true })
         .click();
+      await page.getByRole("button", { name: "Options", exact: true }).click();
+      assert.equal(await goalInput.inputValue(), "50000");
+      await studioOptions.getByRole("button", { name: "Close", exact: true }).click();
       await page
         .getByRole("button", { name: "＋ Create a chapter", exact: true })
         .click();
@@ -866,6 +896,8 @@ test(
       await page.reload();
       await editor.waitFor();
       assert.equal(await editor.innerText(), "The first words.");
+      assert.equal(saved.wordGoal, undefined);
+      assert.equal(books.find(book => book.id === initial.id).wordGoal, 82_000);
       await page.getByRole("button", { name: "Options", exact: true }).click();
       assert.equal(await studioOptions.getByLabel("Word highlight color").inputValue(), "#cbb8eb");
       assert.equal(await studioOptions.getByLabel("Word text color").inputValue(), "#183153");

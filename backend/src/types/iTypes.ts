@@ -44,6 +44,7 @@ export interface IBook extends Document {
   updatedAt: Date;
   isArchived: boolean;
   isReadMode: boolean;
+  wordGoal?: number;
 }
 
 export interface IBasicBookDataItem extends Document {
