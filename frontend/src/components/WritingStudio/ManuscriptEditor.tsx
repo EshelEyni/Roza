@@ -247,7 +247,7 @@ export function ManuscriptEditor({
             format === "screenplay" &&
             value.every((node) => Node.string(node) === "")
           }
-          className={`ws-prose ${format === "screenplay" ? "sp-page" : ""}`}
+          className={`ws-prose ${reading ? "ws-prose-reading" : ""} ${format === "screenplay" ? "sp-page" : ""}`}
           tabIndex={reading ? 0 : undefined}
           onClick={readingMarks.onClick}
           onKeyDownCapture={readingMarks.onKeyDown}
