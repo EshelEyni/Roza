@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import type { Book } from "epubjs";
 import { useReaderAudiobook, type AudiobookLoader } from "../../../hooks/reader/useReaderAudiobook";
 import { loadAudiobookBook, loadAudiobookChapters, type AudiobookChapter } from "../../../services/readerAudiobookSource";
-import { desktopKokoro } from "../../../services/audiobook/desktopKokoro";
-import { kokoroSentence, sectionPacing } from "../../../services/audiobook/kokoroPacing";
+import { desktopKokoro } from "../../../services/narration/desktopKokoro";
+import { kokoroSentence, sectionPacing } from "../../../services/narration/kokoroPacing";
 import { AudiobookView } from "./AudiobookView";
 import { AudiobookMiniPlayer } from "./AudiobookMiniPlayer";
 

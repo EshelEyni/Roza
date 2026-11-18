@@ -2,9 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { audiobookSpeechSlice, audiobookSeek, audiobookWordAt, type AudiobookSection } from "../../services/readerTts";
 import { loadAudiobookConfig, saveAudiobookNarrator, openAiBlock, ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
 import type { ReaderAudiobookNarrator } from "../../../../shared/types/reader";
-import { ReaderKokoroAudio } from "../../services/audiobook/kokoroAudio";
-import { desktopKokoro, isEnglishBook, type KokoroStatus } from "../../services/audiobook/desktopKokoro";
-import { defaultKokoroVoice, kokoroLang, kokoroVoice } from "../../services/audiobook/kokoroVoices";
+import { ReaderKokoroAudio } from "../../services/narration/kokoroAudio";
+import { desktopKokoro, isEnglishBook, type KokoroStatus } from "../../services/narration/desktopKokoro";
+import { defaultKokoroVoice, kokoroLang, kokoroVoice } from "../../services/narration/kokoroVoices";
 
 export type AudiobookLoader = (target?: number, direction?: 1 | -1) => Promise<AudiobookSection | null>;
 

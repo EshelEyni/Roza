@@ -9,7 +9,7 @@ export function AudiobookMiniPlayer({ audio, bookTitle, onOpen, onExit }: {
   const percent = total ? Math.round(audio.currentWord / total * 100) : 0;
   const narrator = narratorLabel(audio);
   return <div className="audiobook-mini" role="group" aria-label="Audiobook player">
-    <button type="button" className="audiobook-mini-book" title="Open Audiobook Mode" onClick={onOpen}>
+    <button type="button" className="audiobook-mini-book" title="Open Audiobook Mode" aria-label={"Open Audiobook Mode: " + (audio.section?.title || bookTitle)} onClick={onOpen}>
       <FiChevronUp aria-hidden="true" />
       <span className="audiobook-mini-text">
         <span className="audiobook-mini-title">{audio.section?.title || bookTitle}</span>

@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { FiCheck, FiPlay, FiSearch, FiSquare, FiX } from "react-icons/fi";
 import { ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
-import { desktopKokoro, type KokoroStatus } from "../../services/audiobook/desktopKokoro";
-import { defaultKokoroVoice, kokoroLang, kokoroVoices } from "../../services/audiobook/kokoroVoices";
+import { desktopKokoro, type KokoroStatus } from "../../services/narration/desktopKokoro";
+import { defaultKokoroVoice, kokoroLang, kokoroVoices } from "../../services/narration/kokoroVoices";
 import type { KokoroAvailability } from "../../hooks/reader/useReaderAudiobook";
 import { KokoroInstall } from "./Audiobook/KokoroInstall";
 

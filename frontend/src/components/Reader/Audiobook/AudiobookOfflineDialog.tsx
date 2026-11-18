@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { desktopKokoro, type KokoroOffline } from "../../../services/audiobook/desktopKokoro";
-import { kokoroVoice } from "../../../services/audiobook/kokoroVoices";
+import { desktopKokoro, type KokoroOffline } from "../../../services/narration/desktopKokoro";
+import { kokoroVoice } from "../../../services/narration/kokoroVoices";
 import { AudiobookDialog, LocalVoicesNeeded } from "./AudiobookDialog";
 import type { ReaderAudiobook } from "./audiobookNarrator";
 import type { BookScriptState } from "./ReaderAudiobookHost";

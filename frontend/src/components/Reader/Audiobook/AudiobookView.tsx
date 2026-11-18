@@ -47,6 +47,14 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
     resumeAfterVoice.current = false; setSpeedOpen(false); setDialog("voice");
   }, [audio.narratorWarning]);
 
+  // Leaving the page while choosing a narrator must not restart narration when the picker closes.
+  useEffect(() => {
+    if (dialog !== "voice") return;
+    const hide = () => { resumeAfterVoice.current = false; };
+    window.addEventListener("pagehide", hide);
+    return () => window.removeEventListener("pagehide", hide);
+  }, [dialog]);
+
   // The full view is a modal layer over the reader: everything behind it is inert while it is open.
   useEffect(() => {
     const mode = root.current;
@@ -183,9 +191,9 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
 
     <main className="audiobook-reading" ref={reading} tabIndex={0} aria-label="Book text">
       <article className="audiobook-content" dir="auto" aria-busy={audio.loading} style={{ "--audiobook-font": fontSize + "px" } as CSSProperties}>
-        <p className="audiobook-chapter-meta">
+        <div className="audiobook-chapter-meta">
           {chapterPosition >= 0 ? `Chapter ${chapterPosition + 1} of ${chapters.length} · ` : ""}{bookTitle}
-        </p>
+        </div>
         <h1 className="audiobook-chapter-title">{section?.title || bookTitle}</h1>
         {audio.loading && <p className="audiobook-loading" role="status">Loading book…</p>}
         {!audio.loading && section && <AudiobookText key={section.section} sentences={section.sentences} scrollRef={reading}

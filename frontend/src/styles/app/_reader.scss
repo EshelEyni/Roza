@@ -2753,9 +2753,11 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 @media (max-width: 650px) {
   .audiobook-tools { gap: 2px; }
   .audiobook-font-size { display: none; }
-  .audiobook-transport .audiobook-chapter-skip { display: none; }
-  .audiobook-control-row { grid-template-columns: auto minmax(0, 1fr); }
-  .audiobook-control-row .audiobook-side:first-child { grid-column: 1 / -1; order: 3; justify-content: center; }
+  /* Phones: the transport gets its own row; the voice and the volume/speed/export controls share the next. */
+  .audiobook-control-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "transport transport" "voice end"; row-gap: 8px; }
+  .audiobook-control-row .audiobook-transport { grid-area: transport; justify-self: center; }
+  .audiobook-control-row .audiobook-side:first-child { grid-area: voice; }
+  .audiobook-control-row .audiobook-side.is-end { grid-area: end; }
   .audiobook-side .audiobook-voice-trigger { max-width: 100%; height: 44px; }
   .audiobook-mini { bottom: max(10px, env(safe-area-inset-bottom)); }
 }

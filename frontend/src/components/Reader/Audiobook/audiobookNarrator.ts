@@ -1,5 +1,5 @@
 import type { useReaderAudiobook } from "../../../hooks/reader/useReaderAudiobook";
-import { kokoroVoice } from "../../../services/audiobook/kokoroVoices";
+import { kokoroVoice } from "../../../services/narration/kokoroVoices";
 
 export type ReaderAudiobook = ReturnType<typeof useReaderAudiobook>;
 

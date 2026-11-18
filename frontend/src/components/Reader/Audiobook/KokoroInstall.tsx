@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { desktopKokoro, type KokoroStatus } from "../../../services/audiobook/desktopKokoro";
+import { desktopKokoro, type KokoroStatus } from "../../../services/narration/desktopKokoro";
 import type { KokoroAvailability } from "../../../hooks/reader/useReaderAudiobook";
 
 const gigabytes = (bytes: number) => (bytes / 1024 ** 3).toFixed(1).replace(/\.0$/, "");

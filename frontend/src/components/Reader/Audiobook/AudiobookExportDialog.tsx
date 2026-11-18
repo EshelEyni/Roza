@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { FiCheck, FiFolder } from "react-icons/fi";
-import { desktopKokoro, type KokoroExportFormat, type KokoroExportJob } from "../../../services/audiobook/desktopKokoro";
-import { kokoroVoice } from "../../../services/audiobook/kokoroVoices";
+import { desktopKokoro, type KokoroExportFormat, type KokoroExportJob } from "../../../services/narration/desktopKokoro";
+import { kokoroVoice } from "../../../services/narration/kokoroVoices";
 import { AudiobookDialog, LocalVoicesNeeded } from "./AudiobookDialog";
 import type { ReaderAudiobook } from "./audiobookNarrator";
 import type { BookScriptState } from "./ReaderAudiobookHost";

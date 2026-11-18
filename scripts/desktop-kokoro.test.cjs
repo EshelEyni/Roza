@@ -110,7 +110,7 @@ test("the desktop, frontend and backend voice lists match", () => {
   const desktop = require("../desktop/kokoro/voices.cjs").kokoroVoices;
   const read = (file) => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
   const backend = [...read("backend/src/services/reader/readerKokoroVoices.ts").matchAll(/"([ab][fm]_[a-z]+)"/g)].map((m) => m[1]);
-  const frontend = [...read("frontend/src/services/audiobook/kokoroVoices.ts").matchAll(/voice\("([ab][fm]_[a-z]+)"/g)].map((m) => m[1]);
+  const frontend = [...read("frontend/src/services/narration/kokoroVoices.ts").matchAll(/voice\("([ab][fm]_[a-z]+)"/g)].map((m) => m[1]);
   assert.deepEqual(backend, desktop);
   assert.deepEqual(frontend, desktop);
 });
