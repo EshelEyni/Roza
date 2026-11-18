@@ -236,6 +236,7 @@ export function ManuscriptEditor({
         />
       )}
       <div
+        ref={reading ? readingMarks.root : undefined}
         className={
           annotations !== undefined ? "ws-annotated-editor" : undefined
         }
@@ -247,9 +248,10 @@ export function ManuscriptEditor({
             value.every((node) => Node.string(node) === "")
           }
           className={`ws-prose ${format === "screenplay" ? "sp-page" : ""}`}
+          tabIndex={reading ? 0 : undefined}
           onClick={readingMarks.onClick}
+          onKeyDownCapture={readingMarks.onKeyDown}
           onKeyDown={(event) => {
-            if (reading && event.key === "Escape") readingMarks.clear();
             if (readOnly || event.nativeEvent.isComposing) return;
             if (event.ctrlKey || event.metaKey) {
               const button = btns

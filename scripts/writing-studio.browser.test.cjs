@@ -783,14 +783,32 @@ test(
       await page.getByRole("button", { name: "Read", exact: true }).click();
       assert.equal(await editor.getAttribute("contenteditable"), "false");
       assert.equal(await page.locator(".ws-sidebar").isVisible(), false);
+      await page.keyboard.press("ArrowRight");
+      assert.equal((await manuscriptMarks())[1]?.text, "A");
       await clickManuscriptWord("fresh");
       assert.deepEqual((await manuscriptMarks()).map(({ lines, ...mark }) => mark), [
         { text: firstSentence, priority: 0, color: "#f2e66b" },
         { text: "fresh", priority: 1, color: "#719bd8" },
       ]);
+      await page.keyboard.press("ArrowRight");
+      assert.equal((await manuscriptMarks())[1]?.text, "start");
+      await page.keyboard.press("ArrowLeft");
+      assert.equal((await manuscriptMarks())[1]?.text, "fresh");
       await page.setViewportSize({ width: 390, height: 844 });
       assert.equal(await page.locator(".ws-mobile-nav").isVisible(), false);
       assert.ok((await manuscriptMarks())[0].lines > 1);
+      const scrollBefore = await page.locator(".ws-writing").evaluate(el => el.scrollTop);
+      await page.keyboard.press("ArrowDown");
+      assert.equal((await manuscriptMarks())[0]?.text, firstSentence);
+      assert.notEqual((await manuscriptMarks())[1]?.text, "fresh");
+      assert.equal(await page.locator(".ws-writing").evaluate(el => el.scrollTop), scrollBefore);
+      await page.keyboard.press("ArrowUp");
+      assert.equal((await manuscriptMarks())[1]?.text, "fresh");
+      await clickManuscriptWord("light");
+      await page.keyboard.press("ArrowRight");
+      assert.deepEqual((await manuscriptMarks()).map(mark => mark.text), [
+        "Another paragraph.", "Another",
+      ]);
       await clickManuscriptWord("paragraph");
       assert.deepEqual((await manuscriptMarks()).map(mark => mark.text), [
         "Another paragraph.", "paragraph",
