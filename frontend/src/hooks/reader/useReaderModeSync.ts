@@ -34,6 +34,10 @@ export function useReaderModeSync(reader: EpubReaderController, ready: boolean, 
   // URL mode value last written or consumed here; any other value is an explicit request.
   const handledUrlMode = useRef<string | null>(null);
   const [settled, setSettled] = useState(0);
+  // Resolved once from the first render's URL and saved mode, so the reader can stay covered
+  // until a restored Sentence or Audiobook Mode is on screen instead of flashing Page Mode.
+  const [initialMode] = useState(() => resolveInitialReaderMode(urlMode, reader.state.mode));
+  const [restoring, setRestoring] = useState(initialMode !== "page");
 
   async function apply(target: ReaderMode, initial: boolean) {
     pending.current = target;
@@ -51,6 +55,7 @@ export function useReaderModeSync(reader: EpubReaderController, ready: boolean, 
         current().togglePanel("tts");
       if (target === "page" && current().panel === "tts") current().closePanel();
     } finally {
+      if (initial) setRestoring(false);
       if (pending.current === target) {
         pending.current = null;
         setSettled(value => value + 1);
@@ -62,13 +67,15 @@ export function useReaderModeSync(reader: EpubReaderController, ready: boolean, 
     if (initialized.current || !ready) return;
     initialized.current = true;
     handledUrlMode.current = urlMode;
-    const target = resolveInitialReaderMode(urlMode, readerRef.current.state.mode);
-    if (target !== readerModeOf(readerRef.current)) void apply(target, true);
+    if (initialMode !== readerModeOf(readerRef.current)) void apply(initialMode, true);
+    else setRestoring(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
 
   useEffect(() => {
     if (!initialized.current) return;
+    // Uncover as soon as the restored mode renders; its own view shows any remaining loading.
+    if (mode === initialMode) setRestoring(false);
     if (pending.current && pending.current !== mode) return;
     pending.current = null;
     if (urlMode !== null && urlMode !== handledUrlMode.current) {
@@ -90,5 +97,5 @@ export function useReaderModeSync(reader: EpubReaderController, ready: boolean, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, mode, urlMode, settled]);
 
-  return mode;
+  return { mode, restoring: restoring ? initialMode : null };
 }

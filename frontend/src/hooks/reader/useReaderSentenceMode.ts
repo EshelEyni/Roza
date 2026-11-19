@@ -10,6 +10,25 @@ import {
 } from "../../services/readerSentences";
 import { rsvpStart } from "../../services/readerRsvp";
 
+/**
+ * Saves an exact sentence as the reading position. The anchor survives page relocation
+ * while its page is visible, so reopening resumes at this sentence, not the page start.
+ */
+export function saveReadingSentence(runtime: EpubRuntime, cfi: string) {
+  const book = runtime.epubRef.current;
+  runtime.rsvpLocation.current = cfi;
+  const end = new EpubCFI(cfi);
+  end.collapse(false);
+  runtime.readingBoundary.current = end.toString();
+  const progress = book?.locations.length()
+    ? book.locations.percentageFromCfi(cfi)
+    : runtime.stateRef.current.progress;
+  runtime.updateRef.current({
+    location: cfi,
+    progress: Number.isFinite(progress) ? progress : runtime.stateRef.current.progress,
+  });
+}
+
 /** Loads Contents chapters and shares the reader's exact focus anchor. */
 export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: string) => Promise<void>) {
   const [active, setActive] = useState(false);
@@ -95,20 +114,7 @@ export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: strin
       const point = new EpubCFI(current.cfi); point.collapse(true);
       return new EpubCFI().compare(point.toString(), end.toString()) >= 0 ? null : previous;
     });
-    const book = runtime.epubRef.current;
-    runtime.rsvpLocation.current = current.cfi;
-    const end = new EpubCFI(current.cfi);
-    end.collapse(false);
-    runtime.readingBoundary.current = end.toString();
-    const progress = book?.locations.length()
-      ? book.locations.percentageFromCfi(current.cfi)
-      : runtime.stateRef.current.progress;
-    runtime.updateRef.current({
-      location: current.cfi,
-      progress: Number.isFinite(progress)
-        ? progress
-        : runtime.stateRef.current.progress,
-    });
+    saveReadingSentence(runtime, current.cfi);
   }
   async function load(target: string | number, direction = 1, from?: string) {
     lastLoad.current = { target, direction, from };
@@ -158,7 +164,8 @@ export function useReaderSentenceMode(runtime: EpubRuntime, restore: (cfi: strin
       if (selected?.rangeCount && !selected.isCollapsed && selected.toString().trim())
         return content.cfiFromRange(selected.getRangeAt(0));
     }
-    return runtime.selectionRef.current?.cfi || runtime.keyboardWordCfi.current ||
+    // A saved sentence anchor is only kept while its page is visible; prefer it over the page start.
+    return runtime.selectionRef.current?.cfi || runtime.keyboardWordCfi.current || runtime.rsvpLocation.current ||
       (rendition?.currentLocation() as unknown as Location | undefined)?.start?.cfi ||
       runtime.stateRef.current.location;
   }

@@ -21,6 +21,8 @@ export type ReaderAudiobookSource = {
   bookAuthor: string;
   loadSection: AudiobookLoader;
   epub: () => Book | null | undefined;
+  /** Saves the current narrated sentence as the exact reading position. */
+  savePosition?: (cfi: string) => void;
 };
 
 /**
@@ -33,7 +35,9 @@ export function ReaderAudiobookHost({ open, bookId, source, onMinimize, onOpen, 
 }) {
   const [session, setSession] = useState(open);
   useEffect(() => { if (open) setSession(true); }, [open]);
-  if (!session) return null;
+  // Render on the same frame it opens: waiting for the effect would leave a painted
+  // frame (longer while the book is busy paginating) where Page Mode shows through.
+  if (!session && !open) return null;
   return <AudiobookSession key={bookId} open={open} bookId={bookId} source={source} onMinimize={onMinimize} onOpen={onOpen}
     onExit={cfi => { setSession(false); onExit(cfi); }} onFollow={onFollow} />;
 }
@@ -56,6 +60,17 @@ function AudiobookSession({ open, bookId, source, onMinimize, onOpen, onExit, on
     if (epub) void loadAudiobookChapters(epub).then(setChapters).catch(() => setChapters([]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Save each new narrated sentence so reopening the book resumes there. The first sentence is
+  // where narration was opened from, which is already the reading position. Runs before the
+  // follow effect so page relocation keeps this exact sentence instead of the page start.
+  const positioned = useRef<string>();
+  useEffect(() => {
+    if (!audio.cfi || positioned.current === audio.cfi) return;
+    const first = positioned.current === undefined;
+    positioned.current = audio.cfi;
+    if (!first) sourceRef.current.savePosition?.(audio.cfi);
+  }, [audio.cfi]);
 
   // While minimized, the page follows the spoken sentence.
   const followed = useRef<string>();

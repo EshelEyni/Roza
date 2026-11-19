@@ -2204,6 +2204,9 @@
 
 // Sentence Mode keeps the chapter and sentence anchored, fitting text to the viewport.
 html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%; overflow: hidden; }
+/* Covers Page Mode while a saved Sentence or Audiobook Mode is restored; same background as both modes.
+   Above the toolbar and its popovers, below the Audiobook view (300). */
+.reader-mode-restoring { position: fixed; inset: 0; z-index: 290; display: flex; align-items: center; justify-content: center; background: #F5F0E6; color: #947f6e; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 15px; }
 .reader-shell:has(.reader-sentence-mode) { position: fixed; inset: 0; z-index: 30; height: 100dvh; min-height: 0; overflow: hidden; background: #F5F0E6 !important; color: #302B26; font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 .reader-toolbar-sentence { flex: none; min-height: 60px; height: 60px; display: flex; justify-content: space-between; padding: 0 23px; border-bottom: 1px solid #DFD4C5; background: #F5F0E6; direction: ltr; }
 .reader-toolbar-sentence > span { display: flex; align-items: center; gap: 11px; font-size: 16px; font-weight: 650; }
@@ -2517,7 +2520,8 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 .audiobook-close { border: 0; background: transparent; color: var(--ab-primary); width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; }
 .audiobook-close svg { width: 24px; height: 24px; stroke-width: 1.5; }
 .audiobook-close:hover { background: #e9dfd2; }
-.audiobook-reading { flex: 1; min-height: 0; overflow: auto; scroll-behavior: smooth; scrollbar-color: #cbbbaba0 transparent; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+/* No CSS smooth scrolling: loads and seeks jump instantly; narration follow requests smooth scrolling itself. */
+.audiobook-reading { flex: 1; min-height: 0; overflow: auto; scrollbar-color: #cbbbaba0 transparent; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
 .audiobook-content { max-width: 690px; margin: 0 auto; padding: 50px 28px 180px; }
 .audiobook-chapter-meta { font-weight: 750; text-align: center; font-size: 10px; letter-spacing: .24em; color: #a18b78; text-transform: uppercase; margin: 0 0 18px; }
 .audiobook-chapter-title { text-align: center; font: 500 36px/1.2 Georgia, "Times New Roman", serif; margin: 0 0 36px; }
@@ -2577,7 +2581,6 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
   .audiobook-voice-icon { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .audiobook-reading { scroll-behavior: auto; }
   .audiobook-sentence, .audiobook-word { transition: none; }
 }
 

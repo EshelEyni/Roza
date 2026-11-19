@@ -4,7 +4,7 @@ import { readerAiLimits } from "../../services/readerAiLimits";
 import { useReaderProgressSettings } from "./useReaderProgressSettings";
 import { useReaderFlags } from "./useReaderFlags";
 import { useReaderKeyboardSettings } from "./useReaderKeyboardSettings";
-import { useReaderSentenceMode } from "./useReaderSentenceMode";
+import { saveReadingSentence, useReaderSentenceMode } from "./useReaderSentenceMode";
 import { useReaderRsvp } from "./useReaderRsvp";
 import {useTranslation} from "react-i18next";
 import { useCallback, useLayoutEffect, useRef, useState } from "react";
@@ -186,6 +186,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
       bookTitle: book.title,
       bookAuthor: book.author || "",
       epub: () => runtime.epubRef.current,
+      savePosition: (cfi: string) => saveReadingSentence(runtime, cfi),
       loadSection: async (target?: number, direction: 1 | -1 = 1) => {
         const epub = runtime.epubRef.current;
         const cfi = sentenceMode.entryCfi();

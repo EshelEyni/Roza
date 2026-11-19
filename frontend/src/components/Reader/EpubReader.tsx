@@ -2,6 +2,7 @@ import { ReaderChatNotification } from "./ReaderChatNotification";
 import { ReaderReadingTarget } from "./ReaderReadingTarget";
 import { ReaderSentenceMode } from "./ReaderSentenceMode";
 import { useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { ReaderRsvp } from "./ReaderRsvp";
 import { useEffect, useRef, useState } from "react";
 import { ReaderPassageMarks } from "./ReaderPassageMarks";
@@ -52,7 +53,8 @@ export function EpubReader({
   // reports the page start; a URL destination supplies its own position instead.
   const [resumeCfi] = useState(() =>
     params.get("flag") || params.get("location") ? undefined : reader.state.location || undefined);
-  useReaderModeSync(reader, !reader.loading && !reader.error && destinationSettled, resumeCfi);
+  const { restoring } = useReaderModeSync(reader, !reader.loading && !reader.error && destinationSettled, resumeCfi);
+  const { t } = useTranslation();
   const [copyToast, setCopyToast] = useState<{ message: string; id: number } | null>(null);
   useEffect(() => {
     if (!copyToast) return;
@@ -67,6 +69,10 @@ export function EpubReader({
       ref={reader.shell}
     >
       <span className="app-header-status-surface" aria-hidden="true" />
+      {/* The book still loads underneath (both modes read from it); a load error uncovers it. */}
+      {restoring && !reader.error && (
+        <div className={"reader-mode-restoring is-" + restoring} role="status">{t("reader.opening")}</div>
+      )}
       {reader.flags.message && <div className="reader-copy-toast" role="status">{reader.flags.message}</div>}
       {copyToast && <div key={copyToast.id} className="reader-copy-toast" role="status" aria-live="polite">{copyToast.message}</div>}
       {reader.textSelection && !reader.readingTarget.selecting && !reader.textSelection.suppressTooltip && (
