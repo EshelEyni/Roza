@@ -232,7 +232,7 @@ test(
           let picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.waitFor();
           await picker.getByText(/No system voices detected yet/).waitFor();
-          assert.equal(await picker.getByRole("button",{name:/^Use /}).isDisabled(),true);
+          assert.equal(await picker.getByRole("button",{name:"Save",exact:true}).isDisabled(),true);
           await page.evaluate(()=>{
             window.testVoices=[
               {voiceURI:"native",name:"A very long installed system narrator name",lang:"en-US",default:true,localService:true},
@@ -296,8 +296,8 @@ test(
           await picker.getByRole("alert").waitFor();
           await picker.getByRole("button",{name:"Close voice picker"}).focus();
           await page.keyboard.press("Shift+Tab");
-          assert.equal(await picker.getByRole("button",{name:/^Use /}).evaluate(el=>el===document.activeElement),true);
-          await picker.getByRole("button",{name:/^Use /}).click();
+          assert.equal(await picker.getByRole("button",{name:"Save",exact:true}).evaluate(el=>el===document.activeElement),true);
+          await picker.getByRole("button",{name:"Save",exact:true}).click();
           await picker.waitFor({state:"detached"});
           assert.equal(await page.evaluate(()=>window.spoken.at(-1).voice.voiceURI),"native");
           assert.equal(await mode.getByRole("button",{name:"Choose narrator voice"}).evaluate(el=>el===document.activeElement),true);
@@ -321,7 +321,7 @@ test(
           await mode.getByRole("button",{name:"Choose narrator voice"}).click();
           picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.getByRole("radio",{name:/Alex/}).check();
-          await picker.getByRole("button",{name:/^Use /}).click();
+          await picker.getByRole("button",{name:"Save",exact:true}).click();
           await mode.getByRole("button",{name:"Play narration"}).waitFor();
           await mode.getByRole("button",{name:"Play narration"}).click();
           await mode.getByRole("button",{name:"Reading speed 1×"}).click();
@@ -447,7 +447,7 @@ test(
           assert.equal(await picker.getByRole("button",{name:/Preview/}).count(),2);
           assert.equal(previewRequests.length,0,"browsing does not generate paid previews");
           await picker.getByRole("radio",{name:/cedar/}).check();
-          await picker.getByRole("button",{name:/^Use /}).click();
+          await picker.getByRole("button",{name:"Save",exact:true}).click();
           await picker.waitFor({state:"detached"});
           assert.equal(narrator.voice,"cedar","voice is saved to the book before closing settings");
           assert.equal(requests.length,0);
@@ -486,13 +486,13 @@ test(
           picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.waitFor();
           await picker.getByRole("button",{name:/System voices/}).click();
-          await picker.getByRole("button",{name:/^Use /}).click();
+          await picker.getByRole("button",{name:"Save",exact:true}).click();
           await page.waitForFunction(()=>window.spoken.length>0);
           assert.equal(await page.evaluate(()=>window.audioSources.at(-1).stopped),true);
           await mode.getByRole("button",{name:"Choose narrator voice"}).click();
           picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.getByRole("button",{name:/OpenAI voices/}).click();
-          await picker.getByRole("button",{name:/^Use /}).click();
+          await picker.getByRole("button",{name:"Save",exact:true}).click();
           await page.waitForFunction(()=>window.audioSources.length===4);
           failure=true;
           await mode.getByRole("button",{name:"Next sentence"}).click();
@@ -549,17 +549,17 @@ test(
           await picker.getByRole("button",{name:/OpenAI voices/}).click();
           await picker.getByRole("radio",{name:/marin/}).check();
           saveFailure=true;
-          await picker.getByRole("button",{name:/^Use /}).click();
+          await picker.getByRole("button",{name:"Save",exact:true}).click();
           await picker.getByRole("alert").filter({hasText:/could not be saved/}).waitFor();
           assert.equal(await picker.isVisible(),true,"failed save keeps settings open");
           saveFailure=false;
-          await picker.getByRole("button",{name:/^Use /}).click(); await picker.waitFor({state:"detached"});
+          await picker.getByRole("button",{name:"Save",exact:true}).click(); await picker.waitFor({state:"detached"});
           assert.equal(narrator.voice,"marin");
           await mode.getByRole("button",{name:"Play narration",exact:true}).waitFor();
           await mode.getByRole("button",{name:"Choose narrator voice"}).click();
           picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.getByRole("button",{name:/System voices/}).click();
-          await picker.getByRole("button",{name:/^Use /}).click(); await picker.waitFor({state:"detached"});
+          await picker.getByRole("button",{name:"Save",exact:true}).click(); await picker.waitFor({state:"detached"});
           assert.equal(narrator.engine,"system"); assert.equal(narrator.voice,"native");
           await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
           await page.goto(server.resolvedUrls.local[0]+"rsvp-test?delayed=1");
@@ -674,7 +674,7 @@ test(
           await picker.getByRole("radiogroup",{name:"Gender"}).getByRole("radio",{name:"Female"}).click();
           assert.equal(await localList.getByRole("radio").count(),4);
           await picker.getByRole("radio",{name:/Emma/}).check();
-          await picker.getByRole("button",{name:/^Use /}).click();
+          await picker.getByRole("button",{name:"Save",exact:true}).click();
           await picker.waitFor({state:"detached"});
           assert.deepEqual(storedNarrator,{engine:"kokoro",voice:"bf_emma",name:"Emma",lang:"en-GB"});
           assert.match(await mode.getByRole("button",{name:"Choose narrator voice"}).innerText(),/Emma/);
