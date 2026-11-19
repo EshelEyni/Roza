@@ -4,6 +4,7 @@ files:
   - main.cjs
   - preload.cjs
   - kokoro/*.cjs
+  - assets/badges/*.png
   - renderer/**/*
 extraResources:
   - from: kokoro/service.py

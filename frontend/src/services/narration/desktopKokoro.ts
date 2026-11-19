@@ -1,5 +1,6 @@
 // Typed access to local Kokoro voices, which only the Roza desktop app provides
 // (desktop/preload.cjs exposes window.rozaDesktop.kokoro). On the website this is null.
+import type { DesktopTaskbar } from "../desktopTaskbar";
 
 export type KokoroInstallStatus = {
   installed: boolean;
@@ -78,7 +79,7 @@ export type DesktopKokoro = {
 
 declare global {
   interface Window {
-    rozaDesktop?: { kokoro?: DesktopKokoro };
+    rozaDesktop?: { kokoro?: DesktopKokoro; taskbar?: DesktopTaskbar };
   }
 }
 

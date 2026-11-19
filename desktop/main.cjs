@@ -1,4 +1,4 @@
-const { app, BrowserWindow, session, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, nativeImage, screen, session, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const { existsSync, readdirSync } = require("node:fs");
 const path = require("node:path");
@@ -85,6 +85,75 @@ function registerRenderer(browserSession) {
   });
 }
 
+// The page favicon doesn't reach the window, so the reading room swaps the window icon here.
+// Windows keeps the Roza shortcut icon on the taskbar button, so each area adds a small badge
+// over it: an open book in the reading room, headphones while an audiobook plays, a quill
+// in the writing studio. Badge artwork: assets/badges/src/*.svg, rendered to 256 px PNGs.
+const windowIcons = {
+  app: path.join(renderer, "images", "icon-512X512.png"),
+  reader: path.join(renderer, "images", "reader-favicon.ico"),
+};
+const badges = {
+  reading: { file: "reading.png", label: "Reading room" },
+  audio: { file: "audio.png", label: "Audiobook playing" },
+  writing: { file: "writing.png", label: "Writing studio" },
+};
+const loadedImages = {};
+const taskbar = { area: "other", audioPlaying: false, icon: null, badge: undefined };
+
+function image(file) {
+  loadedImages[file] ??= nativeImage.createFromPath(file);
+  return loadedImages[file];
+}
+
+// Windows draws the overlay at 16 px times the display scale and stretches anything smaller,
+// so the 256 px artwork is shrunk to that exact size here.
+function overlayImage(window, badge) {
+  const source = image(path.join(__dirname, "assets", "badges", badges[badge].file));
+  if (source.isEmpty()) return null;
+  const size = Math.round(16 * screen.getDisplayMatching(window.getBounds()).scaleFactor);
+  return source.resize({ width: size, height: size, quality: "best" });
+}
+
+function areaOf(url) {
+  try {
+    const { pathname } = new URL(url);
+    if (pathname === "/reader" || pathname.startsWith("/reader/")) return "reading";
+    if (pathname === "/books" || pathname.startsWith("/book/") || pathname.startsWith("/book-edit/")) return "writing";
+  } catch {}
+  return "other";
+}
+
+function updateTaskbar(window) {
+  if (window.isDestroyed()) return;
+  const icon = taskbar.area === "reading" ? "reader" : "app";
+  if (icon !== taskbar.icon && !image(windowIcons[icon]).isEmpty()) {
+    window.setIcon(image(windowIcons[icon]));
+    taskbar.icon = icon;
+  }
+  if (process.platform !== "win32") return;
+  const badge = taskbar.area === "reading" ? (taskbar.audioPlaying ? "audio" : "reading")
+    : taskbar.area === "writing" ? "writing" : null;
+  if (badge === taskbar.badge) return;
+  window.setOverlayIcon(badge ? overlayImage(window, badge) : null, badge ? badges[badge].label : "");
+  taskbar.badge = badge;
+}
+
+function onPageNavigated(window, url) {
+  taskbar.area = areaOf(url);
+  if (taskbar.area !== "reading") taskbar.audioPlaying = false;
+  updateTaskbar(window);
+}
+
+function registerTaskbarBadge(window) {
+  ipcMain.on("taskbar:audio-playing", (event, playing) => {
+    // Only the app's own top-level page may change the badge; book iframes may not.
+    if (event.sender !== window.webContents || event.senderFrame !== event.sender.mainFrame) return;
+    taskbar.audioPlaying = playing === true;
+    updateTaskbar(window);
+  });
+}
+
 function openInBrowser(url) {
   const target = new URL(url);
   if (target.protocol === "https:" && !target.username && !target.password) {
@@ -122,6 +191,11 @@ app.whenReady().then(async () => {
     if (target.origin !== origin) openInBrowser(url);
   });
   window.webContents.on("will-redirect", (event) => event.preventDefault());
+  window.webContents.on("did-navigate", (_event, url) => onPageNavigated(window, url));
+  window.webContents.on("did-navigate-in-page", (_event, url, isMainFrame) => {
+    if (isMainFrame) onPageNavigated(window, url);
+  });
+  registerTaskbarBadge(window);
   window.webContents.setWindowOpenHandler(({ url }) => {
     openInBrowser(url);
     return { action: "deny" };

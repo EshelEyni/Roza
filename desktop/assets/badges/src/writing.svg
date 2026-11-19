@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="w-bg" cx="38%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#8B6240"/><stop offset="0.55" stop-color="#5A3A22"/><stop offset="1" stop-color="#2A180C"/>
+    </radialGradient>
+    <linearGradient id="w-rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F7E2A1"/><stop offset="0.45" stop-color="#D4A848"/><stop offset="1" stop-color="#8A6420"/>
+    </linearGradient>
+    <linearGradient id="w-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="w-cream" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFBEF"/><stop offset="1" stop-color="#EAD9B0"/>
+    </linearGradient>
+    <filter id="w-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <circle cx="128" cy="128" r="124" fill="url(#w-rim)"/>
+  <circle cx="128" cy="128" r="112" fill="url(#w-bg)"/>
+  <ellipse cx="128" cy="70" rx="84" ry="46" fill="url(#w-gloss)"/>
+  <g filter="url(#w-shadow)">
+    <!-- feather vane -->
+    <path d="M196 46 C150 52 104 92 86 156 L98 166 C150 140 190 104 196 46 Z" fill="url(#w-cream)"/>
+    <!-- barbs -->
+    <g stroke="#B9A57C" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.9">
+      <path d="M176 66 L160 64"/><path d="M164 82 L144 82"/><path d="M150 100 L128 102"/><path d="M136 118 L114 122"/><path d="M122 136 L102 142"/>
+      <path d="M180 74 L184 92"/><path d="M168 92 L174 112"/><path d="M154 110 L160 128"/><path d="M138 126 L142 144"/>
+    </g>
+    <!-- notches in the vane -->
+    <path d="M150 74 L138 80 L150 84 Z" fill="#5A3A22"/><path d="M170 112 L160 118 L172 120 Z" fill="#5A3A22"/>
+    <!-- shaft -->
+    <path d="M192 52 C160 92 126 136 92 176" stroke="#8A6420" stroke-width="4" stroke-linecap="round" fill="none"/>
+    <!-- gold nib -->
+    <path d="M96 168 L74 202 L70 196 L88 160 Z" fill="#D4A848" stroke="#8A6420" stroke-width="2"/>
+    <!-- ink drop -->
+    <path d="M66 206 C60 214 60 220 66 222 C72 220 72 214 66 206 Z" fill="#1B1B3A"/>
+  </g>
+</svg>

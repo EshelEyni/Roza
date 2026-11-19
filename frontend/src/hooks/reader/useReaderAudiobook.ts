@@ -4,6 +4,7 @@ import { loadAudiobookConfig, saveAudiobookNarrator, openAiBlock, ReaderOpenAiAu
 import type { ReaderAudiobookNarrator } from "../../../../shared/types/reader";
 import { ReaderKokoroAudio } from "../../services/narration/kokoroAudio";
 import { desktopKokoro, isEnglishBook, type KokoroStatus } from "../../services/narration/desktopKokoro";
+import { setDesktopAudioPlaying } from "../../services/desktopTaskbar";
 import { defaultKokoroVoice, kokoroLang, kokoroVoice } from "../../services/narration/kokoroVoices";
 
 export type AudiobookLoader = (target?: number, direction?: 1 | -1) => Promise<AudiobookSection | null>;
@@ -435,6 +436,11 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     // Never silently replace a missing saved narrator with a different voice.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [narratorLoaded, savedNarrator, config, voices, voicesSettled, kokoroStatus, section]);
+  // The desktop app shows a headphones taskbar badge while the audiobook plays.
+  useEffect(() => {
+    setDesktopAudioPlaying(playing);
+    return () => setDesktopAudioPlaying(false);
+  }, [playing]);
   useEffect(() => {
     const api = desktopKokoro();
     if (!api) return;
