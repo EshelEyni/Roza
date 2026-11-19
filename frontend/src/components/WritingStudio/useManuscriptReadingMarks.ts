@@ -4,6 +4,7 @@ import { paintNativeHighlight } from "../../services/readerNativeHighlight";
 import { closestSentenceWord, groupSentenceWordRects } from "../../services/readerSentenceGeometry";
 import { readerSentenceSpans } from "../../services/readerSentenceSpans";
 import { readerWordPattern } from "../../services/readerWordPattern";
+import { readingPageDownDelta } from "./readingPageDown";
 
 const blockSelector = '[data-slate-node="element"]';
 const stringSelector = "[data-slate-string]";
@@ -60,6 +61,61 @@ function sentenceWordIndex(data: ReadingBlock, direction: number, currentIndex?:
     if (index >= 0) return index;
   }
   return -1;
+}
+
+function scrollParent(element: Element) {
+  const doc = element.ownerDocument;
+  for (let node = element.parentElement; node && node !== doc.body; node = node.parentElement) {
+    if (/auto|scroll|overlay/.test(getComputedStyle(node).overflowY) && node.scrollHeight > node.clientHeight) {
+      return node;
+    }
+  }
+  return doc.scrollingElement;
+}
+
+/** Sticky or fixed controls that are not part of the reading surface's own ancestry. */
+function isPinnedOver(element: Element, editable: Element) {
+  for (let node: Element | null = element; node && !node.contains(editable); node = node.parentElement) {
+    if (/sticky|fixed/.test(getComputedStyle(node).position)) return true;
+  }
+  return false;
+}
+
+function coveredTop(editable: Element, view: { top: number; bottom: number }, x: number) {
+  const doc = editable.ownerDocument;
+  let top = view.top;
+  for (let layer = 0; layer < 4 && top + 1 < view.bottom; layer++) {
+    const cover = doc.elementsFromPoint(x, top + 1)
+      .find(element => !editable.contains(element) && isPinnedOver(element, editable));
+    const bottom = cover?.getBoundingClientRect().bottom;
+    if (bottom === undefined || bottom <= top) break;
+    top = Math.min(bottom, view.bottom);
+  }
+  return top;
+}
+
+/** Scrolls one page toward later text without pushing the marked sentence out of view. */
+function pageDownWithinSentence(editable: HTMLElement, target: EventTarget, sentence: Range) {
+  if (target instanceof Element && target !== editable &&
+      (target.closest("input, textarea, select, dialog, [role='dialog'], [contenteditable='true']"))) {
+    return false;
+  }
+  const rects = Array.from(sentence.getClientRects());
+  const scroller = scrollParent(editable);
+  if (!rects.length || !scroller) return false;
+  const doc = editable.ownerDocument;
+  const viewport = doc.documentElement.clientHeight;
+  const box = scroller === doc.scrollingElement
+    ? { top: 0, left: 0, right: doc.documentElement.clientWidth }
+    : scroller.getBoundingClientRect();
+  const top = Math.max(0, box.top + scroller.clientTop);
+  const bottom = Math.min(viewport, box.top + scroller.clientTop + scroller.clientHeight);
+  const center = (Math.min(...rects.map(rect => rect.left)) + Math.max(...rects.map(rect => rect.right))) / 2;
+  const x = Math.min(Math.max(center, box.left + 1), box.right - 1);
+  const delta = readingPageDownDelta(rects, { top: coveredTop(editable, { top, bottom }, x), bottom });
+  if (delta === undefined) return false;
+  if (delta > 0) scroller.scrollBy(0, delta);
+  return true;
 }
 
 export function useManuscriptReadingMarks(enabled: boolean) {
@@ -140,6 +196,14 @@ export function useManuscriptReadingMarks(enabled: boolean) {
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (event.key === "Escape") clear();
+    if (event.key === "PageDown") {
+      if (!event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey &&
+          !event.nativeEvent.isComposing && markedSentence.current &&
+          pageDownWithinSentence(event.currentTarget, event.target, markedSentence.current)) {
+        event.preventDefault();
+      }
+      return;
+    }
     if (event.altKey || event.metaKey || event.shiftKey || event.nativeEvent.isComposing) return;
     const sentenceJump = event.ctrlKey && (event.key === "ArrowLeft" || event.key === "ArrowRight");
     if (event.ctrlKey && !sentenceJump) return;
