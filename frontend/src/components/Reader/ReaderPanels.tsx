@@ -9,6 +9,7 @@ import { ReaderChat } from "./ReaderChat";
 import { ReaderSettings } from "./ReaderSettings";
 import { ReaderReview } from "./ReaderReview";
 import { ReaderAnnotations } from "./ReaderAnnotations";
+import { ReaderDocuments } from "./ReaderDocuments";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
 type Props = Pick<
   EpubReaderController,
@@ -39,7 +40,7 @@ type Props = Pick<
   | "state"
   | "updateState"
   | "publisherPagesAvailable"
->;
+> & { bookId: string; userId: string };
 export function ReaderPanels({
   progressSettings, updateProgressSettings, progressSaveStatus, retryProgressSettings,
   keyboardSettings,
@@ -65,6 +66,8 @@ export function ReaderPanels({
   state,
   updateState,
   publisherPagesAvailable,
+  bookId,
+  userId,
 }: Props) {
   const { t } = useTranslation();
   const [desktop, setDesktop] = useState(() => window.matchMedia("(min-width: 1100px)").matches);
@@ -79,10 +82,10 @@ export function ReaderPanels({
   if (panel === "tts") return null;
   return (
     <ReaderSheet
-      mobileFullscreen={panel === "search" || panel === "chat" || panel === "annotations"}
+      mobileFullscreen={panel === "search" || panel === "chat" || panel === "annotations" || panel === "documents"}
       mobileCloseInContent={panel === "search" || panel === "chat"}
       label={t(
-        panel === "review" ? "reader.review.title" : panel === "annotations" ? "reader.annotations.title" : panel === "chat"
+        panel === "review" ? "reader.review.title" : panel === "documents" ? "reader.documents.title" : panel === "annotations" ? "reader.annotations.title" : panel === "chat"
           ? "reader.chat.title"
           : panel === "contents"
             ? "reader.contents"
@@ -92,7 +95,7 @@ export function ReaderPanels({
       )}
       onClose={closePanel}
       className={"reader-resizable-panel " + (
-        panel === "review" ? "reader-review-panel" : panel === "search"
+        panel === "review" ? "reader-review-panel" : panel === "documents" ? "reader-documents-panel" : panel === "search"
           ? "reader-search-panel"
           : panel === "chat"
             ? (desktop ? "reader-groups-panel reader-chat-panel" : "reader-chat-panel")
@@ -101,7 +104,7 @@ export function ReaderPanels({
     >
       {panel !== "chat" && <ReaderPanelResize width={chat.workspace.panelWidth}
         onWidthChange={chat.setPanelWidth} />}
-      {panel === "review" ? <ReaderReview key={review.userId + ":" + review.bookId} {...review} onNavigate={onNavigate} /> : panel === "annotations" ? <ReaderAnnotations annotations={annotations} onNavigate={onAnnotationNavigate} getPage={describeLocation} totalPages={totalPages} /> : panel === "contents" ? (
+      {panel === "documents" ? <ReaderDocuments key={userId + ":" + bookId} bookId={bookId} userId={userId} /> : panel === "review" ? <ReaderReview key={review.userId + ":" + review.bookId} {...review} onNavigate={onNavigate} /> : panel === "annotations" ? <ReaderAnnotations annotations={annotations} onNavigate={onAnnotationNavigate} getPage={describeLocation} totalPages={totalPages} /> : panel === "contents" ? (
         <ReaderContents
           items={toc}
           currentHref={href}

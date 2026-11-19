@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { ReaderBookModel } from "../../models/reader/readerBookModel";
 import { ReaderAnnotationModel } from "../../models/reader/readerAnnotationModel";
 import { ReaderFlagModel } from "../../models/reader/readerFlagModel";
+import { ReaderDocumentModel } from "../../models/reader/readerDocumentModel";
 import { ReaderConversationModel } from "../../models/reader/readerConversationModel";
 import {
   ReaderLookupModel,
@@ -27,6 +28,7 @@ export async function permanentlyDeleteReaderBook(id: string, userId: string) {
       const scope = { userId, bookId: book._id };
       await ReaderAnnotationModel.deleteMany(scope, { session });
       await ReaderFlagModel.deleteMany(scope, { session });
+      await ReaderDocumentModel.deleteMany(scope, { session });
       await ReaderConversationModel.deleteMany(scope, { session });
       await ReaderLookupModel.deleteMany(scope, { session });
       const words = await ReaderVocabularyModel.find({ userId, bookIds: book._id }).session(
