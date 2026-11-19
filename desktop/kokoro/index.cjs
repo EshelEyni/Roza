@@ -9,7 +9,7 @@ const { createEngine } = require("./engine.cjs");
 const { createExporter } = require("./exporter.cjs");
 const { createInstaller } = require("./installer.cjs");
 const { serveKokoroAudio } = require("./audioRoute.cjs");
-const { createStore } = require("./store.cjs");
+const { createStore, passageIn } = require("./store.cjs");
 const { isKokoroVoice } = require("./voices.cjs");
 
 const PREVIEW_TEXT = "The morning arrived quietly, and the world seemed full of possibility.";
@@ -37,7 +37,7 @@ function createKokoroDesktop({ app, origin, getWindow }) {
     python: installer.python, script, cwd: runtimeDir, env: installer.env, isInstalled: installer.isInstalled,
   });
   const store = createStore({ audioDir, booksDir, engine });
-  const exporter = createExporter({ tempDir: path.join(os.tmpdir(), "roza-kokoro-export"), ffmpeg: installer.ffmpeg, ensureSentence: store.ensureSentence });
+  const exporter = createExporter({ tempDir: path.join(os.tmpdir(), "roza-kokoro-export"), ffmpeg: installer.ffmpeg, ensureSentence: store.ensureSentence, passageIn });
   const ready = installer.load();
 
   async function settings() {

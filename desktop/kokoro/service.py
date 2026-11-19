@@ -4,6 +4,10 @@ Reads one JSON request per line on stdin and answers one JSON line on stdout:
   request:  {"id": "1", "text": "...", "words": ["Hello,", "world."], "voice": "af_heart", "out": "/abs/file.wav",
              "pause": 0.75, "speed": 0.95}   (pause and speed are optional)
   response: {"id": "1", "ok": true, "duration": 1.84, "words": [[0.05, 0.41], [0.45, 0.98]]}
+A paragraph request speaks several sentences as one passage, so Kokoro phrases them together, and
+cuts the audio into one clip per sentence at the quietest point between them:
+  request:  {"id": "2", "voice": "af_heart", "sentences": [{"text": "...", "words": [...], "out": "/abs/1.wav"}, ...]}
+  response: {"id": "2", "ok": true, "clips": [{"duration": 2.1, "words": [[0.04, 0.4], ...]}, ...]}
 The first line it prints is {"event": "ready"} once the model is loaded. Logs go to stderr.
 """
 
@@ -163,14 +167,14 @@ def add_pause(audio, pause):
     return np.concatenate([audio, np.zeros(extra, dtype=audio.dtype)]) if extra else audio
 
 
-def synthesize(request):
-    pipeline = pipeline_for(request["voice"])
+def speak(voice, text, words, speed=1):
+    """Kokoro audio for `text` (untrimmed) and a [start, end] for each of `words`."""
+    pipeline = pipeline_for(voice)
     chunks = []
     tokens = []
     offset = 0.0
-    # The whole sentence is one chunk unless it is very long; timestamps restart per chunk.
-    speed = request.get("speed", 1)
-    for result in pipeline(request["text"], voice=request["voice"], speed=speed, split_pattern=None):
+    # The whole text is one chunk unless it is very long; timestamps restart per chunk.
+    for result in pipeline(text, voice=voice, speed=speed, split_pattern=None):
         if result.audio is None:
             continue
         audio = result.audio.cpu().numpy() if hasattr(result.audio, "cpu") else np.asarray(result.audio)
@@ -182,11 +186,87 @@ def synthesize(request):
         chunks.append(audio)
 
     audio = np.concatenate(chunks) if chunks else np.zeros(int(SAMPLE_RATE * 0.3), dtype=np.float32)
-    words = align(request["words"], tokens, len(audio) / SAMPLE_RATE)
+    return audio, align(words, tokens, len(audio) / SAMPLE_RATE)
+
+
+def synthesize(request):
+    audio, words = speak(request["voice"], request["text"], request["words"], request.get("speed", 1))
     audio, words = trim_silence(audio, words)
     audio = add_pause(audio, request.get("pause", 0))
     sf.write(request["out"], audio, SAMPLE_RATE)
     return {"duration": round(len(audio) / SAMPLE_RATE, 3), "words": words}
+
+
+# A clip shorter than this may never report that it ended in the player.
+MIN_CLIP_SECONDS = 0.05
+
+
+def quietest(audio, low, high):
+    """The sample in the middle of the quietest stretch between two times, where a cut is inaudible."""
+    frame = int(0.01 * SAMPLE_RATE)
+    start = min(max(int(low * SAMPLE_RATE), 0), len(audio))
+    end = min(max(int(high * SAMPLE_RATE), start), len(audio))
+    count = (end - start) // frame
+    if count < 1:
+        return (start + end) // 2
+    energy = np.abs(audio[start:start + count * frame]).reshape(count, frame).mean(axis=1)
+    quiet = energy <= energy.min() * 1.5 + 1e-5
+    best, best_length, run_start = 0, 0, None
+    for index, is_quiet in enumerate(list(quiet) + [False]):
+        if is_quiet and run_start is None:
+            run_start = index
+        elif not is_quiet and run_start is not None:
+            if index - run_start > best_length:
+                best, best_length = run_start, index - run_start
+            run_start = None
+    return start + (best * frame) + (best_length * frame) // 2
+
+
+def write_clip(path, audio):
+    minimum = int(MIN_CLIP_SECONDS * SAMPLE_RATE)
+    if len(audio) < minimum:
+        audio = np.concatenate([audio, np.zeros(minimum - len(audio), dtype=np.float32)])
+    sf.write(path, audio, SAMPLE_RATE)
+    return round(len(audio) / SAMPLE_RATE, 3)
+
+
+def synthesize_paragraph(request):
+    """Speaks the sentences as one passage and saves one clip per sentence. Played back to back, the
+    clips are exactly the passage: the natural pause between two sentences ends the first clip."""
+    sentences = request["sentences"]
+    counts = [len(sentence["words"]) for sentence in sentences]
+    text = " ".join(sentence["text"] for sentence in sentences)
+    if not any(char.isalnum() for char in text):
+        # A scene mark such as "* * *" is not read aloud; the player adds the scene pause.
+        clips = []
+        for sentence, count in zip(sentences, counts):
+            duration = write_clip(sentence["out"], np.zeros(0, dtype=np.float32))
+            clips.append({"duration": duration, "words": [[0.0, duration]] * count})
+        return {"clips": clips}
+
+    audio, times = speak(request["voice"], text, [word for sentence in sentences for word in sentence["words"]],
+                         request.get("speed", 1))
+    audio, times = trim_silence(audio, times)
+    bounds = [0]
+    position = 0
+    for count in counts[:-1]:
+        position += count
+        last_end, next_start = times[position - 1][1], times[position][0]
+        cut = quietest(audio, min(last_end, next_start) - 0.03, max(last_end, next_start) + 0.03)
+        bounds.append(min(max(cut, bounds[-1]), len(audio)))
+    bounds.append(len(audio))
+
+    clips = []
+    position = 0
+    for index, (sentence, count) in enumerate(zip(sentences, counts)):
+        start, end = bounds[index], bounds[index + 1]
+        shift = start / SAMPLE_RATE
+        duration = write_clip(sentence["out"], audio[start:end])
+        words = [[round(min(max(0.0, s - shift), duration), 3), round(min(max(0.0, e - shift), duration), 3)]
+                 for s, e in times[position:position + count]]
+        position += count
+        clips.append({"duration": duration, "words": words})
+    return {"clips": clips}
 
 
 def main():
@@ -196,7 +276,8 @@ def main():
             continue
         request = json.loads(line)
         try:
-            emit({"id": request["id"], "ok": True, **synthesize(request)})
+            result = synthesize_paragraph(request) if "sentences" in request else synthesize(request)
+            emit({"id": request["id"], "ok": True, **result})
         except Exception as error:  # Reported back, so one bad sentence doesn't stop the service.
             log(f"failed: {error!r}")
             emit({"id": request["id"], "ok": False, "error": str(error)})

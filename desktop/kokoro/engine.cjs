@@ -61,7 +61,7 @@ function createEngine(options) {
       const job = running;
       if (!job || message.id !== job.id) return;
       running = null;
-      if (message.ok) job.resolve({ duration: message.duration || 0, words: message.words || [] });
+      if (message.ok) job.resolve(message.clips ? { clips: message.clips } : { duration: message.duration || 0, words: message.words || [] });
       else job.reject(new Error(message.error || "Kokoro could not read this sentence."));
       pump();
     });
@@ -85,7 +85,7 @@ function createEngine(options) {
     });
   };
 
-  /** @returns {Promise<{ duration: number, words: [number, number][] }>} */
+  /** @returns {Promise<{ duration: number, words: [number, number][] } | { clips: { duration: number, words: [number, number][] }[] }>} */
   const synthesize = (request, priority) => new Promise((resolve, reject) => {
     start();
     if (!child) return reject(new Error(status.message || "Kokoro is not running."));

@@ -16,9 +16,11 @@ export type KokoroStatus = KokoroInstallStatus & {
   exportFolder: string;
 };
 
-export type KokoroSentenceInput = { text: string; words: string[]; pause: number; speed: number };
+/** `passage`: sentences with the same number are spoken together (paragraph narration). */
+export type KokoroSentenceInput = { text: string; words: string[]; pause: number; speed: number; passage?: number };
 
-export type KokoroClip = { url: string; duration: number; words: { start: number; end: number }[] };
+/** `pause`: seconds of silence to add after the clip (paragraph narration leaves it out of the audio). */
+export type KokoroClip = { url: string; duration: number; words: { start: number; end: number }[]; pause?: number };
 
 export type KokoroOffline = {
   state: "missing" | "partial" | "downloading" | "ready" | "error";
@@ -50,6 +52,8 @@ export type KokoroExportJob = {
 };
 
 export type DesktopKokoro = {
+  /** True when the desktop app speaks whole passages (paragraphs) and the page adds the pauses. */
+  passages?: boolean;
   status(): Promise<KokoroStatus>;
   install(): Promise<KokoroStatus>;
   cancelInstall(): Promise<KokoroStatus>;
@@ -57,6 +61,8 @@ export type DesktopKokoro = {
   start(): Promise<KokoroStatus>;
   sentence(input: {
     bookId: string; voice: string; section: number; index: number; sentence: KokoroSentenceInput; priority: "high" | "low";
+    /** The passage holding the sentence; `first` is the index of its first sentence. */
+    passage?: { first: number; sentences: KokoroSentenceInput[] };
   }): Promise<KokoroClip>;
   preview(voice: string): Promise<{ url: string }>;
   hasScript(bookId: string): Promise<boolean>;

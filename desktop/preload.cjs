@@ -10,6 +10,8 @@ const call = async (channel, input) => {
 
 contextBridge.exposeInMainWorld("rozaDesktop", {
   kokoro: {
+    // Speaks whole paragraphs; the page adds the pauses between them (Ticket #64).
+    passages: true,
     status: () => call("kokoro:status"),
     install: () => call("kokoro:install"),
     cancelInstall: () => call("kokoro:cancel-install"),

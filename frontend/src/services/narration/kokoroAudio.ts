@@ -1,9 +1,10 @@
 // Plays Kokoro narration one sentence at a time (ported from RozaReader's narration.ts): a few
 // sentences ahead are made and preloaded, so the next one starts the moment the current one ends,
-// and the spoken word follows the clip's real word timings.
+// and the spoken word follows the clip's real word timings. The desktop app speaks a whole paragraph
+// at once and saves it as one clip per sentence; the pause after a paragraph is added here.
 import { audiobookWordAt, type AudiobookSection } from "../readerTts";
-import { desktopKokoro, type KokoroClip } from "./desktopKokoro";
-import { kokoroSentence, sectionPacing, type SentencePacing } from "./kokoroPacing";
+import { desktopKokoro, type KokoroClip, type KokoroSentenceInput } from "./desktopKokoro";
+import { kokoroSectionRequests } from "./kokoroPacing";
 
 // Three sentences ahead are made and loaded, so the next one can start the moment one ends.
 const READ_AHEAD = 3;
@@ -17,19 +18,31 @@ export type KokoroHandlers = {
   onEnd: () => void;
 };
 
-const pacingCache = new WeakMap<AudiobookSection["sentences"], SentencePacing[]>();
-function pacingOf(section: AudiobookSection) {
-  let pacing = pacingCache.get(section.sentences);
-  if (!pacing) {
-    pacing = sectionPacing(section.sentences);
-    pacingCache.set(section.sentences, pacing);
+const requestCache = new WeakMap<AudiobookSection["sentences"], { withPassages: boolean; requests: KokoroSentenceInput[] }>();
+function requestsOf(section: AudiobookSection, withPassages: boolean) {
+  let cached = requestCache.get(section.sentences);
+  if (!cached || cached.withPassages !== withPassages) {
+    cached = { withPassages, requests: kokoroSectionRequests(section.sentences, withPassages) };
+    requestCache.set(section.sentences, cached);
   }
-  return pacing;
+  return cached.requests;
+}
+
+/** The sentences spoken together with sentence `index`. */
+function passageOf(requests: KokoroSentenceInput[], index: number) {
+  const id = requests[index].passage;
+  if (id === undefined) return undefined;
+  let first = index;
+  let last = index;
+  while (first > 0 && requests[first - 1].passage === id) first--;
+  while (last + 1 < requests.length && requests[last + 1].passage === id) last++;
+  return { first, sentences: requests.slice(first, last + 1) };
 }
 
 export class ReaderKokoroAudio {
   private prepared = new Map<string, Promise<Prepared>>();
   private current?: { element: HTMLAudioElement; cleanup: () => void };
+  private pauseTimer?: ReturnType<typeof setTimeout>;
   private version = 0;
   private rate = 1;
   private volume = 1;
@@ -47,10 +60,11 @@ export class ReaderKokoroAudio {
     if (existing) return existing;
     const kokoro = desktopKokoro();
     if (!kokoro) return Promise.reject(new Error("Local voices need the Roza desktop app."));
-    const sentence = section.sentences[index];
+    const requests = requestsOf(section, !!kokoro.passages);
+    const passage = passageOf(requests, index);
     const request = kokoro.sentence({
-      bookId: this.bookId, voice, section: section.section, index,
-      sentence: kokoroSentence(sentence, pacingOf(section)[index]), priority,
+      bookId: this.bookId, voice, section: section.section, index, sentence: requests[index], priority,
+      ...(passage ? { passage } : {}),
     }).then(clip => {
       const element = new Audio();
       element.preload = "auto";
@@ -94,7 +108,13 @@ export class ReaderKokoroAudio {
     const ended = () => {
       if (run !== this.version) return;
       cleanup();
-      handlers.onEnd();
+      // The silence after a paragraph, heading or scene break; it follows the reading speed.
+      const pause = (clip.pause || 0) / (this.rate || 1);
+      if (pause <= 0) { handlers.onEnd(); return; }
+      this.pauseTimer = setTimeout(() => {
+        this.pauseTimer = undefined;
+        if (run === this.version) handlers.onEnd();
+      }, pause * 1000);
     };
     const cleanup = () => {
       cancelAnimationFrame(frame);
@@ -118,6 +138,8 @@ export class ReaderKokoroAudio {
   }
 
   private stopCurrent() {
+    clearTimeout(this.pauseTimer);
+    this.pauseTimer = undefined;
     this.current?.cleanup();
     this.current = undefined;
   }
