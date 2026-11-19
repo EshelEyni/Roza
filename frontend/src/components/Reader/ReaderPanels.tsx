@@ -40,7 +40,9 @@ type Props = Pick<
   | "state"
   | "updateState"
   | "publisherPagesAvailable"
-> & { bookId: string; userId: string };
+  | "getCachedPageLabel"
+  | "showPublisherPages"
+> &{ bookId: string; userId: string };
 export function ReaderPanels({
   progressSettings, updateProgressSettings, progressSaveStatus, retryProgressSettings,
   keyboardSettings,
@@ -66,6 +68,8 @@ export function ReaderPanels({
   state,
   updateState,
   publisherPagesAvailable,
+  getCachedPageLabel,
+  showPublisherPages,
   bookId,
   userId,
 }: Props) {
@@ -115,6 +119,8 @@ export function ReaderPanels({
           onClose={closePanel}
           book={loading ? null : searchBook}
           locationsReady={locationsReady}
+          getPageLabel={getCachedPageLabel}
+          showPublisherPages={showPublisherPages}
           onNavigate={cfi => void onSearchNavigate(cfi)}
         />
       ) : panel === "chat" ? (

@@ -7,11 +7,16 @@ import { useReaderSearch } from "../../hooks/useReaderSearch";
 export function ReaderSearch({
   book,
   locationsReady,
+  getPageLabel,
+  showPublisherPages,
   onNavigate,
   onClose,
 }: {
   book: Book | null;
   locationsReady: boolean;
+  /** The footer's page label for a CFI, or null while pages are being counted. */
+  getPageLabel: (cfi: string) => string | null;
+  showPublisherPages: boolean;
   onNavigate: (cfi: string) => void;
   onClose: () => void;
 }) {
@@ -107,11 +112,13 @@ export function ReaderSearch({
             </p>
           )}
         {search.results.map((result, index) => {
-          const page = book?.pageList.pageFromCfi(result.cfi) ?? -1;
-          const location =
-            locationsReady && book
-              ? Number(book.locations.locationFromCfi(result.cfi)) + 1
-              : 0;
+          // Use the same page system as the footer; fall back to a stable
+          // percentage while pages are counted, never an estimated page.
+          const page = getPageLabel(result.cfi);
+          const percentage =
+            !page && locationsReady && book
+              ? book.locations.percentageFromCfi(result.cfi)
+              : null;
           return (
             <button
               key={result.cfi}
@@ -125,10 +132,17 @@ export function ReaderSearch({
               }}
             >
               <span className="reader-search-result-location">
-                {page > 0
-                  ? t("reader.pageNumber", { number: page })
-                  : location > 0
-                    ? t("reader.locationNumber", { number: location })
+                {page
+                  ? t(
+                      showPublisherPages
+                        ? "reader.bookPageNumber"
+                        : "reader.pageNumber",
+                      { number: page },
+                    )
+                  : percentage !== null && Number.isFinite(percentage)
+                    ? t("reader.percentInBook", {
+                        percent: Math.round(percentage * 100),
+                      })
                     : t("reader.matchNumber", { number: index + 1 })}
                 <FiArrowRight aria-hidden="true" />
               </span>

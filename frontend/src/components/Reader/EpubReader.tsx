@@ -150,6 +150,8 @@ export function EpubReader({
           state={reader.state}
           updateState={reader.updateState}
           publisherPagesAvailable={reader.publisherPagesAvailable}
+          getCachedPageLabel={reader.getCachedPageLabel}
+          showPublisherPages={reader.showPublisherPages}
           bookId={book.id}
           userId={userId}
         />}
