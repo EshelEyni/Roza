@@ -249,7 +249,7 @@ export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiV
       <footer className="audiobook-voice-dialog-footer">
         {stagedEngine === "kokoro" && kokoroInstalled && <div className="audiobook-voice-footer-start"><KokoroInstall status={kokoroStatus} availability={kokoroAvailability} onChanged={() => onKokoroChanged?.()} /></div>}
         <button type="button" className="audiobook-voice-cancel" disabled={saving} onClick={() => void dismiss()}>{warning ? "Exit audiobook mode" : "Cancel"}</button>
-        <button type="button" className="audiobook-voice-apply" disabled={saving || !stagedVoice || (stagedEngine === "openai" && !config?.available) || (stagedEngine === "kokoro" && !kokoroReady)} onClick={() => { if (stagedVoice) void dismiss(stagedVoice.voiceURI); }}>{saving ? "Saving…" : stagedVoice && stagedVoice.voiceURI !== "browser-default" ? "Use " + stagedVoice.name : "Use this voice"} <FiCheck aria-hidden="true" /></button>
+        <button type="button" className="audiobook-voice-apply" disabled={saving || !stagedVoice || (stagedEngine === "openai" && !config?.available) || (stagedEngine === "kokoro" && !kokoroReady)} onClick={() => { if (stagedVoice) void dismiss(stagedVoice.voiceURI); }}>{saving ? "Saving…" : "Save"} <FiCheck aria-hidden="true" /></button>
       </footer>
     </section>
   </dialog>;
