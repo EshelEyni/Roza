@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { FiTrash2 } from "react-icons/fi";
 import { desktopKokoro, type KokoroOffline } from "../../../services/narration/desktopKokoro";
 import { kokoroVoice } from "../../../services/narration/kokoroVoices";
 import { AudiobookDialog, LocalVoicesNeeded } from "./AudiobookDialog";
@@ -19,6 +20,7 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, on
   const [book, setBook] = useState<KokoroOffline | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   useEffect(() => { if (usable && script.state === "idle") void script.prepare(); }, [usable, script]);
 
@@ -52,7 +54,13 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, on
       const status = await api.offline({ bookId, voice: audio.localVoice, section: scope === "chapter" ? section : null, action });
       if (scope === "chapter") setChapter(status); else setBook(status);
     } catch (cause) { setError(cause instanceof Error ? cause.message : String(cause)); }
-    finally { setBusy(false); }
+    finally { setBusy(false); setConfirmRemove(false); }
+  };
+  // Removing the whole book's audio also stops its saves, so poll once more to refresh this chapter too.
+  const removeAll = async () => {
+    await act("book", "delete");
+    if (!api || !bookId || section === null) return;
+    try { setChapter(await api.offline({ bookId, voice: audio.localVoice, section, action: "get" })); } catch { /* the next poll retries */ }
   };
 
   const ready = chapter?.state === "ready";
@@ -61,54 +69,64 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, on
   const bookRunning = book?.state === "downloading";
   const bookPercent = book?.total ? Math.floor(book.completed / book.total * 100) : 0;
 
+  const voiceName = voice?.name || audio.localVoice;
+  const scriptReady = script.state === "ready";
+  const chapterStatus = ready ? "Ready offline" : running ? "Saving…" : chapter?.completed ? "Partly saved" : "Not saved yet";
+  const bookStatus = bookReady ? "Whole book ready offline"
+    : bookRunning ? "Saving chapter " + ((book?.section ?? 0) + 1) + "… in the background"
+      : book?.completed ? "Partly saved · finished chapters are kept" : "Saves every chapter in the background";
+
   return <AudiobookDialog eyebrow="LOCAL VOICES" title="Save for offline" onClose={onClose}
-    description={usable ? `${chapterTitle} · read by ${voice?.name || audio.localVoice}` : undefined}
-    footer={<>
-      <button type="button" className="audiobook-voice-cancel" onClick={onClose}>Close</button>
-      {usable && script.state === "ready" && (ready
-        ? <button type="button" className="audiobook-voice-apply" onClick={() => { onPlay(); onClose(); }}>Play with word tracking</button>
-        : running
-          ? <button type="button" className="audiobook-voice-apply" disabled={busy} onClick={() => void act("chapter", "stop")}>{busy ? "Stopping…" : "Stop saving"}</button>
-          : <button type="button" className="audiobook-voice-apply" disabled={busy || !chapter || bookRunning} onClick={() => void act("chapter", "start")}>
-            {busy ? "Starting…" : chapter?.completed ? "Resume chapter" : "Save chapter"}
-          </button>)}
+    description={usable ? `${chapterTitle} · read by ${voiceName}` : undefined}
+    footer={usable && !!book?.completed && <>
+      {confirmRemove
+        ? <p className="audiobook-offline-footer-text">Remove all saved audio for {voiceName} in this book?</p>
+        : <p className="audiobook-offline-footer-text">Saved audio for {voiceName} stays on this computer.</p>}
+      <div className="audiobook-offline-footer-actions">
+        {confirmRemove
+          ? <>
+            <button type="button" className="audiobook-link-button" disabled={busy} onClick={() => setConfirmRemove(false)}>Keep it</button>
+            <button type="button" className="audiobook-offline-remove" disabled={busy} onClick={() => void removeAll()}><FiTrash2 aria-hidden="true" />{busy ? "Removing…" : "Remove"}</button>
+          </>
+          : <button type="button" className="audiobook-offline-remove" disabled={busy} onClick={() => setConfirmRemove(true)}><FiTrash2 aria-hidden="true" />Remove saved audio</button>}
+      </div>
     </>}>
     {!usable && <LocalVoicesNeeded reason={reason} onChooseVoice={onChooseVoice} />}
     {usable && <>
-      <p className="audiobook-voice-help">Saves this chapter’s audio and word timings on this computer, so it plays with word highlighting, seeking and speed control even without internet. A different voice needs its own save. You can close this window while saving; keep Roza open until it finishes.</p>
+      <p className="audiobook-voice-help audiobook-offline-intro">Listen without internet, with word highlighting. Keep Roza open while saving.</p>
       {script.state === "preparing" && <div className="audiobook-progress" role="status">
         <div className="audiobook-progress-status"><span>Preparing the book’s text…</span><span>{script.done} / {script.total || "…"} sections</span></div>
         <progress max={Math.max(script.total, 1)} value={script.done} />
       </div>}
       {script.state === "error" && <p className="audiobook-error" role="alert">The book could not be prepared: {script.error}</p>}
-      {chapter && <div className="audiobook-progress" role="status" aria-live="polite">
-        <div className="audiobook-progress-status">
-          <span>{ready ? "Ready for offline listening" : running ? "Saving chapter…" : chapter.completed ? "Partly saved · resume anytime" : "Not saved yet"}</span>
-          <span>{chapter.completed} / {chapter.total} sentences</span>
+
+      {chapter && <section className="audiobook-offline-row" aria-label="This chapter">
+        <div className="audiobook-offline-row-main" role="status" aria-live="polite">
+          <div className="audiobook-progress-status"><strong>This chapter</strong><span>{chapter.completed} / {chapter.total} sentences</span></div>
+          <progress max={Math.max(chapter.total, 1)} value={chapter.completed} aria-label="Chapter save progress" />
+          <span className="audiobook-offline-row-status">{chapterStatus}</span>
         </div>
-        <progress max={Math.max(chapter.total, 1)} value={chapter.completed} aria-label="Chapter save progress" />
-        {ready && <button type="button" className="audiobook-link-button" disabled={busy} onClick={() => void act("chapter", "delete")}>Remove this chapter’s saved audio</button>}
-      </div>}
+        {scriptReady && (ready
+          ? <button type="button" className="audiobook-voice-apply" onClick={() => { onPlay(); onClose(); }}>Play</button>
+          : running
+            ? <button type="button" className="audiobook-voice-cancel" disabled={busy} onClick={() => void act("chapter", "stop")}>{busy ? "Stopping…" : "Stop"}</button>
+            : <button type="button" className={chapter.completed ? "audiobook-voice-cancel" : "audiobook-voice-apply"} disabled={busy || bookRunning} onClick={() => void act("chapter", "start")}>
+              {busy ? "Starting…" : chapter.completed ? "Resume" : "Save chapter"}
+            </button>)}
+      </section>}
       {(error || chapter?.error) && <p className="audiobook-error" role="alert">{error || chapter?.error}</p>}
 
-      {book && <section className="audiobook-offline-book" aria-label="Whole book">
-        <div className="audiobook-voice-section-heading">WHOLE BOOK</div>
-        <p className="audiobook-voice-help">Saves every chapter in order, gently in the background so the computer stays responsive. Each chapter is ready as soon as it finishes, and listening always comes first. Stop anytime; finished audio is kept.</p>
-        <div className="audiobook-progress" role="status" aria-live="polite">
-          <div className="audiobook-progress-status">
-            <span>{bookReady ? "The whole book is ready offline" : bookRunning ? "Saving chapter " + ((book.section ?? 0) + 1) + "…" : book.completed ? "Partly saved · resume anytime" : "Not saved yet"}</span>
-            <span>{book.chaptersReady} / {book.chapters} chapters · {bookPercent}%</span>
-          </div>
+      {book && <section className="audiobook-offline-row" aria-label="Whole book">
+        <div className="audiobook-offline-row-main" role="status" aria-live="polite">
+          <div className="audiobook-progress-status"><strong>Whole book</strong><span>{book.chaptersReady} / {book.chapters} chapters · {bookPercent}%</span></div>
           <progress max={Math.max(book.total, 1)} value={book.completed} aria-label="Book save progress" />
+          <span className="audiobook-offline-row-status">{bookStatus}</span>
         </div>
-        {book.error && !bookRunning && <p className="audiobook-error" role="alert">{book.error}</p>}
-        <div className="audiobook-offline-actions">
-          {bookRunning
-            ? <button type="button" className="audiobook-voice-cancel" disabled={busy} onClick={() => void act("book", "stop")}>{busy ? "Stopping…" : "Stop saving book"}</button>
-            : !bookReady && <button type="button" className="audiobook-voice-cancel" disabled={busy} onClick={() => void act("book", "start")}>{busy ? "Starting…" : book.completed ? "Resume whole book" : "Save whole book"}</button>}
-          {book.completed > 0 && !bookRunning && <button type="button" className="audiobook-link-button" disabled={busy} onClick={() => void act("book", "delete")}>Remove all saved audio for this voice</button>}
-        </div>
+        {bookRunning
+          ? <button type="button" className="audiobook-voice-cancel" disabled={busy} onClick={() => void act("book", "stop")}>{busy ? "Stopping…" : "Stop"}</button>
+          : !bookReady && <button type="button" className="audiobook-voice-cancel" disabled={busy} onClick={() => void act("book", "start")}>{busy ? "Starting…" : book.completed ? "Resume" : "Save book"}</button>}
       </section>}
+      {book?.error && !bookRunning && <p className="audiobook-error" role="alert">{book.error}</p>}
     </>}
   </AudiobookDialog>;
 }
