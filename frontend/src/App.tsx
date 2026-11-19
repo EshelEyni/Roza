@@ -16,6 +16,7 @@ import { Route as TypeOfRoute } from "./types/app";
 import { AppHeader } from "./components/App/AppHeader";
 import { useUpdateUser } from "./hooks/reactQuery/update/useUpdateUser";
 import { safeReturnPath } from "./services/readerMode";
+import { DEFAULT_FAVICON, READER_FAVICON, useFavicon } from "./hooks/useFavicon";
 
 const PageNotFound = lazy(() => import("./pages/PageNotFound"));
 
@@ -55,6 +56,9 @@ function App() {
   const location = useLocation();
   const isReaderOpen = !!useMatch("/reader/:id");
   const isStudioOpen = location.pathname.startsWith("/book-edit/");
+  const isReadingRoom =
+    location.pathname === "/reader" || location.pathname.startsWith("/reader/");
+  useFavicon(isReadingRoom ? READER_FAVICON : DEFAULT_FAVICON);
   const isWritingArea =
     isStudioOpen ||
     location.pathname === "/books" ||
