@@ -107,7 +107,7 @@ export function useEpubNavigation(
   function onNavigate(target: string, keepPanel = false) {
     if (!keepPanel) closePanel();
     const chapter = keepPanel && epubRef.current ? readerChapters(epubRef.current).find(chapter => chapter.href === target) : null;
-    void navigateTo(chapter?.cfi || target).catch(() => setError(t("reader.navigationError")));
+    return navigateTo(chapter?.cfi || target).catch(() => setError(t("reader.navigationError")));
   }
 
   function onAnnotationNavigate(target: string) {

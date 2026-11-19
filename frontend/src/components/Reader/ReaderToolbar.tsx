@@ -50,7 +50,7 @@ export function ReaderToolbar({
   const { t } = useTranslation();
   const [goToPageOpen, setGoToPageOpen] = useState(false);
   const sentenceEntry = useRef<string | undefined>();
-  if (sentenceMode?.active) return <header className="reader-toolbar reader-toolbar-sentence"><span><ScanLineIcon />Sentence Mode</span><span className="reader-toolbar-sentence-actions"><button className={"reader-icon-button " + (panel === "documents" ? "is-active" : "")} aria-label={t("reader.documents.title")} title={t("reader.documents.title")} aria-expanded={panel === "documents"} onClick={() => togglePanel("documents")}><FiFileText /></button><button className="reader-icon-button" aria-label="Close sentence mode" disabled={sentenceMode.busy} onClick={() => void sentenceMode.toggle()}><FiX /></button></span></header>;
+  if (sentenceMode?.active) return <header className="reader-toolbar reader-toolbar-sentence"><span><ScanLineIcon />Sentence Mode</span><span className="reader-toolbar-sentence-actions"><button className="reader-icon-button" aria-label="Close sentence mode" disabled={sentenceMode.busy} onClick={() => void sentenceMode.toggle()}><FiX /></button></span></header>;
   if (rsvp?.active)
     return (
       <header className="reader-toolbar reader-toolbar-rsvp">

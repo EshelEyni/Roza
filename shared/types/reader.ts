@@ -15,11 +15,16 @@ export type ReaderPreferences = {
   pageNumbering?: "screen" | "publisher";
 };
 
+/** Reading mode shown in the reader; also the `?mode=` URL value. */
+export type ReaderMode = "page" | "sentence" | "audiobook";
+
 export type ReaderState = {
   location: string;
   progress: number;
   savedAt: number;
   preferences: ReaderPreferences;
+  /** Last-used reading mode for this user and book. Older saves omit it. */
+  mode?: ReaderMode;
 };
 
 export type ReaderAudiobookNarrator = {

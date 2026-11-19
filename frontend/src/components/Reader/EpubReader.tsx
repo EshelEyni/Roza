@@ -15,6 +15,8 @@ import { ReaderViewport } from "./ReaderViewport";
 import { ReaderNotices } from "./ReaderNotices";
 import { ReaderFooter } from "./ReaderFooter";
 import { ReaderAudiobookHost } from "./Audiobook/ReaderAudiobookHost";
+import { useReaderModeSync } from "../../hooks/reader/useReaderModeSync";
+import { readerDestinationKey } from "../../services/readerMode";
 
 export function EpubReader({
   book,
@@ -26,17 +28,31 @@ export function EpubReader({
   const reader = useEpubReader(book, userId);
   const [params] = useSearchParams();
   const destination = useRef("");
+  // Mode restoration waits for a URL destination so it starts from the requested position.
+  const [destinationSettled, setDestinationSettled] = useState(() => !params.get("flag") && !params.get("location"));
+  useEffect(() => {
+    if (!destinationSettled && !reader.flags.ready && reader.flags.message) setDestinationSettled(true);
+  }, [destinationSettled, reader.flags.ready, reader.flags.message]);
   useEffect(() => {
     if (reader.loading || !reader.flags.ready) return;
     const flag = reader.flags.items.find(f => f.id === params.get("flag"));
     const location = flag?.cfi || params.get("location");
-    if (!location || destination.current === params.toString()) return;
-    destination.current = params.toString();
+    // The mode parameter is reader UI state, not a destination: changing it must not re-navigate.
+    const key = readerDestinationKey(params.toString());
+    if (!location || destination.current === key) { setDestinationSettled(true); return; }
+    destination.current = key;
     if (flag) {
-      void reader.onPassageNavigate(flag);
+      void reader.onPassageNavigate(flag).finally(() => setDestinationSettled(true));
       if (params.get("action") === "ai" && flag.text.length <= readerAiLimits.passage) { reader.chat.start(flag); reader.togglePanel("chat"); }
-    } else if (location.startsWith("epubcfi(")) reader.onNavigate(location);
+    } else if (location.startsWith("epubcfi(")) {
+      void Promise.resolve(reader.onNavigate(location)).finally(() => setDestinationSettled(true));
+    } else setDestinationSettled(true);
   }, [reader, params]);
+  // Sentence Mode saves its exact sentence as the location. Capture it before page rendering
+  // reports the page start; a URL destination supplies its own position instead.
+  const [resumeCfi] = useState(() =>
+    params.get("flag") || params.get("location") ? undefined : reader.state.location || undefined);
+  useReaderModeSync(reader, !reader.loading && !reader.error && destinationSettled, resumeCfi);
   const [copyToast, setCopyToast] = useState<{ message: string; id: number } | null>(null);
   useEffect(() => {
     if (!copyToast) return;

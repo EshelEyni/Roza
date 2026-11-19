@@ -15,6 +15,7 @@ import { AuthGuard } from "./guards/AuthGuard";
 import { Route as TypeOfRoute } from "./types/app";
 import { AppHeader } from "./components/App/AppHeader";
 import { useUpdateUser } from "./hooks/reactQuery/update/useUpdateUser";
+import { safeReturnPath } from "./services/readerMode";
 
 const PageNotFound = lazy(() => import("./pages/PageNotFound"));
 
@@ -80,16 +81,23 @@ function App() {
     document.documentElement.lang = i18n.language;
   }, [i18n.language]);
 
+  const authReturnPath = safeReturnPath(
+    (location.state as { from?: unknown } | null)?.from,
+  );
   useEffect(() => {
-    if (
-      !loggedInUser ||
-      !loggedInUser?.lastVisitedPage ||
-      isNavigatedToLastPage
-    )
+    if (!loggedInUser) return;
+    // A page that required login wins over the last visited page, query included.
+    if (authReturnPath) {
+      navigate(authReturnPath, { replace: true });
+      setIsNavigatedToLastPage(true);
       return;
-    navigate(loggedInUser.lastVisitedPage);
+    }
+    if (!loggedInUser.lastVisitedPage || isNavigatedToLastPage) return;
+    // Re-navigating to the current path would drop its query (e.g. ?mode=) on refresh.
+    if (loggedInUser.lastVisitedPage !== location.pathname)
+      navigate(loggedInUser.lastVisitedPage);
     setIsNavigatedToLastPage(true);
-  }, [navigate, loggedInUser, updateUser, isNavigatedToLastPage]);
+  }, [navigate, loggedInUser, updateUser, isNavigatedToLastPage, authReturnPath, location.pathname]);
 
   useEffect(() => {
     if (!loggedInUser || loggedInUser?.lastVisitedPage === location.pathname)

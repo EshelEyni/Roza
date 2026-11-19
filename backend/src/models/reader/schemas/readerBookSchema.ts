@@ -25,6 +25,7 @@ const readerBookSchema = new Schema<IReaderBook>(
       location: { type: String, default: "" },
       progress: { type: Number, default: 0, min: 0, max: 1 },
       savedAt: { type: Number, default: 0 },
+      mode: { type: String, enum: ["page", "sentence", "audiobook"] },
       preferences: {
         fontSize: { type: Number, default: 20, min: 14, max: 56 },
         fontFamily: { type: String, enum: ["serif", "sans-serif"], default: "serif" },

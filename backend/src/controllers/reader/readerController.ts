@@ -11,7 +11,7 @@ import {
   removeReaderFile,
 } from "../../services/reader/readerStorageService";
 import { permanentlyDeleteReaderBook } from "../../services/reader/readerBookManagementService";
-import { defaultReaderPreferences } from "../../services/reader/readerUtilService";
+import { defaultReaderPreferences, readerModes } from "../../services/reader/readerUtilService";
 
 const getReaderAccess = asyncErrorCatcher(async (_req: Request, res: Response) => {
   res.json({ status: "success", data: { enabled: isReaderEnabled(getLoggedInUserIdFromReq()) } });
@@ -154,7 +154,7 @@ const getReaderFile = asyncErrorCatcher(async (req: Request, res: Response) => {
 
 const updateReaderState = asyncErrorCatcher(async (req: Request, res: Response) => {
   const book = await findReaderBook(req);
-  const { location, progress, preferences, savedAt } = req.body;
+  const { location, progress, preferences, savedAt, mode } = req.body;
   if (
     typeof location !== "string" ||
     location.length > 4096 ||
@@ -167,6 +167,8 @@ const updateReaderState = asyncErrorCatcher(async (req: Request, res: Response) 
     savedAt <= 0
   )
     throw new AppError("Invalid reading position.", 400);
+  if (mode !== undefined && !readerModes.includes(mode))
+    throw new AppError("Invalid reading mode.", 400);
   if (
     !preferences ||
     typeof preferences !== "object" ||
@@ -209,7 +211,7 @@ const updateReaderState = asyncErrorCatcher(async (req: Request, res: Response) 
       userId: getLoggedInUserIdFromReq(),
       $or: [{ "state.savedAt": { $lte: savedAt } }, { "state.savedAt": { $exists: false } }],
     },
-    { $set: { state: { location, progress, savedAt, preferences: safePreferences } } },
+    { $set: { state: { location, progress, savedAt, preferences: safePreferences, ...(mode ? { mode } : {}) } } },
     { new: true, runValidators: true },
   );
   res.json({ status: "success", data: updated?.state || book.state });

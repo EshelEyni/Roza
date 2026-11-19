@@ -235,6 +235,30 @@ describe("Reader access and isolation", () => {
     expect(ReaderBookModel.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
+  it.each(["page", "sentence", "audiobook"])("persists reading mode %s", async mode => {
+    (ReaderBookModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue({ _id: id }) });
+    (ReaderBookModel.findOneAndUpdate as jest.Mock).mockResolvedValue({ state: {} });
+    const response = await request(app).patch("/api/reader/" + id + "/state").set("Authorization", "test")
+      .send({ location: "", progress: 0, savedAt: Date.now(), preferences: defaultReaderPreferences, mode });
+    expect(response.status).toBe(200);
+    expect((ReaderBookModel.findOneAndUpdate as jest.Mock).mock.calls[0][1].$set.state.mode).toBe(mode);
+  });
+
+  it("keeps older clients without a mode and rejects unknown modes", async () => {
+    (ReaderBookModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue({ _id: id }) });
+    (ReaderBookModel.findOneAndUpdate as jest.Mock).mockResolvedValue({ state: {} });
+    const state = { location: "", progress: 0, savedAt: Date.now(), preferences: defaultReaderPreferences };
+    const legacy = await request(app).patch("/api/reader/" + id + "/state").set("Authorization", "test").send(state);
+    expect(legacy.status).toBe(200);
+    expect((ReaderBookModel.findOneAndUpdate as jest.Mock).mock.calls[0][1].$set.state).not.toHaveProperty("mode");
+    (ReaderBookModel.findOneAndUpdate as jest.Mock).mockClear();
+    for (const mode of ["rsvp", "", 1, null]) {
+      const rejected = await request(app).patch("/api/reader/" + id + "/state").set("Authorization", "test").send({ ...state, mode });
+      expect(rejected.status).toBe(400);
+    }
+    expect(ReaderBookModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   it("rejects unsupported page numbering", async () => {
     (ReaderBookModel.findOne as jest.Mock).mockReturnValue({ select: jest.fn().mockResolvedValue({ _id: id }) });
     const response = await request(app).patch("/api/reader/" + id + "/state")
