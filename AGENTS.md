@@ -6,10 +6,6 @@ CP and CCP authorize committing and pushing only; they do not authorize producti
 
 A completed deployment does not grant standing permission for future deployments. Read-only production status and health checks are allowed when relevant to the task.
 
-# Pending work reminder
-
-At the start of the next session working on this project, remind the user that the 75 MiB EPUB upload changes are saved on branch codex/epub-upload-75mib and have not been merged or deployed. The production nginx upload limit also needs a separately authorized update before larger uploads can work in production. Do not merge or deploy this branch without the user's instruction.
-
 
 # Backend/shared module boundary — recurring ERR_REQUIRE_ESM
 
