@@ -13,8 +13,9 @@ const FORMATS: { id: KokoroExportFormat; label: string; detail: string }[] = [
 ];
 
 /** Export a chapter or the whole book as one audio file with chapter markers (from RozaReader). */
-export function AudiobookExportDialog({ audio, bookId, chapterTitle, script, onChooseVoice, onClose }: {
+export function AudiobookExportDialog({ audio, bookId, chapterTitle, script, chapterOnly = false, onChooseVoice, onClose }: {
   audio: ReaderAudiobook; bookId?: string; chapterTitle: string; script: BookScriptState;
+  chapterOnly?: boolean;
   onChooseVoice: () => void; onClose: () => void;
 }) {
   const api = desktopKokoro();
@@ -66,7 +67,7 @@ export function AudiobookExportDialog({ audio, bookId, chapterTitle, script, onC
       <div className="audiobook-voice-section-heading">WHAT TO EXPORT</div>
       <div className="audiobook-choice-row" role="radiogroup" aria-label="What to export">
         <button type="button" role="radio" aria-checked={scope === "chapter"} className={"audiobook-voice-filter" + (scope === "chapter" ? " is-active" : "")} disabled={running} onClick={() => setScope("chapter")}>This chapter · {chapterTitle}</button>
-        <button type="button" role="radio" aria-checked={scope === "book"} className={"audiobook-voice-filter" + (scope === "book" ? " is-active" : "")} disabled={running} onClick={() => setScope("book")}>Whole book</button>
+        {!chapterOnly && <button type="button" role="radio" aria-checked={scope === "book"} className={"audiobook-voice-filter" + (scope === "book" ? " is-active" : "")} disabled={running} onClick={() => setScope("book")}>Whole book</button>}
       </div>
       <div className="audiobook-voice-section-heading">FORMAT</div>
       <div className="audiobook-voice-options" role="radiogroup" aria-label="Format">

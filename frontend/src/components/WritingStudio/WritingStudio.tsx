@@ -206,6 +206,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const [draftId, setDraftId] = useState("");
   const [visitedDrafts, setVisitedDrafts] = useState<string[]>([]);
   const [mobilePane, setMobilePane] = useState("draft");
+  const [audiobookHeader, setAudiobookHeader] = useState<HTMLDivElement | null>(null);
   const [drawer, setDrawer] = useState(false);
   const [preview, setPreview] = useState(false);
   const [notes, setNotes] = useState(true);
@@ -241,7 +242,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const activeDraft = chapter?.drafts?.find(d => d.id === draftId);
   function openDraft(id: string) {
     setVisitedDrafts(ids => ids.includes(id) ? ids : [...ids, id]);
-    setDraftId(id); setSummary(false); setChapterBible(false); setDrawer(false); setPreview(false); setMobilePane("draft");
+    setDraftId(id); setSummary(false); setChapterBible(false); setDrawer(false); setMobilePane("draft");
   }
   function editChapter(change: (chapter: Chapter) => Chapter, chapterId = chapter?.id) {
     if (!chapterId) return;
@@ -250,6 +251,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   function addDraft(blank = false) {
     if (!chapter || store.recovery) return;
     const draft = createChapterDraft(chapter, `Draft ${(chapter.drafts?.length || 0) + 1}`, blank);
+    setPreview(false);
     editChapter(c => ({ ...c, drafts: [...(c.drafts || []), draft] })); openDraft(draft.id);
   }
   function aiDraft(text: SlateCustomElement[], annotations: ChapterAnnotation[], name: string) {
@@ -289,7 +291,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     : "WRITING STUDIO";
   function showView(next: typeof view) {
     if (next === "bible") setDraftId("");
-    if (next === "read") setDrawer(false);
+    if (next === "read") {
+      setDrawer(false);
+      if (activeDraft) setMobilePane("draft");
+    }
     setChapterBible(next === "bible");
     setSummary(next === "summary");
     setPreview(next === "read");
@@ -490,7 +495,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               </button>
               <button
                 aria-pressed={view === "read"}
-                disabled={!!activeDraft}
                 onClick={() => showView("read")}
               >
                 Read
@@ -952,7 +956,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                         aiEditing={chapter ? { bookId: book.id, chapterId: chapter.id, annotations: chapter.annotations, onDraft: aiDraft } : undefined}
                         readOnly={preview || !!store.recovery || !!activeDraft}
                         annotationsReadOnly={!!store.recovery || !!activeDraft}
-                        reading={preview}
+                        reading={preview && !activeDraft}
+                        audiobookHeader={audiobookHeader}
+                        audiobook={chapter && view === "read" && pageControls && !activeDraft ? { id: chapter.id, title: chapter.name } : undefined}
                         annotations={
                           item.type === "chapters"
                             ? item.annotations || []
@@ -986,7 +992,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   </>
                 )}
               </article>
-              {chapter && chapter.drafts?.filter(d => visitedDrafts.includes(d.id)).map(draft => <DraftPane key={`${chapter.id}:${draft.id}:${restoreKey}`} chapter={chapter} draft={draft} active={draft.id === activeDraft?.id} readOnly={!!store.recovery}
+              {chapter && chapter.drafts?.filter(d => visitedDrafts.includes(d.id)).map(draft => <DraftPane key={`${chapter.id}:${draft.id}:${restoreKey}`} chapter={chapter} draft={draft} active={draft.id === activeDraft?.id} readOnly={!!store.recovery || preview}
+                reading={draft.id === activeDraft?.id && view === "read" && pageControls} audiobookKey={mobilePane} audiobookHeader={audiobookHeader}
                 onSelect={openDraft} onClose={() => setDraftId("")} onPromote={() => void promoteDraft()} onDelete={() => void deleteDraft()}
                 onChange={change => editChapter(c => changeChapterDraft(c, draft.id, change))}
                 aiEditing={{ bookId: book.id, chapterId: chapter.id, onDraft: aiDraft }} />)}

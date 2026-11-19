@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
+import { audiobookWords, type AudiobookSection } from "../../services/readerTts";
 import { readerCaretRange } from "../../services/readerCaretRange";
 import { paintNativeHighlight } from "../../services/readerNativeHighlight";
 import { closestSentenceWord, groupSentenceWordRects } from "../../services/readerSentenceGeometry";
@@ -51,6 +52,37 @@ function sentences(data: ReadingBlock) {
   );
 }
 
+export function manuscriptNarration(editable: HTMLElement, selection?: Range) {
+  const blocks = new Set(Array.from(editable.querySelectorAll(stringSelector),
+    leaf => leaf.closest(blockSelector)));
+  const ranges: Range[] = [];
+  const items: AudiobookSection["sentences"] = [];
+  let totalWords = 0;
+  let start = 0;
+  let paragraph = 0;
+  for (const block of blocks) {
+    if (!block) continue;
+    const data = readBlock(block);
+    const part = data.parts.find(item => item.node === selection?.startContainer);
+    const offset = part && selection ? part.start + selection.startOffset : undefined;
+    for (const span of sentences(data)) {
+      const text = data.text.slice(span.start, span.end);
+      const words = audiobookWords(text);
+      if (!words.length) continue;
+      if (offset !== undefined && span.start <= offset && offset < span.end) start = items.length;
+      ranges.push(data.rangeFor(span));
+      items.push({ text, words, paragraph, startWord: totalWords, cfi: String(items.length) });
+      totalWords += words.length;
+    }
+    paragraph++;
+  }
+  const section: AudiobookSection = {
+    section: 0, title: "", sentences: items, totalWords, start, offset: 0,
+    previous: null, next: null,
+  };
+  return { section, ranges, editable };
+}
+
 function sentenceWordIndex(data: ReadingBlock, direction: number, currentIndex?: number) {
   const spans = sentences(data);
   const word = currentIndex === undefined ? undefined : data.words[currentIndex];
@@ -92,6 +124,30 @@ function coveredTop(editable: Element, view: { top: number; bottom: number }, x:
     top = Math.min(bottom, view.bottom);
   }
   return top;
+}
+
+export function followManuscriptNarration(editable: HTMLElement, range: Range) {
+  if (!editable.contains(range.commonAncestorContainer)) return;
+  const scroller = scrollParent(editable);
+  const rect = range.getBoundingClientRect();
+  if (scroller && rect.height) {
+    const doc = editable.ownerDocument;
+    const box = scroller === doc.scrollingElement
+      ? { top: 0, left: 0, right: doc.documentElement.clientWidth }
+      : scroller.getBoundingClientRect();
+    const bottom = Math.min(doc.documentElement.clientHeight, box.top + scroller.clientTop + scroller.clientHeight);
+    const x = Math.min(Math.max((rect.left + rect.right) / 2, box.left + 1), box.right - 1);
+    const top = coveredTop(editable, { top: Math.max(0, box.top + scroller.clientTop), bottom }, x);
+    const player = doc.querySelector(".ws-floating-audio")?.getBoundingClientRect();
+    const overlapsPlayer = player && rect.left < player.right && rect.right > player.left &&
+      rect.top < player.bottom && rect.bottom > player.top;
+    if (overlapsPlayer && rect.height + 8 <= player.top - top) {
+      scroller.scrollBy(0, rect.bottom - player.top + 8);
+    } else if (rect.top < top || rect.bottom > bottom) {
+      scroller.scrollBy(0, rect.top - top);
+    }
+  }
+  return paintNativeHighlight(range, "var(--ws-sentence-highlight)", "var(--ws-sentence-highlight-text)", 2);
 }
 
 function precedingLineTop(editable: HTMLElement, sentence: Range, firstRect: DOMRect) {
@@ -344,7 +400,7 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     if (!data) return;
     selection?.removeAllRanges();
     const word = mark(data, index, !bySentence).getBoundingClientRect();
-    const scroller = event.currentTarget.closest(".ws-writing");
+    const scroller = scrollParent(event.currentTarget);
     if (!scroller) return;
     const bounds = scroller.getBoundingClientRect();
     if (word.top < bounds.top) scroller.scrollBy(0, word.top - bounds.top);

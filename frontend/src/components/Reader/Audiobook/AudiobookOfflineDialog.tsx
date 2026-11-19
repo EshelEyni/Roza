@@ -18,8 +18,9 @@ const timeLeft = (seconds: number) => {
   return "about " + hours + " h" + (rest ? " " + rest + " min" : "");
 };
 
-export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, onPlay, onChooseVoice, onClose }: {
+export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, chapterOnly = false, onPlay, onChooseVoice, onClose }: {
   audio: ReaderAudiobook; bookId?: string; chapterTitle: string; script: BookScriptState;
+  chapterOnly?: boolean;
   onPlay: () => void; onChooseVoice: () => void; onClose: () => void;
 }) {
   const api = desktopKokoro();
@@ -59,12 +60,12 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, on
       try {
         const [nextChapter, nextBook] = await Promise.all([
           api!.offline({ bookId: bookId!, voice: audio.localVoice, section, action: "get" }),
-          api!.offline({ bookId: bookId!, voice: audio.localVoice, section: null, action: "get" }),
+          chapterOnly ? null : api!.offline({ bookId: bookId!, voice: audio.localVoice, section: null, action: "get" }),
         ]);
         if (cancelled) return;
         setChapter(nextChapter); setBook(nextBook); setError("");
         // The whole-book save fills this chapter too, so both are followed while either runs.
-        if (nextChapter.state !== "downloading" && nextBook.state !== "downloading") return;
+        if (nextChapter.state !== "downloading" && nextBook?.state !== "downloading") return;
       } catch (cause) {
         if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
       }
@@ -72,7 +73,7 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, on
     };
     void poll();
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [usable, script.state, section, audio.localVoice, bookId, api, chapter?.state, book?.state]);
+  }, [usable, script.state, section, audio.localVoice, bookId, api, chapterOnly, chapter?.state, book?.state]);
 
   const act = async (scope: "chapter" | "book", action: "start" | "stop" | "delete") => {
     if (!api || !bookId) return;
@@ -96,6 +97,7 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, on
   const bookRunning = book?.state === "downloading";
   const bookPercent = book?.total ? Math.floor(book.completed / book.total * 100) : 0;
 
+  const savedAudio = chapterOnly ? chapter : book;
   const voiceName = voice?.name || audio.localVoice;
   const scriptReady = script.state === "ready";
   const estimate = (status: KokoroOffline | null, active: boolean) => {
@@ -112,15 +114,15 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, on
 
   return <AudiobookDialog eyebrow="LOCAL VOICES" title="Save for offline" onClose={onClose}
     description={usable ? `${chapterTitle} · read by ${voiceName}` : undefined}
-    footer={usable && !!book?.completed && <>
+    footer={usable && !!savedAudio?.completed && <>
       {confirmRemove
-        ? <p className="audiobook-offline-footer-text">Remove all saved audio for {voiceName} in this book?</p>
+        ? <p className="audiobook-offline-footer-text">Remove all saved audio for {voiceName} in this {chapterOnly ? "chapter" : "book"}?</p>
         : <p className="audiobook-offline-footer-text">Saved audio for {voiceName} stays on this computer.</p>}
       <div className="audiobook-offline-footer-actions">
         {confirmRemove
           ? <>
             <button type="button" className="audiobook-link-button" disabled={busy} onClick={() => setConfirmRemove(false)}>Keep it</button>
-            <button type="button" className="audiobook-offline-remove" disabled={busy} onClick={() => void removeAll()}><FiTrash2 aria-hidden="true" />{busy ? "Removing…" : "Remove"}</button>
+            <button type="button" className="audiobook-offline-remove" disabled={busy} onClick={() => void (chapterOnly ? act("chapter", "delete") : removeAll())}><FiTrash2 aria-hidden="true" />{busy ? "Removing…" : "Remove"}</button>
           </>
           : <button type="button" className="audiobook-offline-remove" disabled={busy} onClick={() => setConfirmRemove(true)}><FiTrash2 aria-hidden="true" />Remove saved audio</button>}
       </div>
@@ -129,10 +131,10 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, on
     {usable && <>
       <p className="audiobook-voice-help audiobook-offline-intro">Listen without internet, with word highlighting. Keep Roza open while saving.</p>
       {script.state === "preparing" && <div className="audiobook-progress" role="status">
-        <div className="audiobook-progress-status"><span>Preparing the book’s text…</span><span>{script.done} / {script.total || "…"} sections</span></div>
+        <div className="audiobook-progress-status"><span>Preparing the {chapterOnly ? "chapter’s" : "book’s"} text…</span><span>{script.done} / {script.total || "…"} sections</span></div>
         <progress max={Math.max(script.total, 1)} value={script.done} />
       </div>}
-      {script.state === "error" && <p className="audiobook-error" role="alert">The book could not be prepared: {script.error}</p>}
+      {script.state === "error" && <p className="audiobook-error" role="alert">The {chapterOnly ? "chapter" : "book"} could not be prepared: {script.error}</p>}
 
       {chapter && <section className="audiobook-offline-row" aria-label="This chapter">
         <div className="audiobook-offline-row-main" role="status" aria-live="polite">

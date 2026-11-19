@@ -10,6 +10,9 @@ export function DraftPane({
   draft,
   active,
   readOnly,
+  reading,
+  audiobookKey,
+  audiobookHeader,
   onSelect,
   onClose,
   onPromote,
@@ -21,6 +24,9 @@ export function DraftPane({
   chapter: Chapter;
   draft: ChapterDraft;
   readOnly: boolean;
+  reading: boolean;
+  audiobookKey: string;
+  audiobookHeader: HTMLDivElement | null;
   onSelect: (id: string) => void;
   onClose: () => void;
   onPromote: () => void;
@@ -98,6 +104,10 @@ export function DraftPane({
         </div>
       )}
       <ManuscriptEditor
+        reading={reading}
+        audiobook={reading ? { id: draft.id, title: `${chapter.name} · ${draft.name}` } : undefined}
+        audiobookKey={audiobookKey}
+        audiobookHeader={audiobookHeader}
         value={draft.text}
         format={draft.format || chapter.format}
         label="Draft manuscript"

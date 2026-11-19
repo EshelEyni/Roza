@@ -1,4 +1,5 @@
 import { AiEdit, AiEditingContext } from "./AiEdit";
+import { ManuscriptAudiobook } from "./ManuscriptAudiobook";
 import { useManuscriptReadingMarks } from "./useManuscriptReadingMarks";
 import { ScreenplayToolbar } from "./ScreenplayToolbar";
 import {
@@ -112,6 +113,9 @@ function Toolbar({
   );
 }
 export function ManuscriptEditor({
+  audiobook,
+  audiobookKey,
+  audiobookHeader,
   value,
   format = "prose",
   onChange,
@@ -127,6 +131,9 @@ export function ManuscriptEditor({
   aiEditing,
 }: {
   aiEditing?: AiEditingContext;
+  audiobook?: { id: string; title: string };
+  audiobookKey?: string;
+  audiobookHeader?: HTMLDivElement | null;
   value: SlateCustomElement[];
   format?: "prose" | "screenplay";
   onChange: (
@@ -297,6 +304,9 @@ export function ManuscriptEditor({
           }
           onAddNote={canAddNote && (showAnnotations || onRevealAnnotations) ? () => addSelectionNote() : undefined}
         />
+      )}
+      {reading && audiobook && audiobookHeader && (
+        <ManuscriptAudiobook key={audiobookKey} chapter={audiobook} header={audiobookHeader} root={readingMarks.root} markedSentence={readingMarks.markedSentence} />
       )}
       {reading && canAddNote && (
         <button
