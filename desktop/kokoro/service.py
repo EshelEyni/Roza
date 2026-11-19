@@ -44,6 +44,22 @@ if sys.platform == "win32":
 
     EspeakAPI.__init__ = _windows_espeak_init
 
+# eSpeak keeps only about 160 characters of its data path and otherwise falls back, without saying so,
+# to a path baked in when it was built. On a Mac the absolute path into the runtime's .venv can be that
+# long, so eSpeak gets it relative to the runtime folder, which is this service's working directory.
+else:
+    from phonemizer.backend.espeak.api import EspeakAPI
+
+    _espeak_init = EspeakAPI.__init__
+
+    def _short_path_espeak_init(self, library, data_path):
+        if data_path is not None:
+            relative = os.path.relpath(data_path)
+            data_path = relative if len(relative) < len(str(data_path)) else data_path
+        _espeak_init(self, library, data_path)
+
+    EspeakAPI.__init__ = _short_path_espeak_init
+
 REPO_ID = "hexgrad/Kokoro-82M"
 SAMPLE_RATE = 24000
 # Kokoro pads each clip with ~0.3 s of silence before and ~0.5 s after. Sentences play back to back,
