@@ -195,7 +195,6 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
               onClick={() => { audio.goToSection(chapter.section); setContentsOpen(false); }}>
               <span className="audiobook-contents-number">{position + 1}</span><span>{chapter.title}</span>
             </button>)}
-            <p className="audiobook-shortcuts">Space play · ← → sentence · ⇧← ⇧→ chapter · + − text size</p>
           </div>}
         </div>
         <div className="audiobook-popover-anchor audiobook-wide-only" ref={fontRef}>
