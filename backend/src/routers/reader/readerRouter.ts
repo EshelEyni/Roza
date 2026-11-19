@@ -35,6 +35,13 @@ import { lookupReaderDictionary } from "../../controllers/reader/readerDictionar
 import { getKeyboardSettings, updateKeyboardSettings } from "../../controllers/reader/readerKeyboardSettingsController";
 
 import { getProgressSettings, updateProgressSettings } from "../../controllers/reader/readerProgressSettingsController";
+import {
+  listDocuments,
+  getDocument,
+  createDocument,
+  updateDocument,
+  deleteDocument,
+} from "../../controllers/reader/readerDocumentController";
 import { getReview, listFlags, saveFlag, updateFlag, translateFlag, updateVocabularyReview } from "../../controllers/reader/readerReviewController";
 
 const router = express.Router();
@@ -80,6 +87,11 @@ router.post(
 router.get("/:id/annotations", listAnnotations);
 router.put("/:id/annotations", saveAnnotation);
 router.delete("/:id/annotations/:annotationId", deleteAnnotation);
+router.get("/:id/documents", listDocuments);
+router.post("/:id/documents", createDocument);
+router.get("/:id/documents/:documentId", getDocument);
+router.patch("/:id/documents/:documentId", updateDocument);
+router.delete("/:id/documents/:documentId", deleteDocument);
 router.get("/:id/conversations", listConversations);
 router.post("/:id/conversations", createConversation);
 router.get("/:id/conversations/:conversationId", getConversation);

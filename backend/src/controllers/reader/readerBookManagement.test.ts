@@ -6,6 +6,7 @@ import { ReaderBookModel } from "../../models/reader/readerBookModel";
 import { permanentlyDeleteReaderBook } from "../../services/reader/readerBookManagementService";
 import { ReaderAnnotationModel } from "../../models/reader/readerAnnotationModel";
 import { ReaderFlagModel } from "../../models/reader/readerFlagModel";
+import { ReaderDocumentModel } from "../../models/reader/readerDocumentModel";
 import { ReaderConversationModel } from "../../models/reader/readerConversationModel";
 import {
   ReaderLookupModel,
@@ -49,6 +50,7 @@ beforeEach(() => {
   for (const model of [
     ReaderAnnotationModel,
     ReaderFlagModel,
+    ReaderDocumentModel,
     ReaderConversationModel,
     ReaderLookupModel,
   ] as any[])
@@ -143,6 +145,7 @@ test("deletes owned data and unreferenced files in one transaction", async () =>
   for (const model of [
     ReaderAnnotationModel,
     ReaderFlagModel,
+    ReaderDocumentModel,
     ReaderConversationModel,
     ReaderLookupModel,
   ])

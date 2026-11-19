@@ -128,6 +128,8 @@ export function EpubReader({
           state={reader.state}
           updateState={reader.updateState}
           publisherPagesAvailable={reader.publisherPagesAvailable}
+          bookId={book.id}
+          userId={userId}
         />}
         <ReaderViewport rsvpActive={reader.rsvp.active || reader.sentenceMode.active}
           width={reader.state.preferences.width}

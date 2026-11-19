@@ -31,6 +31,15 @@ function requestSanitizer(req: Request, res: Response, next: NextFunction) {
   if (req.method === "POST" && /^\/api\/book\/[a-f0-9]{24}\/chapters\/[a-f0-9]{24}\/ai-edit\/?$/i.test(req.path)) {
     return next();
   }
+  // Reader documents are rich text rendered by Slate as text nodes, never as
+  // HTML, and are rebuilt from an allow-list by readerDocumentContent. HTML
+  // escaping would corrupt characters such as "&" and "<" on every autosave.
+  if (
+    (req.method === "POST" || req.method === "PATCH") &&
+    /^\/api\/reader\/[a-f0-9]{24}\/documents(?:\/[a-f0-9]{24})?\/?$/i.test(req.path)
+  ) {
+    return next();
+  }
   const { body } = req;
   const { params } = req;
   const { query } = req;
