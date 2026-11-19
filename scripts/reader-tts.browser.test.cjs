@@ -692,6 +692,17 @@ test(
           await page.evaluate(()=>window.audios.find(a=>!a.paused).dispatchEvent(new Event("ended")));
           await page.waitForFunction(()=>document.querySelector(".audiobook-sentence.is-active")?.textContent.startsWith("The first light"));
 
+          // Mini player: narration keeps going in the mini player; it can reopen the full view.
+          await mode.getByRole("button",{name:"Mini player"}).click();
+          await mode.waitFor({state:"detached"});
+          const mini=page.getByRole("group",{name:"Audiobook player"});
+          await mini.getByRole("button",{name:"Pause narration"}).waitFor();
+          await mini.getByRole("button",{name:"Pause narration"}).click();
+          await mini.getByRole("button",{name:"Play narration"}).waitFor();
+          await mini.getByRole("button",{name:/^Open Audiobook Mode/}).click();
+          await mode.getByRole("heading",{name:"A Quiet Morning"}).waitFor();
+          await page.waitForFunction(()=>document.querySelector(".audiobook-sentence.is-active")?.textContent.startsWith("The first light"));
+
           // Save offline prepares the whole book's text once, then saves with the chosen voice.
           await mode.getByRole("button",{name:"Save offline"}).click();
           const offline=page.getByRole("dialog",{name:"Save for offline",exact:true});

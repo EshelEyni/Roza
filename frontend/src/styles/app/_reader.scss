@@ -2712,7 +2712,12 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 .audiobook-tool { border: 1px solid transparent; background: transparent; color: var(--ab-primary); height: 40px; padding: 0 12px; border-radius: 10px; display: inline-flex; align-items: center; gap: 7px; font-size: 13px; font-weight: 600; white-space: nowrap; }
 .audiobook-tool svg { width: 17px; height: 17px; flex-shrink: 0; }
 .audiobook-tool:hover, .audiobook-tool[aria-expanded="true"] { background: #e9dfd2; }
-.audiobook-minimize { padding-inline: 8px 12px; }
+/* Mini player: an outlined pill with a "screen with a small player" icon, set apart from X by a divider. */
+.audiobook-minimize { border-color: var(--ab-stroke); background: #f8f0e5; padding-inline: 11px 14px; }
+.audiobook-minimize:hover { background: #ede0cf; }
+.audiobook-minimize svg { width: 19px; height: 19px; fill: none; stroke: currentColor; stroke-width: 1.7; }
+.audiobook-minimize .audiobook-minimize-bar { fill: currentColor; stroke: none; }
+.audiobook-tools-divider { width: 1px; height: 24px; margin: 0 4px; background: var(--ab-stroke); flex-shrink: 0; }
 .audiobook-popover-anchor { position: relative; }
 .audiobook-popover { position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; width: min(340px, calc(100vw - 32px)); max-height: min(60dvh, 480px); overflow: auto; background: #fffdf9; border: 1px solid var(--ab-stroke); border-radius: 16px; box-shadow: 0 12px 40px #3c2b1e26; padding: 8px; color: var(--ab-ink); }
 .audiobook-popover-label { font-size: 10px; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; color: var(--ab-muted); margin: 6px 10px 8px; }

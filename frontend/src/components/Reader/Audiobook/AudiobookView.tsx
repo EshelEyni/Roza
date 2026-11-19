@@ -21,7 +21,7 @@ const readFont = () => {
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
-export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onExit }: {
+export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMinimize, onExit }: {
   audio: ReaderAudiobook; bookId?: string; bookTitle: string; chapters: AudiobookChapter[];
   script: BookScriptState; onMinimize: () => void; onExit: () => void;
 }) {
@@ -182,7 +182,13 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onEx
           <button type="button" data-tooltip="Smaller text (−)" aria-label="Smaller text" onClick={() => changeFont(-1)} disabled={fontSize === FONT_SIZES[0]}>A<sup>−</sup></button>
           <button type="button" data-tooltip="Larger text (+)" aria-label="Larger text" onClick={() => changeFont(1)} disabled={fontSize === FONT_SIZES[FONT_SIZES.length - 1]}>A<sup>+</sup></button>
         </div>
-        <button ref={closeButton} type="button" className="audiobook-close" aria-label="Exit audiobook mode" data-tooltip="Exit audiobook mode" onClick={onExit}><FiX /></button>
+        <span className="audiobook-tools-divider" aria-hidden="true" />
+        {/* Shrinks to the mini player and keeps narrating; X below stops and ends the session. */}
+        <button type="button" className="audiobook-tool audiobook-minimize" aria-label="Mini player" data-tooltip="Keep listening while you read" onClick={onMinimize}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5" /><rect className="audiobook-minimize-bar" x="11" y="13" width="7.5" height="4" rx="1.2" /></svg>
+          <span>Mini player</span>
+        </button>
+        <button ref={closeButton} type="button" className="audiobook-close" aria-label="Exit audiobook mode" data-tooltip="Stop and exit audiobook mode" onClick={onExit}><FiX /></button>
       </div>
     </header>
     <div className="audiobook-section-progress" title={percent + "% of this chapter"}><span style={{ width: percent + "%" }} /></div>
