@@ -18,6 +18,7 @@ export function readingPageDownDelta(
   rects: readonly VerticalBounds[],
   view: VerticalBounds,
   step = (view.bottom - view.top) * pageStepFraction,
+  precedingLineTop?: number,
 ): number | undefined {
   const lines = rects.filter(rect => rect.bottom > rect.top);
   if (!lines.length || view.bottom <= view.top) return undefined;
@@ -27,6 +28,9 @@ export function readingPageDownDelta(
 
   let limit: number;
   if (top >= view.top && bottom - top <= view.bottom - view.top) {
+    if (precedingLineTop !== undefined) {
+      return Math.max(0, Math.floor(precedingLineTop - view.top));
+    }
     limit = top - view.top;
   } else {
     const lastStart = Math.max(...lines.map(rect => rect.top));

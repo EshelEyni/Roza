@@ -136,7 +136,19 @@ test("reading mode keyboard: Page Down limit and sentence-only navigation", { ti
         const sentence = marks.find((mark) => mark.priority === 0)?.range;
         const word = marks.find((mark) => mark.priority === 1)?.range;
         const rects = sentence ? [...sentence.getClientRects()].filter((rect) => rect.height) : [];
+        let precedingTop;
+        if (sentence) {
+          const block = sentence.startContainer.parentElement.closest('[data-slate-node="element"]');
+          const precedingText = sentence.cloneRange();
+          precedingText.setStart(block.previousElementSibling || block, 0);
+          precedingText.setEnd(sentence.startContainer, sentence.startOffset);
+          precedingTop = Math.max(-Infinity, ...[...precedingText.getClientRects()]
+            .filter(rect => rect.width && rect.height && rect.bottom <= rects[0].top + 1 &&
+              rect.height <= rects[0].height + 1)
+            .map(rect => rect.top));
+        }
         return {
+          precedingTop,
           scrollTop: scroller.scrollTop,
           maxScroll: scroller.scrollHeight - scroller.clientHeight,
           clientHeight: scroller.clientHeight,
@@ -201,7 +213,7 @@ test("reading mode keyboard: Page Down limit and sentence-only navigation", { ti
     await page.waitForFunction((start) => document.querySelector(".ws-writing").scrollTop > start, before.scrollTop);
     assert.equal(await page.evaluate(() => window.lastPageDownPrevented), false);
 
-    // Select a wrapped sentence and place it low enough that one full step fits.
+    // Select a wrapped sentence and place it near the bottom of the pane.
     await clickWord("tide");
     before = await state();
     assert.equal(before.sentence, wrapped);
@@ -213,14 +225,8 @@ test("reading mode keyboard: Page Down limit and sentence-only navigation", { ti
     await page.keyboard.press("PageDown");
     let after = await state();
     assert.equal(await page.evaluate(() => window.lastPageDownPrevented), true);
-    assert.ok(Math.abs(after.scrollTop - before.scrollTop - before.clientHeight * 0.875) <= 1, "normal page step");
-    assert.ok(fullyVisible(after));
-
-    // The next step would overshoot: stop with the whole wrapped sentence visible at the top edge.
-    await page.keyboard.press("PageDown");
-    after = await state();
     assert.ok(fullyVisible(after), JSON.stringify(after));
-    assert.ok(after.top - after.viewTop < 1);
+    assert.ok(Math.abs(after.precedingTop - after.viewTop) <= 1);
     const atLimit = after.scrollTop;
 
     // Repeated presses at the limit keep the position, sentence and word mark.
@@ -236,8 +242,8 @@ test("reading mode keyboard: Page Down limit and sentence-only navigation", { ti
     assert.equal(after.sentence, "After the letter.");
     await page.keyboard.press("PageDown");
     after = await state();
-    assert.ok(fullyVisible(after));
-    assert.ok(after.top - after.viewTop < 1);
+    assert.ok(fullyVisible(after), JSON.stringify(after));
+    assert.ok(Math.abs(after.precedingTop - after.viewTop) <= 1);
 
     // Clearing the selection releases the limit.
     await page.keyboard.press("Escape");
@@ -260,7 +266,7 @@ test("reading mode keyboard: Page Down limit and sentence-only navigation", { ti
     await page.keyboard.press("PageDown");
     after = await state();
     assert.ok(fullyVisible(after), JSON.stringify(after));
-    assert.ok(after.top - after.viewTop < 1, "stops below the sticky cover");
+    assert.ok(Math.abs(after.precedingTop - after.viewTop) <= 1, "stops below the sticky cover");
     await editor.evaluate((element) => element.closest(".ws-writing").querySelector(".test-sticky-cover").remove());
 
     // An oversized sentence pages through but keeps its last line readable.
@@ -289,16 +295,22 @@ test("reading mode keyboard: Page Down limit and sentence-only navigation", { ti
     for (let i = 0; i < 3; i++) await page.keyboard.press("PageDown");
     after = await state();
     assert.ok(fullyVisible(after), JSON.stringify(after));
-    assert.ok(after.top - after.viewTop < 1);
+    assert.ok(Math.abs(after.precedingTop - after.viewTop) <= 1);
     await page.setViewportSize({ width: 1365, height: 900 });
 
     // Near the end of the manuscript the scroll clamps and the sentence stays visible.
     await clickWord("settled");
-    for (let i = 0; i < 3; i++) await page.keyboard.press("PageDown");
-    after = await state();
+    await placeSentenceTop(0);
+    before = await state();
+    assert.ok(fullyVisible(before), JSON.stringify(before));
+    for (let i = 0; i < 3; i++) {
+      await page.keyboard.press("PageDown");
+      after = await state();
+      assert.ok(fullyVisible(after), JSON.stringify(after));
+    }
     assert.equal(after.sentence, finalSentence);
-    assert.ok(fullyVisible(after));
-    assert.ok(after.scrollTop >= after.maxScroll - 1 || after.top - after.viewTop < 1);
+    assert.ok(fullyVisible(after), JSON.stringify(after));
+    assert.ok(after.scrollTop >= after.maxScroll - 1 || Math.abs(after.precedingTop - after.viewTop) <= 1);
 
     // Focus outside the reading surface keeps the browser's own Page Down.
     await clickWord("tide");

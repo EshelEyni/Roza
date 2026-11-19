@@ -94,7 +94,32 @@ function coveredTop(editable: Element, view: { top: number; bottom: number }, x:
   return top;
 }
 
-/** Scrolls one page toward later text without pushing the marked sentence out of view. */
+function precedingLineTop(editable: HTMLElement, sentence: Range, firstRect: DOMRect) {
+  const block = sentence.startContainer.parentElement?.closest(blockSelector);
+  if (!block) return undefined;
+  const center = (firstRect.top + firstRect.bottom) / 2;
+  const lines = readBlock(block).visualLines();
+  const current = lines.findIndex(line =>
+    Math.abs(line.centerY - center) < Math.min(line.height, firstRect.height) * 0.35,
+  );
+  if (current < 0) return undefined;
+  let preceding = lines[current - 1];
+  if (!preceding) {
+    const blocks = [...new Set(Array.from(editable.querySelectorAll(stringSelector),
+      leaf => leaf.closest(blockSelector)))];
+    for (let index = blocks.indexOf(block) - 1; index >= 0; index--) {
+      const previous = blocks[index];
+      if (!previous) continue;
+      const lastLine = readBlock(previous).visualLines().at(-1);
+      if (!lastLine) continue;
+      preceding = lastLine;
+      break;
+    }
+  }
+  return preceding && Math.min(...preceding.words.map(word => word.top));
+}
+
+/** Advances to the line before the marked sentence when that sentence fits in view. */
 function pageDownWithinSentence(editable: HTMLElement, target: EventTarget, sentence: Range) {
   if (target instanceof Element && target !== editable &&
       (target.closest("input, textarea, select, dialog, [role='dialog'], [contenteditable='true']"))) {
@@ -112,7 +137,12 @@ function pageDownWithinSentence(editable: HTMLElement, target: EventTarget, sent
   const bottom = Math.min(viewport, box.top + scroller.clientTop + scroller.clientHeight);
   const center = (Math.min(...rects.map(rect => rect.left)) + Math.max(...rects.map(rect => rect.right))) / 2;
   const x = Math.min(Math.max(center, box.left + 1), box.right - 1);
-  const delta = readingPageDownDelta(rects, { top: coveredTop(editable, { top, bottom }, x), bottom });
+  const view = { top: coveredTop(editable, { top, bottom }, x), bottom };
+  const firstRect = rects.find(rect => rect.width && rect.height);
+  const contextTop = firstRect && firstRect.top >= view.top && firstRect.top < view.bottom
+    ? precedingLineTop(editable, sentence, firstRect)
+    : undefined;
+  const delta = readingPageDownDelta(rects, view, undefined, contextTop);
   if (delta === undefined) return false;
   if (delta > 0) scroller.scrollBy(0, delta);
   return true;

@@ -23,6 +23,12 @@ test("a step that would overshoot stops with the whole sentence visible", () => 
   assert.equal(readingPageDownDelta([line(400), line(430)], view), 300);
 });
 
+test("Page Down aligns the preceding line, even beyond the regular page step", () => {
+  assert.equal(readingPageDownDelta([line(850)], view, undefined, 820), 720);
+  assert.equal(readingPageDownDelta([line(130)], view, undefined, 100), 0);
+  assert.equal(readingPageDownDelta([line(110)], view, undefined, 80), 0);
+});
+
 test("a selected sentence at the limit keeps the current position", () => {
   assert.equal(readingPageDownDelta([line(100), line(130)], view), 0);
 });
