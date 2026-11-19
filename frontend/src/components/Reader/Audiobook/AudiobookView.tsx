@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
-  FiChevronDown, FiChevronLeft, FiChevronRight, FiDownload, FiFastForward, FiList, FiPause, FiPlay, FiRewind,
+  FiChevronLeft, FiChevronRight, FiDownload, FiFastForward, FiList, FiPause, FiPlay, FiRewind,
   FiSkipBack, FiSkipForward, FiVolume2, FiVolumeX, FiWifiOff, FiX,
 } from "react-icons/fi";
 import type { AudiobookChapter } from "../../../services/readerAudiobookSource";
@@ -21,7 +21,7 @@ const readFont = () => {
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
-export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMinimize, onExit }: {
+export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onExit }: {
   audio: ReaderAudiobook; bookId?: string; bookTitle: string; chapters: AudiobookChapter[];
   script: BookScriptState; onMinimize: () => void; onExit: () => void;
 }) {
@@ -140,9 +140,6 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
   const percent = total ? Math.round(progress / Math.max(1, total) * 100) : 0;
   const narrator = narratorLabel(audio);
   const isMuted = audio.volume === 0;
-  const timing = audio.engine === "kokoro" ? "Local voice · word follow-along"
-    : audio.engine === "openai" ? "AI-generated voice · " + (audio.wordEvents ? "word follow-along" : "passage follow-along; word timing unavailable")
-      : audio.wordEvents ? "Word follow-along" : "Sentence follow-along; word support varies by voice";
 
   return <div className="reader-audiobook" ref={root} role="dialog" aria-modal="true" aria-label="Audiobook Mode" tabIndex={-1}
     onKeyDown={event => {
@@ -154,19 +151,20 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
       }
     }}>
     <header className="audiobook-topbar">
-      <button type="button" className="audiobook-tool audiobook-minimize" onClick={onMinimize} title="Back to the book (narration keeps playing)" aria-label="Back to the book">
-        <FiChevronDown /><span>Book</span>
-      </button>
       <div className="audiobook-titles">
         <span className="audiobook-titles-book">{bookTitle}</span>
         <span className="audiobook-titles-chapter">{section?.title || (audio.loading ? "Loading…" : "")}</span>
       </div>
+      <div className="audiobook-header-status" role="status" aria-live="polite">
+        <span className={"audiobook-pulse" + (audio.playing ? " is-live" : "")} aria-hidden="true" />
+        <span>{audio.available ? audio.status : "Selected voice engine is unavailable"}</span>
+      </div>
       <div className="audiobook-tools">
-        <button type="button" className="audiobook-tool" onClick={() => setDialog("offline")} title="Save audio on this computer for offline listening">
+        <button type="button" className="audiobook-tool" onClick={() => setDialog("offline")} data-tooltip="Save for offline listening">
           <FiWifiOff /><span>Save offline</span>
         </button>
         <div className="audiobook-popover-anchor" ref={contentsRef}>
-          <button type="button" className="audiobook-tool" aria-expanded={contentsOpen} aria-haspopup="menu" onClick={() => setContentsOpen(!contentsOpen)}>
+          <button type="button" className="audiobook-tool" aria-expanded={contentsOpen} aria-haspopup="menu" data-tooltip="Chapters" onClick={() => setContentsOpen(!contentsOpen)}>
             <FiList /><span>Contents</span>
           </button>
           {contentsOpen && <div className="audiobook-popover audiobook-contents" role="menu">
@@ -181,10 +179,10 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
           </div>}
         </div>
         <div className="audiobook-font-size" role="group" aria-label="Text size">
-          <button type="button" title="Smaller text (−)" aria-label="Smaller text" onClick={() => changeFont(-1)} disabled={fontSize === FONT_SIZES[0]}>A<sup>−</sup></button>
-          <button type="button" title="Larger text (+)" aria-label="Larger text" onClick={() => changeFont(1)} disabled={fontSize === FONT_SIZES[FONT_SIZES.length - 1]}>A<sup>+</sup></button>
+          <button type="button" data-tooltip="Smaller text (−)" aria-label="Smaller text" onClick={() => changeFont(-1)} disabled={fontSize === FONT_SIZES[0]}>A<sup>−</sup></button>
+          <button type="button" data-tooltip="Larger text (+)" aria-label="Larger text" onClick={() => changeFont(1)} disabled={fontSize === FONT_SIZES[FONT_SIZES.length - 1]}>A<sup>+</sup></button>
         </div>
-        <button ref={closeButton} type="button" className="audiobook-close" aria-label="Exit audiobook mode" title="Exit audiobook mode" onClick={onExit}><FiX /></button>
+        <button ref={closeButton} type="button" className="audiobook-close" aria-label="Exit audiobook mode" data-tooltip="Exit audiobook mode" onClick={onExit}><FiX /></button>
       </div>
     </header>
     <div className="audiobook-section-progress" title={percent + "% of this chapter"}><span style={{ width: percent + "%" }} /></div>
@@ -220,29 +218,29 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
         </div>
         <div className="audiobook-control-row">
           <div className="audiobook-side">
-            <button ref={voiceButton} type="button" className="audiobook-voice-trigger" aria-label="Choose narrator voice" title={narrator.name} aria-haspopup="dialog" aria-expanded={dialog === "voice"} onClick={openVoices}>
+            <button ref={voiceButton} type="button" className="audiobook-voice-trigger" aria-label="Choose narrator voice" data-tooltip="Choose narrator" aria-haspopup="dialog" aria-expanded={dialog === "voice"} onClick={openVoices}>
               <svg className="audiobook-voice-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9v6M9 5v14M13 8v8M17 6v12M21 10v4" /></svg>
               <span className="audiobook-voice-text"><span className="audiobook-voice-name">{narrator.name}</span><span className="audiobook-voice-detail-line">{narrator.detail}</span></span>
             </button>
           </div>
           <div className="audiobook-transport">
-            <button className="audiobook-control audiobook-chapter-skip" aria-label="Previous chapter" title="Previous chapter (⇧←)" disabled={audio.loading || !canGoBack} onClick={goToPrevious}><FiSkipBack /></button>
-            <button className="audiobook-control" aria-label="Previous sentence" title="Previous sentence (←)" disabled={audio.loading || !section || (!audio.index && section.previous === null)} onClick={() => audio.move(-1)}><FiRewind /></button>
-            <button className="audiobook-play" aria-label={audio.playing ? "Pause narration" : "Play narration"} title={audio.playing ? "Pause (Space)" : "Play (Space)"} disabled={audio.loading || !total || !audio.available} onClick={audio.toggle}>
+            <button className="audiobook-control audiobook-chapter-skip" aria-label="Previous chapter" data-tooltip="Previous chapter (⇧←)" disabled={audio.loading || !canGoBack} onClick={goToPrevious}><FiSkipBack /></button>
+            <button className="audiobook-control" aria-label="Previous sentence" data-tooltip="Previous sentence (←)" disabled={audio.loading || !section || (!audio.index && section.previous === null)} onClick={() => audio.move(-1)}><FiRewind /></button>
+            <button className="audiobook-play" aria-label={audio.playing ? "Pause narration" : "Play narration"} data-tooltip={audio.playing ? "Pause (Space)" : "Play (Space)"} disabled={audio.loading || !total || !audio.available} onClick={audio.toggle}>
               {audio.playing ? <FiPause fill="currentColor" /> : <FiPlay fill="currentColor" />}
             </button>
-            <button className="audiobook-control" aria-label="Next sentence" title="Next sentence (→)" disabled={audio.loading || !section || (audio.index === section.sentences.length - 1 && section.next === null)} onClick={() => audio.move(1)}><FiFastForward /></button>
-            <button className="audiobook-control audiobook-chapter-skip" aria-label="Next chapter" title="Next chapter (⇧→)" disabled={audio.loading || !canGoForward} onClick={goToNext}><FiSkipForward /></button>
+            <button className="audiobook-control" aria-label="Next sentence" data-tooltip="Next sentence (→)" disabled={audio.loading || !section || (audio.index === section.sentences.length - 1 && section.next === null)} onClick={() => audio.move(1)}><FiFastForward /></button>
+            <button className="audiobook-control audiobook-chapter-skip" aria-label="Next chapter" data-tooltip="Next chapter (⇧→)" disabled={audio.loading || !canGoForward} onClick={goToNext}><FiSkipForward /></button>
           </div>
           <div className="audiobook-side is-end">
             <div className="audiobook-volume">
-              <button type="button" className="audiobook-control" aria-label={isMuted ? "Unmute" : "Mute"} title={isMuted ? "Unmute" : "Mute"}
+              <button type="button" className="audiobook-control" aria-label={isMuted ? "Unmute" : "Mute"} data-tooltip={isMuted ? "Unmute" : "Mute"}
                 onClick={() => audio.changeVolume(isMuted ? lastVolume.current : 0)}>{isMuted ? <FiVolumeX /> : <FiVolume2 />}</button>
               <input type="range" min={0} max={1} step={0.05} value={audio.volume} aria-label="Volume" title={`Volume ${Math.round(audio.volume * 100)}%`}
                 onChange={event => { const value = Number(event.target.value); if (value > 0) lastVolume.current = value; audio.changeVolume(value); }} />
             </div>
             <div className="audiobook-speed-anchor" ref={speedAnchor}>
-              <button className="audiobook-speed-button" aria-label={"Reading speed " + audio.speed + "×"} aria-haspopup="dialog" aria-expanded={speedOpen} aria-controls={speedOpen ? "audiobook-speed-popup" : undefined}
+              <button className="audiobook-speed-button" aria-label={"Reading speed " + audio.speed + "×"} data-tooltip="Reading speed" aria-haspopup="dialog" aria-expanded={speedOpen} aria-controls={speedOpen ? "audiobook-speed-popup" : undefined}
                 onClick={() => { setSpeedDraft(audio.speed); setSpeedOpen(!speedOpen); }}>{audio.speed}×</button>
               {speedOpen && <div id="audiobook-speed-popup" className="audiobook-speed-popup" role="dialog" aria-label="Reading speed">
                 <span>Reading speed</span>
@@ -254,11 +252,9 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
                 <output>{speedDraft.toFixed(1)}</output>
               </div>}
             </div>
-            <button type="button" className="audiobook-control" aria-label="Export audio" title="Export as an audio file" onClick={() => setDialog("export")}><FiDownload /></button>
+            <button type="button" className="audiobook-control" aria-label="Export audio" data-tooltip="Export as an audio file" onClick={() => setDialog("export")}><FiDownload /></button>
           </div>
         </div>
-        <div className="audiobook-player-meta" role="status" aria-live="polite"><span className={"audiobook-pulse" + (audio.playing ? " is-live" : "")} aria-hidden="true" /><span>{audio.available ? audio.status : "Selected voice engine is unavailable"}</span></div>
-        <div className="audiobook-timing-note">Estimated chapter timing · {timing}</div>
         {audio.error && <p className="audiobook-error" role="alert">{audio.error}</p>}
       </div>
     </footer>

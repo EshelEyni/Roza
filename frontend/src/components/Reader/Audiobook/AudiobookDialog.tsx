@@ -3,7 +3,7 @@ import { FiX } from "react-icons/fi";
 
 /** A modal in the narrator picker's style: centered on desktop, a bottom sheet on phones. */
 export function AudiobookDialog({ eyebrow, title, description, children, footer, onClose }: {
-  eyebrow: string; title: string; description?: string; children: ReactNode; footer: ReactNode; onClose: () => void;
+  eyebrow: string; title: string; description?: string; children: ReactNode; footer?: ReactNode; onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const close = useRef<HTMLButtonElement>(null);
@@ -24,7 +24,7 @@ export function AudiobookDialog({ eyebrow, title, description, children, footer,
         <button ref={close} type="button" className="audiobook-voice-dialog-close" aria-label="Close" onClick={onClose}><FiX /></button>
       </header>
       <div className="audiobook-voice-dialog-scroll">{children}</div>
-      <footer className="audiobook-voice-dialog-footer">{footer}</footer>
+      {footer && <footer className="audiobook-voice-dialog-footer">{footer}</footer>}
     </section>
   </dialog>;
 }

@@ -232,7 +232,7 @@ test(
           let picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.waitFor();
           await picker.getByText(/No system voices detected yet/).waitFor();
-          assert.equal(await picker.getByRole("button",{name:"Use this voice"}).isDisabled(),true);
+          assert.equal(await picker.getByRole("button",{name:/^Use /}).isDisabled(),true);
           await page.evaluate(()=>{
             window.testVoices=[
               {voiceURI:"native",name:"A very long installed system narrator name",lang:"en-US",default:true,localService:true},
@@ -296,8 +296,8 @@ test(
           await picker.getByRole("alert").waitFor();
           await picker.getByRole("button",{name:"Close voice picker"}).focus();
           await page.keyboard.press("Shift+Tab");
-          assert.equal(await picker.getByRole("button",{name:"Use this voice"}).evaluate(el=>el===document.activeElement),true);
-          await picker.getByRole("button",{name:"Use this voice"}).click();
+          assert.equal(await picker.getByRole("button",{name:/^Use /}).evaluate(el=>el===document.activeElement),true);
+          await picker.getByRole("button",{name:/^Use /}).click();
           await picker.waitFor({state:"detached"});
           assert.equal(await page.evaluate(()=>window.spoken.at(-1).voice.voiceURI),"native");
           assert.equal(await mode.getByRole("button",{name:"Choose narrator voice"}).evaluate(el=>el===document.activeElement),true);
@@ -321,7 +321,7 @@ test(
           await mode.getByRole("button",{name:"Choose narrator voice"}).click();
           picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.getByRole("radio",{name:/Alex/}).check();
-          await picker.getByRole("button",{name:"Use this voice"}).click();
+          await picker.getByRole("button",{name:/^Use /}).click();
           await mode.getByRole("button",{name:"Play narration"}).waitFor();
           await mode.getByRole("button",{name:"Play narration"}).click();
           await mode.getByRole("button",{name:"Reading speed 1×"}).click();
@@ -447,7 +447,7 @@ test(
           assert.equal(await picker.getByRole("button",{name:/Preview/}).count(),2);
           assert.equal(previewRequests.length,0,"browsing does not generate paid previews");
           await picker.getByRole("radio",{name:/cedar/}).check();
-          await picker.getByRole("button",{name:"Use this voice"}).click();
+          await picker.getByRole("button",{name:/^Use /}).click();
           await picker.waitFor({state:"detached"});
           assert.equal(narrator.voice,"cedar","voice is saved to the book before closing settings");
           assert.equal(requests.length,0);
@@ -462,7 +462,6 @@ test(
           assert.equal(requests[0].passageEndCfi,source[0].block.endCfi,"multiple short sentences share one request");
           assert.ok(source[0].block.endIndex>0);
           assert.equal(await mode.locator(".audiobook-word.is-active").count(),0);
-          await mode.getByText(/AI-generated voice · passage follow-along/).waitFor();
           await page.waitForFunction(()=>window.audioSources.length===1);
           await page.waitForTimeout(100);
           const nextBlock=source[source[0].block.endIndex+1].block;
@@ -487,13 +486,13 @@ test(
           picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.waitFor();
           await picker.getByRole("button",{name:/System voices/}).click();
-          await picker.getByRole("button",{name:"Use this voice"}).click();
+          await picker.getByRole("button",{name:/^Use /}).click();
           await page.waitForFunction(()=>window.spoken.length>0);
           assert.equal(await page.evaluate(()=>window.audioSources.at(-1).stopped),true);
           await mode.getByRole("button",{name:"Choose narrator voice"}).click();
           picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.getByRole("button",{name:/OpenAI voices/}).click();
-          await picker.getByRole("button",{name:"Use this voice"}).click();
+          await picker.getByRole("button",{name:/^Use /}).click();
           await page.waitForFunction(()=>window.audioSources.length===4);
           failure=true;
           await mode.getByRole("button",{name:"Next sentence"}).click();
@@ -550,17 +549,17 @@ test(
           await picker.getByRole("button",{name:/OpenAI voices/}).click();
           await picker.getByRole("radio",{name:/marin/}).check();
           saveFailure=true;
-          await picker.getByRole("button",{name:"Use this voice"}).click();
+          await picker.getByRole("button",{name:/^Use /}).click();
           await picker.getByRole("alert").filter({hasText:/could not be saved/}).waitFor();
           assert.equal(await picker.isVisible(),true,"failed save keeps settings open");
           saveFailure=false;
-          await picker.getByRole("button",{name:"Use this voice"}).click(); await picker.waitFor({state:"detached"});
+          await picker.getByRole("button",{name:/^Use /}).click(); await picker.waitFor({state:"detached"});
           assert.equal(narrator.voice,"marin");
           await mode.getByRole("button",{name:"Play narration",exact:true}).waitFor();
           await mode.getByRole("button",{name:"Choose narrator voice"}).click();
           picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
           await picker.getByRole("button",{name:/System voices/}).click();
-          await picker.getByRole("button",{name:"Use this voice"}).click(); await picker.waitFor({state:"detached"});
+          await picker.getByRole("button",{name:/^Use /}).click(); await picker.waitFor({state:"detached"});
           assert.equal(narrator.engine,"system"); assert.equal(narrator.voice,"native");
           await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
           await page.goto(server.resolvedUrls.local[0]+"rsvp-test?delayed=1");
@@ -584,7 +583,6 @@ test(
           await mode.getByRole("button",{name:"Reading speed 1×",exact:true}).click();
           await mode.getByRole("button",{name:"Play narration",exact:true}).click();
           await page.waitForFunction(()=>window.audioSources.length===1);
-          await mode.getByText(/AI-generated voice · word follow-along/).waitFor();
           assert.equal(await mode.locator(".audiobook-word.is-active").count(),0,"no word is guessed during leading silence");
           await page.evaluate(()=>window.audioContexts[0].currentTime=0.21);
           await page.waitForFunction(()=>document.querySelector(".audiobook-word.is-active")?.textContent==="At");
@@ -676,7 +674,7 @@ test(
           await picker.getByRole("radiogroup",{name:"Gender"}).getByRole("radio",{name:"Female"}).click();
           assert.equal(await localList.getByRole("radio").count(),4);
           await picker.getByRole("radio",{name:/Emma/}).check();
-          await picker.getByRole("button",{name:"Use this voice"}).click();
+          await picker.getByRole("button",{name:/^Use /}).click();
           await picker.waitFor({state:"detached"});
           assert.deepEqual(storedNarrator,{engine:"kokoro",voice:"bf_emma",name:"Emma",lang:"en-GB"});
           assert.match(await mode.getByRole("button",{name:"Choose narrator voice"}).innerText(),/Emma/);
@@ -687,23 +685,11 @@ test(
           assert.equal(first.voice,"bf_emma");
           assert.equal(first.sentence.text,first.sentence.words.join(" "));
           assert.ok(first.sentence.pause>0&&first.sentence.speed>0,"pacing travels with each sentence");
-          await mode.getByText(/Local voice · word follow-along/).waitFor();
           // Read-ahead asks for the next sentences at low priority.
           await page.waitForFunction(()=>window.kokoroCalls.some(call=>call.priority==="low"&&call.index===1));
           await page.evaluate(()=>{ window.audios.find(a=>!a.paused).currentTime=1.1; });
           await page.waitForFunction(()=>document.querySelector(".audiobook-word.is-active")?.textContent==="edge");
           await page.evaluate(()=>window.audios.find(a=>!a.paused).dispatchEvent(new Event("ended")));
-          await page.waitForFunction(()=>document.querySelector(".audiobook-sentence.is-active")?.textContent.startsWith("The first light"));
-
-          // Back to the book: narration keeps going in the mini player; it can reopen the full view.
-          await mode.getByRole("button",{name:"Back to the book"}).click();
-          await mode.waitFor({state:"detached"});
-          const mini=page.getByRole("group",{name:"Audiobook player"});
-          await mini.getByRole("button",{name:"Pause narration"}).waitFor();
-          await mini.getByRole("button",{name:"Pause narration"}).click();
-          await mini.getByRole("button",{name:"Play narration"}).waitFor();
-          await mini.getByRole("button",{name:/^Open Audiobook Mode/}).click();
-          await mode.getByRole("heading",{name:"A Quiet Morning"}).waitFor();
           await page.waitForFunction(()=>document.querySelector(".audiobook-sentence.is-active")?.textContent.startsWith("The first light"));
 
           // Save offline prepares the whole book's text once, then saves with the chosen voice.
@@ -714,7 +700,7 @@ test(
           assert.deepEqual(script.sections.map(section=>section.section),[0,2],"non-linear sections are skipped");
           assert.ok(script.sections[0].sentences.every(sentence=>sentence.words.length&&sentence.pause>0));
           await offline.getByRole("button",{name:"Save chapter"}).click();
-          await offline.getByText("Ready for offline listening").waitFor();
+          await offline.getByText("Ready offline",{exact:true}).waitFor();
           await offline.getByRole("button",{name:"Close",exact:true}).first().click();
           await offline.waitFor({state:"detached"});
           await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
