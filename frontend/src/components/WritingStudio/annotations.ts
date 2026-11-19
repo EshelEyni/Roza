@@ -2,6 +2,17 @@ import { Editor, Element, Operation, Range, Text } from "slate";
 import { ChapterAnnotation } from "../../../../shared/types/books";
 import { readerSentenceSpans } from "../../services/readerSentenceSpans";
 
+/** Numbered lines (paragraphs) shown in the editor's gutter, in document order. */
+export function manuscriptLines(editor: Editor) {
+  return Array.from(Editor.nodes(editor, {
+    at: [],
+    match: node =>
+      Element.isElement(node) &&
+      Editor.isBlock(editor, node) &&
+      !["bulleted-list", "numbered-list"].includes(node.type),
+  }));
+}
+
 export function validAnchor(
   editor: Editor,
   range: Range | null,
