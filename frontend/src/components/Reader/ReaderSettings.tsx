@@ -47,7 +47,7 @@ export function ReaderSettings({
   function colorRow(key: keyof typeof defaults) {
     return <div className="reader-color-row" key={key}>
       <span id={"reader-color-" + key}>{t("reader." + key)}</span>
-      <ReaderColorSelect labelId={"reader-color-" + key}
+      <ReaderColorSelect labelId={"reader-color-" + key} label={t("reader." + key)}
         kind={key === "backgroundColor" ? "background" : key.endsWith("TextColor") ? "text" : "highlight"}
         value={preferences[key] || defaults[key]} onChange={color => update({ [key]: color })} />
     </div>;

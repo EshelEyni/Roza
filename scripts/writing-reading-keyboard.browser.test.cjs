@@ -337,7 +337,7 @@ test("reading mode keyboard: Page Down limit and sentence-only navigation", { ti
     assert.deepEqual(await marks(), { sentence: wrapped, word: "tide" });
     await page.keyboard.press("Control+ArrowRight");
     assert.deepEqual(await marks(), { sentence: "After the letter.", word: undefined });
-    assert.deepEqual(await sentenceColors(), [["rgb(242, 230, 107)", "rgb(40, 35, 30)"]]);
+    assert.deepEqual(await sentenceColors(), [["rgb(216, 195, 165)", "rgb(57, 46, 36)"]]);
 
     // Right Arrow from a sentence-only mark marks its first word, then follows word navigation.
     await page.keyboard.press("ArrowRight");

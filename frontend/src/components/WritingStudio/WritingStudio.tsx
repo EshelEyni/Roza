@@ -17,7 +17,7 @@ import { useConfirmation } from "../Modals/useConfirmation";
 import { ReaderColorSelect } from "../Reader/ReaderColorSelect";
 import "../Modals/confirmDialog.css";
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from "react";
-import { readerMarkTextColor, readerPassageColor, readerSelectionColor } from "../../services/readerMarkColors";
+import { readerMarkTextColor } from "../../services/readerMarkColors";
 import {
   Link,
   useNavigate,
@@ -222,10 +222,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const [size, setSize] = useState(() => preference("roza:studio:font", "20"));
   const optionsDialog = useRef<HTMLDialogElement>(null);
   const optionsTitle = useId();
-  const [wordColor, setWordColor] = useState(() => colorPreference(wordColorKey, readerSelectionColor));
-  const [sentenceColor, setSentenceColor] = useState(() => colorPreference(sentenceColorKey, readerPassageColor));
-  const [wordTextColor, setWordTextColor] = useState(() => colorPreference(wordTextColorKey, ""));
-  const [sentenceTextColor, setSentenceTextColor] = useState(() => colorPreference(sentenceTextColorKey, ""));
+  const [wordColor, setWordColor] = useState(() => colorPreference(wordColorKey, "#b88a60"));
+  const [sentenceColor, setSentenceColor] = useState(() => colorPreference(sentenceColorKey, "#d8c3a5"));
+  const [wordTextColor, setWordTextColor] = useState(() => colorPreference(wordTextColorKey, "#392e24"));
+  const [sentenceTextColor, setSentenceTextColor] = useState(() => colorPreference(sentenceTextColorKey, "#392e24"));
   const wordForeground = wordTextColor || markForeground(wordColor);
   const sentenceForeground = sentenceTextColor || markForeground(sentenceColor);
   const [formatChapter, setFormatChapter] = useState<string | null>(null);
@@ -540,6 +540,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           </div>
         )}
         <div className="ws-header-end">
+          <div className="ws-header-audiobook" ref={setAudiobookHeader} />
           <SaveStatus
             state={store.state}
             savedAt={store.savedAt}
@@ -749,7 +750,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             return (
               <div className="ws-option-color" key={key}>
                 <span id={labelId}>{label}</span>
-                <ReaderColorSelect labelId={labelId} kind={kind} value={value} onChange={color => {
+                <ReaderColorSelect labelId={labelId} label={label} kind={kind} value={value} onChange={color => {
                   setColor(color);
                   remember(key, color);
                 }} />

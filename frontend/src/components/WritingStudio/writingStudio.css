@@ -715,8 +715,7 @@ dialog.ws-options-dialog > header h2 {
   flex: auto;
 }
 
-.ws-option-color select {
-  flex: 1;
+.ws-option-color .reader-color-control .reader-color-trigger {
   padding: 10px 12px;
   font-size: inherit;
 }
