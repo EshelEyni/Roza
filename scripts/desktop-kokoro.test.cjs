@@ -14,6 +14,15 @@ const rl = require("node:readline").createInterface({ input: process.stdin });
 process.stdout.write(JSON.stringify({ event: "ready" }) + "\\n");
 rl.on("line", line => {
   const request = JSON.parse(line);
+  if (request.sentences) {
+    const folder = require("node:path").dirname(request.sentences[0].out);
+    fs.appendFileSync(require("node:path").join(folder, "order.txt"), "passage: " + request.sentences.map(item => item.text).join(" | ") + "\\n");
+    const clips = request.sentences.map(item => {
+      fs.writeFileSync(item.out, Buffer.alloc(500, 3));
+      return { duration: item.words.length * 0.5, words: item.words.map((_, i) => [i * 0.5, i * 0.5 + 0.4]) };
+    });
+    return setTimeout(() => process.stdout.write(JSON.stringify({ id: request.id, ok: true, clips }) + "\\n"), 5);
+  }
   fs.appendFileSync(require("node:path").join(require("node:path").dirname(request.out), "order.txt"), request.text + "\\n");
   if (request.text === "fail") return process.stdout.write(JSON.stringify({ id: request.id, ok: false, error: "bad sentence" }) + "\\n");
   fs.writeFileSync(request.out, Buffer.alloc(1000, 7));
@@ -104,6 +113,54 @@ test("a whole-book offline save reports progress, and a chapter can be deleted",
   const chapter = await store.offline({ bookId, voice: "bf_emma", section: 3, action: "delete" });
   assert.equal(chapter.state, "missing");
   assert.equal((await store.offline({ bookId, voice: "bf_emma", action: "get" })).state, "partial");
+});
+
+const orderIn = (dir, voice) => fs.readFileSync(path.join(dir, "audio", bookId, voice, "order.txt"), "utf8").trim().split(/\r?\n/);
+
+test("a paragraph is spoken once and saved as one clip per sentence, with its pause left to the player", async (t) => {
+  const { dir, engine, store } = setup();
+  t.after(() => { engine.stop(); fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); });
+  const sentences = [
+    { ...sentence("First one here.", 0), passage: 0 },
+    { ...sentence("Second.", 0), passage: 0 },
+    { ...sentence("Third and last.", 1.15), passage: 0 },
+  ];
+  const passage = { first: 4, sentences };
+  const ask = (index, priority = "high") => store.sentence({ bookId, voice: "af_heart", section: 2, index, sentence: sentences[index - 4], passage, priority });
+  const [second, first, third] = await Promise.all([ask(5), ask(4), ask(6, "low")]);
+  assert.deepEqual(orderIn(dir, "af_heart"), ["passage: First one here. | Second. | Third and last."], "one Kokoro call for the whole paragraph");
+  assert.match(first.url, /\/2-4-[a-f0-9]{16}\.wav$/);
+  assert.match(third.url, /\/2-6-[a-f0-9]{16}\.wav$/);
+  assert.deepEqual(second.words, [{ start: 0, end: 0.4 }]);
+  assert.equal(first.pause, 0);
+  assert.ok(Math.abs(third.pause - 0.99) < 1e-9, "the player adds the paragraph pause minus the clip's own tail");
+
+  const longerPause = [sentences[0], sentences[1], { ...sentences[2], pause: 2.6 }];
+  const longer = await store.sentence({ bookId, voice: "af_heart", section: 2, index: 6, sentence: longerPause[2], passage: { first: 4, sentences: longerPause } });
+  assert.equal(longer.url, third.url, "a new pause reuses the audio");
+  assert.equal(orderIn(dir, "af_heart").length, 1);
+  await assert.rejects(store.sentence({ bookId, voice: "af_heart", section: 2, index: 9, sentence: sentences[0], passage }), /Invalid passage/);
+});
+
+test("an offline save speaks each paragraph of the script once", async (t) => {
+  const { dir, engine, store } = setup();
+  t.after(() => { engine.stop(); fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); });
+  await store.saveScript({
+    bookId, title: "Test", author: "Me",
+    sections: [{ section: 0, title: "One", sentences: [
+      { ...sentence("A b.", 0), passage: 0 }, { ...sentence("C d.", 1.15), passage: 0 },
+      { ...sentence("* * *", 2.6), passage: 1 },
+      { ...sentence("E f.", 2.5), passage: 2 },
+    ] }],
+  });
+  let status = await store.offline({ bookId, voice: "af_heart", action: "start" });
+  for (let i = 0; i < 100 && status.state !== "ready"; i++) {
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    status = await store.offline({ bookId, voice: "af_heart", action: "get" });
+  }
+  assert.equal(status.state, "ready");
+  assert.equal(status.completed, 4);
+  assert.deepEqual(orderIn(dir, "af_heart"), ["passage: A b. | C d.", "passage: * * *", "passage: E f."]);
 });
 
 test("the desktop, frontend and backend voice lists match", () => {

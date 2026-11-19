@@ -3,7 +3,7 @@ import type { Book } from "epubjs";
 import { useReaderAudiobook, type AudiobookLoader } from "../../../hooks/reader/useReaderAudiobook";
 import { loadAudiobookBook, loadAudiobookChapters, type AudiobookChapter } from "../../../services/readerAudiobookSource";
 import { desktopKokoro } from "../../../services/narration/desktopKokoro";
-import { kokoroSentence, sectionPacing } from "../../../services/narration/kokoroPacing";
+import { kokoroSectionRequests } from "../../../services/narration/kokoroPacing";
 import { AudiobookView } from "./AudiobookView";
 import { AudiobookMiniPlayer } from "./AudiobookMiniPlayer";
 
@@ -98,10 +98,9 @@ function AudiobookSession({ open, bookId, source, onMinimize, onOpen, onExit, on
           bookId,
           title: sourceRef.current.bookTitle,
           author: sourceRef.current.bookAuthor,
-          sections: sections.map(item => {
-            const pacing = sectionPacing(item.sentences);
-            return { section: item.section, title: item.title, sentences: item.sentences.map((sentence, index) => kokoroSentence(sentence, pacing[index])) };
-          }),
+          sections: sections.map(item => ({
+            section: item.section, title: item.title, sentences: kokoroSectionRequests(item.sentences, !!api.passages),
+          })),
         });
         setScript(current => ({ ...current, state: "ready" }));
         return true;

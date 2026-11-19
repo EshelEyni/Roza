@@ -10,14 +10,27 @@ function sectionSentences(section: Section): AudiobookSentence[] {
   let totalWords = 0;
   let paragraph = -1;
   let previousBlock: Element | null | undefined;
+  let previousNode: Node | null = null;
+  // A scene break drawn as a rule has no text, so it is found between the sentences around it.
+  const rules = Array.from(section.document.querySelectorAll("hr"));
   return extractReaderSentences(section, true).map(sentence => {
     const range = new EpubCFI(sentence.cfi).toRange(section.document);
     const container = range.startContainer.nodeType === 1 ? range.startContainer as Element : range.startContainer.parentElement;
     const block = container?.closest("p,div,li,h1,h2,h3,h4,h5,h6,blockquote,pre,td") || null;
-    if (block !== previousBlock) paragraph++;
+    const isNewParagraph = block !== previousBlock;
+    if (isNewParagraph) paragraph++;
+    const after = previousNode;
+    const sceneBreakBefore = isNewParagraph && !!after && rules.some(rule =>
+      !!(after.compareDocumentPosition(rule) & Node.DOCUMENT_POSITION_FOLLOWING)
+      && !!(rule.compareDocumentPosition(range.startContainer) & Node.DOCUMENT_POSITION_FOLLOWING));
     previousBlock = block;
+    previousNode = range.endContainer;
     const words = audiobookWords(sentence.text);
-    const item = { ...sentence, paragraph, words, startWord: totalWords };
+    const item: AudiobookSentence = {
+      ...sentence, paragraph, words, startWord: totalWords,
+      ...(block?.matches("h1,h2,h3,h4,h5,h6") ? { heading: true } : {}),
+      ...(sceneBreakBefore ? { sceneBreakBefore: true } : {}),
+    };
     totalWords += words.length;
     return item;
   });

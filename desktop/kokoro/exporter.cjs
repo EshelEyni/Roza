@@ -24,10 +24,32 @@ function uniquePath(folder, name, extension) {
 
 const escapeMetadata = (text) => String(text).replace(/([=;#\\\n])/g, "\\$1");
 
+// Clips are 24 kHz mono 16-bit WAV (service.py); pauses are joined in as silence of the same format.
+const SAMPLE_RATE = 24000;
+
+/** A silent 16-bit mono WAV file of `seconds`. */
+function silenceWav(seconds) {
+  const bytes = Math.round(seconds * SAMPLE_RATE) * 2;
+  const wav = Buffer.alloc(44 + bytes);
+  wav.write("RIFF", 0, "ascii");
+  wav.writeUInt32LE(36 + bytes, 4);
+  wav.write("WAVEfmt ", 8, "ascii");
+  wav.writeUInt32LE(16, 16);
+  wav.writeUInt16LE(1, 20);
+  wav.writeUInt16LE(1, 22);
+  wav.writeUInt32LE(SAMPLE_RATE, 24);
+  wav.writeUInt32LE(SAMPLE_RATE * 2, 28);
+  wav.writeUInt16LE(2, 32);
+  wav.writeUInt16LE(16, 34);
+  wav.write("data", 36, "ascii");
+  wav.writeUInt32LE(bytes, 40);
+  return wav;
+}
+
 /**
- * @param {{ tempDir: string, ffmpeg: () => string | null, ensureSentence: Function }} options
+ * @param {{ tempDir: string, ffmpeg: () => string | null, ensureSentence: Function, passageIn: Function }} options
  */
-function createExporter({ tempDir, ffmpeg: ffmpegPath, ensureSentence }) {
+function createExporter({ tempDir, ffmpeg: ffmpegPath, ensureSentence, passageIn }) {
   const jobs = new Map();
   const stops = new Map();
   const children = new Set();
@@ -52,10 +74,17 @@ function createExporter({ tempDir, ffmpeg: ffmpegPath, ensureSentence }) {
       for (let index = 0; index < part.sentences.length; index++) {
         if (isStopped) return;
         const audio = await ensureSentence({
-          bookId: script.bookId, voice: request.voice, section: part.section, index, sentence: part.sentences[index], priority: "low",
+          bookId: script.bookId, voice: request.voice, section: part.section, index, sentence: part.sentences[index],
+          passage: passageIn(part.sentences, index), priority: "low",
         });
         files.push(audio.file);
         elapsed += audio.duration;
+        // Paragraph narration leaves the pause out of the clip; it is added here as silence.
+        const pause = Math.round((audio.pause || 0) * 100) / 100;
+        if (pause > 0) {
+          files.push({ silence: pause });
+          elapsed += pause;
+        }
         done += 1;
         job.progress = Math.floor((done / total) * 85);
         job.stage = `Generating speech… ${done} of ${total} sentences`;
@@ -68,7 +97,15 @@ function createExporter({ tempDir, ffmpeg: ffmpegPath, ensureSentence }) {
     try {
       const listFile = path.join(workDir, "list.txt");
       const metadataFile = path.join(workDir, "chapters.txt");
-      await writeFile(listFile, files.map((file) => `file '${file.replace(/'/g, "'\\''")}'`).join("\n"));
+      const silences = new Map();
+      for (const entry of files) {
+        if (typeof entry === "string" || silences.has(entry.silence)) continue;
+        const file = path.join(workDir, `silence-${Math.round(entry.silence * 100)}.wav`);
+        await writeFile(file, silenceWav(entry.silence));
+        silences.set(entry.silence, file);
+      }
+      const listed = files.map((entry) => (typeof entry === "string" ? entry : silences.get(entry.silence)));
+      await writeFile(listFile, listed.map((file) => `file '${file.replace(/'/g, "'\\''")}'`).join("\n"));
       const single = request.section === null ? null : parts[0];
       const metadata = [
         ";FFMETADATA1",
