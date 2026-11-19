@@ -1,11 +1,27 @@
 const { app, BrowserWindow, session, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
-const { readdirSync } = require("node:fs");
+const { existsSync, readdirSync } = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
+const { createKokoroDesktop } = require("./kokoro/index.cjs");
 
 const origin = "https://roza.esheleyni.com";
 const renderer = path.join(__dirname, "renderer");
+// Development-only command-line switches (ignored in packaged builds; see "npm run desktop:dev"):
+//   --api-origin=http://localhost:3030   send /api to that backend instead of production
+//   --data-dir=Roza-Dev                  keep app data (sign-in, local voices, saved audio) in this folder,
+//                                        relative to %APPDATA% unless absolute
+function devSwitch(name) {
+  if (app.isPackaged) return null;
+  const prefix = "--" + name + "=";
+  const value = process.argv.find((arg) => arg.startsWith(prefix))?.slice(prefix.length).trim();
+  return value || null;
+}
+const devApiOrigin = devSwitch("api-origin") ? new URL(devSwitch("api-origin")).origin : null;
+const devDataDir = devSwitch("data-dir");
+if (devDataDir) app.setPath("userData", path.resolve(app.getPath("appData"), devDataDir));
+let mainWindow = null;
+const kokoro = createKokoroDesktop({ app, origin, getWindow: () => mainWindow });
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -25,6 +41,9 @@ function isApi(url) {
 }
 
 function registerRenderer(browserSession) {
+  if (!existsSync(path.join(renderer, "index.html"))) {
+    throw new Error("The page files are missing (desktop/renderer). Run npm run desktop:dev:build once.");
+  }
   const files = new Set(readdirSync(renderer, { recursive: true, withFileTypes: true })
     .filter((entry) => entry.isFile())
     .map((entry) => path.relative(renderer, path.join(entry.parentPath, entry.name))
@@ -41,8 +60,16 @@ function registerRenderer(browserSession) {
       if (["document", "iframe", "frame"].includes(request.headers.get("sec-fetch-dest"))) {
         return new Response(null, { status: 403 });
       }
+      if (devApiOrigin) {
+        const body = ["GET", "HEAD"].includes(request.method) ? undefined : await request.arrayBuffer();
+        return fetchNetwork(devApiOrigin + url.pathname + url.search, {
+          method: request.method, headers: request.headers, body, credentials: "include", redirect: "error", cache: "no-store",
+        });
+      }
       return fetchNetwork(request, { credentials: "include", redirect: "error", cache: "no-store" });
     }
+    const kokoroAudio = await kokoro.handleAudio(request, url);
+    if (kokoroAudio) return kokoroAudio;
     if (request.method !== "GET") return new Response(null, { status: 405 });
 
     const asset = url.pathname.slice(1);
@@ -73,6 +100,7 @@ app.whenReady().then(async () => {
   browserSession.setPermissionCheckHandler(() => false);
   browserSession.setPermissionRequestHandler((_contents, _permission, callback) => callback(false));
   registerRenderer(browserSession);
+  kokoro.register();
 
   const window = new BrowserWindow({
     width: 1280,
@@ -82,8 +110,10 @@ app.whenReady().then(async () => {
       sandbox: true,
       contextIsolation: true,
       nodeIntegration: false,
+      preload: path.join(__dirname, "preload.cjs"),
     },
   });
+  mainWindow = window;
 
   window.webContents.on("will-navigate", (event, url) => {
     const target = new URL(url);
@@ -110,3 +140,4 @@ app.whenReady().then(async () => {
 });
 
 app.on("window-all-closed", () => app.quit());
+app.on("before-quit", () => kokoro.shutdown());

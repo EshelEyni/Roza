@@ -578,6 +578,10 @@ test(
           await page.goto(server.resolvedUrls.local[0]+"rsvp-test");
           await page.waitForFunction(()=>window.rsvpTest?.reader.loading===false);
           await page.getByRole("button",{name:"Reader menu",exact:true}).click(); await page.getByRole("button",{name:"Audiobook Mode",exact:true}).click();
+          // Reading speed is remembered on this device (as in RozaReader); word cues below assume 1×.
+          await mode.getByRole("button",{name:"Reading speed 1.1×",exact:true}).click();
+          const resetSpeed=mode.getByRole("slider",{name:"Reading speed",exact:true}); await resetSpeed.focus(); await resetSpeed.press("ArrowLeft");
+          await mode.getByRole("button",{name:"Reading speed 1×",exact:true}).click();
           await mode.getByRole("button",{name:"Play narration",exact:true}).click();
           await page.waitForFunction(()=>window.audioSources.length===1);
           await mode.getByText(/AI-generated voice · word follow-along/).waitFor();
@@ -613,7 +617,112 @@ test(
           await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
         } finally { await browser.close(); }
       });
-      await t.test("long chapter keeps complete native scrolling with bounded highlight DOM", async () => {
+      await t.test("local Kokoro voices: desktop narration, mini player and offline saving", async () => {
+        storedNarrator=null;
+        const browser=await chromium.launch({channel:process.env.PLAYWRIGHT_CHANNEL || "msedge"});
+        try {
+          // On the website there is no desktop bridge: local voices are shown but cannot be chosen.
+          const web=await browser.newPage({viewport:{width:1280,height:844}});
+          await web.goto(server.resolvedUrls.local[0]+"rsvp-test");
+          await web.waitForFunction(()=>window.rsvpTest?.reader.loading===false);
+          await web.getByRole("button",{name:"Reader menu",exact:true}).click();
+          await web.getByRole("button",{name:"Audiobook Mode",exact:true}).click();
+          const webMode=web.getByRole("dialog",{name:"Audiobook Mode",exact:true});
+          await webMode.getByRole("button",{name:"Choose narrator voice"}).click();
+          const webPicker=web.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await webPicker.getByText("Desktop app only · runs on your computer").waitFor();
+          assert.equal(await webPicker.getByRole("button",{name:/Local voices/}).isDisabled(),true);
+          await web.close();
+
+          const page=await browser.newPage({viewport:{width:1280,height:844}});
+          page.setDefaultTimeout(15000);
+          await page.addInitScript(()=>{
+            const synth=new EventTarget();
+            synth.getVoices=()=>[]; synth.speak=()=>{}; synth.cancel=()=>{}; synth.resume=()=>{};
+            Object.defineProperty(window,"speechSynthesis",{value:synth});
+            window.SpeechSynthesisUtterance=class {constructor(text){this.text=text;}};
+            window.kokoroCalls=[]; window.audios=[]; window.scripts=[];
+            // Fake <audio>: the test moves time and ends clips itself.
+            window.Audio=class extends EventTarget {
+              constructor(){super();this.currentTime=0;this.paused=true;this.volume=1;this.playbackRate=1;window.audios.push(this);}
+              load(){} play(){this.paused=false;return Promise.resolve();} pause(){this.paused=true;}
+            };
+            const status={installed:true,needsUpdate:false,installing:false,progress:null,error:null,formats:["m4a","mp4","mp3"],neededBytes:3e9,engine:{state:"ready"},exportFolder:"C:\\Music\\Roza Audiobooks"};
+            let offline={state:"missing",completed:0,total:0,chaptersReady:0,chapters:0};
+            window.rozaDesktop={kokoro:{
+              status:async()=>status, install:async()=>status, cancelInstall:async()=>status, remove:async()=>status, start:async()=>status,
+              sentence:async input=>{window.kokoroCalls.push(input);return {url:"/__kokoro/audio/"+input.index+".wav",duration:input.sentence.words.length*0.5,words:input.sentence.words.map((_,i)=>({start:i*0.5,end:i*0.5+0.4}))};},
+              preview:async voice=>({url:"/__kokoro/preview/"+voice+".wav"}),
+              hasScript:async()=>window.scripts.length>0,
+              saveScript:async script=>{window.scripts.push(script);const total=script.sections.reduce((n,s)=>n+s.sentences.length,0);offline={state:"missing",completed:0,total,chaptersReady:0,chapters:script.sections.length};return {sections:script.sections.length,sentences:total};},
+              offline:async input=>{ if(input.action==="start") offline={...offline,state:"ready",completed:offline.total,chaptersReady:offline.chapters}; return input.section===null?offline:{...offline,chapters:1,chaptersReady:offline.state==="ready"?1:0}; },
+              chooseFolder:async()=>({folder:status.exportFolder}), startExport:async()=>({id:"x",state:"running",progress:0,stage:"Starting…"}),
+              getExport:async()=>null, stopExport:async()=>null, revealExport:async()=>null,
+              onInstallStatus:()=>()=>{},
+            }};
+          });
+          await page.goto(server.resolvedUrls.local[0]+"rsvp-test");
+          await page.waitForFunction(()=>window.rsvpTest?.reader.loading===false);
+          await page.getByRole("button",{name:"Reader menu",exact:true}).click();
+          await page.getByRole("button",{name:"Audiobook Mode",exact:true}).click();
+          const mode=page.getByRole("dialog",{name:"Audiobook Mode",exact:true});
+          await mode.getByRole("heading",{name:"A Quiet Morning"}).waitFor();
+          await mode.getByRole("button",{name:"Choose narrator voice"}).click();
+          const picker=page.getByRole("dialog",{name:"Choose a narrator",exact:true});
+          await picker.getByRole("button",{name:/Local voices/}).click();
+          const localList=picker.getByRole("radiogroup",{name:"Available local voices"});
+          assert.equal(await localList.getByRole("radio").count(),28,"all English Kokoro voices");
+          await picker.getByRole("radiogroup",{name:"Accent"}).getByRole("radio",{name:"British"}).click();
+          await picker.getByRole("radiogroup",{name:"Gender"}).getByRole("radio",{name:"Female"}).click();
+          assert.equal(await localList.getByRole("radio").count(),4);
+          await picker.getByRole("radio",{name:/Emma/}).check();
+          await picker.getByRole("button",{name:"Use this voice"}).click();
+          await picker.waitFor({state:"detached"});
+          assert.deepEqual(storedNarrator,{engine:"kokoro",voice:"bf_emma",name:"Emma",lang:"en-GB"});
+          assert.match(await mode.getByRole("button",{name:"Choose narrator voice"}).innerText(),/Emma/);
+
+          await mode.getByRole("button",{name:"Play narration",exact:true}).click();
+          await page.waitForFunction(()=>window.kokoroCalls.some(call=>call.priority==="high"&&call.index===0));
+          const first=await page.evaluate(()=>window.kokoroCalls.find(call=>call.index===0));
+          assert.equal(first.voice,"bf_emma");
+          assert.equal(first.sentence.text,first.sentence.words.join(" "));
+          assert.ok(first.sentence.pause>0&&first.sentence.speed>0,"pacing travels with each sentence");
+          await mode.getByText(/Local voice · word follow-along/).waitFor();
+          // Read-ahead asks for the next sentences at low priority.
+          await page.waitForFunction(()=>window.kokoroCalls.some(call=>call.priority==="low"&&call.index===1));
+          await page.evaluate(()=>{ window.audios.find(a=>!a.paused).currentTime=1.1; });
+          await page.waitForFunction(()=>document.querySelector(".audiobook-word.is-active")?.textContent==="edge");
+          await page.evaluate(()=>window.audios.find(a=>!a.paused).dispatchEvent(new Event("ended")));
+          await page.waitForFunction(()=>document.querySelector(".audiobook-sentence.is-active")?.textContent.startsWith("The first light"));
+
+          // Back to the book: narration keeps going in the mini player; it can reopen the full view.
+          await mode.getByRole("button",{name:"Back to the book"}).click();
+          await mode.waitFor({state:"detached"});
+          const mini=page.getByRole("group",{name:"Audiobook player"});
+          await mini.getByRole("button",{name:"Pause narration"}).waitFor();
+          await mini.getByRole("button",{name:"Pause narration"}).click();
+          await mini.getByRole("button",{name:"Play narration"}).waitFor();
+          await mini.getByRole("button",{name:/^Open Audiobook Mode/}).click();
+          await mode.getByRole("heading",{name:"A Quiet Morning"}).waitFor();
+          await page.waitForFunction(()=>document.querySelector(".audiobook-sentence.is-active")?.textContent.startsWith("The first light"));
+
+          // Save offline prepares the whole book's text once, then saves with the chosen voice.
+          await mode.getByRole("button",{name:"Save offline"}).click();
+          const offline=page.getByRole("dialog",{name:"Save for offline",exact:true});
+          await offline.getByRole("button",{name:"Save chapter"}).waitFor();
+          const script=await page.evaluate(()=>window.scripts[0]);
+          assert.deepEqual(script.sections.map(section=>section.section),[0,2],"non-linear sections are skipped");
+          assert.ok(script.sections[0].sentences.every(sentence=>sentence.words.length&&sentence.pause>0));
+          await offline.getByRole("button",{name:"Save chapter"}).click();
+          await offline.getByText("Ready for offline listening").waitFor();
+          await offline.getByRole("button",{name:"Close",exact:true}).first().click();
+          await offline.waitFor({state:"detached"});
+          await mode.getByRole("button",{name:"Exit audiobook mode"}).click();
+          await mode.waitFor({state:"detached"});
+          assert.equal(await mini.count(),0,"exit ends the session");
+        } finally {await browser.close();}
+      });
+      await t.test("long chapter is virtualized with native scrolling and bounded highlight DOM", async () => {
         storedNarrator=null;
         const archive=await JSZip.loadAsync(file);
         const original=await archive.file("a.xhtml").async("string");
@@ -644,16 +753,24 @@ test(
           await page.getByRole("button",{name:"Audiobook Mode",exact:true}).click();
           const mode=page.getByRole("dialog",{name:"Audiobook Mode",exact:true});
           await page.waitForFunction(()=>document.querySelector(".audiobook-content")?.getAttribute("aria-busy")==="false");
-          const allText=async()=> (await mode.locator(".audiobook-content p").allTextContents()).join("");
-          assert.equal(await allText(),source.text);
+          // Long chapters are virtualized (from RozaReader): only paragraphs near the reading position
+          // are in the page, each one exact book text, while the scroll height covers the whole chapter.
+          const rendered=async()=>{
+            const paragraphs=await mode.locator(".audiobook-content p").allTextContents();
+            return {count:paragraphs.length,exact:paragraphs.every(text=>source.text.includes(text))};
+          };
+          let view=await rendered();
+          assert.ok(view.count>0&&view.count<=100,"bounded paragraph DOM: "+view.count);
+          assert.equal(view.exact,true,"rendered paragraphs are exact book text");
           assert.ok(await mode.locator(".audiobook-word").count()<=64);
-          assert.equal(await mode.locator(".audiobook-content p").count(),156);
           const scroll=mode.locator(".audiobook-reading");
+          await scroll.evaluate(element=>{ element.scrollTop=element.scrollHeight; });
+          await page.waitForFunction(()=>[...document.querySelectorAll(".audiobook-content p")].some(p=>p.textContent.includes("token1999.")));
           const before=await scroll.evaluate(element=>{
             element.scrollTop=element.scrollHeight;
             return {top:element.scrollTop,height:element.scrollHeight,client:element.clientHeight};
           });
-          assert.ok(before.top+before.client>=before.height-1,"native scrolling reaches the end of all text");
+          assert.ok(before.top+before.client>=before.height-1,"native scrolling reaches the end of the chapter");
           await page.evaluate(()=>{
             window.articleMutations=0;
             window.articleObserver=new MutationObserver(records=>window.articleMutations+=records.length);
@@ -671,15 +788,16 @@ test(
           await seek.focus(); await seek.press("End");
           await page.waitForFunction(()=>document.querySelector("[data-audiobook-cursor]")?.textContent==="token1999.");
           assert.ok(await mode.locator(".audiobook-word").count()<=64);
-          assert.equal(await allText(),source.text);
-          assert.equal(await scroll.evaluate(element=>element.scrollHeight),before.height,"highlight markup preserves full scroll height");
+          view=await rendered();
+          assert.ok(view.count<=100&&view.exact);
           const cursor=await mode.locator("[data-audiobook-cursor]").boundingBox();
           const reading=await scroll.boundingBox();
           assert.ok(cursor.y>=reading.y&&cursor.y+cursor.height<=reading.y+reading.height+1,"seeking within a long sentence scrolls to the chosen word");
           await mode.getByRole("button",{name:"Previous sentence"}).click();
           await mode.getByRole("button",{name:"Next sentence"}).click();
           await page.waitForFunction(()=>document.querySelector("[data-audiobook-cursor]")?.textContent==="token0");
-          assert.equal(await allText(),source.text);
+          view=await rendered();
+          assert.ok(view.count<=100&&view.exact);
           await seek.focus(); await seek.press("End");
           await mode.getByRole("button",{name:"Play narration",exact:true}).click();
           assert.equal(await page.evaluate(()=>window.spoken.at(-1).text),"token1999.");

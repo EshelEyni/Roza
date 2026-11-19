@@ -1,6 +1,12 @@
 import { useEffect, useId, useRef, useState, type CSSProperties } from "react";
 import { FiCheck, FiPlay, FiSearch, FiSquare, FiX } from "react-icons/fi";
 import { ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
+import { desktopKokoro, type KokoroStatus } from "../../services/narration/desktopKokoro";
+import { defaultKokoroVoice, kokoroLang, kokoroVoices } from "../../services/narration/kokoroVoices";
+import type { KokoroAvailability } from "../../hooks/reader/useReaderAudiobook";
+import { KokoroInstall } from "./Audiobook/KokoroInstall";
+
+const ALL = "All";
 
 function languageName(language: string) {
   try {
@@ -15,15 +21,20 @@ function preferred(voices: SpeechSynthesisVoice[], selected: string) {
     || voices[0];
 }
 
-export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiVoice = "", config, configStatus, bookId, warning, beforePreview, onApplyGesture, onClose }: {
+export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiVoice = "", localVoice = defaultKokoroVoice, kokoroStatus = null, kokoroAvailability = "website", onKokoroChanged, config, configStatus, bookId, warning, beforePreview, onApplyGesture, onClose }: {
   voices: SpeechSynthesisVoice[]; selected: string; engine?: AudiobookEngine; aiVoice?: string;
+  localVoice?: string; kokoroStatus?: KokoroStatus | null; kokoroAvailability?: KokoroAvailability; onKokoroChanged?: () => void;
   config?: AudiobookConfig; configStatus?: string;
   bookId?: string; warning?: string; beforePreview?: () => Promise<unknown>;
   onApplyGesture?: (engine: AudiobookEngine) => void;
   onClose: (selected?: string, engine?: AudiobookEngine) => void | boolean | Promise<void | boolean>;
 }) {
   const [stagedEngine, setStagedEngine] = useState(engine);
-  const [staged, setStaged] = useState(() => engine === "openai" ? aiVoice : preferred(voices, selected)?.voiceURI || (warning ? "browser-default" : ""));
+  const [staged, setStaged] = useState(() => engine === "openai" ? aiVoice : engine === "kokoro" ? localVoice : preferred(voices, selected)?.voiceURI || (warning ? "browser-default" : ""));
+  const [gender, setGender] = useState(ALL);
+  const [accent, setAccent] = useState(ALL);
+  const localPreview = useRef<HTMLAudioElement>();
+  const kokoroReady = kokoroAvailability === "ready";
   const [englishOnly, setEnglishOnly] = useState(() => {
     const voice = voices.find(item => item.voiceURI === selected);
     return !voice || /^en(?:[-_]|$)/i.test(voice.lang);
@@ -46,6 +57,7 @@ export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiV
 
   function stopPreview() {
     ++previewVersion.current; aiPreview.current?.stop(); setPreviewStatus("");
+    if (localPreview.current) { localPreview.current.onended = null; localPreview.current.pause(); }
     const previous = preview.current;
     preview.current = undefined;
     if (previous) {
@@ -105,6 +117,27 @@ export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiV
       });
     } catch (cause) { stopPreview(); setError(cause instanceof Error ? cause.message : String(cause)); }
   }
+  function playKokoroPreview(voice: string) {
+    const already = previewing === voice;
+    stopPreview(); setError("");
+    const api = desktopKokoro();
+    if (already || !api) return;
+    const run = previewVersion.current;
+    setPreviewing(voice); setPreviewStatus("Preparing local voice preview… the first one takes a few seconds");
+    void (async () => {
+      await beforePreview?.();
+      const { url } = await api.preview(voice);
+      if (run !== previewVersion.current) return;
+      const element = localPreview.current ??= new Audio();
+      element.src = url;
+      element.onended = () => { if (run === previewVersion.current) stopPreview(); };
+      await element.play();
+      if (run === previewVersion.current) setPreviewStatus("Playing local voice preview");
+    })().catch(cause => {
+      if (run !== previewVersion.current) return;
+      stopPreview(); setError(cause instanceof Error ? cause.message : String(cause));
+    });
+  }
   useEffect(() => {
     const element = dialog.current!;
     element.showModal(); close.current?.focus({ preventScroll: true });
@@ -133,9 +166,17 @@ export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiV
   }, [voices, selected, stagedEngine, warning]);
 
   const search = query.trim().toLocaleLowerCase();
-  const choices = stagedEngine === "system" ? (voices.length || !warning || !synth ? voices : [{voiceURI:"browser-default",name:"Browser default",lang:"en",localService:false}]) : (config?.voices || []).map(name => ({ voiceURI: name, name, lang: "en", localService: false }));
-  const visible = choices.filter(voice => (!englishOnly || /^en(?:[-_]|$)/i.test(voice.lang))
+  const localChoices = kokoroVoices.filter(voice => (gender === ALL || voice.gender === gender) && (accent === ALL || voice.nationality === accent));
+  const choices = stagedEngine === "system" ? (voices.length || !warning || !synth ? voices : [{voiceURI:"browser-default",name:"Browser default",lang:"en",localService:false}])
+    : stagedEngine === "kokoro" ? (kokoroReady ? localChoices.map(voice => ({ voiceURI: voice.id, name: voice.name, lang: kokoroLang(voice), localService: true, detail: voice.nationality + " English · " + voice.gender + " · On this computer" })) : [])
+      : (config?.voices || []).map(name => ({ voiceURI: name, name, lang: "en", localService: false }));
+  const visible = choices.filter(voice => (stagedEngine !== "system" || !englishOnly || /^en(?:[-_]|$)/i.test(voice.lang))
     && (!search || (voice.name + " " + voice.lang + " " + languageName(voice.lang)).toLocaleLowerCase().includes(search)));
+  const localStatus = kokoroAvailability === "website" ? "Desktop app only · runs on your computer"
+    : kokoroAvailability === "not-english" ? "English books only"
+      : kokoroAvailability === "checking" ? "Checking this computer…"
+        : kokoroAvailability === "not-installed" ? "Free and private · install once (about 1.6 GB)"
+          : "Free and private · runs on this computer, works offline";
   const stagedVoice = choices.find(voice => voice.voiceURI === staged);
   return <dialog className="audiobook-voice-modal" ref={dialog} aria-modal="true" aria-labelledby={titleId} aria-describedby={descriptionId}
     style={{ "--audiobook-voice-height": viewport.height + "px", "--audiobook-voice-top": viewport.top + "px" } as CSSProperties}
@@ -158,7 +199,7 @@ export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiV
       </header>
       <div className="audiobook-voice-dialog-scroll">
         {warning && <p className="audiobook-error" role="alert">{warning}</p>}
-        <div className="audiobook-voice-section-heading">VOICE ENGINE <span className="audiobook-voice-count">{Number(!!synth) + Number(!!config?.available)} available</span></div>
+        <div className="audiobook-voice-section-heading">VOICE ENGINE <span className="audiobook-voice-count">{Number(!!synth) + Number(!!config?.available) + Number(kokoroReady)} available</span></div>
         <button type="button" className="audiobook-voice-engine" disabled={saving} aria-pressed={stagedEngine === "system"} onClick={() => { stopPreview(); setStagedEngine("system"); setStaged(preferred(voices, selected)?.voiceURI || (warning ? "browser-default" : "")); }}>
           <span className="audiobook-voice-engine-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 10v4M8 6v12M12 3v18M16 7v10M20 10v4" /></svg></span>
           <span className="audiobook-voice-engine-copy"><strong>System voices</strong><small>Voices available on this device</small></span>
@@ -168,6 +209,12 @@ export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiV
           <span className="audiobook-voice-engine-copy"><strong>OpenAI voices</strong><small>{configStatus || "OpenAI narration is unavailable"}</small></span>
           {stagedEngine === "openai" && <span className="audiobook-voice-engine-check" aria-hidden="true"><FiCheck /></span>}
         </button>
+        <button type="button" className="audiobook-voice-engine" aria-pressed={stagedEngine === "kokoro"} disabled={saving || (kokoroAvailability !== "ready" && kokoroAvailability !== "not-installed")}
+          onClick={() => { stopPreview(); setStagedEngine("kokoro"); setStaged(localVoice || defaultKokoroVoice); }}>
+          <span className="audiobook-voice-engine-copy"><strong>Local voices</strong><small>{localStatus}</small></span>
+          {stagedEngine === "kokoro" && <span className="audiobook-voice-engine-check" aria-hidden="true"><FiCheck /></span>}
+        </button>
+        {stagedEngine === "kokoro" && <KokoroInstall status={kokoroStatus} availability={kokoroAvailability} onChanged={() => onKokoroChanged?.()} />}
         {stagedEngine === "openai" && <p className="audiobook-voice-help">These voices are generated by AI. Playback and previews use your server’s OpenAI account and may incur API charges. Tap a voice’s play icon to compare the same sample.</p>}
         <p className="audiobook-voice-help">Preview text: “{sample}”</p>
         <div className="audiobook-voices-heading"><div className="audiobook-voice-section-heading">NARRATOR VOICE</div><span className="audiobook-voice-count" role="status">{visible.length} {visible.length === 1 ? "voice" : "voices"}</span></div>
@@ -175,15 +222,23 @@ export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiV
           <label className="audiobook-voice-search"><FiSearch aria-hidden="true" /><input type="search" autoComplete="off" placeholder="Search voices or languages" aria-label="Search voices" value={query} onChange={event => setQuery(event.target.value)} /></label>
           {stagedEngine === "system" && <button type="button" className={"audiobook-voice-filter" + (englishOnly ? " is-active" : "")} aria-pressed={englishOnly} onClick={() => setEnglishOnly(!englishOnly)}>English only</button>}
         </div>
-        <div className="audiobook-voice-options" role="radiogroup" aria-label={stagedEngine === "system" ? "Available system voices" : "Available OpenAI voices"}>
-          {!visible.length && <div className="audiobook-voice-empty">{voices.length ? "No matching voices. Try a different search or turn off English only." : "No system voices detected yet. Voices may still be loading; browser-default narration remains available."}</div>}
+        {stagedEngine === "kokoro" && kokoroReady && <div className="audiobook-voice-chips">
+          {[{ label: "Gender", options: [ALL, "Female", "Male"], value: gender, set: setGender }, { label: "Accent", options: [ALL, "American", "British"], value: accent, set: setAccent }].map(filter =>
+            <div key={filter.label} className="audiobook-voice-chip-group" role="radiogroup" aria-label={filter.label}>
+              <span>{filter.label}</span>
+              {filter.options.map(option => <button key={option} type="button" role="radio" aria-checked={option === filter.value}
+                className={"audiobook-voice-filter" + (option === filter.value ? " is-active" : "")} onClick={() => filter.set(option)}>{option}</button>)}
+            </div>)}
+        </div>}
+        <div className="audiobook-voice-options" role="radiogroup" aria-label={stagedEngine === "system" ? "Available system voices" : stagedEngine === "kokoro" ? "Available local voices" : "Available OpenAI voices"}>
+          {!visible.length && <div className="audiobook-voice-empty">{stagedEngine === "kokoro" ? (kokoroReady ? "No local voices match these filters." : "Local voices appear here once they are installed.") : voices.length ? "No matching voices. Try a different search or turn off English only." : "No system voices detected yet. Voices may still be loading; browser-default narration remains available."}</div>}
           {visible.map(voice => <div key={voice.voiceURI} className={"audiobook-voice-card" + (voice.voiceURI === staged ? " is-selected" : "")}>
             <label className="audiobook-voice-choice">
               <input type="radio" disabled={saving} name={radioName} value={voice.voiceURI} checked={voice.voiceURI === staged} onChange={() => setStaged(voice.voiceURI)} />
-              <span className="audiobook-voice-detail"><strong>{voice.name}</strong><small>{stagedEngine === "openai" ? "Multilingual · AI-generated" : languageName(voice.lang) + " · " + voice.lang + (voice.localService ? " · On device" : "")}</small></span>
+              <span className="audiobook-voice-detail"><strong>{voice.name}</strong><small>{stagedEngine === "openai" ? "Multilingual · AI-generated" : "detail" in voice ? String(voice.detail) : languageName(voice.lang) + " · " + voice.lang + (voice.localService ? " · On device" : "")}</small></span>
             </label>
             <button type="button" disabled={saving || voice.voiceURI === "browser-default" || (stagedEngine === "openai" && (!bookId || !config?.available))} className={"audiobook-voice-preview" + (previewing === voice.voiceURI ? " is-previewing" : "")} title={(previewing === voice.voiceURI ? "Stop preview of " : "Preview ") + voice.name}
-              aria-label={(previewing === voice.voiceURI ? "Stop preview of " : "Preview ") + voice.name} onClick={() => { if (stagedEngine === "openai") playAiPreview(voice.voiceURI); else { const systemVoice = voices.find(item => item.voiceURI === voice.voiceURI); if (systemVoice) playPreview(systemVoice); } }}>{previewing === voice.voiceURI ? <FiSquare fill="currentColor" /> : <FiPlay fill="currentColor" />}</button>
+              aria-label={(previewing === voice.voiceURI ? "Stop preview of " : "Preview ") + voice.name} onClick={() => { if (stagedEngine === "openai") playAiPreview(voice.voiceURI); else if (stagedEngine === "kokoro") playKokoroPreview(voice.voiceURI); else { const systemVoice = voices.find(item => item.voiceURI === voice.voiceURI); if (systemVoice) playPreview(systemVoice); } }}>{previewing === voice.voiceURI ? <FiSquare fill="currentColor" /> : <FiPlay fill="currentColor" />}</button>
           </div>)}
         </div>
         {stagedEngine === "system" && <p className="audiobook-voice-help">Voices come from your browser and device. Tap the play icon to hear a real preview.</p>}
@@ -192,7 +247,7 @@ export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiV
       </div>
       <footer className="audiobook-voice-dialog-footer">
         <button type="button" className="audiobook-voice-cancel" disabled={saving} onClick={() => void dismiss()}>{warning ? "Exit audiobook mode" : "Cancel"}</button>
-        <button type="button" className="audiobook-voice-apply" disabled={saving || !stagedVoice || (stagedEngine === "openai" && !config?.available)} onClick={() => { if (stagedVoice) void dismiss(stagedVoice.voiceURI); }}>{saving ? "Saving…" : "Use this voice"} <FiCheck aria-hidden="true" /></button>
+        <button type="button" className="audiobook-voice-apply" disabled={saving || !stagedVoice || (stagedEngine === "openai" && !config?.available) || (stagedEngine === "kokoro" && !kokoroReady)} onClick={() => { if (stagedVoice) void dismiss(stagedVoice.voiceURI); }}>{saving ? "Saving…" : "Use this voice"} <FiCheck aria-hidden="true" /></button>
       </footer>
     </section>
   </dialog>;

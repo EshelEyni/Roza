@@ -1,6 +1,7 @@
 import { ReaderReadingTarget } from "../../frontend/src/components/Reader/ReaderReadingTarget";
 import { ReaderSentenceMode } from "../../frontend/src/components/Reader/ReaderSentenceMode";
 import { ReaderPanels } from "../../frontend/src/components/Reader/ReaderPanels";
+import { ReaderAudiobookHost } from "../../frontend/src/components/Reader/Audiobook/ReaderAudiobookHost";
 import * as sentenceService from "../../frontend/src/services/readerSentences";
 import { MemoryRouter } from "react-router-dom";
 import { ReaderToolbar } from "../../frontend/src/components/Reader/ReaderToolbar";
@@ -66,6 +67,10 @@ function Fixture() {
       <div
         className={"reader-workspace" + (reader.rsvp.active || reader.sentenceMode.active ? " is-rsvp" : "")}
       >
+        <ReaderAudiobookHost open={reader.panel === "tts"} bookId={reader.review.bookId} source={reader.audiobook}
+          onMinimize={reader.closePanel} onOpen={() => { if (reader.panel !== "tts") reader.togglePanel("tts"); }}
+          onExit={cfi => { if (cfi) reader.onNavigate(cfi); else reader.closePanel(); }}
+          onFollow={cfi => void reader.onAnnotationNavigate(cfi)} />
         <ReaderPanels {...reader} />
         {reader.sentenceMode.active && <ReaderSentenceMode reader={reader} bookId="rsvp" />}
         {reader.rsvp.active && <ReaderRsvp reader={reader} bookId="rsvp" />}

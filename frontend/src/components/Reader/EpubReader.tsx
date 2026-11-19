@@ -14,6 +14,7 @@ import { ReaderPanels } from "./ReaderPanels";
 import { ReaderViewport } from "./ReaderViewport";
 import { ReaderNotices } from "./ReaderNotices";
 import { ReaderFooter } from "./ReaderFooter";
+import { ReaderAudiobookHost } from "./Audiobook/ReaderAudiobookHost";
 
 export function EpubReader({
   book,
@@ -95,8 +96,11 @@ export function EpubReader({
       <div className={"reader-workspace" + (reader.rsvp.active || reader.sentenceMode.active ? " is-rsvp" : "")}>
         {reader.sentenceMode.active && <ReaderSentenceMode reader={reader} bookId={book.id} />}
         {reader.rsvp.active && <ReaderRsvp reader={reader} bookId={book.id} />}
+        <ReaderAudiobookHost key={book.id} open={reader.panel === "tts"} bookId={book.id} source={reader.audiobook}
+          onMinimize={reader.closePanel} onOpen={() => { if (reader.panel !== "tts") reader.togglePanel("tts"); }}
+          onExit={cfi => { if (cfi) reader.onNavigate(cfi); else reader.closePanel(); }}
+          onFollow={cfi => void reader.onAnnotationNavigate(cfi)} />
         {!reader.rsvp.active && <ReaderPanels
-          audiobook={reader.audiobook}
           progressSettings={reader.progressSettings}
           updateProgressSettings={reader.updateProgressSettings}
           progressSaveStatus={reader.progressSaveStatus}

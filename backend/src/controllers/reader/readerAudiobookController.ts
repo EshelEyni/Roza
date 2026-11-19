@@ -18,6 +18,7 @@ import {
 import { readerSpeechStore, type SpeechEntry } from "../../services/reader/readerSpeechStore";
 import { generateReaderSpeech } from "../../services/reader/readerSpeechProvider";
 import { alignReaderSpeech } from "../../services/reader/readerSpeechAlignment";
+import { isReaderKokoroVoice } from "../../services/reader/readerKokoroVoices";
 
 async function ownedBook(req: Request) {
   if (!mongoose.isValidObjectId(req.params.id)) throw new AppError("Book not found.", 404);
@@ -110,11 +111,12 @@ export const saveAudiobookNarrator = asyncErrorCatcher(async (req: Request, res:
   const body = req.body;
   if (!body || typeof body !== "object" || Array.isArray(body)
     || Object.keys(body).some(key => !["engine", "voice", "name", "lang"].includes(key))
-    || !["system", "openai"].includes(body.engine)
+    || !["system", "openai", "kokoro"].includes(body.engine)
     || typeof body.voice !== "string" || !body.voice.trim() || body.voice.length > 1024
     || typeof body.name !== "string" || !body.name.trim() || body.name.length > 256
     || typeof body.lang !== "string" || body.lang.length > 32
-    || (body.engine === "openai" && !readerSpeechVoices.includes(body.voice)))
+    || (body.engine === "openai" && !readerSpeechVoices.includes(body.voice))
+    || (body.engine === "kokoro" && !isReaderKokoroVoice(body.voice)))
     throw new AppError("Choose an available narrator voice.", 400);
   const narrator = { engine: body.engine, voice: body.voice, name: body.name, lang: body.lang };
   const updated = await ReaderBookModel.findOneAndUpdate(

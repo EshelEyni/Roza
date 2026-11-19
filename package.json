@@ -8,6 +8,7 @@
     "dev:backend": "cd backend  && npm run dev",
     "dev:frontend": "cd frontend  && npm run dev",
     "build:desktop": "node desktop/scripts/build-and-open.cjs",
+    "desktop:dev": "node scripts/desktop-dev.cjs",
     "docker:publish": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/deploy/publish-image.ps1",
     "deploy:roza": "gh workflow run deploy-roza.yml --repo EshelEyni/Roza --ref main",
     "deploy:watch": "gh run watch --repo EshelEyni/Roza",

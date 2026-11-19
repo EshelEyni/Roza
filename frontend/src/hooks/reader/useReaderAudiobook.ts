@@ -2,10 +2,35 @@ import { useEffect, useRef, useState } from "react";
 import { audiobookSpeechSlice, audiobookSeek, audiobookWordAt, type AudiobookSection } from "../../services/readerTts";
 import { loadAudiobookConfig, saveAudiobookNarrator, openAiBlock, ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
 import type { ReaderAudiobookNarrator } from "../../../../shared/types/reader";
+import { ReaderKokoroAudio } from "../../services/narration/kokoroAudio";
+import { desktopKokoro, isEnglishBook, type KokoroStatus } from "../../services/narration/desktopKokoro";
+import { defaultKokoroVoice, kokoroLang, kokoroVoice } from "../../services/narration/kokoroVoices";
 
 export type AudiobookLoader = (target?: number, direction?: 1 | -1) => Promise<AudiobookSection | null>;
 
-export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string) {
+const VOLUME_KEY = "roza-audiobook-volume";
+const SPEED_KEY = "roza-audiobook-speed";
+function stored(key: string, fallback: number, min: number, max: number) {
+  try {
+    const raw = localStorage.getItem(key);
+    const value = Number(raw);
+    return raw !== null && Number.isFinite(value) && value >= min && value <= max ? value : fallback;
+  } catch { return fallback; }
+}
+function store(key: string, value: number) {
+  try { localStorage.setItem(key, String(value)); } catch { /* Private mode: the setting lasts this session. */ }
+}
+/** Text written mostly in Latin letters (a quick check for books without a language tag). */
+function looksLatin(section: AudiobookSection | null) {
+  const sample = (section?.sentences || []).slice(0, 40).map(sentence => sentence.text).join(" ");
+  const letters = sample.match(/\p{L}/gu)?.length || 0;
+  const latin = sample.match(/\p{Script=Latin}/gu)?.length || 0;
+  return !letters || latin / letters > 0.6;
+}
+
+export type KokoroAvailability = "ready" | "website" | "checking" | "not-installed" | "not-english";
+
+export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string, language?: () => string | undefined) {
   const [engine, setEngine] = useState<AudiobookEngine>("system");
   const [config, setConfig] = useState<AudiobookConfig>();
   const [configStatus, setConfigStatus] = useState("Checking OpenAI availability…");
@@ -22,6 +47,13 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   const configRef = useRef<AudiobookConfig>();
   const ai = useRef<ReaderOpenAiAudio>();
   if (!ai.current && bookId) ai.current = new ReaderOpenAiAudio(bookId, () => pause("Audio interrupted · press Play to continue"));
+  const kokoro = useRef<ReaderKokoroAudio>();
+  if (!kokoro.current && bookId && desktopKokoro()) kokoro.current = new ReaderKokoroAudio(bookId);
+  const [kokoroStatus, setKokoroStatus] = useState<KokoroStatus | null | undefined>(() => desktopKokoro() ? undefined : null);
+  const kokoroStatusRef = useRef(kokoroStatus); kokoroStatusRef.current = kokoroStatus;
+  const [localVoice, setLocalVoice] = useState(defaultKokoroVoice);
+  const localVoiceRef = useRef(defaultKokoroVoice);
+  const languageRef = useRef(language); languageRef.current = language;
   const [section, setSection] = useState<AudiobookSection | null>(null);
   const [index, setIndex] = useState(0);
   const [passageEnd, setPassageEnd] = useState(0);
@@ -35,14 +67,16 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   const [error, setError] = useState("");
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [voice, setVoice] = useState("");
-  const [speed, setSpeed] = useState(1);
+  const [speed, setSpeed] = useState(() => stored(SPEED_KEY, 1, 0.5, 2.5));
+  const [volume, setVolume] = useState(() => stored(VOLUME_KEY, 1, 0, 1));
+  const volumeRef = useRef(volume);
   const position = useRef({ section: null as AudiobookSection | null, index: 0, offset: 0 });
   // Keep the audio passage origin stable while visible word cues advance.
   const spoken = useRef({ index: 0, offset: 0 });
   const loader = useRef(loadSection); loader.current = loadSection;
   const nextSection = useRef<{ target: number; promise: Promise<AudiobookSection | null> }>();
   const selectedVoice = useRef("");
-  const rate = useRef(1);
+  const rate = useRef(speed);
   const wantPlay = useRef(false);
   const version = useRef(0);
   const loadVersion = useRef(0);
@@ -55,9 +89,20 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     return request;
   }
 
+  /** Why Kokoro can or cannot narrate this book right now. */
+  function kokoroAvailability(): KokoroAvailability {
+    const status = kokoroStatusRef.current;
+    if (status === null || !kokoro.current) return "website";
+    if (status === undefined) return "checking";
+    if (!status.installed) return "not-installed";
+    if (!isEnglishBook(languageRef.current?.()) || !looksLatin(position.current.section)) return "not-english";
+    return "ready";
+  }
   function cancel(resetAudio = true, continuous = false) {
     ++version.current;
-    if (!continuous) { if (resetAudio) ai.current?.stop(); else ai.current?.pause(); }
+    if (!continuous) {
+      if (resetAudio) { ai.current?.stop(); kokoro.current?.stop(); } else { ai.current?.pause(); kokoro.current?.pause(); }
+    }
     const previous = utterance.current;
     utterance.current = undefined;
     if (previous) {
@@ -95,6 +140,43 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
       else if (current.next !== null) void load(current.next, 1, true, true);
       else completed();
     };
+    if (engineRef.current === "kokoro") {
+      try {
+        const availability = kokoroAvailability();
+        if (availability !== "ready" || !kokoro.current) {
+          pause("Choose an available narrator to continue");
+          warn(availability === "not-english" ? "Local voices read English books only. Choose another narrator."
+            : availability === "not-installed" ? "Local voices are not installed on this computer. Install them or choose another narrator."
+              : "Local voices need the Roza desktop app. Choose another narrator.");
+          return;
+        }
+        setWordEvents(true); setHighlight(null); setStatus("Preparing local narration…");
+        kokoro.current.setRate(rate.current); kokoro.current.setVolume(volumeRef.current);
+        void kokoro.current.play(current, sentenceIndex, start, localVoiceRef.current, {
+          onStart: () => {
+            if (version.current !== run) return;
+            setStatus("Following local narration");
+            // Near a section's end, make the next section's first sentence ready too.
+            if (sentenceIndex >= current.sentences.length - 2 && current.next !== null && nextSection.current?.target !== current.next) {
+              const prepared = { target: current.next, promise: loader.current(current.next, 1) };
+              nextSection.current = prepared;
+              void prepared.promise.then(next => {
+                if (next && version.current === run) kokoro.current?.prefetch(next, next.start, localVoiceRef.current);
+              }).catch(() => undefined);
+            }
+          },
+          onWord: word => {
+            if (version.current !== run || word === null) return;
+            const character = sentence.words[word]?.start || 0;
+            position.current.offset = character;
+            spoken.current = { index: sentenceIndex, offset: character };
+            setOffset(character); setHighlight(word);
+          },
+          onEnd: () => advance(sentence.text.length),
+        }).catch(cause => { if (version.current === run) fail(cause); });
+      } catch (cause) { fail(cause); }
+      return;
+    }
     if (engineRef.current === "openai") {
       try {
         if (!configRef.current?.available || !ai.current) throw new Error("OpenAI narration is unavailable. Choose System voices.");
@@ -151,6 +233,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
       next.voice = synth.getVoices().find(item => item.voiceURI === selectedVoice.current) || null;
       if (next.voice) next.lang = next.voice.lang;
       next.rate = rate.current;
+      next.volume = volumeRef.current;
       next.onstart = () => { if (version.current === run) setStatus("Following narration"); };
       next.onboundary = event => {
         if (version.current !== run || event.name === "sentence" || !Number.isFinite(event.charIndex)) return;
@@ -259,10 +342,15 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
   }
   async function changeNarrator(next: AudiobookEngine, value: string) {
     const systemVoice = synth?.getVoices().find(item => item.voiceURI === value);
-    if ((next === "openai" && (!config?.available || !config.voices.includes(value))) || (next === "system" && !systemVoice && !(value === "browser-default" && synth))) {
+    const localChoice = next === "kokoro" ? kokoroVoice(value) : undefined;
+    if ((next === "openai" && (!config?.available || !config.voices.includes(value)))
+      || (next === "system" && !systemVoice && !(value === "browser-default" && synth))
+      || (next === "kokoro" && (!localChoice || kokoroAvailability() !== "ready"))) {
       warn("That voice is no longer available. Choose another narrator."); return false;
     }
-    const narrator: ReaderAudiobookNarrator = { engine: next, voice: value, name: next === "openai" ? value : systemVoice?.name || "Browser default", lang: next === "openai" ? "" : systemVoice?.lang || "" };
+    const narrator: ReaderAudiobookNarrator = localChoice
+      ? { engine: "kokoro", voice: value, name: localChoice.name, lang: kokoroLang(localChoice) }
+      : { engine: next, voice: value, name: next === "openai" ? value : systemVoice?.name || "Browser default", lang: next === "openai" ? "" : systemVoice?.lang || "" };
     try {
       await persist(narrator);
       saved.current = narrator; setSavedNarrator(narrator); warn("");
@@ -274,15 +362,38 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     setPassageEnd(spoken.current.index);
     engineRef.current = next; setEngine(next); setWordEvents(false); setHighlight(null);
     if (next === "system") { selectedVoice.current = value; setVoice(value); }
+    else if (next === "kokoro") { localVoiceRef.current = value; setLocalVoice(value); setWordEvents(true); }
     else { aiVoiceRef.current = value; setAiVoice(value); }
     setError("");
     if (wantPlay.current) resume();
     return true;
   }
   function changeSpeed(value: number) {
-    rate.current = Math.max(0.5, Math.min(2.5, value)); setSpeed(rate.current);
+    rate.current = Math.max(0.5, Math.min(2.5, value)); setSpeed(rate.current); store(SPEED_KEY, rate.current);
     if (engineRef.current === "openai") { ai.current?.setRate(rate.current); return; }
+    if (engineRef.current === "kokoro") { kokoro.current?.setRate(rate.current); return; }
     if (position.current.section) goTo(position.current.index, position.current.offset);
+  }
+  /** Volume applies at once to OpenAI and local voices; system speech picks it up from the next phrase. */
+  function changeVolume(value: number) {
+    volumeRef.current = Math.max(0, Math.min(1, value)); setVolume(volumeRef.current); store(VOLUME_KEY, volumeRef.current);
+    ai.current?.setVolume(volumeRef.current); kokoro.current?.setVolume(volumeRef.current);
+  }
+  /** Jumps to the start of a section (chapter), keeping play/pause as it is. */
+  function goToSection(target: number) {
+    if (loading) return;
+    void load(target, 1, wantPlay.current);
+  }
+  async function refreshKokoro() {
+    const api = desktopKokoro();
+    if (!api) return null;
+    try {
+      const next = await api.status();
+      kokoroStatusRef.current = next; setKokoroStatus(next);
+      return next;
+    } catch {
+      return null;
+    }
   }
 
   useEffect(() => {
@@ -296,6 +407,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
       if (narrator) {
         engineRef.current = narrator.engine; setEngine(narrator.engine);
         if (narrator.engine === "system") { selectedVoice.current = narrator.voice; setVoice(narrator.voice); }
+        if (narrator.engine === "kokoro") { localVoiceRef.current = narrator.voice; setLocalVoice(narrator.voice); setWordEvents(true); }
       }
       setNarratorLoaded(true);
       setConfigStatus(value.available ? "AI-generated voices · requires internet" : "OpenAI narration is not enabled on this server.");
@@ -307,7 +419,12 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     if (!narratorLoaded || !savedNarrator) return;
     let unavailable = false;
     if (savedNarrator.engine === "openai") unavailable = !config?.available || !config.voices?.includes(savedNarrator.voice);
-    else {
+    else if (savedNarrator.engine === "kokoro") {
+      const availability = kokoroAvailability();
+      // Wait for the desktop status and the first section (the language check reads its text).
+      if (availability === "checking" || !section) return;
+      unavailable = availability !== "ready" || !kokoroVoice(savedNarrator.voice);
+    } else {
       if (!voices.length && !voicesSettled && synth) return;
       unavailable = !synth || (savedNarrator.voice !== "browser-default" && !voices.some(item => item.voiceURI === savedNarrator.voice));
     }
@@ -317,7 +434,18 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     }
     // Never silently replace a missing saved narrator with a different voice.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [narratorLoaded, savedNarrator, config, voices, voicesSettled]);
+  }, [narratorLoaded, savedNarrator, config, voices, voicesSettled, kokoroStatus, section]);
+  useEffect(() => {
+    const api = desktopKokoro();
+    if (!api) return;
+    void refreshKokoro();
+    // Install progress arrives as events; a finished install refreshes the whole status.
+    const stop = api.onInstallStatus(install => {
+      setKokoroStatus(current => current ? { ...current, ...install } : current);
+      if (!install.installing) void refreshKokoro();
+    });
+    return stop;
+  }, []);
   useEffect(() => {
     void load();
     const updateVoices = () => setVoices(Array.from(new Map((synth?.getVoices() || []).filter(item => item.voiceURI).map(item => [item.voiceURI, item])).values()));
@@ -334,6 +462,7 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
       ++loadVersion.current;
       wantPlay.current = false; cancel();
       ai.current?.dispose();
+      kokoro.current?.dispose();
       synth?.removeEventListener("voiceschanged", updateVoices);
       window.clearTimeout(voiceTimer);
       window.removeEventListener("pagehide", hide);
@@ -348,10 +477,13 @@ export function useReaderAudiobook(loadSection: AudiobookLoader, bookId?: string
     section, index, passageEnd: engine === "openai" ? passageEnd : index, offset, highlight, wordEvents, playing, ended, loading, status, error,
     voices, voice, speed, toggle, move, seek, changeVoice, changeSpeed, pause, resume,
     engine, config, configStatus, aiVoice, changeNarrator,
+    volume, changeVolume, goToSection, localVoice, kokoroStatus, refreshKokoro,
+    kokoroAvailability: kokoroAvailability(),
     narratorWarning,
     waitForAudioCancellation: () => ai.current?.waitForCancellation() || Promise.resolve(),
     unlockNarrator: (next: AudiobookEngine) => { if (next === "openai") { try { void ai.current?.unlock().catch(() => undefined); } catch { /* Playback reports unsupported audio. */ } } },
-    available: narratorLoaded && !narratorWarning && !(savedNarrator?.engine === "system" && savedNarrator.voice !== "browser-default" && !voices.length && !voicesSettled) && (engine === "openai" ? !!config?.available : !!synth),
+    available: narratorLoaded && !narratorWarning && !(savedNarrator?.engine === "system" && savedNarrator.voice !== "browser-default" && !voices.length && !voicesSettled)
+      && (engine === "openai" ? !!config?.available : engine === "kokoro" ? kokoroAvailability() === "ready" : !!synth),
     currentWord: ended ? section?.totalWords || 0 : currentWord,
     cfi: sentence?.cfi,
   };

@@ -7,7 +7,7 @@ const readerBookSchema = new Schema<IReaderBook>(
     archived: { type: Boolean, default: false },
     audiobookNarrator: {
       type: new Schema({
-        engine: { type: String, enum: ["system", "openai"], required: true },
+        engine: { type: String, enum: ["system", "openai", "kokoro"], required: true },
         voice: { type: String, required: true, maxlength: 1024 },
         name: { type: String, required: true, maxlength: 256 },
         lang: { type: String, maxlength: 32 },
