@@ -142,6 +142,10 @@ test("Writing Studio narrates the selected draft and stops without saving", { ti
     assert.equal(await play.getAttribute("title"), "Audiobook");
     await play.click();
     await player.waitFor();
+    assert.equal(await player.evaluate(element => getComputedStyle(element).backgroundColor), "rgb(241, 231, 216)");
+    assert.equal(await resume.evaluate(element => getComputedStyle(element).backgroundColor), "rgb(118, 89, 64)");
+    assert.equal(await player.getByRole("slider", { name: "Chapter progress" }).evaluate(element =>
+      getComputedStyle(element).accentColor), "rgb(118, 89, 64)");
     await player.getByRole("button", { name: "Save for offline" }).click();
     const offline = page.getByRole("dialog", { name: "Save for offline" });
     await offline.getByText(/run in the Roza desktop app/).waitFor();
@@ -151,6 +155,9 @@ test("Writing Studio narrates the selected draft and stops without saving", { ti
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     const grip = player.getByRole("button", { name: "Move mini player with arrow keys" });
     const before = await player.boundingBox();
+    assert.ok(before.width <= 420);
+    const voiceBox = await player.getByRole("button", { name: "Choose narrator voice" }).boundingBox();
+    assert.ok((await resume.boundingBox()).y < voiceBox.y);
     const handle = await grip.boundingBox();
     await page.mouse.move(handle.x + 16, handle.y + 16);
     await page.mouse.down();
@@ -158,17 +165,24 @@ test("Writing Studio narrates the selected draft and stops without saving", { ti
     await page.mouse.up();
     const after = await player.boundingBox();
     assert.ok(after.x < before.x && after.y < before.y);
-    await page.setViewportSize({ width: 360, height: 740 });
+    await page.setViewportSize({ width: 320, height: 740 });
     await page.waitForFunction(() => {
       const box = document.querySelector(".ws-floating-audio").getBoundingClientRect();
-      return box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight;
+      return box.left >= 0 && box.top >= 0 && box.right <= innerWidth && box.bottom <= innerHeight &&
+        document.querySelector(".ws-floating-audio").scrollWidth <= box.width;
     });
     await page.setViewportSize({ width: 1365, height: 900 });
     await player.getByRole("button", { name: "Reading speed", exact: true }).click();
     await player.getByRole("slider", { name: "Reading speed", exact: true }).press("ArrowRight");
     assert.equal(await player.getByRole("button", { name: "Reading speed", exact: true }).innerText(), "1.1×");
-    await player.getByRole("slider", { name: "Volume" }).press("ArrowLeft");
-    assert.equal(await player.getByRole("slider", { name: "Volume" }).inputValue(), "0.95");
+    const volume = player.getByRole("slider", { name: "Volume" });
+    await volume.press("ArrowLeft");
+    assert.equal(await volume.inputValue(), "0.95");
+    assert.equal(await volume.getAttribute("aria-valuetext"), "95%");
+    await player.locator(".ws-floating-audio-volume-tooltip").filter({ hasText: "95%" }).waitFor();
+    const totalTime = player.getByTitle("Estimated total chapter time");
+    const duration = await totalTime.innerText();
+    assert.match(duration, /^\d+:\d{2}$/);
     await resume.click();
     await pause.waitFor();
     assert.equal(await speechText(), "Main opens.");
@@ -210,11 +224,28 @@ test("Writing Studio narrates the selected draft and stops without saving", { ti
     await resume.click();
     assert.equal(await page.evaluate(() => window.speechSynthesis.spoken.length), spoken);
     assert.equal(await page.evaluate(() => window.speechSynthesis.paused), false);
+    const speakWord = charIndex => page.evaluate(index => {
+      window.speechSynthesis.current.onboundary({ charIndex: index, name: "word" });
+    }, charIndex);
+    const spokenWords = () => page.evaluate(() => [...CSS.highlights.values()].flatMap(highlight =>
+      highlight.priority === 3 ? [...highlight].map(range => range.toString()) : [],
+    ));
+    const waitForSpokenWord = word => page.waitForFunction(expected => [...CSS.highlights.values()].some(highlight =>
+      highlight.priority === 3 && [...highlight].some(range => range.toString() === expected),
+    ), word);
+    await speakWord(4);
+    await waitForSpokenWord("next");
+    assert.deepEqual(await spokenWords(), ["next"]);
+    await speakWord(9);
+    await waitForSpokenWord("sentence.");
+    assert.deepEqual(await spokenWords(), ["sentence."]);
     await page.evaluate(() => window.speechSynthesis.finishSentence());
     await page.waitForFunction(() => [...CSS.highlights.values()].some(highlight =>
       highlight.priority === 2 && [...highlight].some(range => range.toString() === "A final sentence."),
     ));
     assert.equal(await speechText(), "A final sentence.");
+    assert.equal(await totalTime.innerText(), duration);
+    assert.deepEqual(await spokenWords(), []);
     assert.ok(await main.evaluate(element => {
       const paragraph = element.lastElementChild.getBoundingClientRect();
       const view = element.closest(".ws-writing").getBoundingClientRect();

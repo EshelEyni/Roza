@@ -56,6 +56,7 @@ export function manuscriptNarration(editable: HTMLElement, selection?: Range) {
   const blocks = new Set(Array.from(editable.querySelectorAll(stringSelector),
     leaf => leaf.closest(blockSelector)));
   const ranges: Range[] = [];
+  const wordRanges: ((index: number) => Range | undefined)[] = [];
   const items: AudiobookSection["sentences"] = [];
   let totalWords = 0;
   let start = 0;
@@ -71,6 +72,10 @@ export function manuscriptNarration(editable: HTMLElement, selection?: Range) {
       if (!words.length) continue;
       if (offset !== undefined && span.start <= offset && offset < span.end) start = items.length;
       ranges.push(data.rangeFor(span));
+      wordRanges.push(index => {
+        const word = words[index];
+        return word && data.rangeFor({ start: span.start + word.start, end: span.start + word.end });
+      });
       items.push({ text, words, paragraph, startWord: totalWords, cfi: String(items.length) });
       totalWords += words.length;
     }
@@ -80,7 +85,7 @@ export function manuscriptNarration(editable: HTMLElement, selection?: Range) {
     section: 0, title: "", sentences: items, totalWords, start, offset: 0,
     previous: null, next: null,
   };
-  return { section, ranges, editable };
+  return { section, ranges, wordRanges, editable };
 }
 
 function sentenceWordIndex(data: ReadingBlock, direction: number, currentIndex?: number) {
@@ -126,7 +131,7 @@ function coveredTop(editable: Element, view: { top: number; bottom: number }, x:
   return top;
 }
 
-export function followManuscriptNarration(editable: HTMLElement, range: Range) {
+export function followManuscriptNarration(editable: HTMLElement, range: Range, kind: "sentence" | "word" = "sentence") {
   if (!editable.contains(range.commonAncestorContainer)) return;
   const scroller = scrollParent(editable);
   const rect = range.getBoundingClientRect();
@@ -147,7 +152,7 @@ export function followManuscriptNarration(editable: HTMLElement, range: Range) {
       scroller.scrollBy(0, rect.top - top);
     }
   }
-  return paintNativeHighlight(range, "var(--ws-sentence-highlight)", "var(--ws-sentence-highlight-text)", 2);
+  return paintNativeHighlight(range, `var(--ws-${kind}-highlight)`, `var(--ws-${kind}-highlight-text)`, kind === "word" ? 3 : 2);
 }
 
 function precedingLineTop(editable: HTMLElement, sentence: Range, firstRect: DOMRect) {

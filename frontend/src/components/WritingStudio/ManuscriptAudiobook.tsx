@@ -1,3 +1,4 @@
+import "../Reader/Audiobook/audiobook.css";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { FiActivity, FiArrowDownCircle, FiDownload, FiFastForward, FiHeadphones, FiMaximize2, FiMinimize2, FiMove, FiPause, FiPlay, FiRewind, FiSkipBack, FiSkipForward, FiSquare, FiVolume2, FiVolumeX, FiX } from "react-icons/fi";
@@ -36,7 +37,7 @@ function ManuscriptPlayback({ narration, localId, markedSentence, header, onClos
   header: HTMLElement;
   onClose: () => void;
 }) {
-  const { section, editable, ranges } = narration;
+  const { section, editable, ranges, wordRanges } = narration;
   const audio = useReaderAudiobook(async () => section, undefined, undefined, { preserveSystemPosition: true, localBookId: localId });
   const [dialog, setDialog] = useState<"voice" | "export" | "offline">();
   const [minimized, setMinimized] = useState(false);
@@ -58,6 +59,7 @@ function ManuscriptPlayback({ narration, localId, markedSentence, header, onClos
   const ready = !audio.loading && !!section.totalWords;
   const narrator = narratorLabel(audio);
   const mute = audio.volume === 0;
+  const volumePercent = Math.round(audio.volume * 100) + "%";
   const progress = seekDraft ?? audio.currentWord;
   const secondsPerWord = 60 / (180 * audio.speed);
   const range = following && audio.section && !audio.ended ? ranges[audio.index] : undefined;
@@ -65,6 +67,13 @@ function ManuscriptPlayback({ narration, localId, markedSentence, header, onClos
   useEffect(() => {
     if (range) return followManuscriptNarration(editable, range);
   }, [editable, range]);
+
+  const spokenWord = audio.highlight;
+  const wordRangeAt = range ? wordRanges[audio.index] : undefined;
+  useEffect(() => {
+    const word = spokenWord === null ? undefined : wordRangeAt?.(spokenWord);
+    if (word) return followManuscriptNarration(editable, word, "word");
+  }, [editable, spokenWord, wordRangeAt]);
 
   useLayoutEffect(() => {
     const player = panel.current;
@@ -202,18 +211,10 @@ function ManuscriptPlayback({ narration, localId, markedSentence, header, onClos
           }}
           onPointerUp={event => { seeking.current = false; setSeekDraft(undefined); seek(Number(event.currentTarget.value)); }}
           onPointerCancel={() => { seeking.current = false; setSeekDraft(undefined); }} />
-        <span title="Estimated remaining time">−{audiobookTime(Math.max(0, section.totalWords - progress) * secondsPerWord)}</span>
+        <span title="Estimated total chapter time">{audiobookTime(section.totalWords * secondsPerWord)}</span>
       </div>
 
       <div className="ws-floating-audio-controls">
-        <button ref={voiceButton} type="button" className="audiobook-voice-trigger" aria-label="Choose narrator voice"
-          title="Choose narrator" aria-haspopup="dialog" onClick={openVoices}>
-          <FiActivity aria-hidden="true" />
-          <span className="audiobook-voice-text">
-            <span className="audiobook-voice-name">{audio.voice || audio.engine !== "system" ? narrator.name : "System voice"}</span>
-            <span className="audiobook-voice-detail-line">{narrator.detail}</span>
-          </span>
-        </button>
         <div className="audiobook-transport">
           <button type="button" className="audiobook-control" aria-label="Chapter start" title="Chapter start" disabled={!ready} onClick={() => seek(0)}><FiSkipBack /></button>
           <button type="button" className="audiobook-control" aria-label="Previous sentence" title="Previous sentence" disabled={!ready || !audio.index} onClick={() => move(-1)}><FiRewind /></button>
@@ -227,11 +228,22 @@ function ManuscriptPlayback({ narration, localId, markedSentence, header, onClos
           <button type="button" className="audiobook-control" aria-label="Stop narration" title="Stop" disabled={!ready}
             onClick={() => { positionChosen.current = false; setFollowing(false); audio.stop(); editable.focus({ preventScroll: true }); }}><FiSquare /></button>
         </div>
+        <button ref={voiceButton} type="button" className="audiobook-voice-trigger" aria-label="Choose narrator voice"
+          title="Choose narrator" aria-haspopup="dialog" onClick={openVoices}>
+          <FiActivity aria-hidden="true" />
+          <span className="audiobook-voice-text">
+            <span className="audiobook-voice-name">{audio.voice || audio.engine !== "system" ? narrator.name : "System voice"}</span>
+            <span className="audiobook-voice-detail-line">{narrator.detail}</span>
+          </span>
+        </button>
         <div className="ws-floating-audio-settings">
           <button type="button" className="audiobook-control" aria-label={mute ? "Unmute" : "Mute"} title={mute ? "Unmute" : "Mute"}
             onClick={() => audio.changeVolume(mute ? lastVolume.current : 0)}>{mute ? <FiVolumeX /> : <FiVolume2 />}</button>
-          <input type="range" min={0} max={1} step={0.05} value={audio.volume} aria-label="Volume"
-            onChange={event => { const value = Number(event.target.value); if (value > 0) lastVolume.current = value; audio.changeVolume(value); }} />
+          <div className="ws-floating-audio-volume">
+            <input type="range" min={0} max={1} step={0.05} value={audio.volume} aria-label="Volume" aria-valuetext={volumePercent}
+              onChange={event => { const value = Number(event.target.value); if (value > 0) lastVolume.current = value; audio.changeVolume(value); }} />
+            <span className="ws-floating-audio-volume-tooltip" aria-hidden="true">{volumePercent}</span>
+          </div>
           <button type="button" className="audiobook-speed-button" aria-label="Reading speed" aria-expanded={speedOpen} onClick={() => setSpeedOpen(!speedOpen)}>{audio.speed}×</button>
           <button type="button" className="audiobook-control" aria-label="Save for offline" title="Save for offline" onClick={() => setDialog("offline")}><FiArrowDownCircle /></button>
           <button type="button" className="audiobook-control" aria-label="Export audio" title="Export audio" onClick={() => setDialog("export")}><FiDownload /></button>

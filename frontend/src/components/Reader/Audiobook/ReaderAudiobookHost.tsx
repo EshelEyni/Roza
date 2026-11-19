@@ -1,3 +1,4 @@
+import "./audiobook.css";
 import { useEffect, useRef, useState } from "react";
 import type { Book } from "epubjs";
 import { useReaderAudiobook, type AudiobookLoader } from "../../../hooks/reader/useReaderAudiobook";

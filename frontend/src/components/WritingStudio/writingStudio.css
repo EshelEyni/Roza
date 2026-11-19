@@ -2611,7 +2611,7 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 
 .reader-audiobook.ws-floating-audio {
   inset: auto;
-  width: min(680px, calc(100vw - 16px));
+  width: min(420px, calc(100vw - 16px));
   height: auto;
   max-height: calc(100dvh - 16px);
   position: fixed;
@@ -2625,7 +2625,6 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 }
 
 .ws-floating-audio-header,
-.ws-floating-audio-controls,
 .ws-floating-audio-settings,
 .ws-floating-audio-speed {
   display: flex;
@@ -2652,14 +2651,36 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 .ws-floating-audio-grip:active { cursor: grabbing !important; }
 .ws-floating-audio-grip svg { flex-shrink: 0; }
 .ws-floating-audio-grip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ws-floating-audio-controls { flex-wrap: wrap; justify-content: space-between; margin-top: 6px; gap: 7px; }
+.ws-floating-audio-controls {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+}
 .ws-floating-audio .audiobook-control { width: 34px; min-width: 34px; height: 38px; }
 .ws-floating-audio .audiobook-control svg { width: 18px; height: 18px; }
-.ws-floating-audio .audiobook-transport { gap: 3px; }
+.ws-floating-audio .audiobook-transport { grid-column: 1 / -1; justify-self: center; gap: 3px; }
 .ws-floating-audio .audiobook-play { width: 46px; height: 46px; }
-.ws-floating-audio .audiobook-voice-trigger { width: auto; max-width: 160px; height: 38px; }
+.ws-floating-audio .audiobook-voice-trigger { width: 100%; max-width: 160px; min-width: 0; height: 38px; }
 .ws-floating-audio-settings { gap: 3px; }
-.ws-floating-audio-settings input { width: 60px; accent-color: var(--ab-primary); }
+.ws-floating-audio-volume { position: relative; display: flex; align-items: center; }
+.ws-floating-audio-volume input { width: 60px; accent-color: var(--ab-primary); }
+.ws-floating-audio-volume-tooltip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  padding: 3px 6px;
+  border-radius: 5px;
+  background: var(--ab-primary-dark);
+  color: white;
+  font-size: 11px;
+  pointer-events: none;
+}
+.ws-floating-audio-volume:is(:hover, :focus-within) .ws-floating-audio-volume-tooltip { display: block; }
 .ws-floating-audio .audiobook-speed-button { min-width: 36px; padding: 0 4px; }
 .ws-floating-audio-speed { justify-content: flex-end; font-size: 13px; }
 .ws-floating-audio-speed input { accent-color: var(--ab-primary); }
@@ -2669,8 +2690,7 @@ body:has(.ws-floating-audio) .ws-draft-mode .ws-draft-pane:has([data-ws-audioboo
   padding-bottom: 200px;
 }
 
-@media (max-width: 660px) {
-  .ws-floating-audio-controls { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-  .ws-floating-audio .audiobook-transport { grid-column: 1 / -1; grid-row: 1; justify-self: center; }
-  .ws-floating-audio .audiobook-voice-trigger { min-width: 0; }
+@media (max-width: 340px) {
+  .ws-floating-audio-volume input { width: 38px; }
+  .ws-floating-audio .audiobook-voice-trigger { padding-inline: 6px; }
 }
