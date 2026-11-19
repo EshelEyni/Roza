@@ -943,7 +943,7 @@ export function ReaderSentenceMode({
           {mode.count ? Math.round((mode.number / mode.count) * 100) : 0}%
         </span>
       </div>
-
+      <div className="reader-sentence-dock">
         <div
           className="reader-sentence-actions"
           ref={actions}
@@ -1056,6 +1056,7 @@ export function ReaderSentenceMode({
             <FiChevronRight />
           </button>
         </div>
+      </div>
       </footer>
       {feedback && (
         <div className="reader-sentence-toast" role="status">

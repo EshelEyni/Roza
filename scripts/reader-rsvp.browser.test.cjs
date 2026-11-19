@@ -294,7 +294,7 @@ test(
               false,
             );
             await page
-              .getByRole("button", { name: "Look up in Hebrew", exact: true })
+              .getByRole("button", { name: "Translate", exact: true })
               .click();
             await page.getByText("שלום", { exact: true }).first().waitFor();
             await page
