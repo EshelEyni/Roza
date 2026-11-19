@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
-  FiChevronLeft, FiChevronRight, FiDownload, FiFastForward, FiList, FiPause, FiPlay, FiRewind,
-  FiSkipBack, FiSkipForward, FiVolume2, FiVolumeX, FiWifiOff, FiX,
+  FiArrowLeft, FiChevronLeft, FiChevronRight, FiDownload, FiFastForward, FiList, FiPause, FiPlay, FiRewind,
+  FiSkipBack, FiSkipForward, FiVolume2, FiVolumeX, FiArrowDownCircle, FiMoreVertical,
 } from "react-icons/fi";
 import type { AudiobookChapter } from "../../../services/readerAudiobookSource";
 import { audiobookTime } from "../../../services/readerTts";
@@ -18,6 +18,11 @@ const readFont = () => {
   try { const value = Number(localStorage.getItem(FONT_KEY)); return FONT_SIZES.includes(value) ? value : 22; } catch { return 22; }
 };
 
+/** A screen with a small player in its corner: the mini player that keeps narrating over the book. */
+const MiniPlayerIcon = () => <svg className="audiobook-mini-icon" viewBox="0 0 24 24" aria-hidden="true">
+  <rect x="3" y="4.5" width="18" height="15" rx="2.5" /><rect className="audiobook-mini-icon-bar" x="11" y="13" width="7.5" height="4" rx="1.2" />
+</svg>;
+
 const isTyping = (target: EventTarget | null) =>
   target instanceof HTMLElement && (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName));
 
@@ -27,6 +32,8 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
 }) {
   const [dialog, setDialog] = useState<"voice" | "offline" | "export" | null>(null);
   const [contentsOpen, setContentsOpen] = useState(false);
+  const [fontOpen, setFontOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [speedOpen, setSpeedOpen] = useState(false);
   const [speedDraft, setSpeedDraft] = useState(audio.speed);
   const [seekDraft, setSeekDraft] = useState<number | null>(null);
@@ -37,6 +44,8 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
   const root = useRef<HTMLDivElement>(null);
   const reading = useRef<HTMLElement>(null);
   const contentsRef = useRef<HTMLDivElement>(null);
+  const fontRef = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLDivElement>(null);
   const speedAnchor = useRef<HTMLDivElement>(null);
   const voiceButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
@@ -77,14 +86,17 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
   }, []);
 
   useEffect(() => {
-    if (!speedOpen && !contentsOpen) return;
+    if (!speedOpen && !contentsOpen && !fontOpen && !moreOpen) return;
     const outside = (event: PointerEvent) => {
-      if (speedOpen && !speedAnchor.current?.contains(event.target as Node)) setSpeedOpen(false);
-      if (contentsOpen && !contentsRef.current?.contains(event.target as Node)) setContentsOpen(false);
+      const target = event.target as Node;
+      if (speedOpen && !speedAnchor.current?.contains(target)) setSpeedOpen(false);
+      if (contentsOpen && !contentsRef.current?.contains(target)) setContentsOpen(false);
+      if (fontOpen && !fontRef.current?.contains(target)) setFontOpen(false);
+      if (moreOpen && !moreRef.current?.contains(target)) setMoreOpen(false);
     };
     document.addEventListener("pointerdown", outside);
     return () => document.removeEventListener("pointerdown", outside);
-  }, [speedOpen, contentsOpen]);
+  }, [speedOpen, contentsOpen, fontOpen, moreOpen]);
 
   const section = audio.section;
   const chapterPosition = section ? chapters.findIndex(chapter => chapter.section === section.section) : -1;
@@ -101,7 +113,7 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
     try { localStorage.setItem(FONT_KEY, String(next)); } catch { /* Kept for this session only. */ }
   };
   const openVoices = () => {
-    setSpeedOpen(false); setContentsOpen(false); resumeAfterVoice.current = audio.playing;
+    setSpeedOpen(false); setContentsOpen(false); setFontOpen(false); setMoreOpen(false); resumeAfterVoice.current = audio.playing;
     audio.pause("Paused while choosing a narrator"); setDialog("voice");
   };
 
@@ -110,7 +122,8 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
   shortcuts.current = (event: KeyboardEvent) => {
     if (dialog || event.defaultPrevented || isTyping(event.target) || event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.key === "Escape") {
-      if (speedOpen) setSpeedOpen(false); else if (contentsOpen) setContentsOpen(false); else onExit();
+      if (speedOpen) setSpeedOpen(false); else if (contentsOpen) setContentsOpen(false);
+      else if (fontOpen) setFontOpen(false); else if (moreOpen) setMoreOpen(false); else onExit();
       event.preventDefault(); return;
     }
     const actions: Record<string, () => void> = {
@@ -140,6 +153,11 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
   const percent = total ? Math.round(progress / Math.max(1, total) * 100) : 0;
   const narrator = narratorLabel(audio);
   const isMuted = audio.volume === 0;
+  const fontControls = <div className="audiobook-font-size" role="group" aria-label="Text size">
+    <button type="button" aria-label="Smaller text" onClick={() => changeFont(-1)} disabled={fontSize === FONT_SIZES[0]}>A−</button>
+    <output aria-live="polite">{fontSize} px</output>
+    <button type="button" aria-label="Larger text" onClick={() => changeFont(1)} disabled={fontSize === FONT_SIZES[FONT_SIZES.length - 1]}>A+</button>
+  </div>;
 
   return <div className="reader-audiobook" ref={root} role="dialog" aria-modal="true" aria-label="Audiobook Mode" tabIndex={-1}
     onKeyDown={event => {
@@ -151,21 +169,23 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
       }
     }}>
     <header className="audiobook-topbar">
+      {/* Same place and icon as Page mode: back leaves Audiobook Mode, a second back leaves the book. */}
+      <button ref={closeButton} type="button" className="audiobook-close" aria-label="Exit audiobook mode" data-tooltip="Back to the page view" onClick={onExit}><FiArrowLeft /></button>
       <div className="audiobook-titles">
         <span className="audiobook-titles-book">{bookTitle}</span>
-        <span className="audiobook-titles-chapter">{section?.title || (audio.loading ? "Loading…" : "")}</span>
-      </div>
-      <div className="audiobook-header-status" role="status" aria-live="polite">
-        <span className={"audiobook-pulse" + (audio.playing ? " is-live" : "")} aria-hidden="true" />
-        <span>{audio.available ? audio.status : "Selected voice engine is unavailable"}</span>
+        {/* Chapter and playback status share one quiet line under the book title. */}
+        <span className="audiobook-titles-chapter">
+          <span className="audiobook-titles-chapter-name">{section?.title || (audio.loading ? "Loading…" : "")}</span>
+          <span className="audiobook-titles-status" role="status" aria-live="polite">
+            <span className={"audiobook-pulse" + (audio.playing ? " is-live" : "")} aria-hidden="true" />
+            <span>{audio.available ? audio.status : "Selected voice engine is unavailable"}</span>
+          </span>
+        </span>
       </div>
       <div className="audiobook-tools">
-        <button type="button" className="audiobook-tool" onClick={() => setDialog("offline")} data-tooltip="Save for offline listening">
-          <FiWifiOff /><span>Save offline</span>
-        </button>
         <div className="audiobook-popover-anchor" ref={contentsRef}>
-          <button type="button" className="audiobook-tool" aria-expanded={contentsOpen} aria-haspopup="menu" data-tooltip="Chapters" onClick={() => setContentsOpen(!contentsOpen)}>
-            <FiList /><span>Contents</span>
+          <button type="button" className="audiobook-icon-tool" aria-label="Contents" aria-expanded={contentsOpen} aria-haspopup="menu" data-tooltip="Chapters" onClick={() => { setFontOpen(false); setMoreOpen(false); setContentsOpen(!contentsOpen); }}>
+            <FiList />
           </button>
           {contentsOpen && <div className="audiobook-popover audiobook-contents" role="menu">
             <p className="audiobook-popover-label">Chapters</p>
@@ -178,17 +198,31 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
             <p className="audiobook-shortcuts">Space play · ← → sentence · ⇧← ⇧→ chapter · + − text size</p>
           </div>}
         </div>
-        <div className="audiobook-font-size" role="group" aria-label="Text size">
-          <button type="button" data-tooltip="Smaller text (−)" aria-label="Smaller text" onClick={() => changeFont(-1)} disabled={fontSize === FONT_SIZES[0]}>A<sup>−</sup></button>
-          <button type="button" data-tooltip="Larger text (+)" aria-label="Larger text" onClick={() => changeFont(1)} disabled={fontSize === FONT_SIZES[FONT_SIZES.length - 1]}>A<sup>+</sup></button>
+        <div className="audiobook-popover-anchor audiobook-wide-only" ref={fontRef}>
+          <button type="button" className="audiobook-icon-tool audiobook-aa" aria-label="Text size" aria-expanded={fontOpen} aria-haspopup="dialog" data-tooltip="Text size" onClick={() => { setContentsOpen(false); setFontOpen(!fontOpen); }}>
+            <span aria-hidden="true">A<small>a</small></span>
+          </button>
+          {fontOpen && <div className="audiobook-popover audiobook-font-popover" role="dialog" aria-label="Text size">{fontControls}</div>}
         </div>
-        <span className="audiobook-tools-divider" aria-hidden="true" />
-        {/* Shrinks to the mini player and keeps narrating; X below stops and ends the session. */}
-        <button type="button" className="audiobook-tool audiobook-minimize" aria-label="Mini player" data-tooltip="Keep listening while you read" onClick={onMinimize}>
-          <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5" /><rect className="audiobook-minimize-bar" x="11" y="13" width="7.5" height="4" rx="1.2" /></svg>
-          <span>Mini player</span>
+        <button type="button" className="audiobook-icon-tool audiobook-wide-only" aria-label="Save offline" data-tooltip="Save for offline listening" onClick={() => setDialog("offline")}>
+          <FiArrowDownCircle />
         </button>
-        <button ref={closeButton} type="button" className="audiobook-close" aria-label="Exit audiobook mode" data-tooltip="Stop and exit audiobook mode" onClick={onExit}><FiX /></button>
+        <span className="audiobook-tools-divider audiobook-wide-only" aria-hidden="true" />
+        {/* Shrinks to the mini player and keeps narrating; the back arrow stops and ends the session. */}
+        <button type="button" className="audiobook-icon-tool audiobook-wide-only" aria-label="Mini player" data-tooltip="Mini player · keep listening while you read" onClick={onMinimize}>
+          <MiniPlayerIcon />
+        </button>
+        {/* Phones: text size, Save offline and Mini player move into one menu. */}
+        <div className="audiobook-popover-anchor audiobook-narrow-only" ref={moreRef}>
+          <button type="button" className="audiobook-icon-tool" aria-label="More options" aria-expanded={moreOpen} aria-haspopup="menu" onClick={() => { setContentsOpen(false); setMoreOpen(!moreOpen); }}>
+            <FiMoreVertical />
+          </button>
+          {moreOpen && <div className="audiobook-popover audiobook-more" role="menu" aria-label="More options">
+            <div className="audiobook-more-size"><span>Text size</span>{fontControls}</div>
+            <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); setDialog("offline"); }}><FiArrowDownCircle />Save for offline</button>
+            <button type="button" role="menuitem" onClick={() => { setMoreOpen(false); onMinimize(); }}><MiniPlayerIcon />Mini player</button>
+          </div>}
+        </div>
       </div>
     </header>
     <div className="audiobook-section-progress" title={percent + "% of this chapter"}><span style={{ width: percent + "%" }} /></div>

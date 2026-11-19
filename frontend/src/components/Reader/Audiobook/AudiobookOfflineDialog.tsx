@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FiTrash2 } from "react-icons/fi";
 import { desktopKokoro, type KokoroOffline } from "../../../services/narration/desktopKokoro";
 import { kokoroVoice } from "../../../services/narration/kokoroVoices";
@@ -7,6 +7,17 @@ import type { ReaderAudiobook } from "./audiobookNarrator";
 import type { BookScriptState } from "./ReaderAudiobookHost";
 
 /** Save a chapter or the whole book with local voices, for listening without internet (from RozaReader). */
+// Sentences saved per second, measured while saving and remembered for the next estimate.
+const RATE_KEY = "roza-kokoro-save-rate";
+const readRate = () => { try { const value = Number(localStorage.getItem(RATE_KEY)); return value > 0 ? value : 0; } catch { return 0; } };
+const timeLeft = (seconds: number) => {
+  if (seconds < 60) return "under a minute";
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 60) return "about " + minutes + " min";
+  const hours = Math.floor(minutes / 60), rest = minutes % 60;
+  return "about " + hours + " h" + (rest ? " " + rest + " min" : "");
+};
+
 export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, onPlay, onChooseVoice, onClose }: {
   audio: ReaderAudiobook; bookId?: string; chapterTitle: string; script: BookScriptState;
   onPlay: () => void; onChooseVoice: () => void; onClose: () => void;
@@ -21,6 +32,22 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, on
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [rate, setRate] = useState(readRate);
+  const sample = useRef<{ scope: "chapter" | "book"; at: number; done: number } | null>(null);
+
+  // Measure the save speed from the running job's progress between polls.
+  useEffect(() => {
+    const scope = book?.state === "downloading" ? "book" : chapter?.state === "downloading" ? "chapter" : null;
+    const job = scope === "book" ? book : scope === "chapter" ? chapter : null;
+    if (!scope || !job) { sample.current = null; return; }
+    const now = performance.now(), start = sample.current;
+    if (!start || start.scope !== scope || job.completed < start.done) { sample.current = { scope, at: now, done: job.completed }; return; }
+    const seconds = (now - start.at) / 1000, saved = job.completed - start.done;
+    if (seconds < 8 || saved < 2) return;
+    const next = saved / seconds;
+    setRate(next);
+    try { localStorage.setItem(RATE_KEY, String(next)); } catch { /* The estimate is kept for this dialog only. */ }
+  }, [chapter, book]);
 
   useEffect(() => { if (usable && script.state === "idle") void script.prepare(); }, [usable, script]);
 
@@ -71,10 +98,17 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, on
 
   const voiceName = voice?.name || audio.localVoice;
   const scriptReady = script.state === "ready";
-  const chapterStatus = ready ? "Ready offline" : running ? "Saving…" : chapter?.completed ? "Partly saved" : "Not saved yet";
+  const estimate = (status: KokoroOffline | null, active: boolean) => {
+    if (!status || status.state === "ready") return "";
+    if (!rate) return active ? "estimating time…" : "";
+    return timeLeft((status.total - status.completed) / rate) + (active ? " left" : "");
+  };
+  const withEstimate = (text: string, eta: string) => eta ? text + " · " + eta : text;
+  const chapterStatus = withEstimate(ready ? "Ready offline" : running ? "Saving…" : chapter?.completed ? "Partly saved" : "Not saved yet", estimate(chapter, running));
+  const bookEta = estimate(book, bookRunning);
   const bookStatus = bookReady ? "Whole book ready offline"
-    : bookRunning ? "Saving chapter " + ((book?.section ?? 0) + 1) + "… in the background"
-      : book?.completed ? "Partly saved · finished chapters are kept" : "Saves every chapter in the background";
+    : bookRunning ? withEstimate("Saving chapter " + ((book?.section ?? 0) + 1) + "…", bookEta)
+      : book?.completed ? withEstimate("Partly saved", bookEta) : bookEta ? "Not saved yet · " + bookEta : "Saves every chapter in the background";
 
   return <AudiobookDialog eyebrow="LOCAL VOICES" title="Save for offline" onClose={onClose}
     description={usable ? `${chapterTitle} · read by ${voiceName}` : undefined}
