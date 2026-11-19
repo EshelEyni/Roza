@@ -13,8 +13,40 @@ const { pipeline } = require("node:stream/promises");
 const { kokoroVoices } = require("./voices.cjs");
 
 const UV_VERSION = "0.13.1";
-const UV_URL = `https://github.com/astral-sh/uv/releases/download/${UV_VERSION}/uv-x86_64-pc-windows-msvc.zip`;
-const UV_SHA256 = "3b2661a463a5baea7f5076ea2b25ab71d77f36a6c0d809e5350651792f80a672";
+const UV_RELEASE = `https://github.com/astral-sh/uv/releases/download/${UV_VERSION}`;
+
+/** Where uv and Python come from and live, per platform. Checksums are from uv's release page. */
+const PLATFORMS = {
+  win32: {
+    uvUrl: `${UV_RELEASE}/uv-x86_64-pc-windows-msvc.zip`,
+    uvSha256: "3b2661a463a5baea7f5076ea2b25ab71d77f36a6c0d809e5350651792f80a672",
+    uvArchive: "uv.zip",
+    uvName: "uv.exe",
+    venvPython: [".venv", "Scripts", "python.exe"],
+    pythonFolder: /^cpython-3\.11\.\d+-windows-x86_64-none$/,
+    pythonInFolder: ["python.exe"],
+  },
+  "darwin-arm64": {
+    uvUrl: `${UV_RELEASE}/uv-aarch64-apple-darwin.tar.gz`,
+    uvSha256: "cfe454573412ff7380d15fc7dae5997ab53ffce72fce0a78e91ddbc84001acd2",
+    uvArchive: "uv.tar.gz",
+    uvName: "uv",
+    venvPython: [".venv", "bin", "python"],
+    pythonFolder: /^cpython-3\.11\.\d+-macos-aarch64-none$/,
+    pythonInFolder: ["bin", "python3.11"],
+  },
+  "darwin-x64": {
+    uvUrl: `${UV_RELEASE}/uv-x86_64-apple-darwin.tar.gz`,
+    uvSha256: "bb7b805bdcf3d0bc8c74ceb94569e6b3e8aa35bd492acdbb9d46bf46d9d4ff6b",
+    uvArchive: "uv.tar.gz",
+    uvName: "uv",
+    venvPython: [".venv", "bin", "python"],
+    pythonFolder: /^cpython-3\.11\.\d+-macos-x86_64-none$/,
+    pythonInFolder: ["bin", "python3.11"],
+  },
+};
+const isWindows = process.platform === "win32";
+const PLATFORM = isWindows ? PLATFORMS.win32 : PLATFORMS[`${process.platform}-${process.arch}`];
 const PACKAGES = [
   "kokoro==0.9.4",
   "misaki[en]==0.9.4",
@@ -61,8 +93,10 @@ function windowsShortPath(folder) {
  * @param {{ runtimeDir: string, script: string, onProgress: (status: object) => void }} options
  */
 function createInstaller({ runtimeDir, script, onProgress }) {
-  const venvPython = path.join(runtimeDir, ".venv", "Scripts", "python.exe");
-  const uvExe = path.join(runtimeDir, "uv", "uv.exe");
+  // An unsupported platform still loads; installing then says why it can't.
+  const platform = PLATFORM || PLATFORMS.win32;
+  const venvPython = path.join(runtimeDir, ...platform.venvPython);
+  const uvExe = path.join(runtimeDir, "uv", platform.uvName);
   let marker = null;
   let job = null;
   // uv works inside the runtime folder by its short ASCII path when the drive has short names
@@ -169,6 +203,7 @@ function createInstaller({ runtimeDir, script, onProgress }) {
     lastError = null;
     onProgress(status());
     (async () => {
+      if (!PLATFORM) throw new Error("Local voices are not available on this computer yet.");
       await mkdir(runtimeDir, { recursive: true });
       const disk = await statfs(runtimeDir).catch(() => null);
       if (disk && disk.bavail * disk.bsize < NEEDED_BYTES) {
@@ -181,13 +216,15 @@ function createInstaller({ runtimeDir, script, onProgress }) {
       // 1. uv
       if (!existsSync(uvExe)) {
         await mkdir(path.dirname(uvExe), { recursive: true });
-        const zip = path.join(runtimeDir, "uv", "uv.zip");
-        const digest = await download(UV_URL, zip, (received, total) =>
+        const archive = path.join(runtimeDir, "uv", platform.uvArchive);
+        const digest = await download(platform.uvUrl, archive, (received, total) =>
           report("uv", "Downloading the installer…", total ? (received / total) * 5 : 2));
-        if (digest !== UV_SHA256) throw new Error("The installer download was damaged. Try again.");
-        const tar = path.join(process.env.SystemRoot || "C:\\Windows", "System32", "tar.exe");
-        await run(tar, ["-xf", zip, "-C", path.dirname(uvExe)]);
-        await rm(zip, { force: true });
+        if (digest !== platform.uvSha256) throw new Error("The installer download was damaged. Try again.");
+        // The Windows zip holds uv.exe at its top; the Mac archive holds it inside one folder.
+        const tar = isWindows ? path.join(process.env.SystemRoot || "C:\\Windows", "System32", "tar.exe") : "/usr/bin/tar";
+        const unpackArgs = isWindows ? [] : ["--strip-components", "1"];
+        await run(tar, ["-xf", archive, "-C", path.dirname(uvExe), ...unpackArgs]);
+        await rm(archive, { force: true });
       }
 
       // 2. Python
@@ -200,8 +237,8 @@ function createInstaller({ runtimeDir, script, onProgress }) {
           if (!/minor version link/i.test(error.message)) throw error;
         });
         const installed = (await readdir(pythonDir()).catch(() => []))
-          .filter((name) => /^cpython-3\.11\.\d+-windows-x86_64-none$/.test(name)).sort().pop();
-        const interpreter = installed && path.join(pythonDir(), installed, "python.exe");
+          .filter((name) => platform.pythonFolder.test(name)).sort().pop();
+        const interpreter = installed && path.join(pythonDir(), installed, ...platform.pythonInFolder);
         if (!interpreter || !existsSync(interpreter)) throw new Error("Python could not be installed.");
         await run(uvExe, ["venv", "--python", interpreter, path.join(uvRoot || runtimeDir, ".venv")]);
       }
@@ -229,7 +266,7 @@ function createInstaller({ runtimeDir, script, onProgress }) {
       // 5. ffmpeg (for export) and its encoders.
       report("test", "Checking audio export…", 93);
       const [ffmpeg] = (await run(venvPython, ["-c", "import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())"]))
-        .filter((line) => line.trim().toLowerCase().endsWith(".exe"));
+        .filter((line) => existsSync(line.trim()));
       const encoders = ffmpeg ? await encoderList(ffmpeg.trim()) : "";
       const formats = [
         ...(/\baac\b/.test(encoders) ? ["m4a", "mp4"] : []),

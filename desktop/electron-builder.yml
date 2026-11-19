@@ -11,6 +11,11 @@ extraResources:
 win:
   icon: renderer/images/icon-512x512.png
   target: nsis
+mac:
+  icon: renderer/images/icon-512x512.png
+  target: dir
+  # Local Mac builds are unsigned.
+  identity: null
 nsis:
   oneClick: true
   perMachine: false
