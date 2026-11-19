@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs>
+    <radialGradient id="r-bg" cx="38%" cy="30%" r="75%">
+      <stop offset="0" stop-color="#C23A4E"/><stop offset="0.55" stop-color="#8E1B2E"/><stop offset="1" stop-color="#4E0B17"/>
+    </radialGradient>
+    <linearGradient id="r-rim" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F7E2A1"/><stop offset="0.45" stop-color="#D4A848"/><stop offset="1" stop-color="#8A6420"/>
+    </linearGradient>
+    <linearGradient id="r-gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.35"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="r-cream" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFBEF"/><stop offset="1" stop-color="#EAD9B0"/>
+    </linearGradient>
+    <filter id="r-shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+  <circle cx="128" cy="128" r="124" fill="url(#r-rim)"/>
+  <circle cx="128" cy="128" r="112" fill="url(#r-bg)"/>
+  <ellipse cx="128" cy="70" rx="84" ry="46" fill="url(#r-gloss)"/>
+  <g filter="url(#r-shadow)">
+    <!-- cover edges -->
+    <path d="M128 92 C108 78 78 76 50 84 V182 C78 174 108 176 128 190 C148 176 178 174 206 182 V84 C178 76 148 78 128 92 Z" fill="#5E1020"/>
+    <!-- pages -->
+    <path d="M128 86 C110 72 82 70 58 76 V172 C82 166 110 168 128 182 Z" fill="url(#r-cream)"/>
+    <path d="M128 86 C146 72 174 70 198 76 V172 C174 166 146 168 128 182 Z" fill="url(#r-cream)"/>
+    <!-- text lines -->
+    <g stroke="#B9A57C" stroke-width="4" stroke-linecap="round" opacity="0.8">
+      <path d="M72 96 C88 92 104 93 116 99"/><path d="M72 114 C88 110 104 111 116 117"/><path d="M72 132 C88 128 104 129 116 135"/><path d="M72 150 C88 146 104 147 116 153"/>
+      <path d="M140 99 C152 93 168 92 184 96"/><path d="M140 117 C152 111 168 110 184 114"/><path d="M140 135 C152 129 168 128 184 132"/>
+    </g>
+    <path d="M128 86 V182" stroke="#9C8458" stroke-width="3"/>
+    <!-- gold ribbon -->
+    <path d="M164 74 V138 L174 128 L184 138 V72" fill="#D4A848" stroke="#8A6420" stroke-width="2"/>
+  </g>
+</svg>

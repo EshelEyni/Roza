@@ -9,6 +9,10 @@ const call = async (channel, input) => {
 };
 
 contextBridge.exposeInMainWorld("rozaDesktop", {
+  taskbar: {
+    // Switches the taskbar badge to headphones while an audiobook plays.
+    setAudioPlaying: (playing) => ipcRenderer.send("taskbar:audio-playing", playing === true),
+  },
   kokoro: {
     // Speaks whole paragraphs; the page adds the pauses between them (Ticket #64).
     passages: true,
