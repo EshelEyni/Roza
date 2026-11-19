@@ -96,6 +96,11 @@ export function EpubReader({
           onAskAi={reader.askAi}
           extending={reader.selectionExtending}
           busy={reader.selectionBusy}
+          pageTurn={{
+            // Navigate instead of extending the selection: clear it, then turn once state settles.
+            move: direction => { reader.closeLookup(); window.setTimeout(() => reader.move(direction)); },
+            atStart: reader.atStart, atEnd: reader.atEnd, disabled: reader.loading,
+          }}
         />
       )}
       <ReaderChatNotification key={userId + ":" + book.id} chat={reader.chat} visible={reader.panel === "chat"} onOpen={key => {

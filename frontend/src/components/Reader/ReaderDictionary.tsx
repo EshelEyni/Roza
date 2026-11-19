@@ -8,6 +8,8 @@ import {
   FiVolume2,
   FiX,
   FiCopy,
+  FiArrowLeft,
+  FiArrowRight,
 } from "react-icons/fi";
 import { LuFlag } from "react-icons/lu";
 import { ReaderSheet } from "./ReaderSheet";
@@ -41,6 +43,7 @@ export function ReaderDictionary({
   aiDisabled = false,
   extending,
   busy,
+  pageTurn,
 }: {
   onFlag?: () => void;
   flagged?: boolean;
@@ -60,6 +63,8 @@ export function ReaderDictionary({
   aiDisabled?: boolean;
   extending: boolean;
   busy: boolean;
+  /** Page-mode arrows, shown in the docked mobile bar because it covers the footer arrows. */
+  pageTurn?: { move: (direction: "prev" | "next") => void; atStart: boolean; atEnd: boolean; disabled?: boolean };
 }) {
   const { t } = useTranslation();
   const mobile = useReaderMobile();
@@ -277,6 +282,20 @@ export function ReaderDictionary({
       viewport?.removeEventListener("scroll", schedule);
     };
   }, [mobile, opened]);
+  const pageArrow = (direction: "prev" | "next") => mobile && pageTurn && (
+    <button
+      type="button"
+      className="reader-icon-button reader-selection-page-turn"
+      data-reader-page-turn
+      onPointerDown={event => event.preventDefault()}
+      onClick={() => pageTurn.move(direction)}
+      disabled={pageTurn.disabled || (direction === "prev" ? pageTurn.atStart : pageTurn.atEnd)}
+      aria-label={t(direction === "prev" ? "reader.previous" : "reader.next")}
+      title={t(direction === "prev" ? "reader.previous" : "reader.next")}
+    >
+      {direction === "prev" ? <FiArrowLeft aria-hidden="true" /> : <FiArrowRight aria-hidden="true" />}
+    </button>
+  );
   const content = (
     <div
       className={"reader-dictionary " + (opened ? "is-open" : mobile ? "reader-selection-docked" : "")}
@@ -319,15 +338,16 @@ export function ReaderDictionary({
       {!opened ? (
         <>
           <div className={"reader-dictionary-actions" + (onAnnotate ? " reader-dictionary-icon-row" : "")} aria-busy={busy}>
+            {pageArrow("prev")}
             {selection.word && (
               <button
                 ref={button}
                 className="reader-icon-button reader-dictionary-action"
-                aria-label={t("reader.lookupHebrew")}
-                title={t("reader.lookupHebrew")}
+                aria-label="Translate"
+                title="Translate"
                 onClick={() => void lookup()}
               >
-                <FiBookOpen aria-hidden="true" />{mobile && <span className="reader-selection-label">Look up</span>}
+                <FiGlobe aria-hidden="true" />{mobile && <span className="reader-selection-label">Translate</span>}
               </button>
             )}
             <button
@@ -362,6 +382,7 @@ export function ReaderDictionary({
             >
               <FiCopy aria-hidden="true" />{mobile && <span className="reader-selection-label">Copy</span>}
             </button>
+            {pageArrow("next")}
           </div>
 
         </>

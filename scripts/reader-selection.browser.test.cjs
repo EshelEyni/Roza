@@ -341,7 +341,7 @@ test(
           const actions = page.locator('.reader-dictionary-actions');
           await actions.waitFor();
           assert.deepEqual(await actions.getByRole('button').evaluateAll(buttons => buttons.map(b => b.getAttribute('aria-label'))),
-            ['Look up in Hebrew', 'Ask AI', 'Add Note', 'Copy selected text']);
+            ['Translate', 'Ask AI', 'Add Note', 'Copy selected text']);
           for (const direction of ['ltr', 'rtl']) {
             await actions.evaluate((row, dir) => row.setAttribute('dir', dir), direction);
             const pencil = await actions.getByRole('button', {name: 'Add Note', exact: true}).boundingBox();
@@ -596,7 +596,7 @@ test(
             window.selectionTest.select(0, 7);
           });
           await page
-            .getByRole("button", { name: "Look up in Hebrew" })
+            .getByRole("button", { name: "Translate" })
             [mobile ? "tap" : "click"]();
           await page
             .getByRole("button", { name: "Google", exact: true })

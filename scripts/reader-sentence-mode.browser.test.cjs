@@ -1335,15 +1335,10 @@ test(
                   ].map((e) => getComputedStyle(e).display),
                 };
               });
-            if (mobile) {
-              assert.equal(controls.nav[0], controls.nav[1]);
-              assert.ok(controls.labels.every((d) => d !== "none"));
-            } else {
-              assert.equal(controls.nav[0], controls.nav[1]);
-              assert.ok(
-                controls.actions.every((y) => y === controls.actions[0]),
-              );
-            }
+            // Back sits above Next; the six actions form a 3x2 grid beside them.
+            assert.ok(controls.nav[0] < controls.nav[1]);
+            assert.equal(new Set(controls.actions).size, 2);
+            assert.ok(controls.labels.every((d) => d !== "none"));
             // Exercise the real component with short, long and very long sentences.
             const original = await page.evaluate(
               () => window.rsvpTest.reader.sentenceMode.sentence.text,

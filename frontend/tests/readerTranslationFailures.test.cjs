@@ -18,7 +18,7 @@ for (const mobile of [false, true]) test(`translation failures stay independent 
   vm.runInNewContext(source, { exports, React: react, AbortSignal, require: name => {
     if (name === 'react') return react;
     if (name === 'react-i18next') return { useTranslation: () => ({ t: key => key }) };
-    if (name === 'react-icons/fi') return {};
+    if (name === 'react-icons/fi' || name === 'react-icons/lu') return {};
     if (name.endsWith('ReaderSheet')) return { ReaderSheet: 'sheet' };
     if (name.endsWith('useReaderMobile')) return { useReaderMobile: () => mobile };
     if (name.endsWith('createRequestId')) return { createRequestId: () => 'request' };
@@ -29,7 +29,7 @@ for (const mobile of [false, true]) test(`translation failures stay independent 
   const all = node => !node || typeof node !== 'object' ? [] : [node, ...(node.children || []).flat(Infinity).flatMap(all)];
   const button = (tree, label) => all(tree).find(node => node.type === 'button' && (node.props['aria-label'] === label || node.children.includes(label)));
   let tree = render();
-  button(tree, 'reader.lookupHebrew').props.onClick();
+  button(tree, 'Translate').props.onClick();
   await new Promise(resolve => setImmediate(resolve)); tree = render();
   assert.equal(button(tree, 'reader.aiButton').props.disabled, false);
   assert.equal(button(tree, 'reader.localButton').props['aria-pressed'], true);

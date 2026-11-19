@@ -146,6 +146,12 @@ function Fixture() {
             onAskAi={reader.askAi}
             extending={reader.selectionExtending}
             busy={reader.selectionBusy}
+            onFlag={() => undefined}
+            onAnnotate={() => undefined}
+            pageTurn={{
+              move: direction => { reader.closeLookup(); window.setTimeout(() => reader.move(direction)); },
+              atStart: reader.atStart, atEnd: reader.atEnd, disabled: reader.loading,
+            }}
           />
         )}
       <div
