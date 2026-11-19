@@ -45,7 +45,7 @@ const book = {
   ],
 };
 
-test("reading mode Page Down keeps the selected sentence visible", { timeout: 180000 }, async () => {
+test("reading mode keyboard: Page Down limit and sentence-only navigation", { timeout: 180000 }, async () => {
   const { createServer } = await import(pathToFileURL(path.join(root, "frontend/node_modules/vite/dist/node/index.js")));
   const { default: react } = await import(
     pathToFileURL(path.join(root, "frontend/node_modules/@vitejs/plugin-react/dist/index.mjs"))
@@ -306,6 +306,65 @@ test("reading mode Page Down keeps the selected sentence visible", { timeout: 18
     await page.keyboard.press("PageDown");
     assert.equal(await page.evaluate(() => window.lastPageDownPrevented), false);
     assert.equal((await state()).sentence, wrapped);
+
+    // Ticket #61: Ctrl+Arrow marks only the destination sentence, with no word highlight.
+    const marks = async () => {
+      const { sentence, word } = await state();
+      return { sentence, word };
+    };
+    const sentenceColors = () =>
+      editor.evaluate((element) =>
+        [...CSS.highlights.entries()]
+          .filter(([, highlight]) => [...highlight].some((range) => element.contains(range.startContainer)))
+          .map(([name]) => {
+            const style = getComputedStyle(element.querySelector("[data-slate-string]"), `::highlight(${name})`);
+            return [style.backgroundColor, style.color];
+          }),
+      );
+    await clickWord("tide");
+    assert.deepEqual(await marks(), { sentence: wrapped, word: "tide" });
+    await page.keyboard.press("Control+ArrowRight");
+    assert.deepEqual(await marks(), { sentence: "After the letter.", word: undefined });
+    assert.deepEqual(await sentenceColors(), [["rgb(242, 230, 107)", "rgb(40, 35, 30)"]]);
+
+    // Right Arrow from a sentence-only mark marks its first word, then follows word navigation.
+    await page.keyboard.press("ArrowRight");
+    assert.deepEqual(await marks(), { sentence: "After the letter.", word: "After" });
+    await page.keyboard.press("ArrowRight");
+    assert.deepEqual(await marks(), { sentence: "After the letter.", word: "the" });
+    await page.keyboard.press("ArrowLeft");
+    assert.deepEqual(await marks(), { sentence: "After the letter.", word: "After" });
+
+    // Left Arrow from a sentence-only mark moves to the previous sentence, across paragraphs.
+    await page.keyboard.press("Control+ArrowLeft");
+    assert.deepEqual(await marks(), { sentence: wrapped, word: undefined });
+    await page.keyboard.press("ArrowLeft");
+    assert.deepEqual(await marks(), { sentence: "Before the letter.", word: undefined });
+    await page.keyboard.press("ArrowLeft");
+    assert.deepEqual(await marks(), { sentence: "It has a second sentence for company.", word: undefined });
+    assert.ok((await editor.evaluate((element) => {
+      const sentence = [...CSS.highlights.values()].filter((h) => h.priority === 0).flatMap((h) => [...h])
+        .find((range) => element.contains(range.startContainer));
+      return sentence.startContainer.parentElement.closest('[data-slate-node="element"]').textContent;
+    })).startsWith("Paragraph 29 "));
+    await page.keyboard.press("ArrowLeft");
+    assert.deepEqual(await marks(), {
+      sentence: "Paragraph 29 keeps the manuscript moving with ordinary prose.", word: undefined,
+    });
+
+    // At the start of the document, Left Arrow keeps the first sentence marked.
+    await clickWord("keeps");
+    assert.deepEqual(await marks(), { sentence: "Paragraph 0 keeps the manuscript moving with ordinary prose.", word: "keeps" });
+    await page.keyboard.press("Control+ArrowRight");
+    assert.deepEqual(await marks(), { sentence: "It has a second sentence for company.", word: undefined });
+    await page.keyboard.press("ArrowLeft");
+    const first = { sentence: "Paragraph 0 keeps the manuscript moving with ordinary prose.", word: undefined };
+    assert.deepEqual(await marks(), first);
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowLeft");
+    assert.deepEqual(await marks(), first);
+    await page.keyboard.press("ArrowRight");
+    assert.deepEqual(await marks(), { ...first, word: "Paragraph" });
 
     assert.deepEqual(errors, []);
   } finally {
