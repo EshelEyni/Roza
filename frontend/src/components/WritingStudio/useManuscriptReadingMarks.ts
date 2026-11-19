@@ -172,6 +172,32 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     mark(data, index);
   };
 
+  /** Brings a numbered line to the top of the uncovered reading view and marks its first sentence. */
+  const revealLine = (block: Element) => {
+    const editable = root.current?.querySelector<HTMLElement>("[data-slate-editor]");
+    if (!editable?.contains(block)) return;
+    editable.focus({ preventScroll: true });
+    editable.ownerDocument.getSelection()?.removeAllRanges();
+    clear();
+    const scroller = scrollParent(editable);
+    if (scroller) {
+      const doc = editable.ownerDocument;
+      const viewport = doc.documentElement.clientHeight;
+      const box = scroller === doc.scrollingElement
+        ? { top: 0, left: 0, right: doc.documentElement.clientWidth }
+        : scroller.getBoundingClientRect();
+      const top = Math.max(0, box.top + scroller.clientTop);
+      const bottom = Math.min(viewport, box.top + scroller.clientTop + scroller.clientHeight);
+      const line = block.getBoundingClientRect();
+      const x = Math.min(Math.max((line.left + line.right) / 2, box.left + 1), box.right - 1);
+      const viewTop = coveredTop(editable, { top, bottom }, x);
+      const visible = line.top >= viewTop && line.top < bottom && Math.min(line.bottom, bottom) - line.top >= Math.min(line.height, bottom - viewTop);
+      if (!visible) scroller.scrollBy(0, Math.floor(line.top - viewTop));
+    }
+    const data = readBlock(block);
+    if (data.words.length) mark(data, 0, false);
+  };
+
   const onClick = (event: MouseEvent<HTMLDivElement>) => {
     const { currentTarget, clientX, clientY } = event;
     const doc = currentTarget.ownerDocument;
@@ -295,5 +321,5 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     else if (word.bottom > bounds.bottom) scroller.scrollBy(0, word.bottom - bounds.bottom);
   };
 
-  return { root, markedSentence, clear, markRange, onClick: enabled ? onClick : undefined, onKeyDown: enabled ? onKeyDown : undefined };
+  return { root, markedSentence, clear, markRange, revealLine, onClick: enabled ? onClick : undefined, onKeyDown: enabled ? onKeyDown : undefined };
 }

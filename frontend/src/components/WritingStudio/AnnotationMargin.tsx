@@ -14,10 +14,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { Editor, Element, Node, Range } from "slate";
+import { Editor, Node, Range } from "slate";
 import { ReactEditor, useSlate } from "slate-react";
 import { ChapterAnnotation } from "../../../../shared/types/books";
-import { layoutAnnotations, validAnchor } from "./annotations";
+import { layoutAnnotations, manuscriptLines, validAnchor } from "./annotations";
 
 type Line = { number: number; top: number; range: Range };
 type Position = { x: number; y: number };
@@ -94,13 +94,7 @@ export function AnnotationMargin({
     };
     const defaultHeight = rowHeight(prose);
     const next: Line[] = [];
-    for (const [node, path] of Editor.nodes(editor, {
-      at: [],
-      match: node =>
-        Element.isElement(node) &&
-        Editor.isBlock(editor, node) &&
-        !["bulleted-list", "numbered-list"].includes(node.type),
-    })) {
+    for (const [node, path] of manuscriptLines(editor)) {
       try {
         const element = ReactEditor.toDOMNode(editor, node);
         next.push({

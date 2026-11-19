@@ -8,11 +8,13 @@ import {
   parseScreenplay,
   screenplayStart,
 } from "./screenplay";
-import { ReactNode, useMemo, useRef, useState } from "react";
+import { ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { createEditor, Editor, Range, Text, Transforms, Node } from "slate";
 import { ChapterAnnotation } from "../../../../shared/types/books";
 import { AnnotationMargin } from "./AnnotationMargin";
-import { annotationSentenceRange, transformAnnotations, validAnchor } from "./annotations";
+import { annotationSentenceRange, manuscriptLines, transformAnnotations, validAnchor } from "./annotations";
+import { ReadingGoToLine } from "./ReadingGoToLine";
+import { isGoToLineShortcut } from "./goToLineInput";
 import { Editable, ReactEditor, Slate, useSlate, withReact } from "slate-react";
 import { HistoryEditor, withHistory } from "slate-history";
 import { SlateCustomElement } from "../../../../shared/types/books";
@@ -142,6 +144,8 @@ export function ManuscriptEditor({
   placeholder?: string;
 }) {
   const readingMarks = useManuscriptReadingMarks(reading);
+  // Line count while Read Mode's Go to line dialog is open.
+  const [goToLineTotal, setGoToLineTotal] = useState<number | null>(null);
   const [activeNote, setActiveNote] = useState<string | null>(null);
   const [hoveredPath, setHoveredPath] = useState<string | null>(null);
   const activeAnchor = annotations?.find(
@@ -184,6 +188,32 @@ export function ManuscriptEditor({
     onChange(editor.children as SlateCustomElement[], next);
   };
   const canAddNote = annotations !== undefined && !annotationsReadOnly;
+  useEffect(() => {
+    if (!reading) {
+      setGoToLineTotal(null);
+      return;
+    }
+    const open = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || event.isComposing || !isGoToLineShortcut(event)) return;
+      event.preventDefault();
+      if (!event.repeat) setGoToLineTotal(manuscriptLines(editor).length);
+    };
+    window.addEventListener("keydown", open);
+    return () => window.removeEventListener("keydown", open);
+  }, [editor, reading]);
+  const goToLine = (number: number) => {
+    setGoToLineTotal(null);
+    const line = manuscriptLines(editor)[number - 1];
+    if (!line) return;
+    // Wait for the dialog to close and hand focus back before moving the reading position.
+    requestAnimationFrame(() => {
+      try {
+        readingMarks.revealLine(ReactEditor.toDOMNode(editor, line[0]));
+      } catch {
+        /* The text changed while the dialog was open. */
+      }
+    });
+  };
   const selectedReadingSentence = (editable: HTMLElement) => {
     const selection = editable.ownerDocument.getSelection();
     const nativeRange = selection?.rangeCount && !selection.isCollapsed
@@ -416,6 +446,13 @@ export function ManuscriptEditor({
           />
         )}
       </div>
+      {reading && goToLineTotal !== null && (
+        <ReadingGoToLine
+          total={goToLineTotal}
+          onGo={goToLine}
+          onCancel={() => setGoToLineTotal(null)}
+        />
+      )}
     </Slate>
   );
 }
