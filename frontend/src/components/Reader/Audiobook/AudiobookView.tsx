@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import {
-  FiChevronLeft, FiChevronRight, FiDownload, FiFastForward, FiList, FiPause, FiPlay, FiRewind,
-  FiSkipBack, FiSkipForward, FiVolume2, FiVolumeX, FiWifiOff, FiX,
+  FiArrowLeft, FiChevronLeft, FiChevronRight, FiDownload, FiFastForward, FiList, FiPause, FiPlay, FiRewind,
+  FiSkipBack, FiSkipForward, FiVolume2, FiVolumeX, FiWifiOff,
 } from "react-icons/fi";
 import type { AudiobookChapter } from "../../../services/readerAudiobookSource";
 import { audiobookTime } from "../../../services/readerTts";
@@ -151,6 +151,8 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
       }
     }}>
     <header className="audiobook-topbar">
+      {/* Same place and icon as Page mode: back leaves Audiobook Mode, a second back leaves the book. */}
+      <button ref={closeButton} type="button" className="audiobook-close" aria-label="Exit audiobook mode" data-tooltip="Back to the page view" onClick={onExit}><FiArrowLeft /></button>
       <div className="audiobook-titles">
         <span className="audiobook-titles-book">{bookTitle}</span>
         <span className="audiobook-titles-chapter">{section?.title || (audio.loading ? "Loading…" : "")}</span>
@@ -182,13 +184,11 @@ export function AudiobookView({ audio, bookId, bookTitle, chapters, script, onMi
           <button type="button" data-tooltip="Smaller text (−)" aria-label="Smaller text" onClick={() => changeFont(-1)} disabled={fontSize === FONT_SIZES[0]}>A<sup>−</sup></button>
           <button type="button" data-tooltip="Larger text (+)" aria-label="Larger text" onClick={() => changeFont(1)} disabled={fontSize === FONT_SIZES[FONT_SIZES.length - 1]}>A<sup>+</sup></button>
         </div>
-        <span className="audiobook-tools-divider" aria-hidden="true" />
-        {/* Shrinks to the mini player and keeps narrating; X below stops and ends the session. */}
+        {/* Shrinks to the mini player and keeps narrating; the back arrow stops and ends the session. */}
         <button type="button" className="audiobook-tool audiobook-minimize" aria-label="Mini player" data-tooltip="Keep listening while you read" onClick={onMinimize}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4.5" width="18" height="15" rx="2.5" /><rect className="audiobook-minimize-bar" x="11" y="13" width="7.5" height="4" rx="1.2" /></svg>
           <span>Mini player</span>
         </button>
-        <button ref={closeButton} type="button" className="audiobook-close" aria-label="Exit audiobook mode" data-tooltip="Stop and exit audiobook mode" onClick={onExit}><FiX /></button>
       </div>
     </header>
     <div className="audiobook-section-progress" title={percent + "% of this chapter"}><span style={{ width: percent + "%" }} /></div>
