@@ -422,26 +422,20 @@ test(
         await main.innerText(),
         "An alternative chapter. שלום עולם.",
       );
-      const backup = await page
-        .getByRole("combobox", { name: "Select draft", exact: true })
-        .locator("option")
-        .evaluateAll((els) =>
-          els
-            .map((e) => ({ value: e.value, text: e.textContent }))
-            .find((e) => e.text.startsWith("Previous Main")),
-        );
-      await page
-        .getByRole("combobox", { name: "Select draft", exact: true })
-        .selectOption(backup.value);
+      await draft.waitFor({ state: "hidden" });
+      await page.locator(".ws-version").click();
+      assert.equal(await page.locator(".ws-version-menu").getByRole("button", { name: /^Main(?: |$)/ }).count(), 0);
+      await page.getByRole("button", { name: /Alternative Promoted to Main/ }).waitFor();
+      const backups = page.locator(".ws-main-backups");
+      assert.equal(await backups.locator("button").first().isVisible(), false);
+      await backups.locator("summary").click();
+      await backups.locator("button").first().click();
       assert.equal(await draft.innerText(), mainText);
-      await page
-        .getByRole("button", { name: "Promote to Main", exact: true })
-        .click();
-      await page
-        .getByRole("dialog")
-        .getByRole("button", { name: "Promote to Main", exact: true })
-        .click();
+      await page.getByRole("button", { name: "Restore to Main", exact: true }).click();
+      await page.getByRole("dialog").getByRole("button", { name: "Restore to Main", exact: true }).click();
       assert.equal(await main.innerText(), mainText);
+      await page.locator(".ws-version").click();
+      await page.getByRole("button", { name: /^Alternative(?: |$)/ }).click();
       // Mobile switches hide a panel without unmounting its editor.
       await page.setViewportSize({ width: 390, height: 844 });
       assert.equal(await main.isVisible(), false);
@@ -508,7 +502,7 @@ test(
         .getByRole("button", { name: "Close chapter summary", exact: true })
         .click();
       // Confirm delete, autosave, reload, and chapter switch.
-      await page.getByText(/Drafts \(/).click();
+      await page.locator(".ws-version").click();
       await page
         .getByRole("button", { name: /^Alternative(?: |$)/ })
         .click();
@@ -536,7 +530,7 @@ test(
       );
       await page.reload();
       await main.waitFor();
-      await page.getByText(/Drafts \(/).click();
+      await page.locator(".ws-version").click();
       await page.getByRole("button", { name: /^Draft 2(?: |$)/ }).click();
       assert.equal(await draft.innerText(), "Second draft pending");
       await page

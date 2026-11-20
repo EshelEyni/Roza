@@ -5,12 +5,13 @@ import { ManuscriptEditor } from "./ManuscriptEditor";
 import { plainText } from "./manuscript";
 import { wordDiff } from "./aiEditing";
 import { AiEditingContext } from "./AiEdit";
-import { draftDisplayName, draftTimestamp } from "./chapterDrafts";
+import { draftDisplayName, draftTimestamp, isMainBackup } from "./chapterDrafts";
 
 export function DraftPane({
   chapter,
   manuscriptId,
   draft,
+  matchingMain,
   active,
   readOnly,
   reading,
@@ -29,6 +30,7 @@ export function DraftPane({
   chapter: Chapter;
   manuscriptId: string;
   draft: ChapterDraft;
+  matchingMain: boolean;
   readOnly: boolean;
   reading: boolean;
   audiobookKey: string;
@@ -47,38 +49,41 @@ export function DraftPane({
   const [name, setName] = useState(draft.name);
   const [diff, setDiff] = useState(false);
   const timestamp = draftTimestamp(draft);
+  const backup = isMainBackup(draft);
+  const promoted = draft.id === chapter.mainSourceDraftId;
   return (
     <article
       hidden={!active}
       className="ws-draft-pane"
-      aria-label="Draft writing panel"
+      aria-label={backup ? "Main backup preview" : "Draft writing panel"}
     >
       <header className="ws-draft-header">
-        <label>
-          Draft{" "}
-          <select
-            aria-label="Select draft"
-            value={draft.id}
-            title={draft.name}
-            onChange={(e) => onSelect(e.target.value)}
-          >
-            {chapter.drafts?.map((d) => (
-              <option key={d.id} value={d.id}>
-                {draftDisplayName(d)}{d.id === chapter.mainSourceDraftId ? " · Main source" : ""}
-              </option>
-            ))}
-          </select>
-        </label>
+        {backup ? <strong>{draftDisplayName(draft)}</strong> : (
+          <label>
+            Draft{" "}
+            <select aria-label="Select draft" value={draft.id} title={draft.name}
+              onChange={event => onSelect(event.target.value)}>
+              {chapter.drafts?.filter(item => !isMainBackup(item)).map(item => (
+                <option key={item.id} value={item.id}>{item.name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {(promoted || matchingMain) && (
+          <span className="ws-version-source">
+            {promoted ? backup ? "Restored to Main" : "Promoted to Main" : "Matches Main"}
+          </span>
+        )}
         {timestamp && <span className="ws-draft-timestamp">{timestamp}</span>}
         <button disabled={readOnly} onClick={onPromote}>
-          Promote to Main
+          {backup ? "Restore to Main" : "Promote to Main"}
         </button>
         <button onClick={onClose} aria-label="Close draft">
           Close
         </button>
       </header>
       <div className="ws-draft-secondary">
-        <label>
+        {!backup && <label>
           Name{" "}
           <input
             aria-label="Draft name"
@@ -92,12 +97,12 @@ export function DraftPane({
               else setName(draft.name);
             }}
           />
-        </label>
+        </label>}
         <button aria-pressed={diff} onClick={() => setDiff(!diff)}>
           Compare changes
         </button>
         <button disabled={readOnly} onClick={onDelete}>
-          Delete draft
+          {backup ? "Delete backup" : "Delete draft"}
         </button>
       </div>
       {diff && (
@@ -125,7 +130,7 @@ export function DraftPane({
         value={draft.text}
         format={draft.format || chapter.format}
         label="Draft manuscript"
-        readOnly={readOnly || !active}
+        readOnly={readOnly || !active || backup}
         annotations={draft.annotations || []}
         showAnnotations={false}
         aiEditing={{ ...aiEditing, annotations: draft.annotations }}

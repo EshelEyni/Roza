@@ -2304,6 +2304,19 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 .ws-draft-timestamp { margin-inline-end: auto; color: var(--ws-muted); font-size: 12px; white-space: nowrap; }
 .ws-version-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ws-version-menu .ws-version-meta { display: block; color: var(--ws-muted); font-size: 11px; }
+.ws-version-source {
+  display: inline-block;
+  padding: 3px 5px;
+  border-radius: 3px;
+  background: var(--ws-accent);
+  color: var(--ws-on-accent);
+  font-size: 11px;
+}
+.ws-version-menu .ws-version-source { margin-block: 4px; }
+.ws-header .ws-item-menu .ws-main-backups { margin-top: 12px; padding-top: 6px; border-top: 1px solid var(--ws-line); }
+.ws-header .ws-item-menu .ws-main-backups summary { background: transparent; list-style: revert; cursor: pointer; font-size: 13px; }
+.ws-header .ws-item-menu .ws-main-backups summary:hover { background: var(--ws-soft); }
+.ws-header .ws-item-menu .ws-version-menu { max-height: 70vh; overflow: auto; }
 .ws-draft-secondary { font-size: 12px; }
 .ws-draft-secondary input { width: 180px; padding: 6px; }
 .ws-draft-diff { white-space: pre-wrap; max-height: 35vh; overflow: auto; padding: 16px; background: var(--ws-soft); margin-bottom: 20px; }
@@ -2502,7 +2515,7 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
   white-space: nowrap;
 }
 
-.ws-header .ws-item-menu[open] summary {
+.ws-header .ws-item-menu[open] > summary {
   background: var(--ws-soft);
 }
 

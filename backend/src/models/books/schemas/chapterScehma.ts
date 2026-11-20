@@ -58,6 +58,7 @@ const planningSchema = new Schema(
 );
 const draftSchema = new Schema({
   id: { type: String, required: true },
+  kind: { type: String, enum: ["main-backup"] },
   chapterId: { type: String, required: true },
   name: { type: String, required: true, trim: true, maxlength: 200 },
   text: { type: [SlateCustomElementSchema], required: true },

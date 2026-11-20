@@ -102,6 +102,7 @@ export interface ChapterPlanning {
 
 export interface ChapterDraft {
   id: string;
+  kind?: "main-backup";
   chapterId: string;
   name: string;
   text: SlateCustomElement[];

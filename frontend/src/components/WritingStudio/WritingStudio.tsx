@@ -1,5 +1,5 @@
 import { DraftPane } from "./DraftPane";
-import { createChapterDraft, changeChapterDraft, draftDisplayName, draftTimestamp, promoteChapterDraft } from "./chapterDrafts";
+import { createChapterDraft, changeChapterDraft, draftDisplayName, draftTimestamp, isMainBackup, matchingMainDraft, promoteChapterDraft } from "./chapterDrafts";
 import { Chapter, ChapterAnnotation } from "../../../../shared/types/books";
 import { ChapterPlanning } from "./ChapterPlanning";
 import { ChapterFormatDialog } from "./ChapterFormatDialog";
@@ -250,7 +250,15 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   );
   const chapter = !overview && !tasks && item?.type === "chapters" ? item : undefined;
   const activeDraft = chapter?.drafts?.find(d => d.id === draftId);
-  const mainSourceDraft = chapter?.drafts?.find(d => d.id === chapter.mainSourceDraftId);
+  const drafts = chapter?.drafts?.filter(draft => !isMainBackup(draft)) ?? [];
+  const mainBackups = chapter?.drafts?.filter(isMainBackup).reverse() ?? [];
+  const mainSourceDraft = chapter?.drafts?.find(draft => draft.id === chapter.mainSourceDraftId);
+  const matchingDraft = chapter && !chapter.mainSourceDraftId && mainBackups.length > 0
+    ? matchingMainDraft(chapter, drafts)
+    : undefined;
+  const mainSourceLabel = mainSourceDraft
+    ? isMainBackup(mainSourceDraft) ? "Restored from backup" : `Promoted from ${mainSourceDraft.name}`
+    : matchingDraft ? `Matches ${matchingDraft.name}` : undefined;
   function openDraft(id: string, reading = preview) {
     setVisitedDrafts(ids => ids.includes(id) ? ids : [...ids, id]);
     updateStudioUrl({ studioItem: selected, draft: id, tab: reading ? "read" : "write",
@@ -267,7 +275,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   }
   function addDraft(blank = false) {
     if (!chapter || store.recovery) return;
-    const draft = createChapterDraft(chapter, `Draft ${(chapter.drafts?.length || 0) + 1}`, blank);
+    let number = drafts.length + 1;
+    while (drafts.some(draft => draft.name === `Draft ${number}`)) number++;
+    const draft = createChapterDraft(chapter, `Draft ${number}`, blank);
     editChapter(c => ({ ...c, drafts: [...(c.drafts || []), draft] }));
     openDraft(draft.id, false);
   }
@@ -279,15 +289,22 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   async function promoteDraft() {
     if (!chapter || !activeDraft) return;
     const chapterId = chapter.id, id = activeDraft.id;
-    if (await confirm({ title: "Promote draft to Main?", message: `Replace Main with “${activeDraft.name}”? The previous Main will be kept as a dated draft for recovery. The promoted draft will remain intact.`, confirmLabel: "Promote to Main" })) {
+    const restoring = isMainBackup(activeDraft);
+    const action = restoring ? "Restore to Main" : "Promote to Main";
+    const message = restoring
+      ? "Restore this backup to Main? The current Main will be saved under Main backups."
+      : `Replace Main with “${activeDraft.name}”? The current Main will be saved under Main backups.`;
+    if (await confirm({ title: `${action}?`, message, confirmLabel: action })) {
       editChapter(c => c.drafts?.some(d => d.id === id) ? promoteChapterDraft(c, id) : c, chapterId);
       setRestoreKey(n => n + 1);
+      closeDraft();
     }
   }
   async function deleteDraft() {
     if (!chapter || !activeDraft) return;
     const chapterId = chapter.id, id = activeDraft.id;
-    if (await confirm({ title: "Delete draft?", message: `Permanently delete “${activeDraft.name}”? Main will be preserved.`, confirmLabel: "Delete draft" })) {
+    const action = isMainBackup(activeDraft) ? "Delete backup" : "Delete draft";
+    if (await confirm({ title: `${action}?`, message: `Permanently delete “${draftDisplayName(activeDraft)}”? Main will be preserved.`, confirmLabel: action })) {
       editChapter(c => ({
         ...c,
         mainSourceDraftId: c.mainSourceDraftId === id ? undefined : c.mainSourceDraftId,
@@ -585,25 +602,23 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             <ItemMenu>
               <summary className="ws-version" title="Chapter versions">
                 {activeDraft ? draftDisplayName(activeDraft) : "Main"}
-                <small> · {chapter.drafts?.length || 0} drafts</small> ▾
+                <small> · {drafts.length} {drafts.length === 1 ? "draft" : "drafts"}</small> ▾
               </summary>
               <div className="ws-version-menu">
                 <span className="ws-eyebrow">VERSIONS</span>
-                <button aria-current={!activeDraft || undefined} onClick={closeDraft}>
-                  Main
-                  {mainSourceDraft && <small className="ws-version-meta">From {draftDisplayName(mainSourceDraft)}</small>}
-                </button>
-                {chapter.drafts?.map(d => (
+                {drafts.map(d => (
                   <button
                     key={d.id}
                     aria-current={d.id === activeDraft?.id || undefined}
                     onClick={() => openDraft(d.id)}
                   >
                     <span className="ws-version-name" title={d.name}>{draftDisplayName(d)}</span>
-                    <small className="ws-version-meta">
-                      {[d.id === chapter.mainSourceDraftId ? "Main source" : "", draftTimestamp(d)]
-                        .filter(Boolean).join(" · ")}
-                    </small>
+                    {(d.id === mainSourceDraft?.id || d.id === matchingDraft?.id) && (
+                      <span className="ws-version-source">
+                        {d.id === mainSourceDraft?.id ? "Promoted to Main" : "Matches Main"}
+                      </span>
+                    )}
+                    <small className="ws-version-meta">{draftTimestamp(d)}</small>
                   </button>
                 ))}
                 <hr />
@@ -613,6 +628,18 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 <button disabled={!!store.recovery} onClick={() => addDraft(true)}>
                   Create blank draft
                 </button>
+                {mainBackups.length > 0 && (
+                  <details className="ws-main-backups">
+                    <summary>Main backups ({mainBackups.length})</summary>
+                    {mainBackups.map(backup => (
+                      <button key={backup.id} aria-current={backup.id === activeDraft?.id || undefined}
+                        onClick={() => openDraft(backup.id, false)}>
+                        {draftTimestamp(backup) || "Main backup"}
+                        {backup.id === mainSourceDraft?.id && <small className="ws-version-meta">Restored to Main</small>}
+                      </button>
+                    ))}
+                  </details>
+                )}
               </div>
             </ItemMenu>
           )}
@@ -934,7 +961,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               >
                 {activeDraft && (
                   <h2 className="ws-main-label">
-                    Main Version{mainSourceDraft && ` · from ${draftDisplayName(mainSourceDraft)}`}
+                    Main{mainSourceLabel && ` · ${mainSourceLabel}`}
                   </h2>
                 )}
                 {!(chapterBible && item.type === "chapters") && (
@@ -1048,6 +1075,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               </article>
               {chapter && chapter.drafts?.filter(d => d.id === draftId || visitedDrafts.includes(d.id)).map(draft => <DraftPane key={`${chapter.id}:${draft.id}:${restoreKey}`} chapter={chapter} draft={draft} active={draft.id === activeDraft?.id} readOnly={!!store.recovery || preview}
                 manuscriptId={book.id}
+                matchingMain={draft.id === matchingDraft?.id}
                 reading={draft.id === activeDraft?.id && view === "read" && pageControls} audiobookKey={mobilePane} audiobookHeader={audiobookHeader}
                 readingPosition={mobilePane === "draft" ? readingPosition : undefined} audiobookState={audiobookState}
                 onSelect={openDraft} onClose={closeDraft} onPromote={() => void promoteDraft()} onDelete={() => void deleteDraft()}

@@ -32,6 +32,8 @@ const {
   createChapterDraft,
   promoteChapterDraft,
   changeChapterDraft,
+  isMainBackup,
+  matchingMainDraft,
 } = require("../frontend/src/components/WritingStudio/chapterDrafts.ts");
 const {
   DraftStore,
@@ -206,7 +208,13 @@ test("drafts clone independently; promotion and recovery preserve text, annotati
   assert.equal(promoted.mainSourceDraftId, d.id);
   assert.deepEqual(promoted.drafts.slice(0, 2).map(draft => draft.id), [d.id, blank.id]);
   const backup = promoted.drafts[2];
-  assert.equal(backup.name, "Previous Main");
+  assert.equal(backup.kind, "main-backup");
+  assert.equal(isMainBackup(backup), true);
+  assert.equal(isMainBackup({ ...d, name: "Previous Main · 11/19/2026, 7:24:43 AM" }), true);
+  assert.equal(isMainBackup({ ...d, name: "Previous Main" }), true);
+  assert.equal(isMainBackup(d), false);
+  assert.equal(matchingMainDraft(promoted, [d, blank])?.id, d.id);
+  assert.equal(matchingMainDraft(promoted, [d, { ...d, id: "another" }]), undefined);
   assert.ok(Date.parse(backup.createdAt));
   const recovered = promoteChapterDraft(promoted, backup.id);
   assert.equal(recovered.mainSourceDraftId, backup.id);
@@ -218,6 +226,7 @@ test("schema roundtrip persists drafts and rejects foreign chapter IDs and dupli
   const b = book();
   b.chapters[0].drafts = [createChapterDraft(b.chapters[0], "טיוטה")];
   b.chapters[0].mainSourceDraftId = b.chapters[0].drafts[0].id;
+  b.chapters[0] = promoteChapterDraft(b.chapters[0], b.chapters[0].mainSourceDraftId);
   validatePlanning(b, b.id);
   const Model = model("AiWritingDraftsTest", bookSchema);
   const doc = new Model(b);
@@ -225,6 +234,7 @@ test("schema roundtrip persists drafts and rejects foreign chapter IDs and dupli
   const restored = new Model(JSON.parse(JSON.stringify(doc)));
   assert.equal(restored.chapters[0].drafts[0].name, "טיוטה");
   assert.equal(restored.chapters[0].mainSourceDraftId, b.chapters[0].mainSourceDraftId);
+  assert.equal(restored.chapters[0].drafts[1].kind, "main-backup");
   assert.equal(
     restored.chapters[0].drafts[0].annotations[0].content,
     "Keep note",
