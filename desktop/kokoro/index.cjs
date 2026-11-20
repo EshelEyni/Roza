@@ -12,7 +12,7 @@ const { serveKokoroAudio } = require("./audioRoute.cjs");
 const { createStore, passageIn } = require("./store.cjs");
 const { isKokoroVoice } = require("./voices.cjs");
 
-const PREVIEW_TEXT = "The morning arrived quietly, and the world seemed full of possibility.";
+const PREVIEW_TEXT = "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness.";
 
 /**
  * @param {{ app: Electron.App, origin: string, getWindow: () => Electron.BrowserWindow | null }} options
@@ -32,13 +32,31 @@ function createKokoroDesktop({ app, origin, getWindow }) {
     if (window && !window.isDestroyed()) window.webContents.send(channel, payload);
   };
 
-  const installer = createInstaller({ runtimeDir, script, onProgress: (status) => send("kokoro:install-status", status) });
+  let warmup;
+  const installer = createInstaller({
+    runtimeDir, script,
+    onProgress: (status) => {
+      send("kokoro:install-status", status);
+      if (status.installed && !status.installing && !status.error) warmPreviews();
+    },
+  });
   const engine = createEngine({
     python: installer.python, script, cwd: runtimeDir, env: installer.env, isInstalled: installer.isInstalled,
   });
   const store = createStore({ audioDir, booksDir, engine });
   const exporter = createExporter({ tempDir: path.join(os.tmpdir(), "roza-kokoro-export"), ffmpeg: installer.ffmpeg, ensureSentence: store.ensureSentence, passageIn });
-  const ready = installer.load();
+  const ready = installer.load().then(() => { warmPreviews(); });
+
+  function warmPreviews() {
+    if (warmup || !installer.isInstalled()) return;
+    const controller = new AbortController();
+    const done = store.warmPreviews(PREVIEW_TEXT, controller.signal).catch(() => {
+      // A preview can still be generated on demand if background preparation fails.
+    }).finally(() => {
+      if (warmup?.controller === controller) warmup = undefined;
+    });
+    warmup = { controller, done };
+  }
 
   async function settings() {
     try { return JSON.parse(await readFile(settingsFile, "utf8")); } catch { return {}; }
@@ -73,14 +91,18 @@ function createKokoroDesktop({ app, origin, getWindow }) {
   function register() {
     handle("kokoro:status", status);
     handle("kokoro:install", async () => {
+      warmup?.controller.abort();
       engine.stop();
       installer.install();
       return status();
     });
     handle("kokoro:cancel-install", async () => { installer.cancel(); return status(); });
     handle("kokoro:remove", async () => {
+      const pending = warmup;
+      pending?.controller.abort();
       engine.stop();
       exporter.stopAll();
+      await pending?.done;
       await store.clearAudio();
       await installer.remove();
       return status();
@@ -136,6 +158,7 @@ function createKokoroDesktop({ app, origin, getWindow }) {
   const handleAudio = (request, url) => serveKokoroAudio(request, url, audioDir);
 
   function shutdown() {
+    warmup?.controller.abort();
     installer.cancel();
     exporter.stopAll();
     engine.stop();

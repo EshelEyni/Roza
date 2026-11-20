@@ -47,7 +47,7 @@ export function ReaderAudiobookVoices({ voices, selected, engine = "system", aiV
   const [previewStatus, setPreviewStatus] = useState("");
   const aiPreview = useRef<ReaderOpenAiAudio>();
   const previewVersion = useRef(0);
-  const sample = config?.previewText || "The morning arrived quietly, and the world seemed full of possibility.";
+  const sample = config?.previewText || "It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness.";
   const [viewport, setViewport] = useState(() => ({ height: window.visualViewport?.height || innerHeight, top: window.visualViewport?.offsetTop || 0 }));
   const dialog = useRef<HTMLDialogElement>(null);
   const close = useRef<HTMLButtonElement>(null);

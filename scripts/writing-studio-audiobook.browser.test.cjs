@@ -165,6 +165,8 @@ test("Writing Studio narrates drafts and restores the book narrator without savi
     await offline.getByRole("button", { name: "Close" }).click();
     assert.equal(await speechText(), undefined);
     await player.getByRole("button", { name: "Choose narrator voice" }).click();
+    await page.getByRole("dialog", { name: "Choose a narrator" })
+      .getByText(/It was the best of times, it was the worst of times/).waitFor();
     await page.getByRole("button", { name: "Cancel", exact: true }).click();
     const grip = player.getByRole("button", { name: "Move mini player with arrow keys" });
     const before = await player.boundingBox();

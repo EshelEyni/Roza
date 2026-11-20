@@ -13,7 +13,7 @@ const { createHash } = require("node:crypto");
 const { existsSync } = require("node:fs");
 const { mkdir, readFile, readdir, rename, rm, writeFile } = require("node:fs/promises");
 const path = require("node:path");
-const { isKokoroVoice } = require("./voices.cjs");
+const { isKokoroVoice, kokoroVoices } = require("./voices.cjs");
 
 // Bump when the audio format or timing rules change, so old clips are made again.
 const AUDIO_VERSION = "1";
@@ -133,6 +133,7 @@ const pauseAfter = (sentence, passage) => (passage ? Math.max(0, sentence.pause 
  */
 function createStore({ audioDir, booksDir, engine }) {
   const inFlight = new Map();
+  const previewJobs = new Map();
   const scripts = new Map();
   const bookJobs = new Map();
 
@@ -221,17 +222,38 @@ function createStore({ audioDir, booksDir, engine }) {
     return { url, duration, words, pause };
   }
 
-  async function preview(voice, text) {
+  async function preview(voice, text, priority = "high", signal) {
     checkVoice(voice);
+    const hash = createHash("sha256").update(AUDIO_VERSION).update(text).digest("hex").slice(0, 16);
+    const name = `${voice}-${hash}`;
     const folder = path.join(audioDir, "_preview");
-    const wav = path.join(folder, `${voice}.wav`);
+    const wav = path.join(folder, `${name}.wav`);
     if (!existsSync(wav)) {
-      await mkdir(folder, { recursive: true });
-      const temp = path.join(folder, `${voice}.${process.pid}.tmp.wav`);
-      await engine.synthesize({ text, words: text.split(" "), voice, out: temp }, "high");
-      await rename(temp, wav);
+      let job = previewJobs.get(name);
+      if (!job) {
+        job = (async () => {
+          await mkdir(folder, { recursive: true });
+          signal?.throwIfAborted();
+          const temp = path.join(folder, `${name}.${process.pid}.tmp.wav`);
+          try {
+            await engine.synthesize({ text, words: text.split(" "), voice, out: temp }, priority);
+            await rename(temp, wav);
+          } finally {
+            await rm(temp, { force: true }).catch(() => {});
+          }
+        })().finally(() => previewJobs.delete(name));
+        previewJobs.set(name, job);
+      }
+      await job;
     }
-    return { url: `/__kokoro/preview/${voice}.wav` };
+    return { url: `/__kokoro/preview/${name}.wav` };
+  }
+
+  async function warmPreviews(text, signal) {
+    for (const voice of kokoroVoices) {
+      signal.throwIfAborted();
+      await preview(voice, text, "low", signal);
+    }
   }
 
   // ---- Book scripts (the whole book's sentences, for offline saves and export) ----
@@ -376,7 +398,7 @@ function createStore({ audioDir, booksDir, engine }) {
     await rm(audioDir, { recursive: true, force: true });
   }
 
-  return { sentence, preview, saveScript, hasScript, loadScript, ensureSentence, offline, clearAudio };
+  return { sentence, preview, warmPreviews, saveScript, hasScript, loadScript, ensureSentence, offline, clearAudio };
 }
 
 module.exports = { createStore, clipName, passageIn, AUDIO_VERSION };

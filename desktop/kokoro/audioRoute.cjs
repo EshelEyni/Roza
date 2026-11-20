@@ -4,7 +4,7 @@ const { stat } = require("node:fs/promises");
 const path = require("node:path");
 const { Readable } = require("node:stream");
 
-const AUDIO_PATH = /^\/__kokoro\/(?:audio\/([a-f0-9]{24})\/([a-z]{2}_[a-z]+)\/(\d+-\d+-[a-f0-9]{16})|preview\/([a-z]{2}_[a-z]+))\.wav$/;
+const AUDIO_PATH = /^\/__kokoro\/(?:audio\/([a-f0-9]{24})\/([a-z]{2}_[a-z]+)\/(\d+-\d+-[a-f0-9]{16})|preview\/([a-z]{2}_[a-z]+-[a-f0-9]{16}))\.wav$/;
 
 /** Returns null for paths outside /__kokoro/, so the caller can serve them. */
 async function serveKokoroAudio(request, url, audioDir) {
@@ -22,8 +22,8 @@ async function serveKokoroAudio(request, url, audioDir) {
   const headers = new Headers({
     "Content-Type": "audio/wav",
     "Accept-Ranges": "bytes",
-    // Clip names carry a content hash; previews are remade only after "Remove local voices".
-    "Cache-Control": match[4] ? "no-cache" : "private, max-age=31536000, immutable",
+    // Both narration and preview URLs include a content hash.
+    "Cache-Control": "private, max-age=31536000, immutable",
     "X-Content-Type-Options": "nosniff",
   });
   const range = request.headers.get("range")?.match(/^bytes=(\d*)-(\d*)$/);

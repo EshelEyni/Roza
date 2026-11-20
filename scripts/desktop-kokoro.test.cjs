@@ -71,6 +71,33 @@ test("a sentence is made once, cached by content, and served with byte ranges", 
   assert.equal(await serveKokoroAudio(new Request(other), other, path.join(dir, "audio")), null);
 });
 
+test("voice previews warm once, survive a new store, and change with the sample", async (t) => {
+  const { dir, engine, store } = setup();
+  t.after(() => { engine.stop(); fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); });
+  const audioDir = path.join(dir, "audio");
+  const text = "It was the best of times.";
+  const signal = new AbortController().signal;
+  const [, first] = await Promise.all([store.warmPreviews(text, signal), store.preview("af_heart", text)]);
+  assert.match(first.url, /^\/__kokoro\/preview\/af_heart-[a-f0-9]{16}\.wav$/);
+  const folder = path.join(audioDir, "_preview");
+  const files = fs.readdirSync(folder);
+  const { kokoroVoices } = require("../desktop/kokoro/voices.cjs");
+  assert.equal(files.filter(name => name.endsWith(".wav")).length, kokoroVoices.length);
+  const renders = fs.readFileSync(path.join(folder, "order.txt"), "utf8").trim().split(/\r?\n/);
+  assert.equal(renders.length, kokoroVoices.length, "a click shares any in-flight preview");
+  const reopened = createStore({ audioDir, booksDir: path.join(dir, "books"), engine: {
+    synthesize: () => assert.fail("cached previews should not need the engine"),
+  } });
+  await reopened.warmPreviews(text, signal);
+  assert.deepEqual(await reopened.preview("af_heart", text), first);
+  const changed = await store.preview("af_heart", "It was the worst of times.");
+  assert.notEqual(changed.url, first.url);
+  const url = new URL("https://roza.esheleyni.com" + changed.url);
+  const response = await serveKokoroAudio(new Request(url, { headers: { range: "bytes=0-9" } }), url, audioDir);
+  assert.equal(response.status, 206);
+  assert.equal((await response.arrayBuffer()).byteLength, 10);
+});
+
 test("invalid input is refused before reaching the engine", async (t) => {
   const { dir, engine, store } = setup();
   t.after(() => { engine.stop(); fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); });

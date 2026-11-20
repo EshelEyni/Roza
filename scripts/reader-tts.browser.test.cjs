@@ -278,7 +278,7 @@ test(
           await picker.getByRole("button",{name:"Preview Amelie",exact:true}).click();
           assert.equal(await page.evaluate(()=>window.spoken.at(-1).voice.voiceURI),"french");
           assert.equal(await page.evaluate(()=>window.spoken.at(-1).lang),"fr-FR");
-          assert.match(await page.evaluate(()=>window.spoken.at(-1).text),/^The morning arrived quietly/);
+          assert.match(await page.evaluate(()=>window.spoken.at(-1).text),/^It was the best of times/);
           await picker.getByRole("button",{name:"Stop preview of Amelie",exact:true}).click();
           await picker.getByRole("button",{name:"Preview Amelie",exact:true}).click();
           await page.evaluate(()=>{window.stalePreviewEnd=window.spoken.at(-1).onend;});
@@ -374,7 +374,7 @@ test(
           const page = await browser.newPage({ viewport: { width: mobile ? 375 : 1280, height: 844 }, hasTouch: mobile, isMobile: mobile });
           const requests = [], previewRequests=[];
           let passages = {}, failure = false, narrator = null, saveFailure=false, aligned=false;
-          const sample="The morning arrived quietly, and the world seemed full of possibility.";
+          const sample="It was the best of times, it was the worst of times, it was the age of wisdom, it was the age of foolishness.";
           await page.route("**/audiobook/**", async route => {
             const url = new URL(route.request().url());
             if (url.pathname.endsWith("/config")) return route.fulfill({json:{status:"success",data:{available:true,voices:["marin","cedar"],defaultVoice:"marin",maxChars:600,narrator,previewText:sample}}});
