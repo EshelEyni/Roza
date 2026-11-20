@@ -6,7 +6,8 @@
 - **Expressive option:** Chatterbox Turbo, as the "Expressive voices" add-on in the desktop app. It installs on
   top of the local voices (Kokoro) and is grouped as "Expressive" in the voice picker. Voices: `cb_default`
   (Turbo's built-in voice) and `cb_heart`, `cb_emma`, `cb_michael`, `cb_george`, cloned from the Kokoro
-  voices of the same name (reference clips in `desktop/chatterbox/voices/`).
+  voices of the same name (reference clips in `desktop/chatterbox/voices/`). To add a voice, see
+  [adding-chatterbox-voices.md](adding-chatterbox-voices.md).
 - **Word timing:** a local wav2vec2 forced aligner (`torchaudio` `WAV2VEC2_ASR_BASE_960H`, 360 MB, CPU).
   Checked against Kokoro's own word times on the test passages (421 words): word starts are off by a median of
   21 ms (after a fixed 60 ms correction), 90% within 52 ms, all but one within 100 ms; word ends within 5 ms.
