@@ -619,6 +619,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       </span>
                     )}
                     <small className="ws-version-meta">{draftTimestamp(d)}</small>
+                    {d.summary?.trim() && (
+                      <span className="ws-version-summary" dir="auto">{d.summary.trim()}</span>
+                    )}
                   </button>
                 ))}
                 <hr />

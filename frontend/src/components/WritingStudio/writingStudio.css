@@ -2319,7 +2319,31 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 .ws-header .ws-item-menu .ws-version-menu { max-height: 70vh; overflow: auto; }
 .ws-draft-secondary { font-size: 12px; }
 .ws-draft-secondary input { width: 180px; padding: 6px; }
-.ws-draft-diff { white-space: pre-wrap; max-height: 35vh; overflow: auto; padding: 16px; background: var(--ws-soft); margin-bottom: 20px; }
+.ws-draft-summary { display: grid; gap: 4px; margin-bottom: 16px; font-size: 12px; }
+.ws .ws-draft-summary textarea {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--ws-line);
+  border-radius: 5px;
+  background: var(--ws-paper);
+  color: var(--ws-ink);
+  font: inherit;
+  resize: vertical;
+}
+.ws-version-summary {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  margin-top: 4px;
+  color: var(--ws-muted);
+  font-size: 12px;
+}
+.ws-draft-change-count { font-size: 12px; color: var(--ws-muted); white-space: nowrap; }
+.ws .ws-draft-deletion { text-decoration: line-through; }
+.ws-draft-deletion, .ws-draft-break { user-select: none; }
+.ws .ws-draft-break { margin-inline-start: 4px; }
 .ws-draft-mode .ws-annotated-editor { display: block; --ws-annotation-space: 0px; }
 .ws-ai-control { position: relative; }
 .ws-ai-review { position: absolute; z-index: 20; top: 100%; right: 0; width: min(620px, 82vw); max-height: 65dvh; overflow: auto; padding: 18px; border: 1px solid var(--ws-line); background: var(--ws-paper); color: var(--ws-ink); box-shadow: 0 8px 24px color-mix(in srgb, var(--ws-ink) 15%, transparent); font: 14px/1.6 var(--font-primary, Alef, sans-serif); }

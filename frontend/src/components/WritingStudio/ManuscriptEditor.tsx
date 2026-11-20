@@ -15,6 +15,7 @@ import { ChapterAnnotation } from "../../../../shared/types/books";
 import { AnnotationMargin } from "./AnnotationMargin";
 import { annotationSentenceRange, manuscriptLines, transformAnnotations, validAnchor } from "./annotations";
 import { ReadingGoToLine } from "./ReadingGoToLine";
+import type { DraftComparisonMark } from "./draftComparison";
 import { findManuscriptMatches, ManuscriptFind, type ManuscriptFindOptions } from "./ManuscriptFind";
 import { isGoToLineShortcut } from "./goToLineInput";
 import { Editable, ReactEditor, Slate, useSlate, withReact } from "slate-react";
@@ -133,6 +134,7 @@ export function ManuscriptEditor({
   onRevealAnnotations,
   aiEditing,
   primaryFindTarget = false,
+  draftComparison,
 }: {
   aiEditing?: AiEditingContext;
   audiobook?: { id: string; title: string; manuscriptId: string };
@@ -156,6 +158,7 @@ export function ManuscriptEditor({
   label?: string;
   placeholder?: string;
   primaryFindTarget?: boolean;
+  draftComparison?: ReadonlyMap<string, DraftComparisonMark[]>;
 }) {
   const [findOpen, setFindOpen] = useState(false);
   const [findQuery, setFindQuery] = useState("");
@@ -447,7 +450,7 @@ export function ManuscriptEditor({
           readOnly={readOnly}
           spellCheck
           placeholder={
-            format === "screenplay" ? "INT. LOCATION - DAY" : placeholder
+            draftComparison ? undefined : format === "screenplay" ? "INT. LOCATION - DAY" : placeholder
           }
           onMouseMove={(event) => {
             const element = (event.target as HTMLElement).closest(
@@ -469,23 +472,25 @@ export function ManuscriptEditor({
           renderElement={(props) => <TextEditorElement {...props} />}
           decorate={([node, path]) => {
             if (!Text.isText(node)) return [];
-            const found = matches.highlights.get(path.join(".")) ?? [];
+            const key = path.join(".");
+            const found = matches.highlights.get(key) ?? [];
             const intersection = activeSentence && Range.intersection(
               Editor.range(editor, path),
               activeSentence,
             );
-            return intersection
-              ? [...found, { ...intersection, annotationActive: true }]
-              : found;
+            const decorations = intersection ? [...found, { ...intersection, annotationActive: true }] : found;
+            const comparison = draftComparison?.get(key);
+            return comparison ? [...decorations, ...comparison] : decorations;
           }}
           renderLeaf={props => {
-            const { annotationActive, findMatch } = props.leaf as Text & {
+            const { annotationActive, findMatch, draftAddition, draftDeletion, draftAddedBreak } = props.leaf as Text & DraftComparisonMark & {
               annotationActive?: boolean;
               findMatch?: number;
             };
             let children = annotationActive
               ? <mark className="ws-annotation-highlight">{props.children}</mark>
               : props.children;
+            if (draftAddition) children = <ins className="ws-draft-insertion">{children}</ins>;
             if (findMatch !== undefined) {
               children = (
                 <mark className="ws-manuscript-match" data-ws-find-match={findMatch}
@@ -494,7 +499,13 @@ export function ManuscriptEditor({
                 </mark>
               );
             }
-            return <Leaf {...props}>{children}</Leaf>;
+            return (
+              <Leaf {...props}>
+                {draftDeletion && <del className="ws-draft-deletion" contentEditable={false}>{draftDeletion}</del>}
+                {draftAddedBreak && <ins className="ws-draft-break" contentEditable={false} aria-label="Added paragraph break">{"\u21b5"}</ins>}
+                {children}
+              </Leaf>
+            );
           }}
         />
         {annotations !== undefined && (

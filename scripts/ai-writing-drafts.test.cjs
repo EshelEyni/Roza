@@ -35,6 +35,7 @@ const {
   isMainBackup,
   matchingMainDraft,
 } = require("../frontend/src/components/WritingStudio/chapterDrafts.ts");
+const { compareDraftText } = require("../frontend/src/components/WritingStudio/draftComparison.ts");
 const {
   DraftStore,
 } = require("../frontend/src/components/WritingStudio/draftStore.ts");
@@ -102,6 +103,18 @@ test("word diff reconstructs both originals including Hebrew and whitespace", ()
       b,
     );
   }
+});
+test("draft comparisons anchor marks in the draft and count contiguous edits once", () => {
+  const blocks = [{ type: "paragraph", children: [{ text: "New ", bold: true }, { text: "title kept today" }] }];
+  const compared = compareDraftText("Old title kept yesterday", "New title kept today", blocks);
+  assert.equal(compared.count, 2);
+  assert.ok(compared.marks.get("0.0").some(mark => mark.draftDeletion === "Old"));
+  assert.ok(compared.marks.get("0.0").some(mark => mark.draftAddition && mark.focus.offset === 3));
+  assert.ok(compared.marks.get("0.1").some(mark => mark.draftDeletion === "yesterday"));
+  assert.equal(compareDraftText("same", "same", [p("same")]).count, 0);
+  assert.equal(compareDraftText("gone", "", []).marks.get("0.0")[0].draftDeletion, "gone");
+  assert.ok(compareDraftText("a b", "a\nb", [p("a"), p("b")]).marks.get("0.0")
+    .some(mark => mark.draftAddedBreak));
 });
 test("selection edits preserve surrounding content, marks, paragraph boundaries and undo/redo", () => {
   const e = withHistory(createEditor());
@@ -225,7 +238,9 @@ test("drafts clone independently; promotion and recovery preserve text, annotati
 test("schema roundtrip persists drafts and rejects foreign chapter IDs and duplicates", () => {
   const b = book();
   b.chapters[0].drafts = [createChapterDraft(b.chapters[0], "טיוטה")];
-  b.chapters[0].mainSourceDraftId = b.chapters[0].drafts[0].id;
+  const sourceId = b.chapters[0].drafts[0].id;
+  b.chapters[0] = changeChapterDraft(b.chapters[0], sourceId, { summary: "Tighten the opening" });
+  b.chapters[0].mainSourceDraftId = sourceId;
   b.chapters[0] = promoteChapterDraft(b.chapters[0], b.chapters[0].mainSourceDraftId);
   validatePlanning(b, b.id);
   const Model = model("AiWritingDraftsTest", bookSchema);
@@ -234,7 +249,9 @@ test("schema roundtrip persists drafts and rejects foreign chapter IDs and dupli
   const restored = new Model(JSON.parse(JSON.stringify(doc)));
   assert.equal(restored.chapters[0].drafts[0].name, "טיוטה");
   assert.equal(restored.chapters[0].mainSourceDraftId, b.chapters[0].mainSourceDraftId);
+  assert.equal(restored.chapters[0].drafts[0].summary, "Tighten the opening");
   assert.equal(restored.chapters[0].drafts[1].kind, "main-backup");
+  assert.equal(restored.chapters[0].drafts[1].summary, undefined);
   assert.equal(
     restored.chapters[0].drafts[0].annotations[0].content,
     "Keep note",

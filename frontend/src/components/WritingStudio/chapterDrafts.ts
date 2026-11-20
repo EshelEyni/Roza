@@ -1,7 +1,6 @@
 import {
   Chapter,
   ChapterDraft,
-  SlateCustomElement,
 } from "../../../../shared/types/books";
 
 const previousMainName = "Previous Main";
@@ -74,11 +73,7 @@ export function promoteChapterDraft(chapter: Chapter, id: string): Chapter {
 export function changeChapterDraft(
   chapter: Chapter,
   id: string,
-  change: {
-    name?: string;
-    text?: SlateCustomElement[];
-    annotations?: ChapterDraft["annotations"];
-  },
+  change: Partial<Pick<ChapterDraft, "name" | "summary" | "text" | "annotations">>,
 ): Chapter {
   return {
     ...chapter,

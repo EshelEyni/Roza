@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Chapter, ChapterDraft } from "../../../../shared/types/books";
 import type { ManuscriptReadingPosition } from "./useManuscriptReadingMarks";
 import { ManuscriptEditor } from "./ManuscriptEditor";
 import { plainText } from "./manuscript";
-import { wordDiff } from "./aiEditing";
+import { compareDraftText } from "./draftComparison";
 import { AiEditingContext } from "./AiEdit";
 import { draftDisplayName, draftTimestamp, isMainBackup } from "./chapterDrafts";
 
@@ -42,12 +42,19 @@ export function DraftPane({
   onPromote: () => void;
   onDelete: () => void;
   onChange: (
-    change: Partial<Pick<ChapterDraft, "name" | "text" | "annotations">>,
+    change: Partial<Pick<ChapterDraft, "name" | "summary" | "text" | "annotations">>,
   ) => void;
   aiEditing: AiEditingContext;
 }) {
   const [name, setName] = useState(draft.name);
   const [diff, setDiff] = useState(false);
+  const mainText = useMemo(() => active ? plainText(chapter.text) : "", [active, chapter.text]);
+  const draftText = useMemo(() => active ? plainText(draft.text) : "", [active, draft.text]);
+  const hasChanges = mainText !== draftText;
+  const comparison = useMemo(
+    () => diff && hasChanges ? compareDraftText(mainText, draftText, draft.text) : undefined,
+    [diff, hasChanges, mainText, draftText, draft.text],
+  );
   const timestamp = draftTimestamp(draft);
   const backup = isMainBackup(draft);
   const promoted = draft.id === chapter.mainSourceDraftId;
@@ -75,6 +82,11 @@ export function DraftPane({
           </span>
         )}
         {timestamp && <span className="ws-draft-timestamp">{timestamp}</span>}
+        {comparison && (
+          <span className="ws-draft-change-count" role="status">
+            {comparison.count} {comparison.count === 1 ? "change" : "changes"}
+          </span>
+        )}
         <button disabled={readOnly} onClick={onPromote}>
           {backup ? "Restore to Main" : "Promote to Main"}
         </button>
@@ -98,26 +110,28 @@ export function DraftPane({
             }}
           />
         </label>}
-        <button aria-pressed={diff} onClick={() => setDiff(!diff)}>
+        <button disabled={!hasChanges} aria-pressed={!!comparison}
+          title={hasChanges ? undefined : "No text changes compared with Main"}
+          onClick={() => setDiff(show => !show)}>
           Compare changes
         </button>
         <button disabled={readOnly} onClick={onDelete}>
           {backup ? "Delete backup" : "Delete draft"}
         </button>
       </div>
-      {diff && (
-        <div className="ws-draft-diff" aria-label="Draft changes" dir="auto">
-          {wordDiff(plainText(chapter.text), plainText(draft.text)).map(
-            (p, i) =>
-              p.type === "add" ? (
-                <ins key={i}>{p.text}</ins>
-              ) : p.type === "remove" ? (
-                <del key={i}>{p.text}</del>
-              ) : (
-                p.text
-              ),
-          )}
-        </div>
+      {!backup && (
+        <label className="ws-draft-summary">
+          Draft summary
+          <textarea
+            dir="auto"
+            rows={2}
+            maxLength={1000}
+            placeholder="What changed in this draft?"
+            value={draft.summary ?? ""}
+            readOnly={readOnly}
+            onChange={event => onChange({ summary: event.target.value })}
+          />
+        </label>
       )}
       <ManuscriptEditor
         primaryFindTarget={active}
@@ -128,6 +142,7 @@ export function DraftPane({
         audiobookState={audiobookState}
         readingPosition={readingPosition}
         value={draft.text}
+        draftComparison={comparison?.marks}
         format={draft.format || chapter.format}
         label="Draft manuscript"
         readOnly={readOnly || !active || backup}
