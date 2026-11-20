@@ -7,15 +7,31 @@ const path = require("node:path");
 const { createInterface } = require("node:readline");
 
 /**
- * @param {{ python: () => string, script: string, cwd: string, env: () => NodeJS.ProcessEnv, isInstalled: () => boolean }} options
+ * @param {{ python: () => string, script: string, cwd: string | (() => string), env: () => NodeJS.ProcessEnv, isInstalled: () => boolean,
+ *   label?: string, idleMs?: number }} options
+ *   `label` names the engine in messages; `idleMs` stops the process after that long without work
+ *   (the Chatterbox add-on holds most of the graphics memory while it runs).
  */
 function createEngine(options) {
+  const label = options.label || "Kokoro";
   const queues = { high: [], low: [] };
   let child = null;
   let status = { state: "stopped" };
   let running = null;
   let nextId = 1;
   let recentErrors = [];
+  let idleTimer = null;
+
+  const clearIdle = () => {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = null;
+  };
+  const armIdle = () => {
+    clearIdle();
+    if (!options.idleMs || running || queues.high.length || queues.low.length) return;
+    idleTimer = setTimeout(() => { if (!running && !queues.high.length && !queues.low.length) stop(); }, options.idleMs);
+    idleTimer.unref?.();
+  };
 
   const failAll = (message) => {
     const jobs = [...(running ? [running] : []), ...queues.high, ...queues.low];
@@ -28,7 +44,8 @@ function createEngine(options) {
   const pump = () => {
     if (running || !child || status.state !== "ready") return;
     const job = queues.high.shift() || queues.low.shift();
-    if (!job) return;
+    if (!job) return armIdle();
+    clearIdle();
     running = job;
     child.stdin.write(`${JSON.stringify({ id: job.id, ...job.request })}\n`);
   };
@@ -39,11 +56,11 @@ function createEngine(options) {
       status = { state: "missing", message: "Local voices are not installed." };
       return;
     }
-    status = { state: "loading", message: "Loading the Kokoro voice model…" };
+    status = { state: "loading", message: `Loading the ${label} voice model…` };
     recentErrors = [];
     const python = options.python();
     const processRef = spawn(python, [options.script], {
-      cwd: options.cwd,
+      cwd: typeof options.cwd === "function" ? options.cwd() : options.cwd,
       env: { ...options.env(), VIRTUAL_ENV: path.dirname(path.dirname(python)) },
       windowsHide: true,
     });
@@ -54,7 +71,7 @@ function createEngine(options) {
       let message;
       try { message = JSON.parse(line); } catch { return; }
       if (message.event === "ready") {
-        status = { state: "ready" };
+        status = { state: "ready", ...(message.device ? { device: message.device } : {}) };
         pump();
         return;
       }
@@ -62,7 +79,7 @@ function createEngine(options) {
       if (!job || message.id !== job.id) return;
       running = null;
       if (message.ok) job.resolve(message.clips ? { clips: message.clips } : { duration: message.duration || 0, words: message.words || [] });
-      else job.reject(new Error(message.error || "Kokoro could not read this sentence."));
+      else job.reject(new Error(message.error || `${label} could not read this sentence.`));
       pump();
     });
 
@@ -75,8 +92,8 @@ function createEngine(options) {
       if (child !== processRef) return;
       child = null;
       const reason = recentErrors.filter((line) => line.trim()).at(-1) || `exit code ${code}`;
-      status = code === 0 ? { state: "stopped" } : { state: "error", message: `Kokoro stopped: ${reason}` };
-      failAll(status.message || "Kokoro stopped.");
+      status = code === 0 ? { state: "stopped" } : { state: "error", message: `${label} stopped: ${reason}` };
+      failAll(status.message || `${label} stopped.`);
     };
     processRef.on("exit", onEnd);
     processRef.on("error", (error) => {
@@ -88,7 +105,8 @@ function createEngine(options) {
   /** @returns {Promise<{ duration: number, words: [number, number][] } | { clips: { duration: number, words: [number, number][] }[] }>} */
   const synthesize = (request, priority) => new Promise((resolve, reject) => {
     start();
-    if (!child) return reject(new Error(status.message || "Kokoro is not running."));
+    if (!child) return reject(new Error(status.message || `${label} is not running.`));
+    clearIdle();
     queues[priority === "low" ? "low" : "high"].push({ id: String(nextId++), request, resolve, reject });
     pump();
   });
@@ -100,16 +118,17 @@ function createEngine(options) {
     for (const job of dropped) job.reject(new Error("Stopped."));
   };
 
-  const stop = () => {
+  function stop() {
+    clearIdle();
     const current = child;
     child = null;
     status = { state: "stopped" };
-    failAll("Kokoro was stopped.");
+    failAll(`${label} was stopped.`);
     if (current) {
       current.stdin.end();
       current.kill();
     }
-  };
+  }
 
   return {
     start,

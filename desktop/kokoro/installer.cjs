@@ -1,6 +1,8 @@
-// Installs the local voices runtime on first use, entirely inside one folder:
-//   uv (pinned, checksum-verified) → Python 3.11 → kokoro + spaCy English + ffmpeg → model + all voices → self-test.
-// Nothing goes to PATH or the user's global caches, so "Remove local voices" removes everything.
+// Installs a local voices runtime on first use, entirely inside one folder:
+//   uv (pinned, checksum-verified) → Python 3.11 → the recipe's packages → the recipe's own steps
+//   (model downloads, ffmpeg, voice files) → self-test.
+// Nothing goes to PATH or the user's global caches, so removing the folder removes everything.
+// The Kokoro recipe is the default; desktop/kokoro/chatterbox.cjs is the expressive-voices add-on.
 const { execFileSync, spawn } = require("node:child_process");
 const { createHash } = require("node:crypto");
 const { createWriteStream, existsSync } = require("node:fs");
@@ -18,6 +20,7 @@ const UV_RELEASE = `https://github.com/astral-sh/uv/releases/download/${UV_VERSI
 /** Where uv and Python come from and live, per platform. Checksums are from uv's release page. */
 const PLATFORMS = {
   win32: {
+    id: "win32",
     uvUrl: `${UV_RELEASE}/uv-x86_64-pc-windows-msvc.zip`,
     uvSha256: "3b2661a463a5baea7f5076ea2b25ab71d77f36a6c0d809e5350651792f80a672",
     uvArchive: "uv.zip",
@@ -27,6 +30,7 @@ const PLATFORMS = {
     pythonInFolder: ["python.exe"],
   },
   "darwin-arm64": {
+    id: "darwin-arm64",
     uvUrl: `${UV_RELEASE}/uv-aarch64-apple-darwin.tar.gz`,
     uvSha256: "cfe454573412ff7380d15fc7dae5997ab53ffce72fce0a78e91ddbc84001acd2",
     uvArchive: "uv.tar.gz",
@@ -36,6 +40,7 @@ const PLATFORMS = {
     pythonInFolder: ["bin", "python3.11"],
   },
   "darwin-x64": {
+    id: "darwin-x64",
     uvUrl: `${UV_RELEASE}/uv-x86_64-apple-darwin.tar.gz`,
     uvSha256: "bb7b805bdcf3d0bc8c74ceb94569e6b3e8aa35bd492acdbb9d46bf46d9d4ff6b",
     uvArchive: "uv.tar.gz",
@@ -47,19 +52,9 @@ const PLATFORMS = {
 };
 const isWindows = process.platform === "win32";
 const PLATFORM = isWindows ? PLATFORMS.win32 : PLATFORMS[`${process.platform}-${process.arch}`];
-const PACKAGES = [
-  "kokoro==0.9.4",
-  "misaki[en]==0.9.4",
-  "soundfile==0.14.0",
-  "imageio-ffmpeg==0.8.1",
-  "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
-];
-// Bump when the runtime recipe changes, so older installs are offered a reinstall.
-const RUNTIME_VERSION = 1;
-const NEEDED_BYTES = 3 * 1024 ** 3;
 const MARKER = "installed.json";
 
-const PREFETCH = `
+const KOKORO_PREFETCH = `
 import sys
 from huggingface_hub import hf_hub_download
 files = ["config.json", "kokoro-v1_0.pth"] + [f"voices/{v}.pt" for v in sys.argv[1].split(",")]
@@ -67,6 +62,50 @@ for index, name in enumerate(files, 1):
     hf_hub_download("hexgrad/Kokoro-82M", name)
     print(f"{index}/{len(files)}", flush=True)
 `;
+
+/** "3/7" progress lines from a helper script → percent between `from` and `to`. */
+const fraction = (line) => {
+  const [done, total] = line.split("/").map(Number);
+  return total ? { done, total } : null;
+};
+
+/** Kokoro: the light default. Every voice is downloaded so narration works offline. */
+const KOKORO_RECIPE = {
+  name: "kokoro",
+  label: "Kokoro",
+  // Bump when the runtime recipe changes, so older installs are offered a reinstall.
+  version: 1,
+  neededBytes: 3 * 1024 ** 3,
+  supported: () => Boolean(PLATFORM),
+  packages: () => [
+    "kokoro==0.9.4",
+    "misaki[en]==0.9.4",
+    "soundfile==0.14.0",
+    "imageio-ffmpeg==0.8.1",
+    "en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+  ],
+  env: () => ({}),
+  selfTestRequest: (out) => ({ id: "test", text: "Hello from Roza.", words: ["Hello", "from", "Roza."], voice: "af_heart", out }),
+  /** Model and voices, then ffmpeg (for export) and its encoders. Returns extra marker fields. */
+  async steps({ run, report, venvPython, encoderList }) {
+    report("model", "Downloading the voice model and voices…", 56);
+    await run(venvPython, ["-c", KOKORO_PREFETCH, kokoroVoices.join(",")], {
+      onLine: (line) => {
+        const part = fraction(line);
+        if (part) report("model", `Downloading voices… ${part.done} of ${part.total}`, 56 + (part.done / part.total) * 36);
+      },
+    });
+    report("test", "Checking audio export…", 93);
+    const [ffmpeg] = (await run(venvPython, ["-c", "import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())"]))
+      .filter((line) => existsSync(line.trim()));
+    const encoders = ffmpeg ? await encoderList(ffmpeg.trim()) : "";
+    const formats = [
+      ...(/\baac\b/.test(encoders) ? ["m4a", "mp4"] : []),
+      ...(/libmp3lame/.test(encoders) ? ["mp3"] : []),
+    ];
+    return { ffmpeg: ffmpeg ? ffmpeg.trim() : null, formats };
+  },
+};
 
 const isAscii = (text) => /^[ -~]+$/.test(text);
 
@@ -90,9 +129,9 @@ function windowsShortPath(folder) {
 }
 
 /**
- * @param {{ runtimeDir: string, script: string, onProgress: (status: object) => void }} options
+ * @param {{ runtimeDir: string, script: string, onProgress: (status: object) => void, recipe?: typeof KOKORO_RECIPE }} options
  */
-function createInstaller({ runtimeDir, script, onProgress }) {
+function createInstaller({ runtimeDir, script, onProgress, recipe = KOKORO_RECIPE }) {
   // An unsupported platform still loads; installing then says why it can't.
   const platform = PLATFORM || PLATFORMS.win32;
   const venvPython = path.join(runtimeDir, ...platform.venvPython);
@@ -106,7 +145,7 @@ function createInstaller({ runtimeDir, script, onProgress }) {
   // uv's download cache lives in Temp only while installing. With the cache and Python both under the
   // roaming profile, uv 0.13 fails to set up Python ("Missing expected target directory"); a short
   // Temp path also keeps packages that build from source under Windows' 260-character limit.
-  const uvCache = path.join(windowsShortPath(os.tmpdir()) || os.tmpdir(), "roza-kokoro-uv");
+  const uvCache = path.join(windowsShortPath(os.tmpdir()) || os.tmpdir(), `roza-${recipe.name}-uv`);
 
   const env = (extra = {}) => ({
     ...process.env,
@@ -118,10 +157,11 @@ function createInstaller({ runtimeDir, script, onProgress }) {
     UV_NO_CONFIG: "1",
     HF_HOME: path.join(runtimeDir, "hf"),
     HF_HUB_DISABLE_TELEMETRY: "1",
+    ...recipe.env(runtimeDir),
     ...extra,
   });
 
-  /** The environment Kokoro runs with once installed: offline, so it never waits on the network. */
+  /** The environment the service runs with once installed: offline, so it never waits on the network. */
   const runtimeEnv = () => env({ HF_HUB_OFFLINE: "1", VIRTUAL_ENV: path.join(runtimeDir, ".venv") });
 
   async function loadMarker() {
@@ -133,8 +173,8 @@ function createInstaller({ runtimeDir, script, onProgress }) {
     return marker;
   }
 
-  const isInstalled = () => Boolean(marker && marker.version === RUNTIME_VERSION && existsSync(venvPython));
-  const needsUpdate = () => Boolean(marker && marker.version !== RUNTIME_VERSION);
+  const isInstalled = () => Boolean(marker && marker.version === recipe.version && existsSync(venvPython));
+  const needsUpdate = () => Boolean(marker && marker.version !== recipe.version);
 
   let lastError = null;
   const status = () => ({
@@ -144,7 +184,9 @@ function createInstaller({ runtimeDir, script, onProgress }) {
     progress: job ? { ...job.progress } : null,
     error: job ? null : lastError,
     formats: marker?.formats || [],
-    neededBytes: NEEDED_BYTES,
+    neededBytes: recipe.neededBytes,
+    supported: recipe.supported(),
+    ...(marker?.device ? { device: marker.device } : {}),
   });
 
   function report(stage, message, percent) {
@@ -203,11 +245,11 @@ function createInstaller({ runtimeDir, script, onProgress }) {
     lastError = null;
     onProgress(status());
     (async () => {
-      if (!PLATFORM) throw new Error("Local voices are not available on this computer yet.");
+      if (!PLATFORM || !recipe.supported()) throw new Error(`${recipe.label} voices are not available on this computer yet.`);
       await mkdir(runtimeDir, { recursive: true });
       const disk = await statfs(runtimeDir).catch(() => null);
-      if (disk && disk.bavail * disk.bsize < NEEDED_BYTES) {
-        throw new Error(`Not enough free disk space. Local voices need about ${(NEEDED_BYTES / 1024 ** 3).toFixed(0)} GB.`);
+      if (disk && disk.bavail * disk.bsize < recipe.neededBytes) {
+        throw new Error(`Not enough free disk space. ${recipe.label} voices need about ${(recipe.neededBytes / 1024 ** 3).toFixed(0)} GB.`);
       }
       await rm(path.join(runtimeDir, MARKER), { force: true });
       marker = null;
@@ -246,7 +288,7 @@ function createInstaller({ runtimeDir, script, onProgress }) {
       // 3. Packages (torch is the big one)
       report("packages", "Installing the speech engine (this is the longest step)…", 15);
       let seen = 0;
-      await run(uvExe, ["pip", "install", "--python", venvPython, ...PACKAGES], {
+      await run(uvExe, ["pip", "install", "--python", venvPython, ...recipe.packages(platform.id)], {
         onLine: (line) => {
           seen += 1;
           const match = line.match(/(Downloading|Installed|Prepared|Built)\s+(.+)/);
@@ -254,31 +296,18 @@ function createInstaller({ runtimeDir, script, onProgress }) {
         },
       });
 
-      // 4. Model and every voice, so narration works offline.
-      report("model", "Downloading the voice model and voices…", 56);
-      await run(venvPython, ["-c", PREFETCH, kokoroVoices.join(",")], {
-        onLine: (line) => {
-          const [done, total] = line.split("/").map(Number);
-          if (total) report("model", `Downloading voices… ${done} of ${total}`, 56 + (done / total) * 36);
-        },
-      });
+      // 4. The recipe's own steps: models, voices, ffmpeg.
+      const extra = await recipe.steps({ run, report, venvPython, runtimeDir, encoderList, script });
 
-      // 5. ffmpeg (for export) and its encoders.
-      report("test", "Checking audio export…", 93);
-      const [ffmpeg] = (await run(venvPython, ["-c", "import imageio_ffmpeg;print(imageio_ffmpeg.get_ffmpeg_exe())"]))
-        .filter((line) => existsSync(line.trim()));
-      const encoders = ffmpeg ? await encoderList(ffmpeg.trim()) : "";
-      const formats = [
-        ...(/\baac\b/.test(encoders) ? ["m4a", "mp4"] : []),
-        ...(/libmp3lame/.test(encoders) ? ["mp3"] : []),
-      ];
-
-      // 6. Self-test: real speech written to a path with Hebrew letters (the user profile may have them).
+      // 5. Self-test: real speech written to a path with Hebrew letters (the user profile may have them).
       report("test", "Testing a voice…", 96);
-      await selfTest();
+      const ready = await selfTest();
 
       await rm(uvCache, { recursive: true, force: true, maxRetries: 3 }).catch(() => {});
-      marker = { version: RUNTIME_VERSION, installedAt: new Date().toISOString(), ffmpeg: ffmpeg ? ffmpeg.trim() : null, formats };
+      marker = {
+        version: recipe.version, installedAt: new Date().toISOString(), ffmpeg: null, formats: [],
+        ...extra, ...(ready?.device ? { device: ready.device } : {}),
+      };
       await writeFile(path.join(runtimeDir, MARKER), JSON.stringify(marker, null, 2));
     })()
       .then(() => {
@@ -305,6 +334,7 @@ function createInstaller({ runtimeDir, script, onProgress }) {
     });
   }
 
+  /** Starts the service, speaks one sentence, and resolves to its "ready" message. */
   function selfTest() {
     return new Promise((resolve, reject) => {
       const folder = path.join(runtimeDir, "self-test", "בדיקה");
@@ -314,6 +344,7 @@ function createInstaller({ runtimeDir, script, onProgress }) {
         job.child = child;
         let tail = [];
         let done = false;
+        let ready = null;
         const timer = setTimeout(() => finish(new Error("The voice test took too long.")), 5 * 60 * 1000);
         const finish = (error) => {
           if (done) return;
@@ -322,7 +353,7 @@ function createInstaller({ runtimeDir, script, onProgress }) {
           child.stdin.end();
           child.kill();
           rm(path.join(runtimeDir, "self-test"), { recursive: true, force: true }).catch(() => {});
-          if (error) reject(error); else resolve();
+          if (error) reject(error); else resolve(ready);
         };
         child.stdin.on("error", () => {});
         createInterface({ input: child.stderr }).on("line", (line) => { tail = [...tail, line].slice(-3); });
@@ -330,7 +361,8 @@ function createInstaller({ runtimeDir, script, onProgress }) {
           let message;
           try { message = JSON.parse(line); } catch { return; }
           if (message.event === "ready") {
-            child.stdin.write(`${JSON.stringify({ id: "test", text: "Hello from Roza.", words: ["Hello", "from", "Roza."], voice: "af_heart", out })}\n`);
+            ready = message;
+            child.stdin.write(`${JSON.stringify(recipe.selfTestRequest(out))}\n`);
           } else if (message.id === "test") {
             if (message.ok && existsSync(out)) finish();
             else finish(new Error(`The voice test failed: ${message.error || "no audio"}`));
@@ -374,4 +406,4 @@ function createInstaller({ runtimeDir, script, onProgress }) {
   };
 }
 
-module.exports = { createInstaller, RUNTIME_VERSION };
+module.exports = { createInstaller, KOKORO_RECIPE, RUNTIME_VERSION: KOKORO_RECIPE.version };

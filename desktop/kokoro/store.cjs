@@ -13,7 +13,7 @@ const { createHash } = require("node:crypto");
 const { existsSync } = require("node:fs");
 const { mkdir, readFile, readdir, rename, rm, writeFile } = require("node:fs/promises");
 const path = require("node:path");
-const { isKokoroVoice, kokoroVoices } = require("./voices.cjs");
+const { isLocalVoice, kokoroVoices } = require("./voices.cjs");
 
 // Bump when the audio format or timing rules change, so old clips are made again.
 const AUDIO_VERSION = "1";
@@ -75,7 +75,7 @@ function checkBookId(bookId) {
 }
 
 function checkVoice(voice) {
-  if (!isKokoroVoice(voice)) throw new Error("Unknown Kokoro voice.");
+  if (!isLocalVoice(voice)) throw new Error("Unknown Kokoro voice.");
   return voice;
 }
 
@@ -129,9 +129,21 @@ function sectionClipNames(section, voice) {
 const pauseAfter = (sentence, passage) => (passage ? Math.max(0, sentence.pause - PASSAGE_TAIL_SECONDS) : 0);
 
 /**
- * @param {{ audioDir: string, booksDir: string, engine: ReturnType<typeof import("./engine.cjs").createEngine> }} options
+ * @param {{ audioDir: string, booksDir: string, engine: ReturnType<typeof import("./engine.cjs").createEngine>,
+ *   engineFor?: (voice: string) => ReturnType<typeof import("./engine.cjs").createEngine>,
+ *   engines?: () => ReturnType<typeof import("./engine.cjs").createEngine>[] }} options
+ *   `engineFor` picks the engine that speaks a voice (Kokoro, or the Chatterbox add-on) and throws when
+ *   it is not installed; without it every voice goes to `engine`.
  */
-function createStore({ audioDir, booksDir, engine }) {
+function createStore({ audioDir, booksDir, engine: defaultEngine, engineFor = () => defaultEngine, engines = () => [defaultEngine] }) {
+  const engine = {
+    synthesize: (request, priority) => {
+      let target;
+      try { target = engineFor(request.voice); } catch (error) { return Promise.reject(error); }
+      return target.synthesize(request, priority);
+    },
+    dropLow: (predicate) => { for (const item of engines()) item.dropLow(predicate); },
+  };
   const inFlight = new Map();
   const previewJobs = new Map();
   const scripts = new Map();
@@ -249,8 +261,8 @@ function createStore({ audioDir, booksDir, engine }) {
     return { url: `/__kokoro/preview/${name}.wav` };
   }
 
-  async function warmPreviews(text, signal) {
-    for (const voice of kokoroVoices) {
+  async function warmPreviews(text, signal, voices = kokoroVoices) {
+    for (const voice of voices) {
       signal.throwIfAborted();
       await preview(voice, text, "low", signal);
     }
@@ -398,7 +410,22 @@ function createStore({ audioDir, booksDir, engine }) {
     await rm(audioDir, { recursive: true, force: true });
   }
 
-  return { sentence, preview, warmPreviews, saveScript, hasScript, loadScript, ensureSentence, offline, clearAudio };
+  /** Removes the saved clips and previews of some voices (used when an add-on is removed). */
+  async function clearVoices(voices) {
+    for (const [key, job] of bookJobs) {
+      if (voices.includes(key.split("/")[1])) job.stopped = true;
+    }
+    engine.dropLow((request) => voices.includes(request.voice));
+    await Promise.all([...bookJobs.values()].map((job) => job.task).filter(Boolean));
+    const books = await readdir(audioDir).catch(() => []);
+    await Promise.all(books.filter((name) => name !== "_preview").flatMap((book) =>
+      voices.map((voice) => rm(path.join(audioDir, book, voice), { recursive: true, force: true }))));
+    const previews = await readdir(path.join(audioDir, "_preview")).catch(() => []);
+    await Promise.all(previews.filter((name) => voices.some((voice) => name.startsWith(`${voice}-`)))
+      .map((name) => rm(path.join(audioDir, "_preview", name), { force: true })));
+  }
+
+  return { sentence, preview, warmPreviews, saveScript, hasScript, loadScript, ensureSentence, offline, clearAudio, clearVoices };
 }
 
 module.exports = { createStore, clipName, passageIn, AUDIO_VERSION };

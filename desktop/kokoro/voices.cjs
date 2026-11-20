@@ -1,4 +1,4 @@
-// Kokoro voices the desktop app may synthesize. Keep in step with
+// Local voices the desktop app may synthesize. Keep in step with
 // frontend/src/services/narration/kokoroVoices.ts and backend/src/services/reader/readerKokoroVoices.ts
 // (scripts/desktop-kokoro.test.cjs checks that they match).
 const kokoroVoices = [
@@ -8,6 +8,12 @@ const kokoroVoices = [
   "bm_daniel", "bm_fable", "bm_george", "bm_lewis",
 ];
 
-const isKokoroVoice = (voice) => typeof voice === "string" && kokoroVoices.includes(voice);
+// Expressive voices from the Chatterbox Turbo add-on (Ticket #66). cb_default is Turbo's built-in
+// voice; the others are cloned from desktop/chatterbox/voices/<id>.wav at install time.
+const chatterboxVoices = ["cb_default", "cb_heart", "cb_emma", "cb_michael", "cb_george"];
 
-module.exports = { kokoroVoices, isKokoroVoice };
+const isKokoroVoice = (voice) => typeof voice === "string" && kokoroVoices.includes(voice);
+const isChatterboxVoice = (voice) => typeof voice === "string" && chatterboxVoices.includes(voice);
+const isLocalVoice = (voice) => isKokoroVoice(voice) || isChatterboxVoice(voice);
+
+module.exports = { kokoroVoices, chatterboxVoices, isKokoroVoice, isChatterboxVoice, isLocalVoice };

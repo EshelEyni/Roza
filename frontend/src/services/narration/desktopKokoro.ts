@@ -12,9 +12,24 @@ export type KokoroInstallStatus = {
   neededBytes: number;
 };
 
+export type KokoroEngineStatus = { state: "missing" | "stopped" | "loading" | "ready" | "error"; message?: string; device?: string };
+
+/** A voice add-on installed on top of the local voices (Chatterbox Turbo: "Expressive voices"). */
+export type KokoroAddon = "chatterbox";
+
+export type KokoroAddonStatus = KokoroInstallStatus & {
+  /** False where the add-on cannot run (an Intel Mac). */
+  supported: boolean;
+  /** Where the add-on speaks, found by its self-test: "cuda" (NVIDIA), "mps" (Apple Silicon) or "cpu". */
+  device?: string;
+  engine: KokoroEngineStatus;
+};
+
 export type KokoroStatus = KokoroInstallStatus & {
-  engine: { state: "missing" | "stopped" | "loading" | "ready" | "error"; message?: string };
+  engine: KokoroEngineStatus;
   exportFolder: string;
+  /** Older desktop apps have no add-ons. */
+  addons?: Partial<Record<KokoroAddon, KokoroAddonStatus>>;
 };
 
 /** `passage`: sentences with the same number are spoken together (paragraph narration). */
@@ -75,7 +90,19 @@ export type DesktopKokoro = {
   stopExport(id: string): Promise<KokoroExportJob | null>;
   revealExport(id: string): Promise<null>;
   onInstallStatus(listener: (status: KokoroInstallStatus) => void): () => void;
+  /** Voice add-ons this desktop app can install (missing in older desktop apps). */
+  addons?: KokoroAddon[];
+  installAddon?(addon: KokoroAddon): Promise<KokoroStatus>;
+  cancelAddonInstall?(addon: KokoroAddon): Promise<KokoroStatus>;
+  removeAddon?(addon: KokoroAddon): Promise<KokoroStatus>;
+  onAddonStatus?(listener: (status: KokoroInstallStatus & { addon: KokoroAddon }) => void): () => void;
 };
+
+/** True when this local voice can speak now: Kokoro voices need the local voices, expressive ones the add-on too. */
+export function localVoiceInstalled(status: KokoroStatus | null | undefined, model: "kokoro" | "chatterbox") {
+  if (!status?.installed) return false;
+  return model === "kokoro" || !!(status.addons?.[model]?.installed && !status.addons[model]?.installing);
+}
 
 declare global {
   interface Window {
