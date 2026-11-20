@@ -134,21 +134,38 @@ function coveredTop(editable: Element, view: { top: number; bottom: number }, x:
   return top;
 }
 
-function revealReadingFocus(editable: HTMLElement, range: Range) {
+const focusScrolls = new WeakMap<Element, { top: number; at: number }>();
+
+export function centerManuscriptFocus(editable: HTMLElement, range: Range) {
   if (!editable.contains(range.commonAncestorContainer)) return;
   const scroller = scrollParent(editable);
-  const rect = Array.from(range.getClientRects()).find(line => line.width && line.height);
-  if (!scroller || !rect) return;
+  const rect = range.getBoundingClientRect();
+  if (!scroller || !rect.width || !rect.height) return;
   const view = readingView(editable, scroller, rect);
-  const height = view.bottom - view.top;
-  if (height <= 0) return;
+  if (view.bottom <= view.top) return;
+
+  let center = (view.top + view.bottom) / 2;
+  const halfHeight = Math.min(rect.height, view.bottom - view.top) / 2;
   const player = editable.ownerDocument.querySelector(".ws-floating-audio")?.getBoundingClientRect();
   if (player && rect.left < player.right && rect.right > player.left &&
-      rect.top < player.bottom && rect.bottom > player.top && rect.height + 8 <= player.top - view.top) {
-    scroller.scrollBy(0, rect.bottom - player.top + 8);
-  } else if (rect.top < view.top + height * 0.15 || rect.bottom > view.top + height * 0.7) {
-    scroller.scrollBy(0, rect.top - view.top - height * 0.3);
+      center - halfHeight < player.bottom && center + halfHeight > player.top) {
+    const above = player.top - 8 - halfHeight;
+    const below = player.bottom + 8 + halfHeight;
+    if (above - halfHeight >= view.top) center = above;
+    else if (below + halfHeight <= view.bottom) center = below;
   }
+  const destination = Math.max(0, Math.min(scroller.scrollHeight - scroller.clientHeight,
+    scroller.scrollTop + (rect.top + rect.bottom) / 2 - center));
+  if (Math.abs(destination - scroller.scrollTop) < 1) return;
+
+  const viewWindow = editable.ownerDocument.defaultView;
+  const reducedMotion = viewWindow?.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const now = performance.now();
+  const previous = focusScrolls.get(scroller);
+  // Words on the same line share a destination. Let an in-flight animation finish.
+  if (!reducedMotion && previous && Math.abs(previous.top - destination) < 1 && now - previous.at < 400) return;
+  focusScrolls.set(scroller, { top: destination, at: now });
+  scroller.scrollTo({ top: destination, behavior: reducedMotion ? "instant" : "smooth" });
 }
 
 /** Paint rounded line fragments behind the editable without inserting spans into Slate text. */
@@ -187,9 +204,8 @@ function paintReadingFocus(range: Range, kind: "sentence" | "word", narrating = 
   };
 }
 
-export function followManuscriptNarration(editable: HTMLElement, range: Range, kind: "sentence" | "word" = "sentence", follow = true) {
+export function highlightManuscriptNarration(editable: HTMLElement, range: Range, kind: "sentence" | "word") {
   if (!editable.contains(range.commonAncestorContainer)) return;
-  if (follow) revealReadingFocus(editable, range);
   return paintReadingFocus(range, kind, true);
 }
 
@@ -456,8 +472,9 @@ export function useManuscriptReadingMarks(enabled: boolean, editor: Editor & Rea
     );
     if (index < 0) return;
     currentTarget.focus({ preventScroll: true });
-    mark(data, index);
+    const word = mark(data, index);
     saveMark(block, index);
+    centerManuscriptFocus(currentTarget, word);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -554,7 +571,7 @@ export function useManuscriptReadingMarks(enabled: boolean, editor: Editor & Rea
     selection?.removeAllRanges();
     const word = mark(data, index, !bySentence);
     saveMark(data.block, index);
-    revealReadingFocus(event.currentTarget, word);
+    centerManuscriptFocus(event.currentTarget, bySentence ? markedSentence.current ?? word : word);
   };
 
   return { root, markedSentence, clear, markRange, saveRangePosition, revealLine, onClick: enabled ? onClick : undefined, onKeyDown: enabled ? onKeyDown : undefined };

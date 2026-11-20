@@ -1,5 +1,5 @@
 import "../Reader/Audiobook/audiobook.css";
-import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { FiActivity, FiArrowDownCircle, FiDownload, FiFastForward, FiHeadphones, FiMaximize2, FiMinimize2, FiMove, FiPause, FiPlay, FiRewind, FiSkipBack, FiSkipForward, FiSquare, FiVolume2, FiVolumeX, FiX } from "react-icons/fi";
 import { useAudiobookSpaceShortcut } from "../Reader/Audiobook/useAudiobookSpaceShortcut";
@@ -12,7 +12,7 @@ import { useReaderAudiobook } from "../../hooks/reader/useReaderAudiobook";
 import { desktopKokoro } from "../../services/narration/desktopKokoro";
 import { kokoroSectionRequests } from "../../services/narration/kokoroPacing";
 import { audiobookTime } from "../../services/readerTts";
-import { followManuscriptNarration, manuscriptNarration } from "./useManuscriptReadingMarks";
+import { centerManuscriptFocus, highlightManuscriptNarration, manuscriptNarration } from "./useManuscriptReadingMarks";
 
 type Narration = ReturnType<typeof manuscriptNarration>;
 type Point = { x: number; y: number };
@@ -66,24 +66,45 @@ function ManuscriptPlayback({ narration, localId, manuscriptId, markedSentence, 
   const volumePercent = Math.round(audio.volume * 100) + "%";
   const progress = seekDraft ?? audio.currentWord;
   const secondsPerWord = 60 / (180 * audio.speed);
-  const pauseFollowUntil = useRef(0);
   const range = following && audio.section && !audio.ended ? ranges[audio.index] : undefined;
+  const wordRangeAt = range ? wordRanges[audio.index] : undefined;
+  const spokenWord = audio.highlight;
+  const word = useMemo(() => spokenWord === null ? undefined : wordRangeAt?.(spokenWord),
+    [spokenWord, wordRangeAt]);
+  const focusRange = word ?? range;
+  const latestFocus = useRef<Range>();
+  const pauseFollowUntil = useRef(0);
+
+  useLayoutEffect(() => {
+    latestFocus.current = focusRange;
+    if (focusRange && Date.now() >= pauseFollowUntil.current) centerManuscriptFocus(editable, focusRange);
+  }, [editable, focusRange]);
 
   useEffect(() => {
     const doc = editable.ownerDocument;
+    const view = doc.defaultView;
+    let timer: ReturnType<typeof setTimeout>;
+    const center = () => {
+      if (latestFocus.current && Date.now() >= pauseFollowUntil.current) {
+        centerManuscriptFocus(editable, latestFocus.current);
+      }
+    };
     const pauseFollow = (event: Event) => {
       const target = event.target;
       if (target instanceof Element && (target.contains(editable) || editable.contains(target))) {
         pauseFollowUntil.current = Date.now() + 4000;
+        clearTimeout(timer);
+        timer = setTimeout(center, 4000);
       }
     };
     doc.addEventListener("wheel", pauseFollow, { passive: true, capture: true });
     doc.addEventListener("touchmove", pauseFollow, { passive: true, capture: true });
-    doc.addEventListener("pointerdown", pauseFollow, { passive: true, capture: true });
+    view?.addEventListener("resize", center);
     return () => {
-      doc.removeEventListener("pointerdown", pauseFollow, true);
+      clearTimeout(timer);
       doc.removeEventListener("wheel", pauseFollow, true);
       doc.removeEventListener("touchmove", pauseFollow, true);
+      view?.removeEventListener("resize", center);
     };
   }, [editable]);
 
@@ -92,15 +113,12 @@ function ManuscriptPlayback({ narration, localId, manuscriptId, markedSentence, 
   useEffect(() => {
     if (!range) return;
     positionChanged.current(range);
-    return followManuscriptNarration(editable, range, "sentence", Date.now() >= pauseFollowUntil.current);
+    return highlightManuscriptNarration(editable, range, "sentence");
   }, [editable, range]);
 
-  const spokenWord = audio.highlight;
-  const wordRangeAt = range ? wordRanges[audio.index] : undefined;
   useEffect(() => {
-    const word = spokenWord === null ? undefined : wordRangeAt?.(spokenWord);
-    if (word) return followManuscriptNarration(editable, word, "word", Date.now() >= pauseFollowUntil.current);
-  }, [editable, spokenWord, wordRangeAt]);
+    if (word) return highlightManuscriptNarration(editable, word, "word");
+  }, [editable, word]);
 
   useLayoutEffect(() => {
     const player = panel.current;
