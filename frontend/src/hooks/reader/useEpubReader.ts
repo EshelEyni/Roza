@@ -186,6 +186,7 @@ export function useEpubReader(book: ReaderBook, userId: string) {
       bookTitle: book.title,
       bookAuthor: book.author || "",
       epub: () => runtime.epubRef.current,
+      miniPlayerKeydown: rsvp.active || sentenceMode.active ? undefined : runtime.miniPlayerKeydown,
       savePosition: (cfi: string) => saveReadingSentence(runtime, cfi),
       loadSection: async (target?: number, direction: 1 | -1 = 1) => {
         const epub = runtime.epubRef.current;

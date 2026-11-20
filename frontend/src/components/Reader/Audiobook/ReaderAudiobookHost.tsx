@@ -1,5 +1,5 @@
 import "./audiobook.css";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MutableRefObject } from "react";
 import type { Book } from "epubjs";
 import { useReaderAudiobook, type AudiobookLoader } from "../../../hooks/reader/useReaderAudiobook";
 import { loadAudiobookBook, loadAudiobookChapters, type AudiobookChapter } from "../../../services/readerAudiobookSource";
@@ -22,6 +22,7 @@ export type ReaderAudiobookSource = {
   bookAuthor: string;
   loadSection: AudiobookLoader;
   epub: () => Book | null | undefined;
+  miniPlayerKeydown?: MutableRefObject<((event: KeyboardEvent) => void) | null>;
   /** Saves the current narrated sentence as the exact reading position. */
   savePosition?: (cfi: string) => void;
 };
@@ -120,5 +121,6 @@ function AudiobookSession({ open, bookId, source, onMinimize, onOpen, onExit, on
     return <AudiobookView audio={audio} bookId={bookId} bookTitle={source.bookTitle} chapters={chapters}
       script={{ ...script, prepare }} onMinimize={onMinimize} onExit={exit} />;
   }
-  return <AudiobookMiniPlayer audio={audio} bookTitle={source.bookTitle} onOpen={onOpen} onExit={exit} />;
+  return <AudiobookMiniPlayer audio={audio} bookTitle={source.bookTitle} onOpen={onOpen} onExit={exit}
+    keydownRef={source.miniPlayerKeydown} />;
 }

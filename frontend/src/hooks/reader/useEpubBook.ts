@@ -206,6 +206,9 @@ export function useEpubBook(
         applyPreferences(rendition, preferences);
         appliedPreferences.current = preferences;
         rendition.hooks.content.register((contents: Contents) => {
+          const onMiniPlayerKeyDown = (event: KeyboardEvent) => runtime.miniPlayerKeydown.current?.(event);
+          contents.document.addEventListener("keydown", onMiniPlayerKeyDown, true);
+          touchCleanups.push(() => contents.document.removeEventListener("keydown", onMiniPlayerKeyDown, true));
           touchCleanups.push(words.bind(contents));
           contents.document.addEventListener("keyup", sentenceChord.keyup);
           touchCleanups.push(() => contents.document.removeEventListener("keyup", sentenceChord.keyup));
