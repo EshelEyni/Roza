@@ -371,15 +371,11 @@ test(
         .click();
       assert.equal((await draft.innerText()).trim(), "");
       await draft.fill("Second draft pending");
-      const options = await page
-        .getByRole("combobox", { name: "Select draft", exact: true })
-        .locator("option")
-        .evaluateAll((els) =>
-          els.map((e) => ({ value: e.value, text: e.textContent })),
-        );
+      await page.locator('.ws-draft-pane:visible summary[aria-label="Switch draft"]').click();
       await page
-        .getByRole("combobox", { name: "Select draft", exact: true })
-        .selectOption(options.find((o) => o.text === "Alternative").value);
+        .locator(".ws-draft-pane:visible .ws-draft-switch-menu")
+        .getByRole("button", { name: /^Alternative(?: |$)/ })
+        .click();
       assert.equal(
         await draft.innerText(),
         "An alternative chapter. שלום עולם.",
@@ -506,6 +502,7 @@ test(
       await page
         .getByRole("button", { name: /^Alternative(?: |$)/ })
         .click();
+      await page.locator('.ws-draft-pane:visible summary[aria-label="More draft actions"]').click();
       await page
         .getByRole("button", { name: "Delete draft", exact: true })
         .click();

@@ -2298,10 +2298,7 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 .ws-draft-mode .ws-main-pane, .ws-draft-pane { direction: ltr; min-width: 0; overflow: auto; overscroll-behavior: contain; background: var(--ws-paper); margin: 0; padding: 24px clamp(20px, 3vw, 48px) 40px; max-width: none; }
 .ws-draft-mode .ws-main-pane { border-right: 1px solid var(--ws-line); }
 .ws-main-label { margin: 0 0 24px; font-size: 13px; font-weight: normal; color: var(--ws-muted); }
-.ws-draft-header, .ws-draft-secondary { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
-.ws-draft-header label { display: flex; align-items: center; gap: 4px; max-width: 100%; min-width: 0; }
-.ws-draft-header select { width: fit-content; min-width: 0; max-width: min(100%, 24ch); text-overflow: ellipsis; }
-.ws-draft-timestamp { margin-inline-end: auto; color: var(--ws-muted); font-size: 12px; white-space: nowrap; }
+.ws-draft-timestamp { color: var(--ws-muted); font-size: 12px; white-space: nowrap; }
 .ws-version-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ws-version-menu .ws-version-meta { display: block; color: var(--ws-muted); font-size: 11px; }
 .ws-version-source {
@@ -2317,19 +2314,6 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 .ws-header .ws-item-menu .ws-main-backups summary { background: transparent; list-style: revert; cursor: pointer; font-size: 13px; }
 .ws-header .ws-item-menu .ws-main-backups summary:hover { background: var(--ws-soft); }
 .ws-header .ws-item-menu .ws-version-menu { max-height: 70vh; overflow: auto; }
-.ws-draft-secondary { font-size: 12px; }
-.ws-draft-secondary input { width: 180px; padding: 6px; }
-.ws-draft-summary { display: grid; gap: 4px; margin-bottom: 16px; font-size: 12px; }
-.ws .ws-draft-summary textarea {
-  width: 100%;
-  padding: 6px 8px;
-  border: 1px solid var(--ws-line);
-  border-radius: 5px;
-  background: var(--ws-paper);
-  color: var(--ws-ink);
-  font: inherit;
-  resize: vertical;
-}
 .ws-version-summary {
   display: -webkit-box;
   -webkit-box-orient: vertical;
@@ -2374,8 +2358,6 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 .ws-toolbar .ws-ai-control button { width: auto; height: auto; min-height: 33px; white-space: normal; }
 
 /* Quiet field underlines and explicit actions for draft/AI controls. */
-.ws .ws-draft-header select,
-.ws .ws-draft-secondary input,
 .ws .ws-ai-review select,
 .ws .ws-ai-review input:not([type="checkbox"]),
 .ws .ws-ai-review textarea {
@@ -2384,8 +2366,6 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
   border-radius: 0;
   background: transparent;
 }
-.ws .ws-draft-header select:focus,
-.ws .ws-draft-secondary input:focus,
 .ws .ws-ai-review select:focus,
 .ws .ws-ai-review input:not([type="checkbox"]):focus,
 .ws .ws-ai-review textarea:focus {
@@ -2413,28 +2393,143 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 
 
 
-/* Draft actions use the same button treatment as AI review actions. */
-.ws .ws-draft-header > button,
-.ws .ws-draft-secondary > button {
+/* ---------- Draft header: title row · meta line · summary note ---------- */
+.ws-draft-pane { container: ws-draft / inline-size; }
+.ws-draft-header { margin-bottom: 16px; }
+.ws-draft-heading { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ws-draft-identity { display: flex; align-items: center; gap: 2px; flex: 1; min-width: 0; }
+.ws .ws-draft-title {
+  min-width: 4ch;
+  max-width: 100%;
+  field-sizing: content;
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 1px solid transparent;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ws-ink);
+  font: 600 20px/1.25 var(--roza-font-display);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ws input.ws-draft-title:hover:not(:disabled) { border-bottom-color: var(--ws-line); }
+.ws input.ws-draft-title:focus { outline: none; border-bottom-color: var(--ws-accent); box-shadow: 0 1px 0 var(--ws-accent); }
+.ws-draft-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+
+.ws .ws-draft-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--roza-radius-sm);
+  background: transparent;
+  color: var(--ws-muted);
+  cursor: pointer;
+}
+.ws .ws-draft-icon:hover { background: var(--ws-soft); color: var(--ws-ink); }
+.ws .ws-draft-icon svg { width: 16px; height: 16px; }
+.ws .ws-draft-header .ws-item-menu[open] > .ws-draft-icon { background: var(--ws-soft); color: var(--ws-ink); }
+
+.ws .ws-draft-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
   border: 1px solid var(--ws-line);
-  border-radius: 5px;
-  background: var(--ws-soft);
-  padding: 7px 12px;
+  border-radius: var(--roza-radius-sm);
+  background: var(--ws-raised, var(--ws-paper));
+  color: var(--ws-ink);
+  font-size: 13px;
+  white-space: nowrap;
 }
-.ws .ws-draft-header > button:first-of-type {
-  background: var(--ws-accent);
-  border-color: var(--ws-accent);
-  color: var(--ws-paper);
-}
-.ws .ws-draft-header > button:hover:not(:disabled),
-.ws .ws-draft-secondary > button:hover:not(:disabled) {
+.ws .ws-draft-button svg { width: 15px; height: 15px; flex: none; }
+.ws .ws-draft-button:hover:not(:disabled) {
   border-color: var(--ws-accent);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--ws-ink) 15%, transparent);
 }
-.ws .ws-draft-secondary > button[aria-pressed="true"] {
+.ws .ws-draft-button[aria-pressed="true"] {
   border-color: var(--ws-accent);
-  background: var(--ws-accent);
-  color: var(--ws-paper);
+  background: color-mix(in srgb, var(--ws-accent) 16%, transparent);
+}
+.ws .ws-draft-button:disabled { opacity: 0.5; cursor: default; }
+.ws .ws-draft-primary { border-color: var(--ws-accent); background: var(--ws-accent); color: var(--ws-on-accent); }
+.ws .ws-draft-primary:hover:not(:disabled) { border-color: var(--ws-accent-hover, var(--ws-accent)); background: var(--ws-accent-hover, var(--ws-accent)); }
+
+.ws .ws-draft-header .ws-item-menu > div.ws-draft-menu {
+  top: calc(100% + 6px);
+  width: 210px;
+  padding: 4px;
+  border-radius: var(--roza-radius);
+  background: var(--ws-raised, var(--ws-paper));
+  box-shadow: var(--roza-shadow-pop);
+}
+.ws .ws-draft-header .ws-item-menu > div.ws-draft-switch-menu { inset-inline: 0 auto; width: 240px; }
+.ws .ws-draft-menu button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border: 0;
+  border-radius: var(--roza-radius-sm);
+  background: none;
+  font-size: 13px;
+}
+.ws .ws-draft-switch-menu button { display: block; }
+.ws .ws-draft-menu button:hover:not(:disabled) { background: var(--ws-soft); }
+.ws .ws-draft-menu button[aria-current="true"] { font-weight: 600; background: var(--ws-soft); }
+.ws .ws-draft-menu svg { width: 14px; height: 14px; flex: none; }
+.ws .ws-draft-menu .ws-draft-danger { color: var(--roza-danger); }
+.ws .ws-draft-menu .ws-draft-danger:hover:not(:disabled) { background: var(--roza-danger-bg); }
+
+.ws-draft-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; margin-top: 4px; color: var(--ws-muted); font-size: 12px; }
+.ws-draft-meta:empty { display: none; }
+.ws-draft-meta > * + *::before { content: "·"; margin-inline-end: 10px; color: var(--ws-muted); }
+.ws-draft-meta > .ws-version-source + *::before { content: none; }
+.ws-draft-meta .ws-draft-change-count {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ws-accent) 16%, transparent);
+  color: var(--ws-ink);
+}
+.ws-draft-meta .ws-draft-change-count::before { content: none; }
+
+.ws .ws-draft-summary {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  max-height: 9lh;
+  margin-top: 14px;
+  padding: 9px 12px;
+  field-sizing: content;
+  resize: none;
+  border: 1px solid transparent;
+  border-inline-start: 3px solid color-mix(in srgb, var(--ws-accent) 25%, transparent);
+  border-radius: 0 var(--roza-radius-sm) var(--roza-radius-sm) 0;
+  background: color-mix(in srgb, var(--ws-accent) 7%, transparent);
+  color: var(--ws-ink);
+  font: 13px/1.5 var(--roza-font-ui);
+}
+.ws .ws-draft-summary::placeholder { color: var(--ws-muted); font-style: italic; }
+.ws .ws-draft-summary:focus {
+  outline: none;
+  border-color: var(--ws-line);
+  border-inline-start-color: var(--ws-accent);
+  background: var(--ws-raised, var(--ws-paper));
+}
+
+/* A narrow pane puts actions under the title, then shortens the labels. */
+@container ws-draft (max-width: 560px) {
+  .ws-draft-heading { flex-wrap: wrap; }
+  .ws-draft-identity { flex-basis: 100%; }
+  .ws-draft-actions { width: 100%; }
+  .ws-draft-actions .ws-draft-primary { margin-inline-start: auto; }
+}
+@container ws-draft (max-width: 380px) {
+  .ws-draft-button-label { display: none; }
 }
 
 /* ---------- Studio header: identity · page view · version & menu ---------- */
