@@ -113,6 +113,7 @@ export interface ChapterDraft {
 }
 
 export interface Chapter extends BasicBookDataItem {
+  mainSourceDraftId?: string;
   drafts?: ChapterDraft[];
   taskBoard?: TaskBoard;
   planning?: ChapterPlanning;

@@ -203,9 +203,13 @@ test("drafts clone independently; promotion and recovery preserve text, annotati
   assert.equal(promoted.text[0].children[0].text, "Alternative text");
   assert.equal(promoted.drafts.length, 3);
   assert.equal(promoted.drafts[0].name, "Renamed");
+  assert.equal(promoted.mainSourceDraftId, d.id);
+  assert.deepEqual(promoted.drafts.slice(0, 2).map(draft => draft.id), [d.id, blank.id]);
   const backup = promoted.drafts[2];
+  assert.equal(backup.name, "Previous Main");
   assert.ok(Date.parse(backup.createdAt));
   const recovered = promoteChapterDraft(promoted, backup.id);
+  assert.equal(recovered.mainSourceDraftId, backup.id);
   assert.deepEqual(recovered.text, c.text);
   assert.deepEqual(recovered.annotations, c.annotations);
   assert.equal(recovered.format, c.format);
@@ -213,12 +217,14 @@ test("drafts clone independently; promotion and recovery preserve text, annotati
 test("schema roundtrip persists drafts and rejects foreign chapter IDs and duplicates", () => {
   const b = book();
   b.chapters[0].drafts = [createChapterDraft(b.chapters[0], "טיוטה")];
+  b.chapters[0].mainSourceDraftId = b.chapters[0].drafts[0].id;
   validatePlanning(b, b.id);
   const Model = model("AiWritingDraftsTest", bookSchema);
   const doc = new Model(b);
   assert.equal(doc.validateSync(), undefined);
   const restored = new Model(JSON.parse(JSON.stringify(doc)));
   assert.equal(restored.chapters[0].drafts[0].name, "טיוטה");
+  assert.equal(restored.chapters[0].mainSourceDraftId, b.chapters[0].mainSourceDraftId);
   assert.equal(
     restored.chapters[0].drafts[0].annotations[0].content,
     "Keep note",

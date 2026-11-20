@@ -1,5 +1,5 @@
 import { DraftPane } from "./DraftPane";
-import { createChapterDraft, changeChapterDraft, promoteChapterDraft } from "./chapterDrafts";
+import { createChapterDraft, changeChapterDraft, draftDisplayName, draftTimestamp, promoteChapterDraft } from "./chapterDrafts";
 import { Chapter, ChapterAnnotation } from "../../../../shared/types/books";
 import { ChapterPlanning } from "./ChapterPlanning";
 import { ChapterFormatDialog } from "./ChapterFormatDialog";
@@ -250,6 +250,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   );
   const chapter = !overview && !tasks && item?.type === "chapters" ? item : undefined;
   const activeDraft = chapter?.drafts?.find(d => d.id === draftId);
+  const mainSourceDraft = chapter?.drafts?.find(d => d.id === chapter.mainSourceDraftId);
   function openDraft(id: string, reading = preview) {
     setVisitedDrafts(ids => ids.includes(id) ? ids : [...ids, id]);
     updateStudioUrl({ studioItem: selected, draft: id, tab: reading ? "read" : "write",
@@ -287,7 +288,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     if (!chapter || !activeDraft) return;
     const chapterId = chapter.id, id = activeDraft.id;
     if (await confirm({ title: "Delete draft?", message: `Permanently delete “${activeDraft.name}”? Main will be preserved.`, confirmLabel: "Delete draft" })) {
-      editChapter(c => ({ ...c, drafts: c.drafts?.filter(d => d.id !== id) }), chapterId); closeDraft();
+      editChapter(c => ({
+        ...c,
+        mainSourceDraftId: c.mainSourceDraftId === id ? undefined : c.mainSourceDraftId,
+        drafts: c.drafts?.filter(d => d.id !== id),
+      }), chapterId);
+      closeDraft();
     }
   }
   const total = useMemo(() => manuscriptWords(book), [book]);
@@ -578,13 +584,14 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           {chapter && (
             <ItemMenu>
               <summary className="ws-version" title="Chapter versions">
-                {activeDraft?.name || "Main"}
+                {activeDraft ? draftDisplayName(activeDraft) : "Main"}
                 <small> · {chapter.drafts?.length || 0} drafts</small> ▾
               </summary>
               <div className="ws-version-menu">
                 <span className="ws-eyebrow">VERSIONS</span>
                 <button aria-current={!activeDraft || undefined} onClick={closeDraft}>
                   Main
+                  {mainSourceDraft && <small className="ws-version-meta">From {draftDisplayName(mainSourceDraft)}</small>}
                 </button>
                 {chapter.drafts?.map(d => (
                   <button
@@ -592,7 +599,11 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     aria-current={d.id === activeDraft?.id || undefined}
                     onClick={() => openDraft(d.id)}
                   >
-                    {d.name}
+                    <span className="ws-version-name" title={d.name}>{draftDisplayName(d)}</span>
+                    <small className="ws-version-meta">
+                      {[d.id === chapter.mainSourceDraftId ? "Main source" : "", draftTimestamp(d)]
+                        .filter(Boolean).join(" · ")}
+                    </small>
                   </button>
                 ))}
                 <hr />
@@ -921,7 +932,11 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               <article
                 className={`ws-page ws-main-pane ${chapterBible && item.type === "chapters" ? "ws-chapter-bible-page" : ""} ${summary && item.type === "chapters" ? "ws-summary-mode" : ""}`}
               >
-                {activeDraft && <h2 className="ws-main-label">Main Version</h2>}
+                {activeDraft && (
+                  <h2 className="ws-main-label">
+                    Main Version{mainSourceDraft && ` · from ${draftDisplayName(mainSourceDraft)}`}
+                  </h2>
+                )}
                 {!(chapterBible && item.type === "chapters") && (
                   <input
                     dir="auto"
@@ -971,6 +986,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                           </button>
                         </header>
                         <ManuscriptEditor
+                          primaryFindTarget
                           key={`${item.id}:summary:${restoreKey}`}
                           value={item.description}
                           label="Chapter summary"
@@ -983,6 +999,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       </section>
                     ) : (
                       <ManuscriptEditor
+                        primaryFindTarget={!activeDraft}
                         key={`${item.id}:${restoreKey}`}
                         format={
                           item.type === "chapters" ? item.format : "prose"

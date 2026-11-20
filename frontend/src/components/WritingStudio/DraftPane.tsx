@@ -5,6 +5,7 @@ import { ManuscriptEditor } from "./ManuscriptEditor";
 import { plainText } from "./manuscript";
 import { wordDiff } from "./aiEditing";
 import { AiEditingContext } from "./AiEdit";
+import { draftDisplayName, draftTimestamp } from "./chapterDrafts";
 
 export function DraftPane({
   chapter,
@@ -45,6 +46,7 @@ export function DraftPane({
 }) {
   const [name, setName] = useState(draft.name);
   const [diff, setDiff] = useState(false);
+  const timestamp = draftTimestamp(draft);
   return (
     <article
       hidden={!active}
@@ -57,15 +59,17 @@ export function DraftPane({
           <select
             aria-label="Select draft"
             value={draft.id}
+            title={draft.name}
             onChange={(e) => onSelect(e.target.value)}
           >
             {chapter.drafts?.map((d) => (
               <option key={d.id} value={d.id}>
-                {d.name}
+                {draftDisplayName(d)}{d.id === chapter.mainSourceDraftId ? " · Main source" : ""}
               </option>
             ))}
           </select>
         </label>
+        {timestamp && <span className="ws-draft-timestamp">{timestamp}</span>}
         <button disabled={readOnly} onClick={onPromote}>
           Promote to Main
         </button>
@@ -75,7 +79,7 @@ export function DraftPane({
       </header>
       <div className="ws-draft-secondary">
         <label>
-          Draft name{" "}
+          Name{" "}
           <input
             aria-label="Draft name"
             value={name}
@@ -84,7 +88,7 @@ export function DraftPane({
             onChange={(e) => setName(e.target.value)}
             onBlur={() => {
               const next = name.trim();
-              if (next) onChange({ name: next });
+              if (next && next !== draft.name) onChange({ name: next });
               else setName(draft.name);
             }}
           />
@@ -111,6 +115,7 @@ export function DraftPane({
         </div>
       )}
       <ManuscriptEditor
+        primaryFindTarget={active}
         reading={reading}
         audiobook={reading ? { id: draft.id, manuscriptId, title: `${chapter.name} · ${draft.name}` } : undefined}
         audiobookKey={audiobookKey}

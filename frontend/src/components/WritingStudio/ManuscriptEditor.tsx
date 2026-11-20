@@ -15,6 +15,7 @@ import { ChapterAnnotation } from "../../../../shared/types/books";
 import { AnnotationMargin } from "./AnnotationMargin";
 import { annotationSentenceRange, manuscriptLines, transformAnnotations, validAnchor } from "./annotations";
 import { ReadingGoToLine } from "./ReadingGoToLine";
+import { findManuscriptMatches, ManuscriptFind, type ManuscriptFindOptions } from "./ManuscriptFind";
 import { isGoToLineShortcut } from "./goToLineInput";
 import { Editable, ReactEditor, Slate, useSlate, withReact } from "slate-react";
 import { HistoryEditor, withHistory } from "slate-history";
@@ -131,6 +132,7 @@ export function ManuscriptEditor({
   legacyNotes,
   onRevealAnnotations,
   aiEditing,
+  primaryFindTarget = false,
 }: {
   aiEditing?: AiEditingContext;
   audiobook?: { id: string; title: string; manuscriptId: string };
@@ -153,7 +155,14 @@ export function ManuscriptEditor({
   annotationsReadOnly?: boolean;
   label?: string;
   placeholder?: string;
+  primaryFindTarget?: boolean;
 }) {
+  const [findOpen, setFindOpen] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findOptions, setFindOptions] = useState<ManuscriptFindOptions>({ matchCase: false, wholeWord: false });
+  const [findIndex, setFindIndex] = useState(0);
+  const [findFocus, setFindFocus] = useState(0);
+  const [findDocumentVersion, setFindDocumentVersion] = useState(0);
   // Line count while Read Mode's Go to line dialog is open.
   const [goToLineTotal, setGoToLineTotal] = useState<number | null>(null);
   const [activeNote, setActiveNote] = useState<string | null>(null);
@@ -193,6 +202,39 @@ export function ManuscriptEditor({
     return instance;
   }, []);
   const readingMarks = useManuscriptReadingMarks(reading, editor, readingPosition);
+  const findRoot = readingMarks.root;
+  const matches = useMemo(
+    () => findManuscriptMatches(editor, findOpen ? findQuery : "", findOptions),
+    [editor, findOpen, findQuery, findDocumentVersion, findOptions],
+  );
+  const currentMatch = Math.min(findIndex, matches.count - 1);
+  useEffect(() => {
+    const openFind = (event: KeyboardEvent) => {
+      if (event.isComposing || event.code !== "KeyF" || !event.ctrlKey || !event.altKey ||
+          event.shiftKey || event.metaKey || event.getModifierState("AltGraph")) return;
+      const root = findRoot.current;
+      const target = event.target;
+      if (!root || !(target instanceof Element) || target.closest("dialog[open]")) return;
+      const focusedEditor = target.closest("[data-slate-editor], [data-ws-find]");
+      const isTarget = focusedEditor ? root.contains(focusedEditor) : primaryFindTarget;
+      if (!isTarget) {
+        setFindOpen(false);
+        return;
+      }
+      if (event.defaultPrevented) return;
+      event.preventDefault();
+      if (event.repeat) return;
+      setFindOpen(true);
+      setFindFocus(request => request + 1);
+    };
+    window.addEventListener("keydown", openFind);
+    return () => window.removeEventListener("keydown", openFind);
+  }, [findRoot, primaryFindTarget]);
+  useEffect(() => {
+    if (currentMatch < 0) return;
+    findRoot.current?.querySelector(`[data-ws-find-match="${currentMatch}"]`)
+      ?.scrollIntoView({ block: "center", inline: "nearest" });
+  }, [currentMatch, matches, findFocus, findRoot]);
   const activeSentence = annotationSentenceRange(editor, activeAnchor ?? null);
   const persistNotes = (next: ChapterAnnotation[]) => {
     notes.current = next;
@@ -288,7 +330,8 @@ export function ManuscriptEditor({
           editor.operations.some(
             (operation) => operation.type !== "set_selection",
           )
-        )
+        ) {
+          if (findOpen) setFindDocumentVersion(version => version + 1);
           onChange(
             next as SlateCustomElement[],
             annotations === undefined
@@ -298,6 +341,7 @@ export function ManuscriptEditor({
                   anchor: validAnchor(editor, note.anchor) ? note.anchor : null,
                 })),
           );
+        }
       }}
     >
       {!readOnly && (
@@ -329,7 +373,7 @@ export function ManuscriptEditor({
         </button>
       )}
       <div
-        ref={reading ? readingMarks.root : undefined}
+        ref={findRoot}
         className={
           annotations !== undefined ? "ws-annotated-editor" : undefined
         }
@@ -424,27 +468,34 @@ export function ManuscriptEditor({
           onMouseLeave={() => setHoveredPath(null)}
           renderElement={(props) => <TextEditorElement {...props} />}
           decorate={([node, path]) => {
-            if (!Text.isText(node) || !activeSentence) return [];
-            const intersection = Range.intersection(
+            if (!Text.isText(node)) return [];
+            const found = matches.highlights.get(path.join(".")) ?? [];
+            const intersection = activeSentence && Range.intersection(
               Editor.range(editor, path),
               activeSentence,
             );
             return intersection
-              ? [{ ...intersection, annotationActive: true }]
-              : [];
+              ? [...found, { ...intersection, annotationActive: true }]
+              : found;
           }}
-          renderLeaf={(props) => (
-            <Leaf {...props}>
-              {(props.leaf as { annotationActive?: boolean })
-                .annotationActive ? (
-                <mark className="ws-annotation-highlight">
-                  {props.children}
+          renderLeaf={props => {
+            const { annotationActive, findMatch } = props.leaf as Text & {
+              annotationActive?: boolean;
+              findMatch?: number;
+            };
+            let children = annotationActive
+              ? <mark className="ws-annotation-highlight">{props.children}</mark>
+              : props.children;
+            if (findMatch !== undefined) {
+              children = (
+                <mark className="ws-manuscript-match" data-ws-find-match={findMatch}
+                  data-current={findMatch === currentMatch}>
+                  {children}
                 </mark>
-              ) : (
-                props.children
-              )}
-            </Leaf>
-          )}
+              );
+            }
+            return <Leaf {...props}>{children}</Leaf>;
+          }}
         />
         {annotations !== undefined && (
           <AnnotationMargin
@@ -458,6 +509,33 @@ export function ManuscriptEditor({
             readOnly={annotationsReadOnly}
             onChange={persistNotes}
             legacyNotes={legacyNotes}
+          />
+        )}
+        {findOpen && (
+          <ManuscriptFind
+            query={findQuery}
+            count={matches.count}
+            current={currentMatch}
+            focusRequest={findFocus}
+            options={findOptions}
+            onOptions={options => {
+              setFindOptions(options);
+              setFindIndex(0);
+            }}
+            onQuery={query => {
+              setFindQuery(query);
+              setFindIndex(0);
+            }}
+            onStep={direction => {
+              if (matches.count) {
+                setFindIndex((currentMatch + direction + matches.count) % matches.count);
+              }
+            }}
+            onClose={() => {
+              setFindOpen(false);
+              findRoot.current?.querySelector<HTMLElement>("[data-slate-editor]")
+                ?.focus({ preventScroll: true });
+            }}
           />
         )}
       </div>

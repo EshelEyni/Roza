@@ -56,6 +56,7 @@ export interface IBasicBookDataItem extends Document {
 }
 
 export interface IChapter extends IBasicBookDataItem {
+  mainSourceDraftId?: string;
   drafts?: import("../../../shared/types/books").ChapterDraft[];
   taskBoard?: import("../../../shared/types/books").TaskBoard;
   planning?: import("../../../shared/types/books").ChapterPlanning;

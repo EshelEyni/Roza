@@ -69,6 +69,7 @@ const draftSchema = new Schema({
 const chapterSchema = new Schema<IChapter>(
   {
     drafts: { type: [draftSchema], default: undefined },
+    mainSourceDraftId: { type: String, maxlength: 200 },
     taskBoard: { type: taskBoardSchema, default: undefined },
     planning: { type: planningSchema, default: undefined },
     annotations: { type: [annotationSchema], default: undefined },

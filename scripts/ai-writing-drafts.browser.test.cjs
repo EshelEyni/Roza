@@ -510,7 +510,7 @@ test(
       // Confirm delete, autosave, reload, and chapter switch.
       await page.getByText(/Drafts \(/).click();
       await page
-        .getByRole("button", { name: "Alternative", exact: true })
+        .getByRole("button", { name: /^Alternative(?: |$)/ })
         .click();
       await page
         .getByRole("button", { name: "Delete draft", exact: true })
@@ -537,7 +537,7 @@ test(
       await page.reload();
       await main.waitFor();
       await page.getByText(/Drafts \(/).click();
-      await page.getByRole("button", { name: "Draft 2", exact: true }).click();
+      await page.getByRole("button", { name: /^Draft 2(?: |$)/ }).click();
       assert.equal(await draft.innerText(), "Second draft pending");
       await page
         .getByRole("button", { name: "Close draft", exact: true })
