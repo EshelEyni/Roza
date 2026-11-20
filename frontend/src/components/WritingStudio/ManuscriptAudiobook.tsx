@@ -43,6 +43,7 @@ function ManuscriptPlayback({ narration, localId, manuscriptId, markedSentence, 
   const { section, editable, ranges, wordRanges } = narration;
   const audio = useReaderAudiobook(async () => section, undefined, undefined, { preserveSystemPosition: true, localBookId: localId, manuscriptId });
   const [dialog, setDialog] = useState<"voice" | "export" | "offline">();
+  const [offlinePercent, setOfflinePercent] = useState<number | null>(null);
   const [minimized, setMinimized] = useState(false);
   const restoreButton = useRef<HTMLButtonElement>(null);
   const minimizeButton = useRef<HTMLButtonElement>(null);
@@ -161,17 +162,18 @@ function ManuscriptPlayback({ narration, localId, manuscriptId, markedSentence, 
   const canPlay = ready && audio.available;
   useAudiobookSpaceShortcut(!dialog, canPlay, toggle);
 
-  if (minimized) return createPortal(
+  const offlineStatus = offlinePercent === null ? "" : `Saving for offline… ${offlinePercent}%`;
+
+  const player = minimized ? createPortal(
     <div className="ws-header-audio-player" role="group" aria-label="Minimized audiobook player">
       <button ref={restoreButton} type="button" aria-label="Restore mini player" title="Restore mini player" onClick={changePresentation}><FiMaximize2 /></button>
       <button type="button" aria-label={playLabel} title={playLabel} disabled={!canPlay}
         onMouseDown={event => event.preventDefault()} onClick={toggle}>{playIcon}</button>
       <button type="button" aria-label="Close mini player" title="Stop and close" onClick={onClose}><FiX /></button>
+      {offlineStatus && <span role="status" aria-label={offlineStatus} title={offlineStatus}>{offlinePercent}%</span>}
     </div>,
     header,
-  );
-
-  return createPortal(
+  ) : createPortal(
     <div ref={panel} className="reader-audiobook ws-floating-audio" dir="ltr" role="region" aria-label="Audiobook mini player"
       style={{ left: position?.x, top: position?.y }}
       onKeyDown={event => {
@@ -267,6 +269,7 @@ function ManuscriptPlayback({ narration, localId, manuscriptId, markedSentence, 
           : !audio.available ? "Narration is unavailable. Choose a narrator voice."
           : audio.ended ? "Chapter narration complete." : audio.status)}
       </div>
+      {offlineStatus && <div className="ws-floating-audio-status" role="status">{offlineStatus}</div>}
       {dialog === "voice" && audio.narratorLoaded && <ReaderAudiobookVoices voices={audio.voices} selected={audio.voice} engine={audio.engine}
         localVoice={audio.localVoice} kokoroStatus={audio.kokoroStatus} kokoroAvailability={audio.kokoroAvailability}
         onKokoroChanged={() => void audio.refreshKokoro()} warning={audio.narratorWarning}
@@ -278,14 +281,19 @@ function ManuscriptPlayback({ narration, localId, manuscriptId, markedSentence, 
           resumeAfterVoice.current = false;
           return true;
         }} />}
-      {dialog === "offline" && <AudiobookOfflineDialog audio={audio} bookId={localId} chapterTitle={section.title}
-        script={{ ...script, prepare: prepareChapter }} chapterOnly onChooseVoice={openVoices}
-        onPlay={() => { if (!audio.playing) toggle(); }} onClose={() => setDialog(undefined)} />}
       {dialog === "export" && <AudiobookExportDialog audio={audio} bookId={localId} chapterTitle={section.title}
         script={{ ...script, prepare: prepareChapter }} chapterOnly onChooseVoice={openVoices} onClose={() => setDialog(undefined)} />}
     </div>,
     editable.ownerDocument.body,
   );
+
+  return <>
+    {player}
+    <AudiobookOfflineDialog audio={audio} bookId={localId} chapterTitle={section.title}
+      script={{ ...script, prepare: prepareChapter }} chapterOnly open={!minimized && dialog === "offline"}
+      container={panel.current} onChapterProgress={setOfflinePercent} onChooseVoice={openVoices}
+      onPlay={() => { if (!audio.playing) toggle(); }} onClose={() => setDialog(undefined)} />
+  </>;
 }
 
 export function ManuscriptAudiobook({ chapter, header, root, markedSentence, open, onOpenChange, onPositionChange }: {

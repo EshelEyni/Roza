@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { FiTrash2 } from "react-icons/fi";
 import { desktopKokoro, type KokoroOffline } from "../../../services/narration/desktopKokoro";
 import { kokoroVoice } from "../../../services/narration/kokoroVoices";
@@ -18,9 +19,12 @@ const timeLeft = (seconds: number) => {
   return "about " + hours + " h" + (rest ? " " + rest + " min" : "");
 };
 
-export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, chapterOnly = false, onPlay, onChooseVoice, onClose }: {
+export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, chapterOnly = false, open = true, container, onChapterProgress, onPlay, onChooseVoice, onClose }: {
   audio: ReaderAudiobook; bookId?: string; chapterTitle: string; script: BookScriptState;
   chapterOnly?: boolean;
+  open?: boolean;
+  container?: HTMLElement | null;
+  onChapterProgress?: (percent: number | null) => void;
   onPlay: () => void; onChooseVoice: () => void; onClose: () => void;
 }) {
   const api = desktopKokoro();
@@ -35,6 +39,12 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, ch
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [rate, setRate] = useState(readRate);
   const sample = useRef<{ scope: "chapter" | "book"; at: number; done: number } | null>(null);
+  const running = usable && chapter?.state === "downloading";
+  const chapterPercent = chapter?.total ? Math.floor(chapter.completed / chapter.total * 100) : 0;
+
+  useEffect(() => {
+    onChapterProgress?.(running ? chapterPercent : null);
+  }, [onChapterProgress, running, chapterPercent]);
 
   // Measure the save speed from the running job's progress between polls.
   useEffect(() => {
@@ -50,10 +60,10 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, ch
     try { localStorage.setItem(RATE_KEY, String(next)); } catch { /* The estimate is kept for this dialog only. */ }
   }, [chapter, book]);
 
-  useEffect(() => { if (usable && script.state === "idle") void script.prepare(); }, [usable, script]);
+  useEffect(() => { if (open && usable && script.state === "idle") void script.prepare(); }, [open, usable, script]);
 
   useEffect(() => {
-    if (!usable || script.state !== "ready" || section === null) return;
+    if (!usable || section === null || (open ? script.state !== "ready" : !onChapterProgress)) return;
     let cancelled = false;
     let timer = 0;
     const poll = async () => {
@@ -67,13 +77,14 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, ch
         // The whole-book save fills this chapter too, so both are followed while either runs.
         if (nextChapter.state !== "downloading" && nextBook?.state !== "downloading") return;
       } catch (cause) {
+        if (!open && !running) return;
         if (!cancelled) setError(cause instanceof Error ? cause.message : String(cause));
       }
       if (!cancelled) timer = window.setTimeout(poll, 1500);
     };
     void poll();
     return () => { cancelled = true; window.clearTimeout(timer); };
-  }, [usable, script.state, section, audio.localVoice, bookId, api, chapterOnly, chapter?.state, book?.state]);
+  }, [open, onChapterProgress, running, usable, script.state, section, audio.localVoice, bookId, api, chapterOnly, chapter?.state, book?.state]);
 
   const act = async (scope: "chapter" | "book", action: "start" | "stop" | "delete") => {
     if (!api || !bookId) return;
@@ -92,7 +103,6 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, ch
   };
 
   const ready = chapter?.state === "ready";
-  const running = chapter?.state === "downloading";
   const bookReady = book?.state === "ready";
   const bookRunning = book?.state === "downloading";
   const bookPercent = book?.total ? Math.floor(book.completed / book.total * 100) : 0;
@@ -112,7 +122,9 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, ch
     : bookRunning ? withEstimate("Saving chapter " + ((book?.section ?? 0) + 1) + "…", bookEta)
       : book?.completed ? withEstimate("Partly saved", bookEta) : bookEta ? "Not saved yet · " + bookEta : "Saves every chapter in the background";
 
-  return <AudiobookDialog eyebrow="LOCAL VOICES" title="Save for offline" onClose={onClose}
+  if (!open) return null;
+
+  const dialog = <AudiobookDialog eyebrow="LOCAL VOICES" title="Save for offline" onClose={onClose}
     description={usable ? `${chapterTitle} · read by ${voiceName}` : undefined}
     footer={usable && !!savedAudio?.completed && <>
       {confirmRemove
@@ -138,7 +150,7 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, ch
 
       {chapter && <section className="audiobook-offline-row" aria-label="This chapter">
         <div className="audiobook-offline-row-main" role="status" aria-live="polite">
-          <div className="audiobook-progress-status"><strong>This chapter</strong><span>{chapter.completed} / {chapter.total} sentences</span></div>
+          <div className="audiobook-progress-status"><strong>This chapter</strong><span>{chapter.completed} / {chapter.total} sentences{running && ` · ${chapterPercent}%`}</span></div>
           <progress max={Math.max(chapter.total, 1)} value={chapter.completed} aria-label="Chapter save progress" />
           <span className="audiobook-offline-row-status">{chapterStatus}</span>
         </div>
@@ -165,4 +177,5 @@ export function AudiobookOfflineDialog({ audio, bookId, chapterTitle, script, ch
       {book?.error && !bookRunning && <p className="audiobook-error" role="alert">{book.error}</p>}
     </>}
   </AudiobookDialog>;
+  return container ? createPortal(dialog, container) : dialog;
 }

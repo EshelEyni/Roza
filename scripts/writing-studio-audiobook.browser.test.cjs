@@ -303,7 +303,8 @@ test("Writing Studio narrates drafts and restores the book narrator without savi
     await play.click();
     const installKokoroFixture = () => {
       const requests = [];
-      let saved = false;
+      let started = false;
+      window.offlineCompleted = 0;
       window.offlineRequests = requests;
       window.rozaDesktop = { kokoro: {
         passages: true,
@@ -312,8 +313,9 @@ test("Writing Studio narrates drafts and restores the book narrator without savi
         saveScript: async script => { window.offlineScript = script; },
         offline: async request => {
           requests.push(request);
-          if (request.action === "start") saved = true;
-          return { state: saved ? "ready" : "missing", completed: saved ? 1 : 0, total: 1, chapters: 1 };
+          if (request.action === "start") started = true;
+          const completed = window.offlineCompleted;
+          return { state: completed === 2 ? "ready" : started ? "downloading" : "missing", completed, total: 2, chapters: 1 };
         },
       } };
     };
@@ -327,6 +329,14 @@ test("Writing Studio narrates drafts and restores the book narrator without savi
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await player.getByRole("button", { name: "Save for offline" }).click();
     await offline.getByRole("button", { name: "Save chapter" }).click();
+    await offline.getByText("0 / 2 sentences · 0%", { exact: true }).waitFor();
+    await offline.getByRole("button", { name: "Close" }).click();
+    await player.getByText("Saving for offline… 0%", { exact: true }).waitFor();
+    await page.evaluate(() => { window.offlineCompleted = 1; });
+    await player.getByText("Saving for offline… 50%", { exact: true }).waitFor();
+    await page.evaluate(() => { window.offlineCompleted = 2; });
+    await player.getByText(/Saving for offline…/).waitFor({ state: "hidden" });
+    await player.getByRole("button", { name: "Save for offline" }).click();
     await offline.getByText("Ready offline", { exact: true }).waitFor();
     assert.equal(await offline.getByRole("region", { name: "Whole book" }).count(), 0);
     const offlineData = await page.evaluate(() => ({
