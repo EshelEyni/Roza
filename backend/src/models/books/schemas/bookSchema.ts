@@ -26,6 +26,15 @@ const bookSchema = new Schema<IBook>(
       required: [true, "Please provide a name"],
       trim: true,
     },
+    audiobookNarrator: {
+      type: new Schema({
+        engine: { type: String, enum: ["system", "kokoro"], required: true },
+        voice: { type: String, required: true, maxlength: 1024 },
+        name: { type: String, required: true, maxlength: 256 },
+        lang: { type: String, maxlength: 32 },
+      }, { _id: false }),
+      select: false,
+    },
     taskBoard: { type: taskBoardSchema, default: undefined },
     chapters: [chapterSchema],
     characters: [characterSchema],

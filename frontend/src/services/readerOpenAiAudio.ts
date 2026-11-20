@@ -27,6 +27,15 @@ export const saveAudiobookNarrator = (book: string, narrator: ReaderAudiobookNar
     method: "PATCH", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(narrator),
   });
 
+const studioNarratorUrl = (book: string) => `/api/book/${encodeURIComponent(book)}/audiobook/narrator`;
+
+export const loadStudioNarrator = (book: string, signal: AbortSignal) =>
+  json<ReaderAudiobookNarrator | null>(studioNarratorUrl(book), { signal });
+export const saveStudioNarrator = (book: string, narrator: ReaderAudiobookNarrator) =>
+  json<ReaderAudiobookNarrator>(studioNarratorUrl(book), {
+    method: "PATCH", keepalive: true, headers: { "Content-Type": "application/json" }, body: JSON.stringify(narrator),
+  });
+
 /** Only source CFIs go to the server; narration text comes from the owned EPUB. */
 export function openAiPassage(sentence: AudiobookSentence, offset: number, limit: number) {
   const part = audiobookSpeechSlice(sentence.text, offset, Math.min(600, limit));

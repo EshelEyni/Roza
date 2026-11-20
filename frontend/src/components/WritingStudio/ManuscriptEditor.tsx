@@ -133,7 +133,7 @@ export function ManuscriptEditor({
   aiEditing,
 }: {
   aiEditing?: AiEditingContext;
-  audiobook?: { id: string; title: string };
+  audiobook?: { id: string; title: string; manuscriptId: string };
   audiobookKey?: string;
   audiobookHeader?: HTMLDivElement | null;
   audiobookState?: { open: boolean; onChange: (open: boolean) => void };

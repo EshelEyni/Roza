@@ -8,6 +8,7 @@ import { AiEditingContext } from "./AiEdit";
 
 export function DraftPane({
   chapter,
+  manuscriptId,
   draft,
   active,
   readOnly,
@@ -25,6 +26,7 @@ export function DraftPane({
 }: {
   active: boolean;
   chapter: Chapter;
+  manuscriptId: string;
   draft: ChapterDraft;
   readOnly: boolean;
   reading: boolean;
@@ -110,7 +112,7 @@ export function DraftPane({
       )}
       <ManuscriptEditor
         reading={reading}
-        audiobook={reading ? { id: draft.id, title: `${chapter.name} · ${draft.name}` } : undefined}
+        audiobook={reading ? { id: draft.id, manuscriptId, title: `${chapter.name} · ${draft.name}` } : undefined}
         audiobookKey={audiobookKey}
         audiobookHeader={audiobookHeader}
         audiobookState={audiobookState}

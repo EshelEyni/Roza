@@ -31,6 +31,7 @@ export interface IUser extends Document {
 }
 
 export interface IBook extends Document {
+  audiobookNarrator?: import("../../../shared/types/reader").ReaderAudiobookNarrator;
   taskBoard?: import("../../../shared/types/books").TaskBoard;
   userId: mongoose.Types.ObjectId;
   name: string;

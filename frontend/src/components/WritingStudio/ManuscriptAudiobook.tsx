@@ -31,16 +31,17 @@ function readingSelection(editable: HTMLElement, marked?: Range) {
   return range && editable.contains(range.commonAncestorContainer) ? range : marked;
 }
 
-function ManuscriptPlayback({ narration, localId, markedSentence, header, onClose, onPositionChange }: {
+function ManuscriptPlayback({ narration, localId, manuscriptId, markedSentence, header, onClose, onPositionChange }: {
   narration: Narration;
   localId?: string;
+  manuscriptId: string;
   markedSentence: { current?: Range };
   header: HTMLElement;
   onClose: () => void;
   onPositionChange: (range: Range) => void;
 }) {
   const { section, editable, ranges, wordRanges } = narration;
-  const audio = useReaderAudiobook(async () => section, undefined, undefined, { preserveSystemPosition: true, localBookId: localId });
+  const audio = useReaderAudiobook(async () => section, undefined, undefined, { preserveSystemPosition: true, localBookId: localId, manuscriptId });
   const [dialog, setDialog] = useState<"voice" | "export" | "offline">();
   const [minimized, setMinimized] = useState(false);
   const restoreButton = useRef<HTMLButtonElement>(null);
@@ -262,10 +263,11 @@ function ManuscriptPlayback({ narration, localId, markedSentence, header, onClos
       <div className="ws-floating-audio-status" role="status">
         {audio.error || audio.narratorWarning || (audio.loading ? "Preparing narration…"
           : !section.totalWords ? "This draft has no text to narrate."
+          : !audio.narratorLoaded ? "Loading narrator…"
           : !audio.available ? "Narration is unavailable. Choose a narrator voice."
           : audio.ended ? "Chapter narration complete." : audio.status)}
       </div>
-      {dialog === "voice" && <ReaderAudiobookVoices voices={audio.voices} selected={audio.voice} engine={audio.engine}
+      {dialog === "voice" && audio.narratorLoaded && <ReaderAudiobookVoices voices={audio.voices} selected={audio.voice} engine={audio.engine}
         localVoice={audio.localVoice} kokoroStatus={audio.kokoroStatus} kokoroAvailability={audio.kokoroAvailability}
         onKokoroChanged={() => void audio.refreshKokoro()} warning={audio.narratorWarning}
         configStatus={audio.configStatus} beforePreview={audio.waitForAudioCancellation} onClose={async (voice, engine) => {
@@ -287,7 +289,7 @@ function ManuscriptPlayback({ narration, localId, markedSentence, header, onClos
 }
 
 export function ManuscriptAudiobook({ chapter, header, root, markedSentence, open, onOpenChange, onPositionChange }: {
-  chapter: { id: string; title: string };
+  chapter: { id: string; title: string; manuscriptId: string };
   header: HTMLElement;
   root: RefObject<HTMLDivElement>;
   markedSentence: { current?: Range };
@@ -325,7 +327,7 @@ export function ManuscriptAudiobook({ chapter, header, root, markedSentence, ope
       )}
       {open && narration && <>
         <span hidden data-ws-audiobook-open />
-        <ManuscriptPlayback narration={narration} localId={localId} markedSentence={markedSentence} header={header} onClose={close} onPositionChange={onPositionChange} />
+        <ManuscriptPlayback narration={narration} localId={localId} manuscriptId={chapter.manuscriptId} markedSentence={markedSentence} header={header} onClose={close} onPositionChange={onPositionChange} />
       </>}
     </>
   );

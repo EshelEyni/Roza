@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { audiobookSpeechSlice, audiobookSeek, audiobookWordAt, type AudiobookSection } from "../../services/readerTts";
-import { loadAudiobookConfig, saveAudiobookNarrator, openAiBlock, ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
+import { loadAudiobookConfig, saveAudiobookNarrator, loadStudioNarrator, saveStudioNarrator, openAiBlock, ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
 import type { ReaderAudiobookNarrator } from "../../../../shared/types/reader";
 import { ReaderKokoroAudio } from "../../services/narration/kokoroAudio";
 import { desktopKokoro, isEnglishBook, type KokoroStatus } from "../../services/narration/desktopKokoro";
@@ -35,13 +35,13 @@ export function useReaderAudiobook(
   loadSection: AudiobookLoader,
   bookId?: string,
   language?: () => string | undefined,
-  { preserveSystemPosition = false, localBookId = bookId }: { preserveSystemPosition?: boolean; localBookId?: string } = {},
+  { preserveSystemPosition = false, localBookId = bookId, manuscriptId }: { preserveSystemPosition?: boolean; localBookId?: string; manuscriptId?: string } = {},
 ) {
   const [engine, setEngine] = useState<AudiobookEngine>("system");
   const [config, setConfig] = useState<AudiobookConfig>();
   const [configStatus, setConfigStatus] = useState("Checking OpenAI availability…");
   const [aiVoice, setAiVoice] = useState("");
-  const [narratorLoaded, setNarratorLoaded] = useState(!bookId);
+  const [narratorLoaded, setNarratorLoaded] = useState(!bookId && !manuscriptId);
   const [savedNarrator, setSavedNarrator] = useState<ReaderAudiobookNarrator | null>(null);
   const saved = useRef<ReaderAudiobookNarrator | null>(null);
   const [narratorWarning, setNarratorWarning] = useState("");
@@ -91,7 +91,10 @@ export function useReaderAudiobook(
   const synth = window.speechSynthesis;
   function warn(message: string) { warning.current = message; setNarratorWarning(message); }
   function persist(narrator: ReaderAudiobookNarrator) {
-    const request = saves.current.then(() => bookId ? saveAudiobookNarrator(bookId, narrator) : narrator);
+    const request = saves.current.then(() => {
+      if (manuscriptId) return saveStudioNarrator(manuscriptId, narrator);
+      return bookId ? saveAudiobookNarrator(bookId, narrator) : narrator;
+    });
     saves.current = request.catch(() => undefined);
     return request;
   }
@@ -422,11 +425,18 @@ export function useReaderAudiobook(
 
   useEffect(() => {
     const controller = new AbortController();
-    if (bookId) void loadAudiobookConfig(bookId, controller.signal).then(value => {
-      configRef.current = value; setConfig(value);
+    const request = bookId
+      ? loadAudiobookConfig(bookId, controller.signal)
+      : manuscriptId
+        ? loadStudioNarrator(manuscriptId, controller.signal).then(narrator => ({ narrator }))
+        : undefined;
+    if (request) void request.then(value => {
+      if (controller.signal.aborted) return;
+      const config = "available" in value ? value : undefined;
+      configRef.current = config; setConfig(config);
       const narrator = value.narrator || null;
       saved.current = narrator; setSavedNarrator(narrator);
-      aiVoiceRef.current = narrator?.engine === "openai" ? narrator.voice : value.defaultVoice;
+      aiVoiceRef.current = narrator?.engine === "openai" ? narrator.voice : config?.defaultVoice || "";
       setAiVoice(aiVoiceRef.current);
       if (narrator) {
         engineRef.current = narrator.engine; setEngine(narrator.engine);
@@ -434,11 +444,12 @@ export function useReaderAudiobook(
         if (narrator.engine === "kokoro") { localVoiceRef.current = narrator.voice; setLocalVoice(narrator.voice); setWordEvents(true); }
       }
       setNarratorLoaded(true);
-      setConfigStatus(value.available ? "AI-generated voices · requires internet" : "OpenAI narration is not enabled on this server.");
+      setConfigStatus(config?.available ? "AI-generated voices · requires internet"
+        : config ? "OpenAI narration is not enabled on this server." : "OpenAI narration is unavailable for this book.");
     }).catch(() => { if (!controller.signal.aborted) { setNarratorLoaded(true); setConfigStatus("OpenAI availability could not be checked. System voices remain available."); warn("Saved narrator settings could not be loaded. Choose a narrator before playing."); } });
     else setConfigStatus("OpenAI narration is unavailable for this book.");
     return () => controller.abort();
-  }, [bookId]);
+  }, [bookId, manuscriptId]);
   useEffect(() => {
     if (!narratorLoaded || !savedNarrator) return;
     let unavailable = false;
@@ -506,7 +517,7 @@ export function useReaderAudiobook(
   return {
     section, index, passageEnd: engine === "openai" ? passageEnd : index, offset, highlight, wordEvents, playing, ended, loading, status, error,
     voices, voice, speed, toggle, move, seek, changeVoice, changeSpeed, pause, resume, stop,
-    engine, config, configStatus, aiVoice, changeNarrator,
+    engine, config, configStatus, aiVoice, changeNarrator, narratorLoaded,
     volume, changeVolume, goToSection, localVoice, kokoroStatus, refreshKokoro,
     kokoroAvailability: kokoroAvailability(),
     narratorWarning,

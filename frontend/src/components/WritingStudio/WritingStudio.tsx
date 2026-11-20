@@ -995,7 +995,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                         readingPosition={pageControls ? readingPosition : undefined}
                         audiobookState={audiobookState}
                         audiobookHeader={audiobookHeader}
-                        audiobook={chapter && view === "read" && pageControls && !activeDraft ? { id: chapter.id, title: chapter.name } : undefined}
+                        audiobook={chapter && view === "read" && pageControls && !activeDraft ? { id: chapter.id, title: chapter.name, manuscriptId: book.id } : undefined}
                         annotations={
                           item.type === "chapters"
                             ? item.annotations || []
@@ -1030,6 +1030,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 )}
               </article>
               {chapter && chapter.drafts?.filter(d => d.id === draftId || visitedDrafts.includes(d.id)).map(draft => <DraftPane key={`${chapter.id}:${draft.id}:${restoreKey}`} chapter={chapter} draft={draft} active={draft.id === activeDraft?.id} readOnly={!!store.recovery || preview}
+                manuscriptId={book.id}
                 reading={draft.id === activeDraft?.id && view === "read" && pageControls} audiobookKey={mobilePane} audiobookHeader={audiobookHeader}
                 readingPosition={mobilePane === "draft" ? readingPosition : undefined} audiobookState={audiobookState}
                 onSelect={openDraft} onClose={closeDraft} onPromote={() => void promoteDraft()} onDelete={() => void deleteDraft()}

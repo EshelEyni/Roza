@@ -35,7 +35,7 @@ const book = {
   }],
 };
 
-test("Writing Studio narrates the selected draft and stops without saving", { timeout: 60000 }, async () => {
+test("Writing Studio narrates drafts and restores the book narrator without saving manuscript text", { timeout: 60000 }, async () => {
   const modules = path.join(frontend, "node_modules");
   const { createServer } = await import(pathToFileURL(path.join(modules, "vite/dist/node/index.js")));
   const { default: react } = await import(pathToFileURL(path.join(modules, "@vitejs/plugin-react/dist/index.mjs")));
@@ -63,7 +63,20 @@ test("Writing Studio narrates the selected draft and stops without saving", { ti
     server: { host: "127.0.0.1", port: 0, fs: { allow: [root, fs.realpathSync(modules)] } },
   });
   const writes = [];
-  server.middlewares.use("/api/", (req, res) => {
+  const narratorWrites = [];
+  let narrator = null;
+  server.middlewares.use("/api/", async (req, res) => {
+    if (req.url === "/book/" + book.id + "/audiobook/narrator") {
+      if (req.method === "PATCH") {
+        let body = "";
+        for await (const chunk of req) body += chunk;
+        narrator = JSON.parse(body);
+        narratorWrites.push(narrator);
+      }
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify({ status: "success", data: narrator }));
+      return;
+    }
     if (req.url.startsWith("/book") && !["GET", "HEAD"].includes(req.method)) writes.push(req.url);
     const data = req.url.startsWith("/reader") ? { enabled: false }
       : req.url.startsWith("/auth") ? { id: book.userId, language: "en" }
@@ -286,7 +299,7 @@ test("Writing Studio narrates the selected draft and stops without saving", { ti
     assert.equal(await draft.innerText(), "Only the alternate draft says this.");
 
     await play.click();
-    await page.evaluate(() => {
+    const installKokoroFixture = () => {
       const requests = [];
       let saved = false;
       window.offlineRequests = requests;
@@ -301,11 +314,14 @@ test("Writing Studio narrates the selected draft and stops without saving", { ti
           return { state: saved ? "ready" : "missing", completed: saved ? 1 : 0, total: 1, chapters: 1 };
         },
       } };
-    });
+    };
+    await page.evaluate(installKokoroFixture);
+    await page.addInitScript(installKokoroFixture);
     await play.click();
     await player.getByRole("button", { name: "Save for offline" }).click();
     await offline.getByRole("button", { name: "Choose a narrator" }).click();
     await page.getByRole("button", { name: /Local voices/ }).click();
+    await page.getByRole("radio", { name: /Bella/ }).check();
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await player.getByRole("button", { name: "Save for offline" }).click();
     await offline.getByRole("button", { name: "Save chapter" }).click();
@@ -319,6 +335,14 @@ test("Writing Studio narrates the selected draft and stops without saving", { ti
     assert.ok(offlineData.requests.every(request => request.section === 0));
     assert.deepEqual(offlineData.sections.flatMap(section => section.sentences.map(item => item.text)),
       ["Only the alternate draft says this."]);
+    assert.deepEqual(narratorWrites, [{ engine: "kokoro", voice: "af_bella", name: "Bella", lang: "en-US" }]);
+    await page.reload();
+    await play.waitFor();
+    await player.waitFor();
+    await player.getByRole("button", { name: "Choose narrator voice" }).getByText("Bella", { exact: true }).waitFor();
+    await player.getByRole("button", { name: "Choose narrator voice" }).click();
+    assert.equal(await page.getByRole("radio", { name: /Bella/ }).isChecked(), true);
+    assert.equal(narratorWrites.length, 1);
     assert.deepEqual(writes, []);
   } finally {
     await browser?.close();
