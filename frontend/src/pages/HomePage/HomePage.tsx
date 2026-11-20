@@ -2,8 +2,6 @@ import { FC, useState } from "react";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
-import { Button } from "../../components/Buttons/Button";
-import { useLogout } from "../../hooks/reactQuery/update/useLogout";
 import { useGetBooks } from "../../hooks/reactQuery/get/useGetBooks";
 import { Loader } from "../../components/Loaders/Loader";
 import { useTranslation } from "react-i18next";
@@ -62,7 +60,6 @@ const HomePage: FC = () => {
 
   const slicedReviews = reviews?.slice(0, 9);
 
-  const { logout } = useLogout();
   const [openedForm, setOpenedForm] = useState<FormType>("login");
 
   const navigate = useNavigate();
@@ -79,10 +76,6 @@ const HomePage: FC = () => {
   function onGoToProfile() {
     if (!loggedInUser) return;
     navigate(`/profile`);
-  }
-
-  function onLogout() {
-    logout();
   }
 
   return (
@@ -136,10 +129,6 @@ const HomePage: FC = () => {
             isReviewsAvailable={isReviewsAvailable}
             isHomePage={true}
           />
-          <Hr />
-          <div className="flex w-full justify-end">
-            <Button onClick={onLogout}>{t("btnLogout")}</Button>
-          </div>
         </PageContent>
       )}
     </Main>

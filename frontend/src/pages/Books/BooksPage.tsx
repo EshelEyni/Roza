@@ -10,10 +10,12 @@ import { getDefaultBook } from "../../services/bookUtilService";
 import { manuscriptWords } from "../../components/WritingStudio/manuscript";
 import "../../components/WritingStudio/writingStudio.css";
 import { ReaderSelect } from "../../components/Reader/ReaderSelect";
+import { useTranslation } from "react-i18next";
 
 export default function BooksPage() {
   const { confirm, confirmationDialog } = useConfirmation();
-  useDocumentTitle("Roza / Writing studio");
+  const { t } = useTranslation();
+  useDocumentTitle(`Roza / ${t("writingStudioNav")}`);
   const { loggedInUser } = useLoginWithToken();
   const navigate = useNavigate();
   const client = useQueryClient();

@@ -9,10 +9,15 @@ import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { PageContent } from "../../components/App/PageContent";
 import { TabBtns } from "./TabBtns";
 import { H1 } from "../../components/App/H1";
+import { Button } from "../../components/Buttons/Button";
+import { useLogout } from "../../hooks/reactQuery/update/useLogout";
+import { useTranslation } from "react-i18next";
 
 const ProfileDetails: FC = () => {
   const { tab, setTab } = useProfile();
   const { loggedInUser } = useLoginWithToken();
+  const { logout } = useLogout();
+  const { t } = useTranslation();
 
   useDocumentTitle(`Roza / Profile - ${loggedInUser?.fullname || ""}`);
 
@@ -20,7 +25,10 @@ const ProfileDetails: FC = () => {
   return (
     <Main>
       <PageContent>
-        <H1>{loggedInUser.fullname}</H1>
+        <div className="ui-entry-head">
+          <H1>{loggedInUser.fullname}</H1>
+          <Button onClick={() => logout()}>{t("btnLogout")}</Button>
+        </div>
 
         {tab === "display" && <ProfileDisplay />}
         {tab === "edit" && <ProfileEdit />}

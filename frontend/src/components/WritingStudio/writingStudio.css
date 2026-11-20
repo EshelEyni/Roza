@@ -2516,6 +2516,18 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
   letter-spacing: 1px;
 }
 
+.ws-header .ws-fullscreen {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  padding: 8px;
+}
+
+.ws-fullscreen svg {
+  width: 17px;
+  height: 17px;
+}
+
 .ws-header .ws-item-menu > div {
   width: 230px;
   top: calc(100% + 4px);

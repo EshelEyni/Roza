@@ -18,7 +18,7 @@ function ReaderDetailsContent() {
     retry: false,
     refetchOnWindowFocus: false,
   });
-  useDocumentTitle("Roza / " + (book.data?.title || "Reader"));
+  useDocumentTitle("Roza / " + (book.data?.title || t("reader.nav")));
   if (book.isLoading)
     return (
       <p className="reader-message" role="status">

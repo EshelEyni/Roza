@@ -46,6 +46,8 @@ import { ManuscriptEditor } from "./ManuscriptEditor";
 import { ChapterOverview } from "./ChapterOverview";
 import "./writingStudio.css";
 import { TaskBoardView } from "./TaskBoard";
+import { AppSwitcher } from "../App/AppSwitcher";
+import { StudioFullscreenButton } from "./StudioFullscreenButton";
 
 function preference(key: string, fallback: string) {
   try {
@@ -576,6 +578,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               </div>
             </ItemMenu>
           )}
+          <StudioFullscreenButton />
           <ItemMenu>
             <summary className="ws-more" aria-label="More" title="More">
               •••
@@ -614,6 +617,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               </button>
             </div>
           </ItemMenu>
+          <AppSwitcher
+            triggerClassName="ws-app-switcher"
+            onNavigate={path => void leave(path)}
+          />
         </div>
       </header>
       {store.state === "error" && (

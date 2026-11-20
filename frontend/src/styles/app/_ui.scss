@@ -183,7 +183,7 @@
 
 // Feedback states
 .ui-error { margin: 4px 0; color: var(--roza-danger); font: 13.5px/1.5 var(--roza-font-ui); }
-.ui-empty { padding: 28px 20px; border: 1px dashed var(--roza-line); border-radius: 12px; text-align: center; color: var(--roza-ink-2); font: italic 16px/1.6 var(--roza-font-display); }
+.ui-empty { width: 100%; max-width: 560px; margin: 18px auto 0; padding: 28px 20px; border: 1px dashed var(--roza-line); border-radius: 12px; text-align: center; color: var(--roza-ink-2); font: italic 16px/1.6 var(--roza-font-display); }
 .ui-not-found { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; width: min(560px, calc(100% - 32px)); min-height: 50vh; margin: 40px auto; padding: 30px; border: 1px dashed var(--roza-line); border-radius: 12px; text-align: center; }
 .ui-not-found h1 { font: 400 28px/1.3 var(--roza-font-display); color: var(--roza-ink); }
 .ui-not-found p { color: var(--roza-ink-2); }

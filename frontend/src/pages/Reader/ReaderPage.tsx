@@ -84,7 +84,8 @@ function ReaderLibrary() {
 }
 
 export default function ReaderPage() {
-  useDocumentTitle("Roza / Reader");
+  const { t } = useTranslation();
+  useDocumentTitle(`Roza / ${t("reader.nav")}`);
   return (
     <main className="reader-library">
       <ReaderAccess>

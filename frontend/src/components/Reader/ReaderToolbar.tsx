@@ -22,6 +22,7 @@ import {
 } from "react-icons/fi";
 import type { ReaderBook } from "../../../../shared/types/reader";
 import type { EpubReaderController } from "../../hooks/reader/useEpubReader";
+import { AppSwitcher } from "../App/AppSwitcher";
 type Props = Pick<
   EpubReaderController,
   | "panel"
@@ -200,6 +201,7 @@ export function ReaderToolbar({
           </ReaderToolbarMenu>
         </>
       )}
+      <AppSwitcher triggerClassName="reader-icon-button" />
       {goToPageOpen && pageNavigation && <ReaderGoToPage navigation={pageNavigation} onClose={() => setGoToPageOpen(false)} />}
     </header>
   );

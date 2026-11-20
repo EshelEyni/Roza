@@ -1,4 +1,5 @@
 import { FC } from "react";
+import { useTranslation } from "react-i18next";
 import { Main } from "../../components/App/Main";
 import { BookReviewList } from "../../components/BookReview/BookReviewList";
 import { PageContent } from "../../components/App/PageContent";
@@ -7,7 +8,8 @@ import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import { EntityFilter } from "../../components/App/EntityFilter";
 
 const ReviewsPage: FC = () => {
-  useDocumentTitle("Roza / Reviews");
+  const { t } = useTranslation();
+  useDocumentTitle(`Roza / ${t("myReviewsNav")}`);
 
   const {
     reviews,

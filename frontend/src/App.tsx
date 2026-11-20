@@ -20,6 +20,11 @@ import { DEFAULT_FAVICON, READER_FAVICON, useFavicon } from "./hooks/useFavicon"
 
 const PageNotFound = lazy(() => import("./pages/PageNotFound"));
 
+/** The app's default entry pages, where restoring the last visited page applies. */
+function isLandingPath(pathname: string) {
+  return pathname === "/" || pathname === "/home";
+}
+
 function readTabPage(key: string) {
   try {
     return window.sessionStorage.getItem(key);
@@ -111,6 +116,12 @@ function App() {
       return;
     }
     if (restoredAccountKey === accountKey) return;
+    // A link opened on a specific page keeps that page. Chrome copies session
+    // storage into tabs opened from links, so restoring here would replace it.
+    if (!isLandingPath(location.pathname)) {
+      setRestoredAccountKey(accountKey);
+      return;
+    }
 
     const tabPage = safeReturnPath(readTabPage(accountKey));
     const profilePage = safeReturnPath(loggedInUser?.lastVisitedPage);

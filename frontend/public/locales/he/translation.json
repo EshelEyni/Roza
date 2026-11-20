@@ -19,6 +19,7 @@
   "books": "ספרים",
   "writingStudioNav": "סטודיו לכתיבה",
   "myReviewsNav": "הביקורות שלי",
+  "appSwitcher": { "label": "מעבר לעמוד אחר" },
   "ErrorMsg": {
     "msg": "התרחשה שגיאה במערכת. אנא נסה שוב מאוחר יותר."
   },

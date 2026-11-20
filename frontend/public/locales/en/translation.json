@@ -19,6 +19,7 @@
   "books": "Books",
   "writingStudioNav": "Writing Studio",
   "myReviewsNav": "My Reviews",
+  "appSwitcher": { "label": "Go to another page" },
   "ErrorMsg": {
     "msg": "An error occurred in the system. Please try again later."
   },
