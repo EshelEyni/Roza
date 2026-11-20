@@ -2,6 +2,7 @@ import { loadReaderChapters, readerChapterAt } from "../services/readerChapters"
 import { RefObject, useCallback, useEffect, useRef, useState } from "react";
 import ePub, { EpubCFI, Location, Rendition, type Contents } from "epubjs";
 import Section from "epubjs/types/section";
+import { contentDigest, readPageMap, savePageMap, type ReaderPageMap } from "../services/readerPageMapCache";
 import { ReaderPreferences } from "../../../shared/types/reader";
 
 import {
@@ -76,13 +77,6 @@ export function useReaderPageCount(
     if (!file || !size.width || !size.height) return;
     const controller = new AbortController();
     let cancelled = false;
-    let running = false;
-    let pending = false;
-    let pageTask: Promise<void> = Promise.resolve();
-    const offsets = new Map<number, { offset: number; pages: number }>();
-    let total = 0;
-    let chapterEndPage: ((cfi: string, page: number) => number | null) | null = null;
-    const pageStarts: { cfi: string; page: number }[] = [];
     const container = document.createElement("div");
     container.className = "reader-page-measurement";
     container.setAttribute("aria-hidden", "true");
@@ -93,10 +87,12 @@ export function useReaderPageCount(
       top: "0",
       width: size.width + "px",
       height: size.height + "px",
-      visibility: "hidden",
+      // EPUB.js sets visibility on its child frames. Opacity and containment
+      // keep their contents out of painting while preserving measurable layout.
+      opacity: "0",
+      contain: "strict",
       pointerEvents: "none",
     });
-    document.body.append(container);
     // Own the archive and spine: the visible book may be destroyed on a flow change.
     const book = ePub({ replacements: "blobUrl" });
     let measuring: Rendition;
@@ -106,9 +102,14 @@ export function useReaderPageCount(
       spread: "none",
       flow: "paginated",
       manager: "default",
+      // Write into each measurement frame instead of navigating it to srcdoc.
+      method: "write",
       allowScriptedContent: false,
       gap: 40,
-    } as ConstructorParameters<typeof Rendition>[1];
+    } satisfies NonNullable<ConstructorParameters<typeof Rendition>[1]> & {
+      method: "write";
+      gap: number;
+    };
     const waitForAssets = async (contents: { document: Document }) => {
       const doc = contents.document;
       await Promise.race([
@@ -137,38 +138,77 @@ export function useReaderPageCount(
         void measuring.reportLocation();
       });
     }
-    async function update() {
-      if (running || cancelled) {
-        pending = true;
-        return;
-      }
-      running = true;
-      do {
-        pending = false;
-        const current = latestLocation.current;
-        if (!current) break;
-        const section = offsets.get(current.start.index);
-        if (!section) break;
-        let page = current.start.displayed.page;
-        if (preferences.flow === "scrolled") {
-          await measuring.display(current.start.cfi);
-          if (cancelled) return;
-          page = (await getLocation()).start.displayed.page;
+    function installPageMap({ pages, sections, chapters, publisherPages }: ReaderPageMap) {
+      const total = pages.length;
+      const offsets = new Map(sections);
+      const compare = new EpubCFI().compare;
+      const ordered = pages.map((cfi, index) => ({ cfi, page: index + 1 }))
+        .sort((a, b) => compare(a.cfi, b.cfi));
+
+      function pageAt(cfi: string, inclusive: boolean) {
+        let low = 0;
+        let high = ordered.length;
+        while (low < high) {
+          const mid = Math.floor((low + high) / 2);
+          const order = compare(ordered[mid].cfi, cfi);
+          if (order < 0 || (inclusive && order === 0)) low = mid + 1;
+          else high = mid;
         }
-        if (!cancelled)
-          setCount({
-            page: Math.min(
-              total,
-              section.offset + Math.min(section.pages, Math.max(1, page)),
-            ),
-            total,
-            sectionRemaining: chapterEndPage?.(current.start.cfi, section.offset + Math.min(section.pages, Math.max(1, page))) ?? null,
-          });
-      } while (pending && !cancelled);
-      running = false;
+        return low ? ordered[low - 1].page : 1;
+      }
+
+      const chapterEnds = chapters.map((_, index) => {
+        const next = chapters[index + 1];
+        return next ? pageAt(next.cfi, false) : total;
+      });
+      function lookup(cfi: string) {
+        const point = new EpubCFI(cfi);
+        point.collapse(true);
+        const section = offsets.get(point.spinePos);
+        if (!section) return null;
+        const page = pageAt(point.toString(), true);
+        return { page: Math.max(section.offset + 1, Math.min(section.offset + section.pages, page)), total };
+      }
+
+      cachedPageLookup.current = lookup;
+      pageLookup.current = async cfi => lookup(cfi);
+      pageTargetLookup.current = async page => Number.isInteger(page) ? pages[page - 1] ?? null : null;
+      updatePage.current = () => {
+        const current = latestLocation.current;
+        if (!current) return;
+        const { cfi, index, displayed } = current.start;
+        const section = offsets.get(index);
+        const page = section && (preferences.flow === "scrolled"
+          ? lookup(cfi)?.page
+          : section.offset + Math.min(section.pages, Math.max(1, displayed.page)));
+        if (page === undefined) {
+          setCount(null);
+          return;
+        }
+        const chapter = readerChapterAt(chapters, cfi);
+        setCount({ page, total, sectionRemaining: chapter ? Math.max(0, chapterEnds[chapters.indexOf(chapter)] - page) : null });
+      };
+      updatePage.current();
+      setPublisherPages(publisherPages);
     }
     async function measure() {
       try {
+        const digest = await contentDigest(file!);
+        if (cancelled) return;
+        const key = digest && JSON.stringify([
+          digest, size.width, size.height, window.devicePixelRatio, navigator.userAgent,
+          preferences.fontSize, preferences.fontFamily, preferences.lineHeight,
+          preferences.width, preferences.flow,
+        ]);
+        const cached = key && readPageMap(key);
+        if (cached) {
+          installPageMap(cached);
+          return;
+        }
+        document.body.append(container);
+        const offsets = new Map<number, { offset: number; pages: number }>();
+        const pageStarts: string[] = [];
+        let total = 0;
         await book.open(file!, "binary");
         await Promise.all([book.opened, book.ready]);
         if (cancelled) return;
@@ -200,97 +240,39 @@ export function useReaderPageCount(
             const physical = manager.settings.direction === "rtl" ? pages - index - 1 : index;
             const start = physical * manager.layout.pageWidth;
             const mapped = manager.mapping.page(view.contents, section.cfiBase, start, start + manager.layout.width);
-            pageStarts.push({ cfi: mapped.start, page: total + index + 1 });
+            pageStarts.push(mapped.start);
           }
           total += pages;
         }
         if (cancelled) return;
-        const compare = new EpubCFI().compare;
-        pageStarts.sort((a, b) => compare(a.cfi, b.cfi));
         const chapters = await loadReaderChapters(book);
         if (cancelled) return;
-        const chapterEnds = new Map(chapters.map((chapter, index) => {
-          const next = chapters[index + 1];
-          let low = 0, high = pageStarts.length;
-          if (next) while (low < high) {
-            const mid = Math.floor((low + high) / 2);
-            if (compare(pageStarts[mid].cfi, next.cfi) < 0) low = mid + 1; else high = mid;
-          }
-          return [chapter, next ? (low ? pageStarts[low - 1].page : 1) : total] as const;
-        }));
-        chapterEndPage = (cfi, page) => {
-          const chapter = readerChapterAt(chapters, cfi);
-          return chapter ? Math.max(0, chapterEnds.get(chapter)! - page) : null;
-        };
-        cachedPageLookup.current = cfi => {
-          if (cancelled || !pageStarts.length) return null;
-          const point = new EpubCFI(cfi); point.collapse(true);
-          const section = offsets.get(point.spinePos);
-          if (!section) return null;
-          let low = 0, high = pageStarts.length;
-          while (low < high) {
-            const mid = Math.floor((low + high) / 2);
-            if (compare(pageStarts[mid].cfi, point.toString()) <= 0) low = mid + 1;
-            else high = mid;
-          }
-          return { page: Math.max(section.offset + 1, Math.min(section.offset + section.pages, pageStarts[Math.max(0, low - 1)].page)), total };
-        };
-        updatePage.current = () => {
-          pageTask = pageTask.then(update).catch(() => {
-            if (!cancelled) setCount(null);
-          });
-        };
-        await update();
-        const cache = new Map<string, PageCount>();
-        pageLookup.current = (cfi: string) => {
-          const lookup = pageTask.then(async () => {
-            if (cancelled) return null;
-            const cached = cache.get(cfi);
-            if (cached) return cached;
-            const section = offsets.get(new EpubCFI(cfi).spinePos);
-            if (!section) return null;
-            await measuring.display(cfi);
-            if (cancelled) return null;
-            const target = await getLocation();
-            if (cancelled) return null;
-            const result = { page: Math.min(total, section.offset + Math.max(1, Math.min(section.pages, target.start.displayed.page))), total };
-            cache.set(cfi, result);
-            return result;
-          }).catch(() => null);
-          pageTask = lookup.then(() => {});
-          return lookup;
-        };
-        pageTargetLookup.current = (page: number) => {
-          const lookup = pageTask.then(async () => {
-            if (cancelled || !Number.isInteger(page) || page < 1 || page > total) return null;
-            const entry = [...offsets.entries()].find(([, section]) => page > section.offset && page <= section.offset + section.pages);
-            if (!entry) return null;
-            const [index, section] = entry;
-            await measuring.display(book.spine.get(index).href);
-            for (let step = 1; step < page - section.offset; step++) {
-              if (cancelled) return null;
-              await measuring.next();
-            }
-            if (cancelled) return null;
-            const destination = await getLocation();
-            return cancelled ? null : destination.start.cfi;
-          }).catch(() => null);
-          pageTask = lookup.then(() => {});
-          return lookup;
-        };
         const pages =
           publisherCache.current?.file === file
             ? publisherCache.current.pages
             : await loadPublisherPages(book, controller.signal).catch(() => []);
         if (!cancelled) {
           publisherCache.current = { file: file!, pages };
-          setPublisherPages(pages);
+          if (!pageStarts.length) {
+            setPublisherPages(pages);
+            return;
+          }
+          const map = { pages: pageStarts, sections: [...offsets], chapters, publisherPages: pages };
+          installPageMap(map);
+          if (key) savePageMap(key, map);
         }
       } catch {
         if (!cancelled) setCount(null);
       }
     }
-    const measurement = measure();
+    // The completed map handles lookups and jumps without a hidden renderer.
+    void measure().finally(() => {
+      try {
+        book.destroy();
+      } finally {
+        container.remove();
+      }
+    });
     return () => {
       cancelled = true;
       controller.abort();
@@ -298,11 +280,6 @@ export function useReaderPageCount(
       pageLookup.current = null;
       pageTargetLookup.current = null;
       cachedPageLookup.current = null;
-      // Let in-flight EPUB rendering settle before destroying its manager.
-      void Promise.allSettled([measurement, pageTask]).then(() => {
-        book.destroy();
-        container.remove();
-      });
     };
   }, [file, size, preferences, apply]);
 

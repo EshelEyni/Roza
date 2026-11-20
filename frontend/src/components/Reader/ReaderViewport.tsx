@@ -34,7 +34,10 @@ export function ReaderViewport({
         </div>
       )}
       <div
-        className="reader-page-turn-area"
+        className={
+          "reader-page-turn-area" +
+          (loading || !!error || atStart ? " is-disabled" : "")
+        }
         data-reader-page-turn
         onPointerDown={event => event.preventDefault()}
         onClick={() => {
@@ -45,13 +48,17 @@ export function ReaderViewport({
           className="reader-page-turn reader-page-turn-previous"
           disabled={loading || !!error || atStart}
           aria-label={t("reader.previous")}
+          title={t("reader.previous")}
         >
           <FiChevronLeft aria-hidden="true" />
         </button>
       </div>
       <div className="reader-viewport" ref={host} dir="ltr" />
       <div
-        className="reader-page-turn-area"
+        className={
+          "reader-page-turn-area" +
+          (loading || !!error || atEnd ? " is-disabled" : "")
+        }
         data-reader-page-turn
         onPointerDown={event => event.preventDefault()}
         onClick={() => {
@@ -62,6 +69,7 @@ export function ReaderViewport({
           className="reader-page-turn reader-page-turn-next"
           disabled={loading || !!error || atEnd}
           aria-label={t("reader.next")}
+          title={t("reader.next")}
         >
           <FiChevronRight aria-hidden="true" />
         </button>

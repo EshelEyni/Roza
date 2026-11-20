@@ -138,36 +138,46 @@ test(
       });
       const errors = [];
       page.on("pageerror", (e) => errors.push(e.message));
-      await page.goto(server.resolvedUrls.local[0] + "word-test");
-      const nextPage = page.locator(".reader-page-turn-next");
-      await page.waitForFunction(() => !document.querySelector(".reader-page-turn-next")?.disabled &&
-        !!document.querySelector(".reader-page-turn-next"));
-      const nextBounds = await nextPage.boundingBox();
-      await page.mouse.move(nextBounds.x + nextBounds.width / 2, nextBounds.y + nextBounds.height / 2);
-      assert.equal(await nextPage.evaluate(button => getComputedStyle(button).cursor), "default");
-
-      let resumeBookLoad;
-      const bookHeld = new Promise(resolve => { resumeBookLoad = resolve; });
-      await page.route("**/api/reader/navigation/file", async route => {
-        await bookHeld;
-        await route.continue();
+      await page.addInitScript(() => {
+        window.measurementFrames = { count: 0, navigated: 0 };
+        new MutationObserver(records => {
+          for (const { addedNodes } of records) {
+            for (const node of addedNodes) {
+              if (!(node instanceof HTMLIFrameElement) || !node.closest(".reader-page-measurement"))
+                continue;
+              window.measurementFrames.count++;
+              if (node.hasAttribute("srcdoc") || node.hasAttribute("src"))
+                window.measurementFrames.navigated++;
+            }
+          }
+        }).observe(document, { childList: true, subtree: true });
       });
-      try {
-        await page.reload();
-        await nextPage.waitFor();
-        assert.equal(await nextPage.isDisabled(), true);
-        assert.equal(await nextPage.evaluate(button => getComputedStyle(button).cursor), "default");
-      } finally {
-        resumeBookLoad();
-      }
+      await page.goto(server.resolvedUrls.local[0] + "word-test");
       await page.waitForFunction(
         () => window.navigationTest?.reader.locationsReady,
         null,
         { timeout: 45000 },
       );
-      assert.equal(await nextPage.isEnabled(), true);
-      assert.equal(await nextPage.evaluate(button => getComputedStyle(button).cursor), "default");
-      assert.equal(await nextPage.getAttribute("title"), null);
+      await page.waitForFunction(() => window.navigationTest.reader.totalPages > 0);
+      const frames = await page.evaluate(() => window.measurementFrames);
+      assert.ok(frames.count >= 8, "The measuring renderer lays out all eight chapters");
+      assert.equal(frames.navigated, 0, "Measurement frames do not navigate to chapter documents");
+      const total = await page.evaluate(() => window.navigationTest.reader.totalPages);
+      await page.reload();
+      await page.waitForFunction(expected => {
+        const reader = window.navigationTest?.reader;
+        return reader?.locationsReady && reader.totalPages === expected;
+      }, total);
+      assert.equal(await page.evaluate(() => window.measurementFrames.count), 0,
+        "A same-layout refresh restores the exact page map without measuring chapters");
+      await page.evaluate(() => window.navigationTest.reader.pageNavigation.go("2", "screen"));
+      await page.waitForFunction(() => /^Page 2\b/.test(window.navigationTest.reader.pageLabel));
+      assert.equal(await page.evaluate(() => window.measurementFrames.count), 0,
+        "A cached screen-page jump uses the stored destination");
+      await page.evaluate(() => window.navigationTest.reader.pageNavigation.go("1", "screen"));
+      await page.waitForFunction(() => /^Page 1\b/.test(window.navigationTest.reader.pageLabel));
+      const nextPage = page.locator(".reader-page-turn-next");
+      assert.equal(await nextPage.evaluate(button => getComputedStyle(button).cursor), "pointer");
       const focus = () =>
         page.evaluate(() =>
           document
@@ -688,7 +698,10 @@ test(
       await key('ArrowLeft');
       assert.equal(await mark(), 'Note', 'Left advances exactly one word with saved sentence grouping');
       await key('Escape');
+      const framesBeforeResize = await page.evaluate(() => window.measurementFrames.count);
       await page.setViewportSize({ width: 390, height: 844 });
+      await page.waitForFunction(before => window.measurementFrames.count >= before + 8 &&
+        window.navigationTest.reader.totalPages > 0, framesBeforeResize);
       await page.waitForTimeout(500);
       await focus();
       await key("ArrowRight");
