@@ -9,12 +9,12 @@ type H1Props = {
 
 export const H1: FC<H1Props> = ({
   children,
-  className = "mb-2 text-4xl md:text-3xl font-bold text-app-800 transition duration-300 ease-in-out",
+  className = "ui-h1",
   addedClass,
   onClick,
 }) => {
   return (
-    <h1 className={`${className} ${addedClass}`} onClick={onClick}>
+    <h1 className={`${className} ${addedClass ?? ""}`} onClick={onClick}>
       {children}
     </h1>
   );

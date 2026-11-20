@@ -16,7 +16,7 @@ export const Input: FC<InputProps> = ({
   onChange,
   placeholder,
   name,
-  className = "w-full rounded-md border border-app-900 bg-gray-50 px-4 py-2 text-3xl font-bold text-app-700",
+  className = "ui-input ui-input-title",
   autoFocus,
 }) => {
   return (

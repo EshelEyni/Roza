@@ -62,6 +62,7 @@ export const LoginForm: FC = () => {
       <Button
         type="submit"
         disabled={isPendingLogin}
+        variant="primary"
         addedClassName="self-center"
       >
         {isPendingLogin ? t("loggingIn") : t("login")}

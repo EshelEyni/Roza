@@ -14,9 +14,9 @@ export const BtnToggleFullScreen: FC<BtnToggleFullScreenProps> = ({
   return (
     <button
       onClick={onToggleFullScreen}
-      className={classNames("flex pt-[0.15rem] text-xl text-app-500", {
-        "!pt-1 !text-3xl": isFullScreen,
-      })}
+      type="button"
+      aria-label={isFullScreen ? "Exit full screen" : "Full screen"}
+      className={classNames("ui-icon-btn", { "!text-2xl": isFullScreen })}
     >
       {isFullScreen ? <FaCompressArrowsAlt /> : <FaExpandArrowsAlt />}
     </button>

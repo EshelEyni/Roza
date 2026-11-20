@@ -8,7 +8,6 @@ import { Button } from "../Buttons/Button";
 import { H2 } from "../App/H2";
 import { BtnMinimizeAll } from "../Buttons/BtnMinimizeAll";
 import { DndListWrapper } from "../App/DndListWrapper";
-import { Hr } from "../App/Hr";
 
 type ReviewListProps = {
   reviews: Review[];
@@ -44,20 +43,19 @@ export const ReviewList: FC<ReviewListProps> = ({ reviews, isEdit }) => {
   }
 
   return (
-    <section className="w-full font-normal text-app-800">
-      <div className="mb-1 flex items-center justify-between">
+    <section className="flex w-full flex-col gap-3">
+      <div className="ui-list-title">
         <H2>{t("reviews")}</H2>
         <div className="flex items-center gap-2">
           <BtnMinimizeAll
             isMinimized={isAllMinimized}
             onToggleMinimize={onToggleMinimize}
           />
-          <Button onClick={handleAddReview} isSmall={true}>
+          <Button onClick={handleAddReview} isSmall={true} variant="primary">
             {t("btnAdd")}
           </Button>
         </div>
       </div>
-      <Hr />
 
       <DndListWrapper
         listClassName="flex flex-col gap-2"

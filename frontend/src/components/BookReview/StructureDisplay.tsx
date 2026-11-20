@@ -15,7 +15,7 @@ export const StructureDisplay: FC<StructureDisplayProps> = ({ structure }) => {
 
   if (!text) return null;
   return (
-    <section className="flex flex-col gap-2 text-app-800">
+    <section className="ui-prose flex flex-col gap-2">
       <H2>{t("structure")}</H2>
 
       <>

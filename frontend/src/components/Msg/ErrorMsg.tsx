@@ -10,7 +10,7 @@ export const ErrorMsg: FC<ErrorMsgProps> = ({ msg = "" }) => {
   console.error(msg);
   const msgToDisplay = msg || t("ErrorMsg.msg");
   return (
-    <p className="my-1 text-xl text-red-500 sm:text-xl md:text-lg">
+    <p className="ui-error" role="alert">
       {msgToDisplay}
     </p>
   );

@@ -8,7 +8,7 @@ type ItemPreviewListProps = {
 
 export const ItemPreviewList: FC<ItemPreviewListProps> = ({
   list,
-  className = "flex flex-col gap-1 text-sm",
+  className = "ui-preview-list",
 }) => {
   const { t } = useTranslation();
   return (
@@ -16,7 +16,6 @@ export const ItemPreviewList: FC<ItemPreviewListProps> = ({
       {list.map(item => (
         <li
           key={item.label}
-          className="flex flex-wrap gap-1 text-xl text-app-700 md:text-lg"
         >
           <span>{t(item.label)}:</span>
           <span>{item.value}</span>

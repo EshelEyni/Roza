@@ -9,7 +9,6 @@ import { BtnMinimize } from "../Buttons/BtnMinimize";
 import { DeleteEntityModal } from "../Modals/DeleteEntityModal";
 import { MinimizedText } from "./MinimizedText";
 import { useMinimized } from "../../hooks/useIsMinimized";
-import { Hr } from "../App/Hr";
 
 type ReviewEditProps = {
   review: Review;
@@ -40,8 +39,8 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review }) => {
   }
 
   return (
-    <section className="flex flex-col gap-2">
-      <div className="mb-3 flex items-center justify-between">
+    <section className="ui-entry">
+      <div className="ui-entry-head">
         <H3>
           {t("review")} {reviewNumber}
         </H3>
@@ -68,7 +67,6 @@ export const ReviewEdit: FC<ReviewEditProps> = ({ review }) => {
           fullScreenTitle={bookReview?.name || t("bookReview")}
         />
       )}
-      <Hr />
     </section>
   );
 };

@@ -5,7 +5,6 @@ import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken"
 import { useTranslation } from "react-i18next";
 import { getLanguages } from "../../services/utilService";
 import { Button } from "../../components/Buttons/Button";
-import classNames from "classnames";
 import { Hr } from "../../components/App/Hr";
 import { H2 } from "../../components/App/H2";
 import { InputContainer } from "../../components/App/InputContainer";
@@ -109,17 +108,13 @@ export const ProfileEdit: React.FC = () => {
         />
       </InputContainer>
       <InputContainer label={t("language")} fieldError={errors.language}>
-        <div className="flex gap-2 space-x-2">
+        <div className="ui-segmented self-start">
           {languages.map(l => (
             <Button
               key={l.value}
               type="button"
-              className={classNames(
-                "rounded-md bg-app-500 px-4 py-1 text-white hover:bg-app-600",
-                {
-                  "!bg-app-600": selectedLanguage === l.value,
-                },
-              )}
+              className=""
+              isActive={selectedLanguage === l.value}
               onClick={() => handleLanguageChange(l.value)}
             >
               {l.name}
@@ -132,7 +127,8 @@ export const ProfileEdit: React.FC = () => {
       <Button
         type="submit"
         disabled={isPendindUpdateUser}
-        addedClassName="self-center !px-4 !py-1"
+        variant="primary"
+        addedClassName="self-center"
       >
         {t("btnSubmit")}
       </Button>

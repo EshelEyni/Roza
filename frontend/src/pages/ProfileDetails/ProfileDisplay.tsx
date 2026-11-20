@@ -24,7 +24,7 @@ export const ProfileDisplay: FC = () => {
   ];
 
   return (
-    <section className="mt-5 flex flex-col gap-2 rounded-lg bg-app-200 p-6 text-app-800">
+    <section className="ui-panel mt-2">
       {list.map(item => (
         <P key={item.key}>
           <strong>{item.key}:</strong> {item.value}

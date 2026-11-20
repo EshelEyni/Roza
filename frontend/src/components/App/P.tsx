@@ -8,8 +8,8 @@ type PProps = {
 
 export const P: FC<PProps> = ({
   children,
-  className = "text-xl text-app-800",
+  className = "ui-p",
   addedClassName,
 }) => {
-  return <p className={`${className} ${addedClassName}`}>{children}</p>;
+  return <p className={`${className} ${addedClassName ?? ""}`}>{children}</p>;
 };

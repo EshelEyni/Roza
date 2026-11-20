@@ -8,8 +8,8 @@ type H3Props = {
 
 export const H4: FC<H3Props> = ({
   children,
-  className = "text-2xl md:text-xl font-bold text-app-800",
+  className = "ui-h4",
   addedClassName,
 }) => {
-  return <h4 className={`${className} ${addedClassName}`}>{children}</h4>;
+  return <h4 className={`${className} ${addedClassName ?? ""}`}>{children}</h4>;
 };

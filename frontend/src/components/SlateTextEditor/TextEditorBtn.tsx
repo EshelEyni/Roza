@@ -24,13 +24,12 @@ export const TextEditorBtn: FC<TextEditorButtonProps> = ({
   const { icon, format } = button;
   return (
     <button
-      className={classnames("text-xl text-app-500", {
-        "scale-125 text-app-800": isActive,
-        "!text-2xl": format === "heading-one" || format === "heading-two",
-        "!text-3xl": isFullScreen,
-        "!text-4xl":
-          (format === "heading-one" && isFullScreen) ||
-          (format === "heading-two" && isFullScreen),
+      type="button"
+      aria-label={format.replace(/-/g, " ")}
+      aria-pressed={isActive}
+      className={classnames("ui-icon-btn ui-editor-btn", {
+        "is-active": isActive,
+        "!text-xl": isFullScreen,
       })}
       onMouseDown={handleMouseDown}
     >

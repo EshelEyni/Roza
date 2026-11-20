@@ -15,7 +15,7 @@ export const TextEditorBtnList: FC<TextEditorBtnListProps> = ({
   const direction = loggedInUser?.language === "he" ? "ltr" : "rtl";
   return (
     <ul
-      className="flex flex-wrap items-center justify-start gap-4"
+      className="flex flex-wrap items-center justify-start gap-1"
       style={{ direction }}
     >
       {btns.map((b, i) => (

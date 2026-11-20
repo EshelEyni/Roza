@@ -12,6 +12,6 @@ export const Header: FC<HeaderProps> = ({
   addedClassName,
 }) => {
   return (
-    <header className={`${className} ${addedClassName}`}>{children}</header>
+    <header className={`${className} ${addedClassName ?? ""}`}>{children}</header>
   );
 };

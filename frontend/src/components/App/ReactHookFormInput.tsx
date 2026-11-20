@@ -73,7 +73,7 @@ export const ReactHookFormInput = <T extends FieldValues>({
     <input
       id={name}
       type={type}
-      className="w-full max-w-96 rounded border border-app-300 p-2"
+      className="ui-input"
       {...register(name, {
         required,
         pattern: getPattern(),

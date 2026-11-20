@@ -1,6 +1,7 @@
-import { FC } from "react";
+import { FC, useId } from "react";
 import { useTranslation } from "react-i18next";
 import { debounce } from "../../services/utilService";
+import { ReaderSelect } from "../Reader/ReaderSelect";
 
 type EntityFilterProps = {
   sortOrder: string;
@@ -9,12 +10,6 @@ type EntityFilterProps = {
   onSort: (sortOrder: string) => void;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
-
-const Label = ({ children }: { children: React.ReactNode }) => (
-  <label className="flex w-3/4 max-w-96 items-center rounded-lg bg-app-500 p-3">
-    {children}
-  </label>
-);
 
 export const EntityFilter: FC<EntityFilterProps> = ({
   sortOrder,
@@ -25,28 +20,36 @@ export const EntityFilter: FC<EntityFilterProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const id = useId();
+  const sortId = id + "-sort";
+  const sortLabelId = id + "-sort-label";
+  const searchId = id + "-search";
+
   return (
-    <div className="mb-4 flex w-full flex-col items-center justify-center gap-4 sm:flex-row">
-      <Label>
-        {t("sortBy")}:
-        <select
+    <div className="ui-filter">
+      <div className="ui-filter-label">
+        <span id={sortLabelId}>{t("sortBy")}:</span>
+        <ReaderSelect
+          id={sortId}
+          labelId={sortLabelId}
           value={sortOrder}
-          onChange={e => onSort(e.target.value)}
-          className="ml-2 rounded-lg bg-app-500 p-1 flex-1"
-        >
-          <option value={sortField}>{t("asc")}</option>
-          <option value={`-${sortField}`}>{t("desc")}</option>
-        </select>
-      </Label>
-      <Label>
+          options={[
+            { value: sortField, label: t("asc") },
+            { value: `-${sortField}`, label: t("desc") },
+          ]}
+          onChange={onSort}
+        />
+      </div>
+      <label className="ui-filter-label" htmlFor={searchId}>
         {t("search")}:
         <input
+          id={searchId}
           type="text"
           defaultValue={searchTerm}
           onChange={debounce(e => handleInputChange(e), 1500).debouncedFunc}
-          className="ml-2 rounded-lg bg-app-500 p-1"
+          className="ui-input"
         />
-      </Label>
+      </label>
     </div>
   );
 };

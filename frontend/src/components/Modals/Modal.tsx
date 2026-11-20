@@ -13,6 +13,7 @@ import { createPortal } from "react-dom";
 import { useOutsideClick } from "../../hooks/useOutsideClick";
 import { debounce } from "../../services/utilService";
 import { MainScreen } from "../App/MainScreen";
+import { buttonClassName, ButtonVariant } from "../Buttons/buttonClassName";
 
 type ModalPosition = {
   top?: number;
@@ -39,12 +40,14 @@ type OpenBtnProps = {
   modalHeight?: number;
   externalControlFunc?: () => void;
   isSmall?: boolean;
+  variant?: ButtonVariant;
 };
 
 type CloseBtnProps = {
   children: React.ReactElement;
   className?: string;
   onClick?: () => void;
+  variant?: ButtonVariant;
 };
 
 type ModalHoverActivatorProps = {
@@ -177,17 +180,17 @@ export const Modal: FC<ModalProps> & {
 const OpenBtn: FC<OpenBtnProps> = ({
   children,
   modalName,
-  className = "rounded-md bg-app-500 text-xl md:text-lg px-5 py-2 md:px-4 md:py-1 text-white hover:bg-app-600 cursor-pointer",
+  className,
   setPositionByRef = false,
   modalHeight = 0,
   externalControlFunc,
   isSmall,
+  variant = "secondary",
 }) => {
   const { open, setPosition, setIsModalAbove } = useContext(ModalContext)!;
   const ref = useRef<HTMLButtonElement>(null);
 
-  if (isSmall)
-    className = `${className} !text-lg !px-3 !py-1 md:!px-3 md:!py-0`;
+  className ??= buttonClassName(variant, isSmall);
 
   const calculatePosition = useCallback(() => {
     const res = calculatePositionByRef(ref, modalHeight);
@@ -223,7 +226,8 @@ const OpenBtn: FC<OpenBtnProps> = ({
 const CloseBtn: FC<CloseBtnProps> = ({
   children,
   onClick,
-  className = "rounded-md bg-app-500 text-xl md:text-lg px-5 py-2 md:px-4 md:py-1 text-white hover:bg-app-600 cursor-pointer",
+  className,
+  variant = "secondary",
 }) => {
   const { close } = useContext(ModalContext)!;
 
@@ -232,7 +236,7 @@ const CloseBtn: FC<CloseBtnProps> = ({
       onClick?.();
       close();
     },
-    className,
+    className: className ?? buttonClassName(variant),
   });
 };
 
@@ -291,7 +295,7 @@ const ModalHoverOpen: FC<ModalHoverActivatorProps> = ({
 const Window: FC<WindowProps> = ({
   children,
   name,
-  className = "fixed left-1/2 top-1/2 z-[150] flex min-w-[300px] -translate-x-1/2 -translate-y-1/2 transform flex-col items-center gap-12 overflow-auto rounded-lg bg-app-100 p-4 shadow-lg md:min-w-[400px]",
+  className = "ui-modal",
   elementId = "root",
   style = {},
   hoverControl = false,

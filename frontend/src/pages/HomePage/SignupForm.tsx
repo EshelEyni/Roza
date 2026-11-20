@@ -105,6 +105,7 @@ export const SignupForm: FC = () => {
       <Button
         type="submit"
         disabled={isPendingSignup}
+        variant="primary"
         addedClassName="self-center"
       >
         {isPendingSignup ? t("signingUp") : t("signup")}

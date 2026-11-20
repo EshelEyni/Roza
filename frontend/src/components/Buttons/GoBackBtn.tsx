@@ -8,7 +8,8 @@ export const GoBackBtn: FC = () => {
   return (
     <Button
       onClick={onGoBack}
-      className="text-[2.5rem] text-app-500 sm:text-5xl md:text-4xl"
+      className="ui-icon-btn"
+      ariaLabel="Go back"
     >
       <FaArrowAltCircleLeft />
     </Button>

@@ -30,7 +30,7 @@ export const ImgDisplay: FC<ImgDisplayProps> = ({ reference, img }) => {
         <Modal>
           <Modal.OpenBtn
             modalName="imgDisplay"
-            className="absolute right-0 top-0 z-10 m-1 cursor-pointer rounded-full bg-app-800 p-1 text-white"
+            className="absolute right-0 top-0 z-10 m-1 cursor-pointer rounded-full bg-[var(--roza-primary)] p-1 text-[color:var(--roza-on-primary)]"
           >
             <span>
               <IoClose />
@@ -40,7 +40,7 @@ export const ImgDisplay: FC<ImgDisplayProps> = ({ reference, img }) => {
           <Modal.Window name="imgDisplay">
             <div className="flex w-full flex-col gap-4">
               <div className="flex w-full flex-col gap-2">
-                <h3 className="text-center text-2xl font-medium text-app-800">
+                <h3 className="ui-h3 text-center">
                   {t("removeImgMsg.title")}
                 </h3>
                 <p>{t("removeImgMsg.msg")}</p>
@@ -60,7 +60,7 @@ export const ImgDisplay: FC<ImgDisplayProps> = ({ reference, img }) => {
         <img
           src={img}
           alt="book reference"
-          className="h-48 w-auto cursor-pointer rounded-2xl object-fill"
+          className="h-48 w-auto cursor-pointer rounded-[var(--roza-radius)] border border-[color:var(--roza-line-2)] object-fill"
           onClick={() => setIsOpened(true)}
         />
       </div>

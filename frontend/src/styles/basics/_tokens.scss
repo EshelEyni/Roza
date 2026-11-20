@@ -1,0 +1,51 @@
+// Roza design tokens (Ticket #57).
+// Taken from the Reading Room styles so every page shares one look.
+// Reader audiobook and sentence mode keep their own styles and do not read these tokens.
+:root {
+  // Surfaces
+  --roza-bg: #f3e8d5;
+  --roza-surface: #fbf6ed;
+  --roza-raised: #fffefa;
+  --roza-card: #f7efe3;
+  --roza-cover: #dcc8ae;
+
+  // Ink
+  --roza-ink: #392e24;
+  --roza-ink-2: #726454;
+  --roza-ink-3: #8b7762;
+
+  // Lines and tints
+  --roza-line: #cfbba5;
+  --roza-line-2: #8e7e6533;
+  --roza-field-line: #9b87678c;
+  --roza-tint: #a389611a;
+  --roza-tint-strong: #a3896130;
+  --roza-hover: #e9d8c4;
+
+  // Actions
+  --roza-primary: #5b4634;
+  --roza-primary-hover: #73583f;
+  --roza-on-primary: #fff9ef;
+  --roza-brand: #7e573b;
+  --roza-focus: #a36b38;
+  --roza-progress: #a38259;
+
+  // Feedback
+  --roza-danger: #9c3426;
+  --roza-danger-bg: #b1483517;
+  --roza-success: #3f6b34;
+  --roza-success-bg: #5571451f;
+  --roza-scrim: #24180f66;
+  --roza-shadow-pop: 0 8px 24px #392e2429;
+  --roza-shadow-dialog: 0 20px 70px #24180f40;
+
+  // Type
+  --roza-font-display: Georgia, "Times New Roman", Alef, serif;
+  --roza-font-ui: Arial, "Helvetica Neue", Alef, sans-serif;
+
+  // Shape
+  --roza-radius-sm: 5px;
+  --roza-radius: 7px;
+  --roza-radius-card: 10px;
+  --roza-radius-dialog: 14px;
+}

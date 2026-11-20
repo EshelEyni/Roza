@@ -424,6 +424,29 @@
 .reader-theme-dark select {
   background: #242622;
 }
+// Ticket #57: native selects in settings match ReaderSelect (same field, chevron, focus ring).
+.reader-settings select,
+.reader-ai-settings select {
+  appearance: none;
+  min-height: 42px;
+  padding: 10px 34px 10px 12px;
+  border-radius: 7px;
+  background-color: var(--reader-surface, #fbf6ed);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23726454' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  cursor: pointer;
+}
+.reader-settings select:dir(rtl),
+.reader-ai-settings select:dir(rtl) { padding: 10px 12px 10px 34px; background-position: left 10px center; }
+.reader-settings select:hover,
+.reader-ai-settings select:hover { border-color: #a88758; }
+.reader-settings select:focus-visible { outline: 2px solid #a88758; outline-offset: 2px; }
+.reader-theme-dark .reader-settings select,
+.reader-theme-dark .reader-ai-settings select {
+  background-color: #242622;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23bdb8aa' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+}
 .reader-contents ol {
   margin: 0;
   padding: 0;
@@ -2124,15 +2147,6 @@
 
 .reader-keyboard-settings .reader-keyboard-field { min-width: 0; }
 .reader-keyboard-settings .reader-keyboard-field > label { margin-bottom: 10px; }
-.reader-select { position: relative; width: 100%; }
-.reader-select > button, .reader-number-control { width: 100%; min-height: 42px; border: 1px solid #9b876766; border-radius: 7px; background: var(--reader-surface, #fbf6ed); color: inherit; font: inherit; }
-.reader-select > button { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; text-align: start; cursor: pointer; }
-.reader-select > button:hover { border-color: #a88758; background: #a3896114; }
-.reader-select > button:focus-visible, .reader-number-control:focus-within { outline: 2px solid #a88758; outline-offset: 2px; }
-.reader-select-options { position: absolute; inset-inline: 0; top: calc(100% + 6px); z-index: 20; padding: 5px; border: 1px solid #9b876766; border-radius: 8px; background: var(--reader-surface, #fbf6ed); color: inherit; box-shadow: 0 8px 24px #392e2426; }
-.reader-select-options [role=option] { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px; border-radius: 5px; cursor: pointer; font-size: 13px; }
-.reader-select-options [role=option].is-active { background: #a3896130; }
-.reader-select-options [aria-selected=true] { font-weight: 600; }
 .reader-number-control { display: flex; align-items: center; padding: 3px; }
 .reader-number-control .reader-icon-button { width: 34px; height: 34px; border: 0; background: transparent; font-size: 16px; cursor: pointer; }
 .reader-number-control .reader-icon-button:hover:not(:disabled) { background: #a3896130; }

@@ -31,7 +31,7 @@ export const MinimizedText: FC<MinimizedTextProps> = ({
 
   return (
     <p
-      className={`w-full whitespace-pre-wrap break-words text-base text-app-700`}
+      className={`w-full whitespace-pre-wrap break-words text-base text-[color:var(--roza-ink-2)]`}
       style={{ maxWidth: elMaxWidth }}
     >
       {truncatedText}

@@ -10,7 +10,7 @@ type H2Props = {
 export const H2: FC<H2Props> = ({
   children,
   onClick,
-  className = "text-4xl md:text-3xl font-bold text-app-800",
+  className = "ui-h2",
   addedClassName = "",
 }) => {
   return (
