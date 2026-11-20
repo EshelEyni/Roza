@@ -2,6 +2,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { FiCheck, FiChevronDown, FiX } from "react-icons/fi";
+import { readerSelectionColor, readingSentenceTint, readingWordTextColor } from "../../services/readerMarkColors";
 import "./readerColorSelect.css";
 
 type ColorOption = readonly [name: string, color: string];
@@ -15,6 +16,7 @@ const backgroundOptions: ColorOption[] = [
   ...warmOptions,
 ];
 const highlightOptions: ColorOption[] = [
+  ["audiobookWord", readerSelectionColor], ["audiobookSentence", readingSentenceTint],
   ["blue", "#719bd8"], ["sky", "#a3c2ff"], ["dustyBlue", "#b3c4d6"], ["yellow", "#f2e66b"],
   ["honey", "#e9c46a"], ["amber", "#e0a458"], ["peach", "#efc39e"], ["terracotta", "#d38b6b"],
   ["rose", "#e6b3aa"], ["pink", "#f3b9cb"], ["lavender", "#cbb8eb"], ["green", "#b8dca7"],
@@ -23,6 +25,7 @@ const highlightOptions: ColorOption[] = [
   ...warmOptions,
 ];
 const textOptions: ColorOption[] = [
+  ["audiobookText", readingWordTextColor],
   ["black", "#28231e"], ["white", "#ffffff"], ["brown", "#392e24"], ["espresso", "#2e241c"],
   ["cocoa", "#5a4030"], ["rust", "#9a4a2a"], ["burgundy", "#842f45"], ["plum", "#5b3a5e"],
   ["purple", "#663d86"], ["ink", "#1f2a44"], ["navy", "#183153"], ["blue", "#2456a6"],

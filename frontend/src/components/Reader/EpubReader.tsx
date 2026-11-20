@@ -4,8 +4,9 @@ import { ReaderSentenceMode } from "./ReaderSentenceMode";
 import { useSearchParams } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { ReaderRsvp } from "./ReaderRsvp";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { ReaderPassageMarks } from "./ReaderPassageMarks";
+import { readerSelectionColor, readingSentenceBackground, readingWordTextColor } from "../../services/readerMarkColors";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import type { ReaderBook } from "../../../../shared/types/reader";
 import { useEpubReader } from "../../hooks/reader/useEpubReader";
@@ -65,7 +66,12 @@ export function EpubReader({
     <ReaderPassageMarks.Provider value={reader.passageMarks}>
     <div
       className={"reader-shell reader-theme-" + reader.state.preferences.theme}
-      style={{ background: reader.state.preferences.backgroundColor }}
+      style={{
+        background: reader.state.preferences.backgroundColor,
+        "--reader-focus-sentence": readingSentenceBackground(reader.state.preferences.selectionColor),
+        "--reader-focus-word": reader.state.preferences.selectionColor || readerSelectionColor,
+        "--reader-focus-word-text": reader.state.preferences.selectionTextColor || readingWordTextColor,
+      } as CSSProperties}
       ref={reader.shell}
     >
       <span className="app-header-status-surface" aria-hidden="true" />

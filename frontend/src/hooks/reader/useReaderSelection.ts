@@ -1,4 +1,4 @@
-import { readerMarkTextColor, readerSelectionColor } from "../../services/readerMarkColors";
+import { readerSelectionColor, readingWordTextColor } from "../../services/readerMarkColors";
 import { bindNativeHighlight } from "../../services/readerNativeHighlight";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -166,7 +166,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
             },
           );
           highlights.current.push({ cfi: piece.cfi, runtime: active.runtime,
-            cleanup: bindNativeHighlight(annotation, active.runtime.stateRef.current.preferences.selectionColor || readerSelectionColor, active.runtime.stateRef.current.preferences.selectionTextColor || readerMarkTextColor) });
+            cleanup: bindNativeHighlight(annotation, active.runtime.stateRef.current.preferences.selectionColor || readerSelectionColor, active.runtime.stateRef.current.preferences.selectionTextColor || readingWordTextColor) });
         }
         const next = {
           ...previous,

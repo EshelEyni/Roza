@@ -2,6 +2,7 @@ import { FiMinus, FiPlus } from "react-icons/fi";
 import { ReaderSelect } from "./ReaderSelect";
 import { useId, useState } from "react";
 import type { ReaderKeyboardSettings } from "../../../../shared/types/readerKeyboardSettings";
+import { readerSelectionColor, readingWordTextColor } from "../../services/readerMarkColors";
 import { ReaderColorSelect } from "./ReaderColorSelect";
 import { useTranslation } from "react-i18next";
 import { ReaderPreferences } from "../../../../shared/types/reader";
@@ -40,7 +41,7 @@ export function ReaderSettings({
   }
   const defaults = {
     backgroundColor: { light: "#fffefa", sepia: "#f3e8d5", dark: "#242622" }[preferences.theme],
-    selectionColor: "#719bd8", selectionTextColor: { light: "#28231e", sepia: "#392e24", dark: "#ffffff" }[preferences.theme],
+    selectionColor: readerSelectionColor, selectionTextColor: readingWordTextColor,
     passageColor: "#f2e66b", passageTextColor: "#28231e",
     translationColor: "#a3c2ff", translationTextColor: "#28231e",
   };

@@ -222,6 +222,18 @@ test(
       assert.equal(lookups.length, 0);
       await key("ArrowRight");
       assert.equal(await mark(), "Note");
+      const sentenceHighlight = () => page.evaluate(() => {
+        const doc = document.querySelector(".reader-viewport iframe").contentDocument;
+        const highlights = doc.defaultView.CSS.highlights;
+        const sentence = Array.from(highlights).find(([, mark]) => mark.priority === -1);
+        if (!sentence) return null;
+        const color = name => doc.defaultView.getComputedStyle(doc.body, "::highlight(" + name + ")").backgroundColor;
+        return {
+          sentenceIncludesWord: [...sentence[1]][0].toString().includes("chapter0word30"),
+          sentence: color(sentence[0]),
+        };
+      });
+      assert.equal(await sentenceHighlight(), null);
       await key("ArrowRight");
       assert.equal(await mark(), "1");
       await key("ArrowLeft");
@@ -626,8 +638,10 @@ test(
       assert.equal(await mark(), 'Note', 'Sentence test starts at the first word');
       await key('Control+ArrowRight');
       assert.equal(await mark(), 'chapter0word30', 'Ctrl+Right goes to next sentence');
+      assert.deepEqual(await sentenceHighlight(), { sentenceIncludesWord: true, sentence: "rgba(235, 183, 143, 0.3)" });
       await key('Control+ArrowLeft');
       assert.equal(await mark(), 'Note', 'Ctrl+Left goes to previous sentence start');
+      assert.equal(await sentenceHighlight(), null);
       for (let i = 0; i < 4; i++) await key('ArrowRight');
       const lineGeometry = () => page.evaluate(() => {
         const host = window.navigationTest.reader.host.current.getBoundingClientRect();

@@ -378,7 +378,7 @@ export function ManuscriptEditor({
       <div
         ref={findRoot}
         className={
-          annotations !== undefined ? "ws-annotated-editor" : undefined
+          [annotations !== undefined && "ws-annotated-editor", reading && "ws-reading-editor"].filter(Boolean).join(" ")
         }
       >
         <Editable
@@ -508,6 +508,7 @@ export function ManuscriptEditor({
             );
           }}
         />
+        {reading && <div className="ws-reading-highlights" aria-hidden="true" />}
         {annotations !== undefined && (
           <AnnotationMargin
             notes={annotations}

@@ -1,3 +1,4 @@
+import { readerSelectionColor, readingSentenceBackground, readingWordTextColor } from "./readerMarkColors";
 import type { Rendition } from "epubjs";
 import type { ReaderPreferences } from "../../../shared/types/reader";
 
@@ -15,6 +16,9 @@ export function applyPreferences(
   rendition.themes.default({
     body: {
       color: palette.color,
+      "--reader-focus-sentence": readingSentenceBackground(preferences.selectionColor),
+      "--reader-focus-word": preferences.selectionColor || readerSelectionColor,
+      "--reader-focus-word-text": preferences.selectionTextColor || readingWordTextColor,
       background: preferences.backgroundColor || palette.background,
     },
     "p, li, blockquote": {
@@ -27,8 +31,8 @@ export function applyPreferences(
           : "#79552e !important",
     },
     "::selection": {
-      background: (preferences.selectionColor || "#719bd8") + " !important",
-      color: (preferences.selectionTextColor || palette.color) + " !important",
+      background: (preferences.selectionColor || readerSelectionColor) + " !important",
+      color: (preferences.selectionTextColor || readingWordTextColor) + " !important",
     },
     img: { "max-width": "100% !important", "object-fit": "contain" },
   });

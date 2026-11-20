@@ -138,7 +138,7 @@ test(
           assert.equal(await colorButton(page, 'Selected text color').evaluate(button =>
             getComputedStyle(button.querySelector('.reader-color-swatch')).backgroundColor), 'rgb(255, 255, 255)');
           await page.getByRole("button", { name: "Reset colors" }).click();
-          assert.equal(await colorButton(page, 'Selected text color').innerText(), 'Brown');
+          assert.equal(await colorButton(page, 'Selected text color').innerText(), 'Audiobook text');
           await page.getByText("Test reader settings", { exact: true }).click();
           // Translated words persist on the same page, including after another selection.
           await run(() => window.selectionTest.translate(0, 7));

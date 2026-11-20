@@ -647,6 +647,49 @@
   white-space: pre-wrap;
 }
 
+.ws-reading-editor {
+  position: relative;
+  isolation: isolate;
+  --ws-manual-sentence-text: var(--ws-sentence-highlight-text);
+  --ws-manual-word-text: var(--ws-word-highlight-text);
+}
+
+.ws-reading-highlights {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+}
+
+.ws-reading-highlight > span {
+  position: absolute;
+  box-sizing: content-box;
+}
+
+.ws-reading-highlight.is-sentence > span {
+  background: var(--ws-sentence-focus);
+  border-radius: 4px;
+  padding: 3px;
+  margin: -3px 0 0 -3px;
+}
+
+.ws-reading-highlight.is-word > span {
+  background: var(--ws-word-highlight);
+  border-radius: 3px;
+  padding-inline: 2px;
+  margin-left: -2px;
+  z-index: 1;
+}
+
+.ws-reading-highlights:has(.is-narration) > .ws-reading-highlight:not(.is-narration) {
+  visibility: hidden;
+}
+
+.ws-reading-editor:has(.ws-reading-highlight.is-narration) {
+  --ws-manual-sentence-text: currentColor;
+  --ws-manual-word-text: currentColor;
+}
+
 .ws-prose-reading::selection {
   background-color: var(--ws-word-highlight);
   color: var(--ws-word-highlight-text);

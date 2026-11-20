@@ -1,5 +1,5 @@
 import { readerWordPattern } from "../../services/readerWordPattern";
-import { readerMarkTextColor, readerSelectionColor } from "../../services/readerMarkColors";
+import { readerMarkTextColor, readerSelectionColor, readingWordTextColor } from "../../services/readerMarkColors";
 import { bindReaderTouch } from "../../services/readerTouch";
 import { readerSentencePassageOffsets } from "../../services/readerSentencePassageOffsets";
 import {
@@ -798,7 +798,7 @@ export function ReaderSentenceMode({
           "--sentence-selection-color":
             reader.state.preferences.selectionColor || readerSelectionColor,
           "--sentence-selection-text-color":
-            reader.state.preferences.selectionTextColor || readerMarkTextColor,
+            reader.state.preferences.selectionTextColor || readingWordTextColor,
           "--sentence-translation-color":
             reader.state.preferences.translationColor || "#a3c2ff",
           "--sentence-translation-text-color":
@@ -898,18 +898,6 @@ export function ReaderSentenceMode({
                         ref={
                           wordIndex === (index - 1) / 2
                             ? highlightedWord
-                            : undefined
-                        }
-                        style={
-                          wordIndex === (index - 1) / 2
-                            ? {
-                                backgroundColor:
-                                  reader.state.preferences.selectionColor ||
-                                  readerSelectionColor,
-                                color:
-                                  reader.state.preferences.selectionTextColor ||
-                                  readerMarkTextColor,
-                              }
                             : undefined
                         }
                       >

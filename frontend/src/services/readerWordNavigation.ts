@@ -2,6 +2,7 @@ import { closestSentenceWord, type SentenceVisualLine } from "./readerSentenceGe
 import { EpubCFI, type Contents, type Location } from "epubjs";
 import { defaultReaderKeyboardSettings } from "./readerKeyboardSettings";
 import { readerSentenceSpans } from "./readerSentenceSpans";
+import { paintNativeHighlight } from "./readerNativeHighlight";
 import { ReaderPassageMarker } from "./readerPassageMarker";
 import { readSelectionRange, selectionEndpoints } from "./readerSelectionRange";
 import type { EpubRuntime } from "../hooks/reader/useEpubRuntime";
@@ -35,10 +36,11 @@ export function createReaderWordNavigation(
   const chapters = new WeakMap<Document, Word[]>();
   const marker = new ReaderPassageMarker(
     () => runtime.renditionRef.current,
-    () => runtime.stateRef.current.preferences.selectionColor || "#719bd8",
-    () => runtime.stateRef.current.preferences.selectionTextColor || "#28231e",
+    () => "var(--reader-focus-word)",
+    () => "var(--reader-focus-word-text)",
     "reader-keyboard-word",
   );
+  let clearSentence: (() => void) | undefined;
   let version = 0;
   let queue = Promise.resolve();
   let turning = false;
@@ -47,6 +49,8 @@ export function createReaderWordNavigation(
     | undefined;
   const clearPaint = () => {
     marker.clear();
+    clearSentence?.();
+    clearSentence = undefined;
     runtime.keyboardWordCfi.current = "";
     active = undefined;
     group = undefined;
@@ -317,6 +321,9 @@ export function createReaderWordNavigation(
     focusedSelection = {cfi, endCfi, text,
       word: /^[a-zA-Z]+(?:['’‘-][a-zA-Z]+)*$/.test(text) && text.length <= 80 ? text : undefined,
       x: (frame?.left || 0) + rect.left, y: (frame?.top || 0) + rect.bottom + 8};
+    if (navigationKind === "sentence" && direction === "next" && !selectionAnchor && active.sentenceRange) {
+      clearSentence = paintNativeHighlight(active.sentenceRange, "var(--reader-focus-sentence)", undefined, -1);
+    }
     await marker.show(focusedSelection, "blue", async () => endCfi
       ? (await readSelectionRange(runtime.epubRef.current!, cfi, endCfi)).pieces.map(piece => piece.cfi)
       : [cfi]);

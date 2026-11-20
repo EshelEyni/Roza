@@ -2251,7 +2251,12 @@ html:has(.reader-sentence-mode), body:has(.reader-sentence-mode) { height: 100%;
 .reader-sentence-mode :focus-visible, .reader-toolbar-sentence :focus-visible { outline: 2px solid #816449; outline-offset: 3px; }
 .reader-sentence-error { flex: none; padding: 4px 24px; }
 .reader-sentence-toast { position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%); background: #574535; color: #FFF8EB; font-size: 13px; padding: 11px 17px; border-radius: 24px; z-index: 70; }
-.reader-sentence-word-active { border-radius: 3px; }
+.reader-sentence-word-active {
+  background: var(--sentence-selection-color);
+  color: var(--sentence-selection-text-color);
+  border-radius: 3px;
+  box-shadow: 2px 0 var(--sentence-selection-color), -2px 0 var(--sentence-selection-color);
+}
 @media(max-width:1024px) { .reader-shell:has(.reader-sentence-mode) { padding-top: 60px; padding-bottom: 0; } .reader-toolbar-sentence { flex-wrap: nowrap; min-height: 60px; padding: 0 20px; } }
 @media(max-width:1024px) {
   .reader-sentence-stage { padding: 18px 18px 6px; }

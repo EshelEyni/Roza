@@ -17,7 +17,7 @@ import { useConfirmation } from "../Modals/useConfirmation";
 import { ReaderColorSelect } from "../Reader/ReaderColorSelect";
 import "../Modals/confirmDialog.css";
 import { useEffect, useId, useMemo, useReducer, useRef, useState } from "react";
-import { readerMarkTextColor } from "../../services/readerMarkColors";
+import { readerMarkTextColor, readerSelectionColor, readingSentenceBackground, readingSentenceTint, readingWordTextColor } from "../../services/readerMarkColors";
 import {
   Link,
   useNavigate,
@@ -232,10 +232,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const [size, setSize] = useState(() => preference("roza:studio:font", "20"));
   const optionsDialog = useRef<HTMLDialogElement>(null);
   const optionsTitle = useId();
-  const [wordColor, setWordColor] = useState(() => colorPreference(wordColorKey, "#b88a60"));
-  const [sentenceColor, setSentenceColor] = useState(() => colorPreference(sentenceColorKey, "#d8c3a5"));
-  const [wordTextColor, setWordTextColor] = useState(() => colorPreference(wordTextColorKey, "#392e24"));
-  const [sentenceTextColor, setSentenceTextColor] = useState(() => colorPreference(sentenceTextColorKey, "#392e24"));
+  const [wordColor, setWordColor] = useState(() => colorPreference(wordColorKey, readerSelectionColor));
+  const [sentenceColor, setSentenceColor] = useState(() => colorPreference(sentenceColorKey, readingSentenceTint));
+  const [wordTextColor, setWordTextColor] = useState(() => colorPreference(wordTextColorKey, readingWordTextColor));
+  const [sentenceTextColor, setSentenceTextColor] = useState(() => colorPreference(sentenceTextColorKey, "#302923"));
   const wordForeground = wordTextColor || markForeground(wordColor);
   const sentenceForeground = sentenceTextColor || markForeground(sentenceColor);
   const [formatChapter, setFormatChapter] = useState<string | null>(null);
@@ -487,6 +487,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         "--ws-word-highlight": wordColor,
         "--ws-word-highlight-text": wordForeground,
         "--ws-sentence-highlight": sentenceColor,
+        "--ws-sentence-focus": readingSentenceBackground(sentenceColor),
         "--ws-sentence-highlight-text": sentenceForeground,
       } as React.CSSProperties}
     >

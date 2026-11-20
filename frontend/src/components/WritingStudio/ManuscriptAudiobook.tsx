@@ -66,21 +66,40 @@ function ManuscriptPlayback({ narration, localId, manuscriptId, markedSentence, 
   const volumePercent = Math.round(audio.volume * 100) + "%";
   const progress = seekDraft ?? audio.currentWord;
   const secondsPerWord = 60 / (180 * audio.speed);
+  const pauseFollowUntil = useRef(0);
   const range = following && audio.section && !audio.ended ? ranges[audio.index] : undefined;
+
+  useEffect(() => {
+    const doc = editable.ownerDocument;
+    const pauseFollow = (event: Event) => {
+      const target = event.target;
+      if (target instanceof Element && (target.contains(editable) || editable.contains(target))) {
+        pauseFollowUntil.current = Date.now() + 4000;
+      }
+    };
+    doc.addEventListener("wheel", pauseFollow, { passive: true, capture: true });
+    doc.addEventListener("touchmove", pauseFollow, { passive: true, capture: true });
+    doc.addEventListener("pointerdown", pauseFollow, { passive: true, capture: true });
+    return () => {
+      doc.removeEventListener("pointerdown", pauseFollow, true);
+      doc.removeEventListener("wheel", pauseFollow, true);
+      doc.removeEventListener("touchmove", pauseFollow, true);
+    };
+  }, [editable]);
 
   const positionChanged = useRef(onPositionChange);
   positionChanged.current = onPositionChange;
   useEffect(() => {
     if (!range) return;
     positionChanged.current(range);
-    return followManuscriptNarration(editable, range);
+    return followManuscriptNarration(editable, range, "sentence", Date.now() >= pauseFollowUntil.current);
   }, [editable, range]);
 
   const spokenWord = audio.highlight;
   const wordRangeAt = range ? wordRanges[audio.index] : undefined;
   useEffect(() => {
     const word = spokenWord === null ? undefined : wordRangeAt?.(spokenWord);
-    if (word) return followManuscriptNarration(editable, word, "word");
+    if (word) return followManuscriptNarration(editable, word, "word", Date.now() >= pauseFollowUntil.current);
   }, [editable, spokenWord, wordRangeAt]);
 
   useLayoutEffect(() => {

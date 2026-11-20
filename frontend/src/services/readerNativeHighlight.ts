@@ -4,7 +4,7 @@ let sequence = 0;
 export function paintNativeHighlight(
   range: Range,
   background: string,
-  foreground: string,
+  foreground: string | undefined,
   priority = 0,
 ): (() => void) | undefined {
   const doc = range.startContainer.ownerDocument;
@@ -12,7 +12,7 @@ export function paintNativeHighlight(
   if (!doc || !view?.CSS?.highlights || !view.Highlight) return;
   const name = "reader-mark-" + ++sequence;
   const style = doc.createElement("style");
-  style.textContent = "::highlight(" + name + "){background-color:" + background + ";color:" + foreground + ";text-shadow:none;}";
+  style.textContent = "::highlight(" + name + "){background-color:" + background + (foreground ? ";color:" + foreground + ";text-shadow:none" : "") + ";}";
   const highlight = new view.Highlight(range);
   highlight.priority = priority;
   doc.head.append(style);

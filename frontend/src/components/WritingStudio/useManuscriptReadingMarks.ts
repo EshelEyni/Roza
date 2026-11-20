@@ -134,28 +134,63 @@ function coveredTop(editable: Element, view: { top: number; bottom: number }, x:
   return top;
 }
 
-export function followManuscriptNarration(editable: HTMLElement, range: Range, kind: "sentence" | "word" = "sentence") {
+function revealReadingFocus(editable: HTMLElement, range: Range) {
   if (!editable.contains(range.commonAncestorContainer)) return;
   const scroller = scrollParent(editable);
-  const rect = range.getBoundingClientRect();
-  if (scroller && rect.height) {
-    const doc = editable.ownerDocument;
-    const box = scroller === doc.scrollingElement
-      ? { top: 0, left: 0, right: doc.documentElement.clientWidth }
-      : scroller.getBoundingClientRect();
-    const bottom = Math.min(doc.documentElement.clientHeight, box.top + scroller.clientTop + scroller.clientHeight);
-    const x = Math.min(Math.max((rect.left + rect.right) / 2, box.left + 1), box.right - 1);
-    const top = coveredTop(editable, { top: Math.max(0, box.top + scroller.clientTop), bottom }, x);
-    const player = doc.querySelector(".ws-floating-audio")?.getBoundingClientRect();
-    const overlapsPlayer = player && rect.left < player.right && rect.right > player.left &&
-      rect.top < player.bottom && rect.bottom > player.top;
-    if (overlapsPlayer && rect.height + 8 <= player.top - top) {
-      scroller.scrollBy(0, rect.bottom - player.top + 8);
-    } else if (rect.top < top || rect.bottom > bottom) {
-      scroller.scrollBy(0, rect.top - top);
-    }
+  const rect = Array.from(range.getClientRects()).find(line => line.width && line.height);
+  if (!scroller || !rect) return;
+  const view = readingView(editable, scroller, rect);
+  const height = view.bottom - view.top;
+  if (height <= 0) return;
+  const player = editable.ownerDocument.querySelector(".ws-floating-audio")?.getBoundingClientRect();
+  if (player && rect.left < player.right && rect.right > player.left &&
+      rect.top < player.bottom && rect.bottom > player.top && rect.height + 8 <= player.top - view.top) {
+    scroller.scrollBy(0, rect.bottom - player.top + 8);
+  } else if (rect.top < view.top + height * 0.15 || rect.bottom > view.top + height * 0.7) {
+    scroller.scrollBy(0, rect.top - view.top - height * 0.3);
   }
-  return paintNativeHighlight(range, `var(--ws-${kind}-highlight)`, `var(--ws-${kind}-highlight-text)`, kind === "word" ? 3 : 2);
+}
+
+/** Paint rounded line fragments behind the editable without inserting spans into Slate text. */
+function paintReadingFocus(range: Range, kind: "sentence" | "word", narrating = false) {
+  const editable = range.startContainer.parentElement?.closest<HTMLElement>("[data-slate-editor]");
+  const layer = editable?.parentElement?.querySelector<HTMLElement>(":scope > .ws-reading-highlights");
+  if (!editable || !layer) return;
+
+  const mark = layer.ownerDocument.createElement("div");
+  mark.className = "ws-reading-highlight is-" + kind + (narrating ? " is-narration" : "");
+  layer.appendChild(mark);
+  const draw = () => {
+    const origin = layer.getBoundingClientRect();
+    const lines = groupSentenceWordRects(Array.from(range.getClientRects())
+      .filter(rect => rect.width && rect.height)
+      .map(({ left, right, top, bottom }) => ({ index: 0, left, right, top, bottom })));
+    mark.replaceChildren(...lines.map(({ words: [rect] }) => {
+      const box = layer.ownerDocument.createElement("span");
+      box.style.left = (rect.left - origin.left) + "px";
+      box.style.top = (rect.top - origin.top) + "px";
+      box.style.width = (rect.right - rect.left) + "px";
+      box.style.height = (rect.bottom - rect.top) + "px";
+      return box;
+    }));
+  };
+  draw();
+  const resize = new ResizeObserver(draw);
+  resize.observe(editable);
+  const foreground = narrating ? "--ws-" + kind + "-highlight-text" : "--ws-manual-" + kind + "-text";
+  const clearInk = paintNativeHighlight(range, "transparent", "var(" + foreground + ")",
+    (narrating ? 2 : 0) + (kind === "word" ? 1 : 0));
+  return () => {
+    resize.disconnect();
+    clearInk?.();
+    mark.remove();
+  };
+}
+
+export function followManuscriptNarration(editable: HTMLElement, range: Range, kind: "sentence" | "word" = "sentence", follow = true) {
+  if (!editable.contains(range.commonAncestorContainer)) return;
+  if (follow) revealReadingFocus(editable, range);
+  return paintReadingFocus(range, kind, true);
 }
 
 function precedingLineTop(editable: HTMLElement, sentence: Range, firstRect: DOMRect) {
@@ -272,12 +307,8 @@ export function useManuscriptReadingMarks(enabled: boolean, editor: Editor & Rea
     const sentence = sentences(data).find(span => span.start <= word.start && span.end >= word.end);
     const wordRange = data.rangeFor(word);
     markedSentence.current = sentence && data.rangeFor(sentence);
-    const sentenceMark = markedSentence.current && paintNativeHighlight(
-      markedSentence.current, "var(--ws-sentence-highlight)", "var(--ws-sentence-highlight-text)",
-    );
-    const wordMark = withWord && paintNativeHighlight(
-      wordRange, "var(--ws-word-highlight)", "var(--ws-word-highlight-text)", 1,
-    );
+    const sentenceMark = markedSentence.current && paintReadingFocus(markedSentence.current, "sentence");
+    const wordMark = withWord && paintReadingFocus(wordRange, "word");
     if (sentenceMark) marks.current.push(sentenceMark);
     if (wordMark) marks.current.push(wordMark);
     return wordRange;
@@ -521,13 +552,9 @@ export function useManuscriptReadingMarks(enabled: boolean, editor: Editor & Rea
     }
     if (!data) return;
     selection?.removeAllRanges();
-    const word = mark(data, index, !bySentence).getBoundingClientRect();
+    const word = mark(data, index, !bySentence);
     saveMark(data.block, index);
-    const scroller = scrollParent(event.currentTarget);
-    if (!scroller) return;
-    const bounds = scroller.getBoundingClientRect();
-    if (word.top < bounds.top) scroller.scrollBy(0, word.top - bounds.top);
-    else if (word.bottom > bounds.bottom) scroller.scrollBy(0, word.bottom - bounds.bottom);
+    revealReadingFocus(event.currentTarget, word);
   };
 
   return { root, markedSentence, clear, markRange, saveRangePosition, revealLine, onClick: enabled ? onClick : undefined, onKeyDown: enabled ? onKeyDown : undefined };
