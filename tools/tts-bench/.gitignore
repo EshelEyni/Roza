@@ -1,0 +1,7 @@
+# Everything the bench downloads or makes stays local.
+envs/
+hf/
+uv-cache/
+samples/
+results/
+voices-cache/

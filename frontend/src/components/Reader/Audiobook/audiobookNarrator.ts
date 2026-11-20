@@ -7,7 +7,7 @@ export type ReaderAudiobook = ReturnType<typeof useReaderAudiobook>;
 export function narratorLabel(audio: ReaderAudiobook) {
   if (audio.engine === "kokoro") {
     const voice = kokoroVoice(audio.localVoice);
-    return { name: voice?.name || "Local voice", detail: voice ? voice.nationality + " · Local" : "Local" };
+    return { name: voice?.name || "Local voice", detail: voice ? voice.nationality + (voice.model === "chatterbox" ? " · Expressive" : " · Local") : "Local" };
   }
   if (audio.engine === "openai") return { name: audio.aiVoice || "OpenAI", detail: "OpenAI · AI voice" };
   const voice = audio.voices.find(item => item.voiceURI === audio.voice);

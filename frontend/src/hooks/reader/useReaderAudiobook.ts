@@ -3,7 +3,7 @@ import { audiobookSpeechSlice, audiobookSeek, audiobookWordAt, type AudiobookSec
 import { loadAudiobookConfig, saveAudiobookNarrator, loadStudioNarrator, saveStudioNarrator, openAiBlock, ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
 import type { ReaderAudiobookNarrator } from "../../../../shared/types/reader";
 import { ReaderKokoroAudio } from "../../services/narration/kokoroAudio";
-import { desktopKokoro, isEnglishBook, type KokoroStatus } from "../../services/narration/desktopKokoro";
+import { desktopKokoro, isEnglishBook, localVoiceInstalled, type KokoroStatus } from "../../services/narration/desktopKokoro";
 import { setDesktopAudioPlaying } from "../../services/desktopTaskbar";
 import { defaultKokoroVoice, kokoroLang, kokoroVoice } from "../../services/narration/kokoroVoices";
 
@@ -108,6 +108,11 @@ export function useReaderAudiobook(
     if (!isEnglishBook(languageRef.current?.()) || !looksLatin(position.current.section)) return "not-english";
     return "ready";
   }
+  /** A known local voice whose model is installed (expressive voices need their add-on too). */
+  function localVoiceUsable(id: string) {
+    const choice = kokoroVoice(id);
+    return !!choice && localVoiceInstalled(kokoroStatusRef.current, choice.model);
+  }
   function cancel(resetAudio = true, continuous = false) {
     ++version.current;
     if (!continuous) {
@@ -164,6 +169,11 @@ export function useReaderAudiobook(
           warn(availability === "not-english" ? "Local voices read English books only. Choose another narrator."
             : availability === "not-installed" ? "Local voices are not installed on this computer. Install them or choose another narrator."
               : "Local voices need the Roza desktop app. Choose another narrator.");
+          return;
+        }
+        if (!localVoiceUsable(localVoiceRef.current)) {
+          pause("Choose an available narrator to continue");
+          warn("Expressive voices are not installed on this computer. Install them in audiobook settings or choose another narrator.");
           return;
         }
         setWordEvents(true); setHighlight(null); setStatus("Preparing local narration…");
@@ -372,7 +382,7 @@ export function useReaderAudiobook(
     const localChoice = next === "kokoro" ? kokoroVoice(value) : undefined;
     if ((next === "openai" && (!config?.available || !config.voices.includes(value)))
       || (next === "system" && !systemVoice && !(value === "browser-default" && synth))
-      || (next === "kokoro" && (!localChoice || kokoroAvailability() !== "ready"))) {
+      || (next === "kokoro" && (!localChoice || kokoroAvailability() !== "ready" || !localVoiceUsable(value)))) {
       warn("That voice is no longer available. Choose another narrator."); return false;
     }
     const narrator: ReaderAudiobookNarrator = localChoice
@@ -458,7 +468,7 @@ export function useReaderAudiobook(
       const availability = kokoroAvailability();
       // Wait for the desktop status and the first section (the language check reads its text).
       if (availability === "checking" || !section) return;
-      unavailable = availability !== "ready" || !kokoroVoice(savedNarrator.voice);
+      unavailable = availability !== "ready" || !localVoiceUsable(savedNarrator.voice);
     } else {
       if (!voices.length && !voicesSettled && synth) return;
       unavailable = !synth || (savedNarrator.voice !== "browser-default" && !voices.some(item => item.voiceURI === savedNarrator.voice));
@@ -484,7 +494,18 @@ export function useReaderAudiobook(
       setKokoroStatus(current => current ? { ...current, ...install } : current);
       if (!install.installing) void refreshKokoro();
     });
-    return stop;
+    // Add-on (expressive voices) progress is kept under status.addons.
+    const stopAddon = api.onAddonStatus?.(({ addon, ...install }) => {
+      setKokoroStatus(current => {
+        if (!current) return current;
+        const previous = current.addons?.[addon];
+        const next = { ...current, addons: { ...current.addons, [addon]: { ...previous, ...install, engine: previous?.engine || { state: "stopped" } } } } as KokoroStatus;
+        kokoroStatusRef.current = next;
+        return next;
+      });
+      if (!install.installing) void refreshKokoro();
+    });
+    return () => { stop(); stopAddon?.(); };
   }, []);
   useEffect(() => {
     void load();

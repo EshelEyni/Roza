@@ -1,0 +1,72 @@
+{
+  "_note": "Test passages for Ticket #66. All are original except moby_opening (Herman Melville, 1851, public domain). Each passage is a list of paragraphs. Each paragraph is one generation call, as in ROZA's passage contract. 'pause' is the gap added after the paragraph, using ROZA's kokoroPacing values (paragraph 1.15, speaker change 1.0, scene break 2.6).",
+  "descriptive": {
+    "lang": "en",
+    "paragraphs": [
+      { "pause": 1.15, "sentences": [
+        "The house stood at the end of a long gravel road, half hidden by a row of old walnut trees.",
+        "Its shutters had once been painted green, but the sun had worn them down to a pale, uneven grey.",
+        "In the late afternoon the light came through the western windows and lay across the kitchen floor in long yellow bars.",
+        "Dust turned slowly in that light, as if the room itself were breathing.",
+        "Nobody had lived there for eleven years, and yet the clock above the stove was still ticking."
+      ] }
+    ]
+  },
+  "quiet_dialogue": {
+    "lang": "en",
+    "paragraphs": [
+      { "pause": 1.0, "sentences": ["\"Are you awake?\" she whispered."] },
+      { "pause": 1.15, "sentences": ["For a while he did not answer."] },
+      { "pause": 1.0, "sentences": ["\"I am now,\" he said at last, and she heard him smile in the dark."] },
+      { "pause": 1.0, "sentences": ["\"I keep thinking about the letter.\""] },
+      { "pause": 1.15, "sentences": ["\"So do I,\" he said quietly.", "\"We can read it again in the morning.\""] }
+    ]
+  },
+  "tense_exchange": {
+    "lang": "en",
+    "paragraphs": [
+      { "pause": 1.0, "sentences": ["\"Where were you last night?\""] },
+      { "pause": 1.0, "sentences": ["\"Out.", "Does it matter?\""] },
+      { "pause": 1.0, "sentences": ["\"It matters to me, Daniel!", "You promised you would call.\""] },
+      { "pause": 1.0, "sentences": ["He slammed the drawer shut.", "\"I said I was sorry.", "What else do you want?\""] },
+      { "pause": 1.15, "sentences": ["\"The truth,\" she said.", "\"Just once, I want the truth.\""] }
+    ]
+  },
+  "scene_break": {
+    "lang": "en",
+    "paragraphs": [
+      { "pause": 2.6, "sentences": ["She closed the door behind her and did not look back."] },
+      { "pause": 1.15, "sentences": [
+        "Three weeks later, the first snow fell on the harbour.",
+        "The ferry ran only twice a day now, and the cafe by the pier had already put up its winter shutters."
+      ] }
+    ]
+  },
+  "moby_opening": {
+    "lang": "en",
+    "paragraphs": [
+      { "pause": 1.15, "sentences": [
+        "Call me Ishmael.",
+        "Some years ago—never mind how long precisely—having little or no money in my purse, and nothing particular to interest me on shore, I thought I would sail about a little and see the watery part of the world.",
+        "It is a way I have of driving off the spleen and regulating the circulation.",
+        "Whenever I find myself growing grim about the mouth; whenever it is a damp, drizzly November in my soul; whenever I find myself involuntarily pausing before coffin warehouses, and bringing up the rear of every funeral I meet; and especially whenever my hypos get such an upper hand of me, that it requires a strong moral principle to prevent me from deliberately stepping into the street, and methodically knocking people's hats off—then, I account it high time to get to sea as soon as I can.",
+        "This is my substitute for pistol and ball.",
+        "With a philosophical flourish Cato throws himself upon his sword; I quietly take to the ship.",
+        "There is nothing surprising in this.",
+        "If they but knew it, almost all men in their degree, some time or other, cherish very nearly the same feelings towards the ocean with me."
+      ] }
+    ]
+  },
+  "hebrew": {
+    "lang": "he",
+    "paragraphs": [
+      { "pause": 1.15, "sentences": [
+        "הבית עמד בקצה דרך עפר ארוכה, מוסתר למחצה מאחורי שורה של עצי אגוז ישנים.",
+        "בשעות אחר הצהריים נכנס האור דרך החלונות המערביים ונח על רצפת המטבח."
+      ] },
+      { "pause": 1.0, "sentences": ["\"את ערה?\" לחשה."] },
+      { "pause": 2.6, "sentences": ["\"עכשיו כן,\" ענה, והיא שמעה אותו מחייך בחושך."] },
+      { "pause": 1.15, "sentences": ["שלושה שבועות אחר כך ירד השלג הראשון על הנמל, והמעבורת הפליגה רק פעמיים ביום."] }
+    ]
+  }
+}

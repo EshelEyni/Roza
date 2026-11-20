@@ -191,10 +191,61 @@ test("an offline save speaks each paragraph of the script once", async (t) => {
 });
 
 test("the desktop, frontend and backend voice lists match", () => {
-  const desktop = require("../desktop/kokoro/voices.cjs").kokoroVoices;
+  const { kokoroVoices, chatterboxVoices } = require("../desktop/kokoro/voices.cjs");
   const read = (file) => fs.readFileSync(path.join(__dirname, "..", file), "utf8");
-  const backend = [...read("backend/src/services/reader/readerKokoroVoices.ts").matchAll(/"([ab][fm]_[a-z]+)"/g)].map((m) => m[1]);
-  const frontend = [...read("frontend/src/services/narration/kokoroVoices.ts").matchAll(/voice\("([ab][fm]_[a-z]+)"/g)].map((m) => m[1]);
-  assert.deepEqual(backend, desktop);
-  assert.deepEqual(frontend, desktop);
+  const backendFile = read("backend/src/services/reader/readerKokoroVoices.ts");
+  const frontendFile = read("frontend/src/services/narration/kokoroVoices.ts");
+  const ids = (text, pattern) => [...text.matchAll(pattern)].map((m) => m[1]);
+  assert.deepEqual(ids(backendFile, /"([ab][fm]_[a-z]+)"/g), kokoroVoices);
+  assert.deepEqual(ids(frontendFile, /voice\("([ab][fm]_[a-z]+)"/g), kokoroVoices);
+  assert.deepEqual(ids(backendFile, /"(cb_[a-z]+)"/g), chatterboxVoices);
+  assert.deepEqual(ids(frontendFile, /expressive\("(cb_[a-z]+)"/g), chatterboxVoices);
+  // Every cloned voice ships a reference clip; cb_default is Turbo's built-in voice.
+  const clips = fs.readdirSync(path.join(__dirname, "..", "desktop", "chatterbox", "voices")).map((name) => name.replace(/\.wav$/, ""));
+  assert.deepEqual(clips.sort(), chatterboxVoices.filter((voice) => voice !== "cb_default").sort());
+});
+
+test("expressive voices go to the add-on engine, and only once it is installed", async (t) => {
+  const { dir, engine, store } = setup();
+  t.after(() => { engine.stop(); fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); });
+  let installed = false;
+  const addonCalls = [];
+  const addon = { synthesize: async (request) => { addonCalls.push(request.voice); fs.writeFileSync(request.out, Buffer.alloc(10)); return { duration: 1, words: [[0, 0.5]] }; }, dropLow: () => {} };
+  const routed = createStore({
+    audioDir: path.join(dir, "audio"), booksDir: path.join(dir, "books"), engine,
+    engineFor: (voice) => {
+      if (!voice.startsWith("cb_")) return engine;
+      if (!installed) throw new Error("Expressive voices are not installed.");
+      return addon;
+    },
+    engines: () => [engine, addon],
+  });
+  await assert.rejects(routed.sentence({ bookId, voice: "cb_heart", section: 0, index: 0, sentence: sentence("Hi.") }), /not installed/);
+  installed = true;
+  const clip = await routed.sentence({ bookId, voice: "cb_heart", section: 0, index: 0, sentence: sentence("Hi.") });
+  assert.match(clip.url, /^\/__kokoro\/audio\/a{24}\/cb_heart\/0-0-[a-f0-9]{16}\.wav$/);
+  assert.deepEqual(addonCalls, ["cb_heart"]);
+  const kokoroClip = await routed.sentence({ bookId, voice: "af_heart", section: 0, index: 0, sentence: sentence("Hi.") });
+  assert.match(kokoroClip.url, /\/af_heart\//);
+  assert.deepEqual(addonCalls, ["cb_heart"], "Kokoro voices stay on Kokoro");
+
+  const url = new URL("https://roza.esheleyni.com" + clip.url);
+  assert.equal((await serveKokoroAudio(new Request(url), url, path.join(dir, "audio"))).status, 200);
+  await routed.clearVoices(["cb_heart"]);
+  assert.equal(fs.existsSync(path.join(dir, "audio", bookId, "cb_heart")), false, "removing the add-on removes its audio");
+  assert.equal(fs.existsSync(path.join(dir, "audio", bookId, "af_heart")), true, "and keeps Kokoro's");
+});
+
+test("an idle engine stops itself and starts again on the next request", async (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "roza-kokoro-idle-"));
+  const script = path.join(dir, "fake-service.cjs");
+  fs.writeFileSync(script, FAKE_SERVICE);
+  const engine = createEngine({ python: () => process.execPath, script, cwd: os.tmpdir(), env: () => process.env, isInstalled: () => true, label: "Chatterbox", idleMs: 50 });
+  t.after(() => { engine.stop(); fs.rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }); });
+  await engine.synthesize({ text: "one", words: ["one"], voice: "cb_heart", out: path.join(dir, "1.wav") }, "high");
+  assert.equal(engine.status().state, "ready");
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  assert.equal(engine.status().state, "stopped");
+  await engine.synthesize({ text: "two", words: ["two"], voice: "cb_heart", out: path.join(dir, "2.wav") }, "high");
+  assert.equal(engine.status().state, "ready");
 });

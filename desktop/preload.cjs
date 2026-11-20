@@ -36,5 +36,15 @@ contextBridge.exposeInMainWorld("rozaDesktop", {
       ipcRenderer.on("kokoro:install-status", wrapped);
       return () => ipcRenderer.removeListener("kokoro:install-status", wrapped);
     },
+    // Voice add-ons installed on top of the local voices: Chatterbox Turbo expressive voices (Ticket #66).
+    addons: ["chatterbox"],
+    installAddon: (addon) => call("kokoro:addon-install", { addon }),
+    cancelAddonInstall: (addon) => call("kokoro:addon-cancel", { addon }),
+    removeAddon: (addon) => call("kokoro:addon-remove", { addon }),
+    onAddonStatus: (listener) => {
+      const wrapped = (_event, status) => listener(status);
+      ipcRenderer.on("kokoro:addon-status", wrapped);
+      return () => ipcRenderer.removeListener("kokoro:addon-status", wrapped);
+    },
   },
 });

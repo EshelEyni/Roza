@@ -9,6 +9,12 @@ files:
 extraResources:
   - from: kokoro/service.py
     to: kokoro/service.py
+  - from: chatterbox/service.py
+    to: chatterbox/service.py
+  - from: chatterbox/voices
+    to: chatterbox/voices
+    filter:
+      - "cb_*.wav"
 win:
   icon: renderer/images/icon-512x512.png
   target: nsis

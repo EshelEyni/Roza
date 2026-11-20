@@ -187,12 +187,16 @@ describe("backend-only audiobook API", () => {
     const response = await request(app).patch(base + "/narrator").set("Authorization", "test").send(choice);
     expect(response.status).toBe(200);
     expect((await get(base + "/config")).body.data.narrator).toEqual(choice);
+    const expressive = { engine: "kokoro", voice: "cb_heart", name: "Heart", lang: "en-US" };
+    expect((await request(app).patch(base + "/narrator").set("Authorization", "test").send(expressive)).status).toBe(200);
+    expect((await get(base + "/config")).body.data.narrator).toEqual(expressive);
     expect(generateReaderSpeech).not.toHaveBeenCalled();
   });
   it.each([
     {engine:"other",voice:"marin",name:"Marin",lang:""},
     {engine:"openai",voice:"unknown",name:"Unknown",lang:""},
     {engine:"kokoro",voice:"marin",name:"Unknown",lang:""},
+    {engine:"kokoro",voice:"cb_nobody",name:"Unknown",lang:""},
     {engine:"system",voice:"",name:"Alex",lang:"en"},
     {engine:"system",voice:"alex",name:"x".repeat(257),lang:"en"},
     {engine:"system",voice:"alex",name:"Alex",lang:"en",userId:owner},
