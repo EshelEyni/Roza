@@ -268,6 +268,8 @@ export function useEpubReader(book: ReaderBook, userId: string) {
     retry,
     reload,
     ...engine,
+    atStart: !engine.location || engine.atStart,
+    atEnd: !engine.location || engine.atEnd,
     ...pagination,
     ...navigation,
     onNavigate: (target: string) => {

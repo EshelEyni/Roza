@@ -69,6 +69,7 @@ export function useEpubBook(
       updateRef,
       epubRef,
       renditionRef,
+      appliedPreferences,
       changingLayout,
       fullscreenResizeAnchor,
       explicitNavigation,
@@ -181,7 +182,6 @@ export function useEpubBook(
         }
         epubRef.current = epub;
         setSearchBook(epub);
-        setPaginationFile(buffer);
         const navigation = await epub.loaded.navigation;
         await loadReaderChapters(epub);
         if (cancelled) {
@@ -204,6 +204,7 @@ export function useEpubBook(
         rendition = epub.renderTo(element, renderOptions);
         renditionRef.current = rendition;
         applyPreferences(rendition, preferences);
+        appliedPreferences.current = preferences;
         rendition.hooks.content.register((contents: Contents) => {
           touchCleanups.push(words.bind(contents));
           contents.document.addEventListener("keyup", sentenceChord.keyup);
@@ -289,7 +290,9 @@ export function useEpubBook(
         if (cancelled) return;
         ready = true;
         setLoading(false);
+        setPaginationFile(buffer);
         await rendition.reportLocation();
+        if (cancelled) return;
         runtime.lookupLocations.current = epub.locations
           .generate(1600)
           .then(() => {
@@ -330,6 +333,7 @@ export function useEpubBook(
       document.removeEventListener("keyup", sentenceChord.keyup);
       window.removeEventListener("blur", sentenceChord.reset);
       renditionRef.current = undefined;
+      appliedPreferences.current = undefined;
       epubRef.current = undefined;
       // EPUB open() returns before its navigation and resource work settles.
       void opening.then(() => {

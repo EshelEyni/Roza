@@ -16,8 +16,15 @@ export function observeReaderLayout(
     stateRef,
     layoutTask,
   } = runtime;
+  let width = element.clientWidth;
+  let height = element.clientHeight;
   const resizeObserver = new ResizeObserver(() => {
+    const nextWidth = element.clientWidth;
+    const nextHeight = element.clientHeight;
+    if (width === nextWidth && height === nextHeight) return;
     if (!active() || explicitNavigation.current) return;
+    width = nextWidth;
+    height = nextHeight;
     changingLayout.current = true;
     clearTimeout(pendingResize.current);
     pendingResize.current = setTimeout(() => {

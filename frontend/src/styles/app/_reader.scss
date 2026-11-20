@@ -321,9 +321,7 @@
   justify-content: center;
   min-width: 0;
   height: 100%;
-  cursor: pointer;
-}
-.reader-page-turn-area.is-disabled {
+  // Keep the system arrow over the gutter so browser cursor resets do not flash.
   cursor: default;
 }
 .reader-page-turn {
@@ -338,17 +336,18 @@
   color: inherit;
   background: transparent;
   opacity: 0.5;
+  cursor: inherit;
 }
 .reader-page-turn svg {
   width: 23px;
   height: 23px;
+  pointer-events: none;
 }
 .reader-page-turn:focus-visible {
   outline: 2px solid #b18b55;
   outline-offset: 4px;
 }
 .reader-page-turn:disabled {
-  cursor: default;
   opacity: 0.15;
 }
 .reader-viewport {

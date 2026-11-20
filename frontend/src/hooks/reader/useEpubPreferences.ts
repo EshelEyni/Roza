@@ -11,6 +11,7 @@ export function useEpubPreferences(
   setError: (message: string) => void,
 ) {
   const { t } = useTranslation();
+  const { appliedPreferences } = runtime;
   const {
     renditionRef,
     stateRef,
@@ -21,8 +22,13 @@ export function useEpubPreferences(
   useEffect(() => {
     const rendition = renditionRef.current;
     if (!rendition || loading) return;
+    const applied = appliedPreferences.current;
+    if (applied && Object.entries(renderingPreferences).every(
+      ([key, value]) => applied[key as keyof ReaderPreferences] === value,
+    )) return;
     const generation = runtime.navigationVersion.current;
     changingLayout.current = true;
+    appliedPreferences.current = undefined;
     applyPreferences(rendition, renderingPreferences);
     let cancelled = false;
     const timeout = setTimeout(() => {
@@ -34,6 +40,7 @@ export function useEpubPreferences(
         .display(cfi || undefined)
         .then(() => {
           if (cancelled || renditionRef.current !== rendition || generation !== runtime.navigationVersion.current) return;
+          appliedPreferences.current = renderingPreferences;
           changingLayout.current = false;
           void rendition.reportLocation();
         })
@@ -57,5 +64,6 @@ export function useEpubPreferences(
     explicitNavigation,
     layoutTask,
     setError,
+    appliedPreferences,
   ]);
 }

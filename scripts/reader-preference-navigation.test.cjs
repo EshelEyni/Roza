@@ -10,7 +10,7 @@ const code = ts.transpileModule(
   ),
   { compilerOptions: { module: ts.ModuleKind.CommonJS } },
 ).outputText;
-function setup(display = () => Promise.resolve()) {
+function setup(display = () => Promise.resolve(), initialPreferences) {
   let scheduled;
   const calls = { display: [], report: 0, errors: [] };
   const rendition = {
@@ -23,6 +23,7 @@ function setup(display = () => Promise.resolve()) {
   const ref = (current) => ({ current });
   const runtime = {
     renditionRef: ref(rendition),
+    appliedPreferences: ref(initialPreferences),
     stateRef: ref({ location: "old" }),
     changingLayout: ref(false),
     explicitNavigation: ref(false),
@@ -45,11 +46,17 @@ function setup(display = () => Promise.resolve()) {
     },
     () => {},
   );
-  exports.useEpubPreferences(runtime, {}, false, (error) =>
+  exports.useEpubPreferences(runtime, { fontSize: 18 }, false, (error) =>
     calls.errors.push(error),
   );
-  return { runtime, calls, run: () => scheduled() };
+  return { runtime, calls, run: () => scheduled?.(), isScheduled: () => !!scheduled };
 }
+test("opening with preferences already applied does not queue another display", () => {
+  const { runtime, calls, isScheduled } = setup(undefined, { fontSize: 18 });
+  assert.equal(isScheduled(), false);
+  assert.equal(runtime.changingLayout.current, false);
+  assert.deepEqual(calls.display, []);
+});
 test("queued preference display cannot replay a CFI after a newer navigation", () => {
   const { runtime, calls, run } = setup();
   runtime.navigationVersion.current++;

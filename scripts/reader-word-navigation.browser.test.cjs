@@ -139,11 +139,35 @@ test(
       const errors = [];
       page.on("pageerror", (e) => errors.push(e.message));
       await page.goto(server.resolvedUrls.local[0] + "word-test");
+      const nextPage = page.locator(".reader-page-turn-next");
+      await page.waitForFunction(() => !document.querySelector(".reader-page-turn-next")?.disabled &&
+        !!document.querySelector(".reader-page-turn-next"));
+      const nextBounds = await nextPage.boundingBox();
+      await page.mouse.move(nextBounds.x + nextBounds.width / 2, nextBounds.y + nextBounds.height / 2);
+      assert.equal(await nextPage.evaluate(button => getComputedStyle(button).cursor), "default");
+
+      let resumeBookLoad;
+      const bookHeld = new Promise(resolve => { resumeBookLoad = resolve; });
+      await page.route("**/api/reader/navigation/file", async route => {
+        await bookHeld;
+        await route.continue();
+      });
+      try {
+        await page.reload();
+        await nextPage.waitFor();
+        assert.equal(await nextPage.isDisabled(), true);
+        assert.equal(await nextPage.evaluate(button => getComputedStyle(button).cursor), "default");
+      } finally {
+        resumeBookLoad();
+      }
       await page.waitForFunction(
         () => window.navigationTest?.reader.locationsReady,
         null,
         { timeout: 45000 },
       );
+      assert.equal(await nextPage.isEnabled(), true);
+      assert.equal(await nextPage.evaluate(button => getComputedStyle(button).cursor), "default");
+      assert.equal(await nextPage.getAttribute("title"), null);
       const focus = () =>
         page.evaluate(() =>
           document

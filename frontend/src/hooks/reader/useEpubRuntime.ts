@@ -1,7 +1,7 @@
 import { defaultReaderKeyboardSettings } from "../../services/readerKeyboardSettings";
 import { useMemo, useRef } from "react";
 import type { Book, Rendition } from "epubjs";
-import type { ReaderState } from "../../../../shared/types/reader";
+import type { ReaderPreferences, ReaderState } from "../../../../shared/types/reader";
 import type { ReaderPanel, ReaderTextSelection } from "../../types/reader";
 
 export function useEpubRuntime(
@@ -33,6 +33,7 @@ export function useEpubRuntime(
   selectionRef.current = selection;
   const epubRef = useRef<Book>();
   const renditionRef = useRef<Rendition>();
+  const appliedPreferences = useRef<ReaderPreferences>();
   const lookupLocations = useRef<Promise<unknown>>(Promise.resolve());
   const changingLayout = useRef(false);
   const fullscreenResizeAnchor = useRef<string | null>(null);
@@ -61,6 +62,7 @@ export function useEpubRuntime(
       selectionRef,
       epubRef,
       renditionRef,
+      appliedPreferences,
       lookupLocations,
       changingLayout,
       fullscreenResizeAnchor,

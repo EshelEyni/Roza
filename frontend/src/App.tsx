@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 import { Loader } from "./components/Loaders/Loader";
 import {
   Navigate,
@@ -19,6 +19,14 @@ import { safeReturnPath } from "./services/readerMode";
 import { DEFAULT_FAVICON, READER_FAVICON, useFavicon } from "./hooks/useFavicon";
 
 const PageNotFound = lazy(() => import("./pages/PageNotFound"));
+
+function readTabPage(key: string) {
+  try {
+    return window.sessionStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
 
 function getRoutes() {
   return routes.map(route => (
@@ -51,9 +59,12 @@ function App() {
   const { i18n } = useTranslation();
   const { loggedInUser, isFetchedLoggedInUser } = useLoginWithToken();
   const { updateUser } = useUpdateUser();
-  const [isNavigatedToLastPage, setIsNavigatedToLastPage] = useState(false);
+  const [restoredAccountKey, setRestoredAccountKey] = useState<string | null>(null);
+  const lastProfilePage = useRef<{ key: string; pathname: string } | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
+  const currentPage = `${location.pathname}${location.search}${location.hash}`;
+  const accountKey = loggedInUser ? `lastVisitedPage:${loggedInUser.id}` : null;
   const isReaderOpen = !!useMatch("/reader/:id");
   const isStudioOpen = location.pathname.startsWith("/book-edit/");
   const isReadingRoom =
@@ -89,30 +100,58 @@ function App() {
     (location.state as { from?: unknown } | null)?.from,
   );
   useEffect(() => {
-    if (!loggedInUser) return;
-    // A page that required login wins over the last visited page, query included.
-    if (authReturnPath) {
-      navigate(authReturnPath, { replace: true });
-      setIsNavigatedToLastPage(true);
+    if (!accountKey) {
+      setRestoredAccountKey(null);
+      lastProfilePage.current = null;
       return;
     }
-    if (!loggedInUser.lastVisitedPage || isNavigatedToLastPage) return;
-    // Re-navigating to the current path would drop its query (e.g. ?mode=) on refresh.
-    if (loggedInUser.lastVisitedPage !== location.pathname)
-      navigate(loggedInUser.lastVisitedPage);
-    setIsNavigatedToLastPage(true);
-  }, [navigate, loggedInUser, updateUser, isNavigatedToLastPage, authReturnPath, location.pathname]);
+    if (authReturnPath) {
+      navigate(authReturnPath, { replace: true });
+      setRestoredAccountKey(accountKey);
+      return;
+    }
+    if (restoredAccountKey === accountKey) return;
+
+    const tabPage = safeReturnPath(readTabPage(accountKey));
+    const profilePage = safeReturnPath(loggedInUser?.lastVisitedPage);
+    const savedPage =
+      tabPage ?? (profilePage === location.pathname ? null : profilePage);
+    if (savedPage && savedPage !== currentPage) {
+      navigate(savedPage, { replace: true });
+    }
+    setRestoredAccountKey(accountKey);
+  }, [
+    accountKey,
+    authReturnPath,
+    currentPage,
+    location.pathname,
+    loggedInUser?.lastVisitedPage,
+    navigate,
+    restoredAccountKey,
+  ]);
 
   useEffect(() => {
-    if (!loggedInUser || loggedInUser?.lastVisitedPage === location.pathname)
-      return;
-    updateUser({ ...loggedInUser, lastVisitedPage: location.pathname });
+    if (authReturnPath || !accountKey || restoredAccountKey !== accountKey) return;
+    try {
+      window.sessionStorage.setItem(accountKey, currentPage);
+    } catch {
+      // The profile remains available when browser storage is blocked.
+    }
+  }, [accountKey, authReturnPath, currentPage, restoredAccountKey]);
 
-    return () => {
-      updateUser({ ...loggedInUser, lastVisitedPage: location.pathname });
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
+  useEffect(() => {
+    if (authReturnPath || !loggedInUser || !accountKey || restoredAccountKey !== accountKey)
+      return;
+    const pathname = location.pathname;
+    const previousPage = lastProfilePage.current;
+    if (previousPage?.key === accountKey && previousPage.pathname === pathname)
+      return;
+
+    lastProfilePage.current = { key: accountKey, pathname };
+    if (loggedInUser.lastVisitedPage !== pathname) {
+      updateUser({ ...loggedInUser, lastVisitedPage: pathname });
+    }
+  }, [accountKey, authReturnPath, location.pathname, loggedInUser, restoredAccountKey, updateUser]);
 
   return (
     <div
