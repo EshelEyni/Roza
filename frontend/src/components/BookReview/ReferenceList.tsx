@@ -8,7 +8,6 @@ import { useBookReview } from "../../contexts/BookReviewContext";
 import { H2 } from "../App/H2";
 import { BtnMinimizeAll } from "../Buttons/BtnMinimizeAll";
 import { DndListWrapper } from "../App/DndListWrapper";
-import { Hr } from "../App/Hr";
 
 type ReferenceListProps = {
   references: Reference[];
@@ -46,8 +45,8 @@ export const ReferenceList: FC<ReferenceListProps> = ({
   }
 
   return (
-    <div className="w-full font-normal text-app-800">
-      <div className="mb-1 flex items-center justify-between">
+    <div className="flex w-full flex-col gap-3">
+      <div className="ui-list-title">
         <H2>{t("references")}</H2>
 
         <div className="flex items-center gap-2">
@@ -55,12 +54,11 @@ export const ReferenceList: FC<ReferenceListProps> = ({
             isMinimized={isAllMinimized}
             onToggleMinimize={onToggleMinimize}
           />
-          <Button onClick={handleAddReference} isSmall={true}>
+          <Button onClick={handleAddReference} isSmall={true} variant="primary">
             {t("btnAdd")}
           </Button>
         </div>
       </div>
-      <Hr />
 
       <DndListWrapper
         listClassName="flex flex-col gap-2"

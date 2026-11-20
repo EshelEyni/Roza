@@ -83,7 +83,7 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
   return (
     <div
       className={classNames({
-        "fixed inset-0 z-50 flex w-full flex-col items-center bg-app-100 py-4":
+        "fixed inset-0 z-50 flex w-full flex-col items-center bg-[var(--roza-bg)] px-4 py-6":
           isFullScreen,
       })}
     >
@@ -99,7 +99,7 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
       <Slate editor={editor} initialValue={value} onChange={handleChange}>
         <div
           className={classNames(
-            `mb-2 flex w-full justify-end gap-2 transition-all duration-300`,
+            `mb-2 flex w-full items-center justify-end gap-2 transition-all duration-300`,
             {
               "mb-4 !justify-between": isFullScreen,
             },
@@ -118,7 +118,7 @@ export const SlateEditor: React.FC<SlateEditorProps> = ({
           renderLeaf={renderLeaf}
           spellCheck
           className={classNames(
-            `max-h-[550px] min-h-[100px] w-full overflow-y-auto rounded-md border border-app-900 bg-gray-50 px-4 py-2 text-xl text-app-700 transition-all duration-300`,
+            `ui-editor ui-editor-area max-h-[550px] w-full overflow-y-auto transition-all duration-300`,
             {
               "h-full": isFullScreen,
             },

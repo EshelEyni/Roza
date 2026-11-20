@@ -89,18 +89,19 @@ const HomePage: FC = () => {
     <Main>
       {isLoadingLoggedInUser && <Loader />}
       {!loggedInUser && !isLoadingLoggedInUser && (
-        <section className="mt-12 flex h-full w-11/12 flex-col items-center sm:!w-7/12 md:!w-auto md:min-w-96">
+        <section className="mt-12 flex w-[min(440px,calc(100%-32px))] flex-col items-center gap-6">
           {openedForm === "login" && <LoginForm />}
           {openedForm === "signup" && <SignupForm />}
 
-          <P className="mb-12 mt-4 text-2xl italic text-app-700 md:text-xl">
+          <P className="mb-12 font-[Georgia,serif] text-base italic text-[color:var(--roza-ink-2)]">
             {toggleFormTitle}{" "}
-            <span
+            <button
+              type="button"
               onClick={onToggleForm}
-              className="cursor-pointer text-app-800 hover:underline"
+              className="font-semibold not-italic text-[color:var(--roza-brand)] underline underline-offset-4"
             >
               {openedForm === "login" ? t("signup") : t("login")}
-            </span>
+            </button>
           </P>
         </section>
       )}
@@ -108,7 +109,7 @@ const HomePage: FC = () => {
       {loggedInUser && (
         <PageContent>
           <H1
-            addedClass="cursor-pointer hover:text-app-800 hover:underline"
+            addedClass="ui-clickable"
             onClick={onGoToProfile}
           >
             {loggedInUser.username}

@@ -9,6 +9,7 @@ import bookApi from "../../services/bookApiService";
 import { getDefaultBook } from "../../services/bookUtilService";
 import { manuscriptWords } from "../../components/WritingStudio/manuscript";
 import "../../components/WritingStudio/writingStudio.css";
+import { ReaderSelect } from "../../components/Reader/ReaderSelect";
 
 export default function BooksPage() {
   const { confirm, confirmationDialog } = useConfirmation();
@@ -122,15 +123,22 @@ export default function BooksPage() {
               value={search}
               onChange={event => setSearch(event.target.value)}
             />
-            <select
-              aria-label="Sort manuscripts"
-              value={sort}
-              onChange={event => setSort(event.target.value)}
-            >
-              <option value="recent">Recently edited</option>
-              <option value="title">Title A–Z</option>
-              <option value="words">Word count</option>
-            </select>
+            <span id="manuscript-sort-label" className="ws-sr-only">
+              Sort manuscripts
+            </span>
+            <div className="ws-library-sort">
+              <ReaderSelect
+                id="manuscript-sort"
+                labelId="manuscript-sort-label"
+                value={sort}
+                options={[
+                  { value: "recent", label: "Recently edited" },
+                  { value: "title", label: "Title A–Z" },
+                  { value: "words", label: "Word count" },
+                ]}
+                onChange={setSort}
+              />
+            </div>
           </div>
         </div>
         {query.isLoading && (

@@ -30,7 +30,7 @@ export const AddEntityModal: FC<AddEntityModalProps> = ({
   }
   return (
     <Modal onClose={nameChange.cancel} onOpen={() => { latestValue.current = defaultValue; }}>
-      <Modal.OpenBtn modalName="addBook">
+      <Modal.OpenBtn modalName="addBook" variant="primary">
         <div>{title}</div>
       </Modal.OpenBtn>
 
@@ -46,16 +46,16 @@ export const AddEntityModal: FC<AddEntityModalProps> = ({
               latestValue.current = event.target.value;
               nameChange.schedule(event.target.value);
             }}
-            className="rounded-md border border-app-800 p-2 text-center text-xl text-app-700"
+            className="ui-input ui-input-center"
             placeholder={placeholder}
             autoFocus={true}
           />
 
-          <div className="mt-4 flex items-center justify-end gap-2">
+          <div className="ui-actions-end">
             <Modal.CloseBtn>
               <span>{t("btnCancel")}</span>
             </Modal.CloseBtn>
-            <Modal.CloseBtn onClick={add}>
+            <Modal.CloseBtn onClick={add} variant="primary">
               <span>{t("btnAdd")}</span>
             </Modal.CloseBtn>
           </div>

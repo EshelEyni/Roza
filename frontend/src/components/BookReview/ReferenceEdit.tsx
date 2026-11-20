@@ -62,14 +62,14 @@ export const ReferenceEdit: FC<ReferenceEditProps> = ({ reference }) => {
 
   if (!reference) return null;
   return (
-    <section className="flex flex-col gap-3">
+    <section className="ui-entry">
       <div className="flex items-center justify-between gap-3">
         <Input
           type="text"
           defaultValue={reference.pages}
           placeholder={t("pages")}
           className={classnames(
-            "w-full rounded-md border border-app-800 px-1 py-2 text-center text-app-700",
+            "ui-input ui-input-center",
             {
               "max-w-[150px]": !isMinimized,
               "max-w-[100px]": isMinimized,

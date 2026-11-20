@@ -87,7 +87,8 @@ export const PasswordEdit: FC = () => {
       <Button
         type="submit"
         disabled={isPendingUpdatePassword}
-        addedClassName="self-center !px-4 !py-1"
+        variant="primary"
+        addedClassName="self-center"
       >
         {t("btnSubmit")}
       </Button>

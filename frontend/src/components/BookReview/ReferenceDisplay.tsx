@@ -34,7 +34,7 @@ export const ReferenceDisplay: FC<ReferenceEditProps> = ({ reference }) => {
   if (!reference) return null;
 
   return (
-    <section>
+    <section className="ui-entry">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-start gap-3">
           <H3>{reference.pages}</H3>

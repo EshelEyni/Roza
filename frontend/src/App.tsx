@@ -118,8 +118,8 @@ function App() {
     <div
       className={
         isStudioOpen
-          ? "app-writing-shell bg-app-100 text-app-800"
-          : `flex min-h-screen flex-col items-center bg-app-100 text-gray-50 ${isWritingArea ? "" : "overflow-y-scroll"}`
+          ? "app-writing-shell bg-[var(--roza-bg)] text-[color:var(--roza-ink)]"
+          : `flex min-h-screen flex-col items-center bg-[var(--roza-bg)] text-[color:var(--roza-ink)] ${isWritingArea ? "" : "overflow-y-scroll"}`
       }
     >
       {!isReaderOpen && !isStudioOpen && <AppHeader />}

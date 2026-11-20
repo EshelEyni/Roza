@@ -40,7 +40,7 @@ export const PageTitle: FC<PageTitleProps> = ({
   return (
     <div className="flex w-full flex-col items-center justify-between gap-2">
       <Header>
-        <h2 className="text-4xl font-bold text-app-800">{t(entityType)}</h2>
+        <h2 className="ui-eyebrow">{t(entityType)}</h2>
         <GoBackBtn />
       </Header>
       <Hr />
@@ -56,13 +56,13 @@ export const PageTitle: FC<PageTitleProps> = ({
             {entityName}
 
             {totalWordCount !== undefined && (
-              <span className="ms-1 text-xl">
+              <span className="ms-2 text-lg text-[color:var(--roza-ink-2)]">
                 ({totalWordCount} {t("words")})
               </span>
             )}
           </H1>
 
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             {onSetReadMode && (
               <Button onClick={onSetReadMode}>
                 <span>{t("readMode")}</span>

@@ -6,7 +6,7 @@ type MainProps = {
 
 export const Main: FC<MainProps> = ({ children }) => {
   return (
-    <main className="relative flex h-full w-full flex-col items-center bg-app-100">
+    <main className="ui-main">
       {children}
     </main>
   );

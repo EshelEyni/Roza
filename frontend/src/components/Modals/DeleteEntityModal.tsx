@@ -31,12 +31,12 @@ export const DeleteEntityModal: FC<DeleteEntityModalProps> = ({
           <div className="flex w-full flex-col gap-2">
             <H3 addedClassName="text-center">{archiveTitle}</H3>
             <P addedClassName="text-center">{archiveMsg}</P>
-            <div className="mt-4 flex items-center justify-center gap-2">
+            <div className="ui-actions-center" style={{ marginTop: 16 }}>
               <Modal.CloseBtn>
                 <span>{t("btnCancel")}</span>
               </Modal.CloseBtn>
 
-              <Modal.CloseBtn onClick={onDeleteEntity}>
+              <Modal.CloseBtn onClick={onDeleteEntity} variant="danger">
                 <span>{t("btnDelete")}</span>
               </Modal.CloseBtn>
             </div>

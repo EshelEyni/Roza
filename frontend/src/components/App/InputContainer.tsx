@@ -16,9 +16,9 @@ export const InputContainer: FC<InputContainerProps> = ({
   fieldError,
 }) => {
   return (
-    <div className="mb-4 text-2xl md:text-xl">
+    <div className="ui-field">
       <label
-        className="mb-2 block cursor-pointer text-3xl font-bold text-app-800 md:text-2xl"
+        className="ui-label"
         htmlFor={htmlFor}
       >
         {label}

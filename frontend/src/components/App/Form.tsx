@@ -9,7 +9,7 @@ type FormProps = {
 export const Form: FC<FormProps> = ({
   children,
   onSubmit,
-  className = "mt-5 rounded-lg bg-app-200 px-6 py-4 text-app-800 w-full flex flex-col gap-1",
+  className = "ui-form",
 }) => {
   return (
     <form onSubmit={onSubmit} className={className}>

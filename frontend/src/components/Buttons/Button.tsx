@@ -1,10 +1,14 @@
 import { FC } from "react";
+import { buttonClassName, ButtonVariant } from "./buttonClassName";
 
 type ButtonProps = {
   children: React.ReactNode;
   className?: string;
   addedClassName?: string;
   isSmall?: boolean;
+  variant?: ButtonVariant;
+  isActive?: boolean;
+  ariaLabel?: string;
   onClick?: () => void;
   type?: "button" | "submit" | "reset";
   disabled?: boolean;
@@ -12,21 +16,31 @@ type ButtonProps = {
 
 export const Button: FC<ButtonProps> = ({
   children,
-  className = "rounded-md bg-app-500 text-xl md:text-lg px-5 py-2 md:px-4 md:py-1 text-white hover:bg-app-600",
+  className,
   addedClassName = "",
   isSmall = false,
+  variant = "secondary",
+  isActive = false,
+  ariaLabel,
   onClick,
   type = "button",
   disabled = false,
 }) => {
-  if (isSmall)
-    className = `${className} !text-lg !px-3 !py-1 md:!px-3 md:!py-0`;
+  const classes = [
+    className ?? buttonClassName(variant, isSmall),
+    isActive && "is-active",
+    addedClassName,
+  ]
+    .filter(Boolean)
+    .join(" ");
   return (
     <button
       onClick={onClick}
-      className={`${className} ${addedClassName}`}
+      className={classes}
       type={type}
       disabled={disabled}
+      aria-label={ariaLabel}
+      aria-pressed={isActive || undefined}
     >
       {children}
     </button>

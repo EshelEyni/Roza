@@ -8,7 +8,7 @@ export const EntityListTitleContainer: FC<EntityListTitleContainerProps> = ({
   children,
 }) => {
   return (
-    <div className="flex items-center justify-between border-b border-app-800 bg-app-100 pb-3">
+    <div className="ui-list-title">
       {children}
     </div>
   );

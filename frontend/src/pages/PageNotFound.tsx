@@ -1,9 +1,8 @@
 const PageNotFound = () => {
   return (
-    <main className="flex h-[50vh] flex-col items-center justify-center">
-      <div className="text-5xl">
-        <p>Hmm...this page doesn’t exist. Try searching for something else.</p>
-      </div>
+    <main className="ui-not-found">
+      <h1>Hmm...this page doesn’t exist.</h1>
+      <p>Try searching for something else.</p>
     </main>
   );
 };
