@@ -200,6 +200,48 @@ test("reading mode: Ctrl+Shift+G goes to a line", { timeout: 180000 }, async () 
     assert.equal(await page.evaluate(() => window.goToLinePrevented), false);
     assert.equal(await dialog.count(), 0);
 
+    // The URL restores the read tab, audiobook, and the wrapped line context after reload.
+    const read = page.getByRole("button", { name: "Read", exact: true });
+    const audiobook = page.getByRole("button", { name: "Audiobook", exact: true });
+    await read.click();
+    await page.keyboard.press("Control+Shift+G");
+    await input.fill("40");
+    await page.keyboard.press("Enter");
+    await page.waitForURL(url => url.searchParams.get("line") === "40");
+    await audiobook.click();
+    await page.waitForURL(url => url.searchParams.get("audiobook") === "open");
+    await page.reload();
+    await page.getByRole("region", { name: "Audiobook mini player" }).waitFor();
+    assert.equal(await read.getAttribute("aria-pressed"), "true");
+    assert.equal((await view()).sentence, "Line 40 opens here.");
+    const context = await editor.evaluate(element => {
+      const scroller = element.closest(".ws-writing");
+      const preceding = element.querySelectorAll('[data-slate-node="element"]')[38];
+      const range = document.createRange();
+      range.selectNodeContents(preceding);
+      return [...range.getClientRects()].at(-1).top - scroller.getBoundingClientRect().top - scroller.clientTop;
+    });
+    assert.ok(Math.abs(context) <= 2, `Expected the preceding line at the top, got ${context}px`);
+    await audiobook.click();
+    await page.waitForURL(url => !url.searchParams.has("audiobook"));
+
+    await page.keyboard.press("Escape");
+    await setScroll(1700);
+    await page.waitForURL(url => Number(url.searchParams.get("line")) > 0 && url.searchParams.get("line") !== "40");
+    const scrolledLine = Number(new URL(page.url()).searchParams.get("line"));
+    await page.reload();
+    await editor.waitFor();
+    assert.ok(inView(await view(), scrolledLine));
+
+    for (const [name, tab] of [["Summary", "summary"], ["Chapter Bible", "bible"], ["Write", "write"]]) {
+      const button = page.getByRole("button", { name, exact: true });
+      await button.click();
+      await page.waitForURL(url => url.searchParams.get("tab") === tab);
+      await page.reload();
+      await button.waitFor();
+      assert.equal(await button.getAttribute("aria-pressed"), "true");
+    }
+
     assert.deepEqual(errors, []);
   } finally {
     await browser?.close();

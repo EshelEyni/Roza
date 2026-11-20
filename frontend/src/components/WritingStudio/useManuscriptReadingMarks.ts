@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, type KeyboardEvent, type MouseEvent } from "react";
 import { audiobookWords, type AudiobookSection } from "../../services/readerTts";
 import { readerCaretRange } from "../../services/readerCaretRange";
 import { paintNativeHighlight } from "../../services/readerNativeHighlight";
 import { closestSentenceWord, groupSentenceWordRects } from "../../services/readerSentenceGeometry";
 import { readerSentenceSpans } from "../../services/readerSentenceSpans";
 import { readerWordPattern } from "../../services/readerWordPattern";
+import { type Editor } from "slate";
+import { ReactEditor } from "slate-react";
+import { manuscriptLines } from "./annotations";
 import { readingPageDownDelta } from "./readingPageDown";
 
 const blockSelector = '[data-slate-node="element"]';
@@ -189,16 +192,7 @@ function pageDownWithinSentence(editable: HTMLElement, target: EventTarget, sent
   const rects = Array.from(sentence.getClientRects());
   const scroller = scrollParent(editable);
   if (!rects.length || !scroller) return false;
-  const doc = editable.ownerDocument;
-  const viewport = doc.documentElement.clientHeight;
-  const box = scroller === doc.scrollingElement
-    ? { top: 0, left: 0, right: doc.documentElement.clientWidth }
-    : scroller.getBoundingClientRect();
-  const top = Math.max(0, box.top + scroller.clientTop);
-  const bottom = Math.min(viewport, box.top + scroller.clientTop + scroller.clientHeight);
-  const center = (Math.min(...rects.map(rect => rect.left)) + Math.max(...rects.map(rect => rect.right))) / 2;
-  const x = Math.min(Math.max(center, box.left + 1), box.right - 1);
-  const view = { top: coveredTop(editable, { top, bottom }, x), bottom };
+  const view = readingView(editable, scroller, sentence.getBoundingClientRect());
   const firstRect = rects.find(rect => rect.width && rect.height);
   const contextTop = firstRect && firstRect.top >= view.top && firstRect.top < view.bottom
     ? precedingLineTop(editable, sentence, firstRect)
@@ -209,13 +203,49 @@ function pageDownWithinSentence(editable: HTMLElement, target: EventTarget, sent
   return true;
 }
 
-export function useManuscriptReadingMarks(enabled: boolean) {
+export interface ManuscriptReadingPosition {
+  value: string | null;
+  onChange: (line: number, word: number) => void;
+}
+
+function manuscriptLineElements(editor: Editor & ReactEditor) {
+  return manuscriptLines(editor).map(([node]) => ReactEditor.toDOMNode(editor, node));
+}
+
+function readingView(editable: HTMLElement, scroller: Element, rect: DOMRect) {
+  const doc = editable.ownerDocument;
+  const box = scroller === doc.scrollingElement
+    ? { top: 0, left: 0, right: doc.documentElement.clientWidth }
+    : scroller.getBoundingClientRect();
+  const top = Math.max(0, box.top + scroller.clientTop);
+  const bottom = Math.min(doc.documentElement.clientHeight, box.top + scroller.clientTop + scroller.clientHeight);
+  const x = Math.min(Math.max((rect.left + rect.right) / 2, box.left + 1), box.right - 1);
+  return { top: coveredTop(editable, { top, bottom }, x), bottom };
+}
+
+export function useManuscriptReadingMarks(enabled: boolean, editor: Editor & ReactEditor, position?: ManuscriptReadingPosition) {
   const root = useRef<HTMLDivElement>(null);
   // `index` is the active word, or the sentence's first word when only the sentence is marked.
   const active = useRef<{ block: Element; index: number; sentenceOnly?: boolean }>();
   const column = useRef<number>();
   const markedSentence = useRef<Range>();
   const marks = useRef<(() => void)[]>([]);
+  const positionRef = useRef(position);
+  positionRef.current = position;
+  const appliedPosition = useRef<string | null>(null);
+  const scrollOffset = useRef<number>();
+  const savePosition = (line: number, word: number) => {
+    const current = positionRef.current;
+    const value = `${line}:${word}`;
+    if (!current || appliedPosition.current === value) return;
+    appliedPosition.current = value;
+    current.onChange(line, word);
+  };
+  const saveMark = (block: Element, word: number) => {
+    if (!positionRef.current) return;
+    const line = manuscriptLineElements(editor).findIndex(element => element === block);
+    if (line >= 0) savePosition(line + 1, word);
+  };
   const removeMarks = useCallback(() => {
     marks.current.forEach(remove => remove());
     marks.current = [];
@@ -226,10 +256,13 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     active.current = undefined;
     column.current = undefined;
   }, [removeMarks]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!enabled) return;
     root.current?.querySelector<HTMLElement>("[data-slate-editor]")?.focus({ preventScroll: true });
-    return clear;
+    return () => {
+      clear();
+      appliedPosition.current = null;
+    };
   }, [clear, enabled]);
 
   const mark = (data: ReadingBlock, index: number, withWord = true) => {
@@ -250,7 +283,7 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     return wordRange;
   };
 
-  const markRange = (range: Range) => {
+  const rangePosition = (range: Range) => {
     const block = range.startContainer.parentElement?.closest(blockSelector);
     if (!block || !root.current?.contains(block)) return;
     const data = readBlock(block);
@@ -258,9 +291,18 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     if (!part) return;
     const start = part.start + range.startOffset;
     const index = data.words.findIndex(word => word.end > start);
-    if (index < 0) return;
+    if (index >= 0) return { data, index };
+  };
+  const saveRangePosition = (range: Range) => {
+    const position = rangePosition(range);
+    if (position) saveMark(position.data.block, position.index);
+  };
+  const markRange = (range: Range) => {
+    const position = rangePosition(range);
+    if (!position) return;
     column.current = undefined;
-    mark(data, index);
+    mark(position.data, position.index);
+    saveMark(position.data.block, position.index);
   };
 
   /** Brings a numbered line to the top of the uncovered reading view and marks its first sentence. */
@@ -272,22 +314,96 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     clear();
     const scroller = scrollParent(editable);
     if (scroller) {
-      const doc = editable.ownerDocument;
-      const viewport = doc.documentElement.clientHeight;
-      const box = scroller === doc.scrollingElement
-        ? { top: 0, left: 0, right: doc.documentElement.clientWidth }
-        : scroller.getBoundingClientRect();
-      const top = Math.max(0, box.top + scroller.clientTop);
-      const bottom = Math.min(viewport, box.top + scroller.clientTop + scroller.clientHeight);
       const line = block.getBoundingClientRect();
-      const x = Math.min(Math.max((line.left + line.right) / 2, box.left + 1), box.right - 1);
-      const viewTop = coveredTop(editable, { top, bottom }, x);
+      const { top: viewTop, bottom } = readingView(editable, scroller, line);
       const visible = line.top >= viewTop && line.top < bottom && Math.min(line.bottom, bottom) - line.top >= Math.min(line.height, bottom - viewTop);
       if (!visible) scroller.scrollBy(0, Math.floor(line.top - viewTop));
     }
     const data = readBlock(block);
     if (data.words.length) mark(data, 0, false);
+    saveMark(block, 0);
   };
+
+  const positionValue = position?.value ?? null;
+  useLayoutEffect(() => {
+    if (!enabled || !positionRef.current) {
+      appliedPosition.current = null;
+      return;
+    }
+    if (appliedPosition.current === positionValue) return;
+    appliedPosition.current = positionValue;
+    if (!positionValue || !/^\d+:\d+$/.test(positionValue)) return;
+    const [line, word] = positionValue.split(":").map(Number);
+    const editable = root.current?.querySelector<HTMLElement>("[data-slate-editor]");
+    const block = manuscriptLineElements(editor)[line - 1];
+    if (!editable || !block || !editable.getClientRects().length) return;
+    const scroller = scrollParent(editable);
+    if (!scroller) return;
+    const data = readBlock(block);
+    const index = Math.min(word, data.words.length - 1);
+    clear();
+    const range = index >= 0 ? mark(data, index, word > 0) : undefined;
+    const rect = range?.getBoundingClientRect() ?? block.getBoundingClientRect();
+    const view = readingView(editable, scroller, rect);
+    const context = range && precedingLineTop(editable, range, rect);
+    scroller.scrollTop += Math.floor((context ?? rect.top) - view.top);
+    scrollOffset.current = scroller.scrollTop;
+    // Marks are local to this editor. URL changes from this editor already applied them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clear, editor, enabled, positionValue]);
+
+  const trackPosition = enabled && !!position;
+  useEffect(() => {
+    if (!trackPosition) return;
+    const editable = root.current?.querySelector<HTMLElement>("[data-slate-editor]");
+    if (!editable) return;
+    const doc = editable.ownerDocument;
+    let timer: ReturnType<typeof setTimeout>;
+    const onScroll = (event: Event) => {
+      if (!editable.getClientRects().length) return;
+      const scroller = scrollParent(editable);
+      if (!scroller || (event.target !== scroller && !(scroller === doc.scrollingElement && event.target === doc))) return;
+      if (scrollOffset.current === scroller.scrollTop) return;
+      scrollOffset.current = scroller.scrollTop;
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        const view = readingView(editable, scroller, editable.getBoundingClientRect());
+        const blocks = manuscriptLineElements(editor);
+        const marked = markedSentence.current;
+        if (marked && editable.contains(marked.commonAncestorContainer)) {
+          const bounds = marked.getBoundingClientRect();
+          if (bounds.bottom > view.top && bounds.top < view.bottom) return;
+        }
+        let first: { line: number; word: number } | undefined;
+        for (let index = 0; index < blocks.length; index++) {
+          const block = blocks[index];
+          const rect = block.getBoundingClientRect();
+          if (rect.bottom <= view.top) continue;
+          if (rect.top >= view.bottom) break;
+          for (const line of readBlock(block).visualLines()) {
+            if (Math.max(...line.words.map(word => word.bottom)) <= view.top) continue;
+            if (Math.min(...line.words.map(word => word.top)) >= view.bottom) break;
+            const next = { line: index + 1, word: Math.min(...line.words.map(word => word.index)) };
+            if (first) {
+              // The first visible line is the context line on restore.
+              savePosition(next.line, next.word);
+              return;
+            }
+            first = next;
+          }
+        }
+        if (first) savePosition(first.line, first.word);
+      }, 120);
+    };
+    doc.addEventListener("scroll", onScroll, true);
+    return () => {
+      doc.removeEventListener("scroll", onScroll, true);
+      clearTimeout(timer);
+      scrollOffset.current = undefined;
+    };
+    // The listener reads the current URL state through positionRef.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, trackPosition]);
 
   const onClick = (event: MouseEvent<HTMLDivElement>) => {
     const { currentTarget, clientX, clientY } = event;
@@ -310,6 +426,7 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     if (index < 0) return;
     currentTarget.focus({ preventScroll: true });
     mark(data, index);
+    saveMark(block, index);
   };
 
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -405,6 +522,7 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     if (!data) return;
     selection?.removeAllRanges();
     const word = mark(data, index, !bySentence).getBoundingClientRect();
+    saveMark(data.block, index);
     const scroller = scrollParent(event.currentTarget);
     if (!scroller) return;
     const bounds = scroller.getBoundingClientRect();
@@ -412,5 +530,5 @@ export function useManuscriptReadingMarks(enabled: boolean) {
     else if (word.bottom > bounds.bottom) scroller.scrollBy(0, word.bottom - bounds.bottom);
   };
 
-  return { root, markedSentence, clear, markRange, revealLine, onClick: enabled ? onClick : undefined, onKeyDown: enabled ? onKeyDown : undefined };
+  return { root, markedSentence, clear, markRange, saveRangePosition, revealLine, onClick: enabled ? onClick : undefined, onKeyDown: enabled ? onKeyDown : undefined };
 }

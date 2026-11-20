@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Chapter, ChapterDraft } from "../../../../shared/types/books";
+import type { ManuscriptReadingPosition } from "./useManuscriptReadingMarks";
 import { ManuscriptEditor } from "./ManuscriptEditor";
 import { plainText } from "./manuscript";
 import { wordDiff } from "./aiEditing";
@@ -13,6 +14,8 @@ export function DraftPane({
   reading,
   audiobookKey,
   audiobookHeader,
+  audiobookState,
+  readingPosition,
   onSelect,
   onClose,
   onPromote,
@@ -27,6 +30,8 @@ export function DraftPane({
   reading: boolean;
   audiobookKey: string;
   audiobookHeader: HTMLDivElement | null;
+  audiobookState: { open: boolean; onChange: (open: boolean) => void };
+  readingPosition?: ManuscriptReadingPosition;
   onSelect: (id: string) => void;
   onClose: () => void;
   onPromote: () => void;
@@ -108,6 +113,8 @@ export function DraftPane({
         audiobook={reading ? { id: draft.id, title: `${chapter.name} · ${draft.name}` } : undefined}
         audiobookKey={audiobookKey}
         audiobookHeader={audiobookHeader}
+        audiobookState={audiobookState}
+        readingPosition={readingPosition}
         value={draft.text}
         format={draft.format || chapter.format}
         label="Draft manuscript"

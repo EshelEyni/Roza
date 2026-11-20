@@ -2,6 +2,7 @@ import "../Reader/Audiobook/audiobook.css";
 import { useEffect, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { createPortal } from "react-dom";
 import { FiActivity, FiArrowDownCircle, FiDownload, FiFastForward, FiHeadphones, FiMaximize2, FiMinimize2, FiMove, FiPause, FiPlay, FiRewind, FiSkipBack, FiSkipForward, FiSquare, FiVolume2, FiVolumeX, FiX } from "react-icons/fi";
+import { useAudiobookSpaceShortcut } from "../Reader/Audiobook/useAudiobookSpaceShortcut";
 import { AudiobookOfflineDialog } from "../Reader/Audiobook/AudiobookOfflineDialog";
 import { AudiobookExportDialog } from "../Reader/Audiobook/AudiobookExportDialog";
 import { narratorLabel } from "../Reader/Audiobook/audiobookNarrator";
@@ -30,12 +31,13 @@ function readingSelection(editable: HTMLElement, marked?: Range) {
   return range && editable.contains(range.commonAncestorContainer) ? range : marked;
 }
 
-function ManuscriptPlayback({ narration, localId, markedSentence, header, onClose }: {
+function ManuscriptPlayback({ narration, localId, markedSentence, header, onClose, onPositionChange }: {
   narration: Narration;
   localId?: string;
   markedSentence: { current?: Range };
   header: HTMLElement;
   onClose: () => void;
+  onPositionChange: (range: Range) => void;
 }) {
   const { section, editable, ranges, wordRanges } = narration;
   const audio = useReaderAudiobook(async () => section, undefined, undefined, { preserveSystemPosition: true, localBookId: localId });
@@ -64,8 +66,12 @@ function ManuscriptPlayback({ narration, localId, markedSentence, header, onClos
   const secondsPerWord = 60 / (180 * audio.speed);
   const range = following && audio.section && !audio.ended ? ranges[audio.index] : undefined;
 
+  const positionChanged = useRef(onPositionChange);
+  positionChanged.current = onPositionChange;
   useEffect(() => {
-    if (range) return followManuscriptNarration(editable, range);
+    if (!range) return;
+    positionChanged.current(range);
+    return followManuscriptNarration(editable, range);
   }, [editable, range]);
 
   const spokenWord = audio.highlight;
@@ -152,6 +158,7 @@ function ManuscriptPlayback({ narration, localId, markedSentence, header, onClos
   const playLabel = audio.playing ? "Pause narration" : "Play narration";
   const playIcon = audio.playing ? <FiPause fill="currentColor" /> : <FiPlay fill="currentColor" />;
   const canPlay = ready && audio.available;
+  useAudiobookSpaceShortcut(!dialog, canPlay, toggle);
 
   if (minimized) return createPortal(
     <div className="ws-header-audio-player" role="group" aria-label="Minimized audiobook player">
@@ -279,23 +286,30 @@ function ManuscriptPlayback({ narration, localId, markedSentence, header, onClos
   );
 }
 
-export function ManuscriptAudiobook({ chapter, header, root, markedSentence }: {
+export function ManuscriptAudiobook({ chapter, header, root, markedSentence, open, onOpenChange, onPositionChange }: {
   chapter: { id: string; title: string };
   header: HTMLElement;
   root: RefObject<HTMLDivElement>;
   markedSentence: { current?: Range };
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onPositionChange: (range: Range) => void;
 }) {
   const [narration, setNarration] = useState<Narration>();
-  const open = () => {
+  useEffect(() => {
+    if (!open) {
+      setNarration(undefined);
+      return;
+    }
     const editable = root.current?.querySelector<HTMLElement>("[data-slate-editor]");
     if (!editable) return;
     const next = manuscriptNarration(editable, readingSelection(editable, markedSentence.current));
     next.section.title = chapter.title;
     setNarration(next);
-  };
+  }, [chapter.title, markedSentence, open, root]);
   const close = () => {
     narration?.editable.focus({ preventScroll: true });
-    setNarration(undefined);
+    onOpenChange(false);
   };
   const id = chapter.id.replace(/-/g, "").slice(0, 24);
   const localId = /^[a-f0-9]{24}$/i.test(id) ? id.toLowerCase() : undefined;
@@ -303,15 +317,15 @@ export function ManuscriptAudiobook({ chapter, header, root, markedSentence }: {
   return (
     <>
       {createPortal(
-        <button type="button" className="ws-audiobook-launch" aria-label="Audiobook" title="Audiobook" aria-expanded={!!narration}
-          onMouseDown={event => event.preventDefault()} onClick={narration ? close : open}>
+        <button type="button" className="ws-audiobook-launch" aria-label="Audiobook" title="Audiobook" aria-expanded={open}
+          onMouseDown={event => event.preventDefault()} onClick={open ? close : () => onOpenChange(true)}>
           <FiHeadphones aria-hidden="true" />
         </button>,
         header,
       )}
-      {narration && <>
+      {open && narration && <>
         <span hidden data-ws-audiobook-open />
-        <ManuscriptPlayback narration={narration} localId={localId} markedSentence={markedSentence} header={header} onClose={close} />
+        <ManuscriptPlayback narration={narration} localId={localId} markedSentence={markedSentence} header={header} onClose={close} onPositionChange={onPositionChange} />
       </>}
     </>
   );

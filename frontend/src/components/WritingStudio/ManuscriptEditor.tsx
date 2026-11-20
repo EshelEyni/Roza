@@ -1,6 +1,6 @@
 import { AiEdit, AiEditingContext } from "./AiEdit";
 import { ManuscriptAudiobook } from "./ManuscriptAudiobook";
-import { useManuscriptReadingMarks } from "./useManuscriptReadingMarks";
+import { useManuscriptReadingMarks, type ManuscriptReadingPosition } from "./useManuscriptReadingMarks";
 import { ScreenplayToolbar } from "./ScreenplayToolbar";
 import {
   isScreenplay,
@@ -116,6 +116,8 @@ export function ManuscriptEditor({
   audiobook,
   audiobookKey,
   audiobookHeader,
+  audiobookState,
+  readingPosition,
   value,
   format = "prose",
   onChange,
@@ -134,6 +136,8 @@ export function ManuscriptEditor({
   audiobook?: { id: string; title: string };
   audiobookKey?: string;
   audiobookHeader?: HTMLDivElement | null;
+  audiobookState?: { open: boolean; onChange: (open: boolean) => void };
+  readingPosition?: ManuscriptReadingPosition;
   value: SlateCustomElement[];
   format?: "prose" | "screenplay";
   onChange: (
@@ -150,7 +154,6 @@ export function ManuscriptEditor({
   label?: string;
   placeholder?: string;
 }) {
-  const readingMarks = useManuscriptReadingMarks(reading);
   // Line count while Read Mode's Go to line dialog is open.
   const [goToLineTotal, setGoToLineTotal] = useState<number | null>(null);
   const [activeNote, setActiveNote] = useState<string | null>(null);
@@ -189,6 +192,7 @@ export function ManuscriptEditor({
     };
     return instance;
   }, []);
+  const readingMarks = useManuscriptReadingMarks(reading, editor, readingPosition);
   const activeSentence = annotationSentenceRange(editor, activeAnchor ?? null);
   const persistNotes = (next: ChapterAnnotation[]) => {
     notes.current = next;
@@ -305,8 +309,9 @@ export function ManuscriptEditor({
           onAddNote={canAddNote && (showAnnotations || onRevealAnnotations) ? () => addSelectionNote() : undefined}
         />
       )}
-      {reading && audiobook && audiobookHeader && (
-        <ManuscriptAudiobook key={audiobookKey} chapter={audiobook} header={audiobookHeader} root={readingMarks.root} markedSentence={readingMarks.markedSentence} />
+      {reading && audiobook && audiobookHeader && audiobookState && (
+        <ManuscriptAudiobook key={audiobookKey} chapter={audiobook} header={audiobookHeader} root={readingMarks.root} markedSentence={readingMarks.markedSentence}
+          open={audiobookState.open} onOpenChange={audiobookState.onChange} onPositionChange={readingMarks.saveRangePosition} />
       )}
       {reading && canAddNote && (
         <button

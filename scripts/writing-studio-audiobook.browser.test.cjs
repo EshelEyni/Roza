@@ -183,8 +183,14 @@ test("Writing Studio narrates the selected draft and stops without saving", { ti
     const totalTime = player.getByTitle("Estimated total chapter time");
     const duration = await totalTime.innerText();
     assert.match(duration, /^\d+:\d{2}$/);
-    await resume.click();
-    await pause.waitFor();
+    await main.focus();
+    for (const label of [pause, resume, pause]) {
+      const handled = await main.evaluate(element => !element.dispatchEvent(new KeyboardEvent("keydown", {
+        key: " ", code: "Space", bubbles: true, cancelable: true, repeat: false,
+      })));
+      assert.equal(handled, true, "Space must cancel the default scroll action");
+      await label.waitFor();
+    }
     assert.equal(await speechText(), "Main opens.");
     const spokenBeforeMinimize = await page.evaluate(() => window.speechSynthesis.spoken.length);
     const floatingPosition = await player.boundingBox();
@@ -193,9 +199,11 @@ test("Writing Studio narrates the selected draft and stops without saving", { ti
     await compact.waitFor();
     await player.waitFor({ state: "hidden" });
     assert.equal(await speechText(), "Main opens.");
-    await compact.getByRole("button", { name: "Pause narration" }).click();
+    await page.keyboard.press("Space");
+    await compact.getByRole("button", { name: "Play narration" }).waitFor();
     assert.equal(await page.evaluate(() => window.speechSynthesis.paused), true);
-    await compact.getByRole("button", { name: "Play narration" }).click();
+    await page.keyboard.press("Space");
+    await compact.getByRole("button", { name: "Pause narration" }).waitFor();
     await compact.getByRole("button", { name: "Restore mini player" }).click();
     await player.waitFor();
     const restored = await player.boundingBox();

@@ -126,6 +126,18 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const book = store.book;
   const scope = `roza:studio:${book.userId}:${book.id}`;
   const [searchParams, setSearchParams] = useSearchParams();
+  const urlParams = useRef(searchParams);
+  urlParams.current = searchParams;
+  function updateStudioUrl(changes: Record<string, string | undefined>, replace = false) {
+    const next = new URLSearchParams(urlParams.current);
+    for (const [key, value] of Object.entries(changes)) {
+      if (value === undefined) next.delete(key);
+      else next.set(key, value);
+    }
+    if (next.toString() === urlParams.current.toString()) return;
+    urlParams.current = next;
+    setSearchParams(next, { replace, preventScrollReset: true });
+  }
   const requested =
     searchParams.get("workspace") || params.dataItemType || "chapters";
   const section: StudioSection = studioSections.includes(
@@ -140,14 +152,14 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const planningNavigation = {
     onChapter: (id: string) => {
       setSelection(current => ({ ...current, chapters: id }));
-      changeSection("chapters");
+      changeSection("chapters", id);
     },
     onEntity: (
       kind: import("../../../../shared/types/books").StoryKind,
       id: string,
     ) => {
       setSelection(current => ({ ...current, [kind]: id }));
-      changeSection(kind);
+      changeSection(kind, id);
     },
     onTask: (id: string) => {
       changeSection("tasks");
@@ -184,36 +196,32 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     return Object.fromEntries(entries);
   });
   const available = book[category].filter(entry => !entry.isArchived);
-  const selected = available.some(entry => entry.id === selection[category])
-    ? selection[category]!
-    : available[0]?.id || "";
+  const requestedItem = searchParams.get("studioItem");
+  const selected = available.find(entry => entry.id === requestedItem)?.id ||
+    available.find(entry => entry.id === selection[category])?.id || available[0]?.id || "";
   function setSelected(id: string) {
     setSelection(current => ({ ...current, [category]: id }));
+    if (id !== selected) updateStudioUrl({
+      studioItem: id, draft: undefined, audiobook: undefined, line: undefined, word: undefined,
+      tab: view === "summary" || view === "bible" ? "write" : view,
+    });
   }
-  function changeSection(next: StudioSection) {
+  function changeSection(next: StudioSection, itemId?: string) {
     setTaskChapterTarget(undefined);
-    if (next !== section)
-      setSearchParams(current => {
-        const nextParams = new URLSearchParams(current);
-        nextParams.set("workspace", next);
-        return nextParams;
-      });
+    if (next !== section || itemId) updateStudioUrl({
+      workspace: next, studioItem: itemId, tab: "write", draft: undefined,
+      audiobook: undefined, line: undefined, word: undefined,
+    });
     setDrawer(false);
-    setPreview(false);
     setSearch("");
     setNotes(true);
-    setSummary(false);
-    setChapterBible(false);
   }
-  const [draftId, setDraftId] = useState("");
+  const draftId = searchParams.get("draft") || "";
   const [visitedDrafts, setVisitedDrafts] = useState<string[]>([]);
   const [mobilePane, setMobilePane] = useState("draft");
   const [audiobookHeader, setAudiobookHeader] = useState<HTMLDivElement | null>(null);
   const [drawer, setDrawer] = useState(false);
-  const [preview, setPreview] = useState(false);
   const [notes, setNotes] = useState(true);
-  const [summary, setSummary] = useState(false);
-  const [chapterBible, setChapterBible] = useState(false);
   const [showInlineNotes, setShowInlineNotes] = useState(false);
   const [search, setSearch] = useState("");
   const [dark, setDark] = useState(
@@ -242,9 +250,15 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   );
   const chapter = !overview && !tasks && item?.type === "chapters" ? item : undefined;
   const activeDraft = chapter?.drafts?.find(d => d.id === draftId);
-  function openDraft(id: string) {
+  function openDraft(id: string, reading = preview) {
     setVisitedDrafts(ids => ids.includes(id) ? ids : [...ids, id]);
-    setDraftId(id); setSummary(false); setChapterBible(false); setDrawer(false); setMobilePane("draft");
+    updateStudioUrl({ studioItem: selected, draft: id, tab: reading ? "read" : "write",
+      audiobook: undefined, line: undefined, word: undefined });
+    setDrawer(false); setMobilePane("draft");
+  }
+  function closeDraft() {
+    if (!draftId) return;
+    updateStudioUrl({ draft: undefined, audiobook: undefined, line: undefined, word: undefined });
   }
   function editChapter(change: (chapter: Chapter) => Chapter, chapterId = chapter?.id) {
     if (!chapterId) return;
@@ -253,8 +267,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   function addDraft(blank = false) {
     if (!chapter || store.recovery) return;
     const draft = createChapterDraft(chapter, `Draft ${(chapter.drafts?.length || 0) + 1}`, blank);
-    setPreview(false);
-    editChapter(c => ({ ...c, drafts: [...(c.drafts || []), draft] })); openDraft(draft.id);
+    editChapter(c => ({ ...c, drafts: [...(c.drafts || []), draft] }));
+    openDraft(draft.id, false);
   }
   function aiDraft(text: SlateCustomElement[], annotations: ChapterAnnotation[], name: string) {
     if (!chapter || store.recovery) return;
@@ -273,33 +287,51 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     if (!chapter || !activeDraft) return;
     const chapterId = chapter.id, id = activeDraft.id;
     if (await confirm({ title: "Delete draft?", message: `Permanently delete “${activeDraft.name}”? Main will be preserved.`, confirmLabel: "Delete draft" })) {
-      editChapter(c => ({ ...c, drafts: c.drafts?.filter(d => d.id !== id) }), chapterId); setDraftId("");
+      editChapter(c => ({ ...c, drafts: c.drafts?.filter(d => d.id !== id) }), chapterId); closeDraft();
     }
   }
   const total = useMemo(() => manuscriptWords(book), [book]);
   const text = item ? ("text" in item ? item.text : item.description) : [];
   const chapterText = category === "chapters" ? plainText(text).trim() : "";
   const chapterLineCount = chapterText ? chapterText.split(/\r\n?|\n/).length : 0;
-  const visibleText =
-    summary && item?.type === "chapters" ? item.description : text;
   const pageControls = !!item && !overview && !tasks;
   const isChapter = item?.type === "chapters";
-  const view: "write" | "read" | "summary" | "bible" =
-    isChapter && chapterBible ? "bible" : isChapter && summary ? "summary" : preview ? "read" : "write";
+  const tab = searchParams.get("tab");
+  const view = tab === "read" || (isChapter && (tab === "summary" || tab === "bible")) ? tab : "write";
+  const preview = view === "read";
+  const summary = view === "summary";
+  const chapterBible = view === "bible";
+  const visibleText = summary && item?.type === "chapters" ? item.description : text;
+  const line = searchParams.get("line");
+  const word = searchParams.get("word");
+  const readingPosition = {
+    value: line ? `${line}:${word || "0"}` : null,
+    onChange: (number: number, index: number) => updateStudioUrl({
+      studioItem: selected, line: String(number), word: index ? String(index) : undefined,
+    }, true),
+  };
+  const audiobookState = {
+    open: searchParams.get("audiobook") === "open",
+    onChange: (open: boolean) => updateStudioUrl({
+      studioItem: selected, audiobook: open ? "open" : undefined,
+    }, true),
+  };
   const pageContext = item
     ? category === "chapters"
       ? `CHAPTER ${String(items.indexOf(item) + 1).padStart(2, "0")} · ${words(text).toLocaleString()} WORDS · ${chapterLineCount.toLocaleString()} LINES`
       : category.toUpperCase()
     : "WRITING STUDIO";
   function showView(next: typeof view) {
-    if (next === "bible") setDraftId("");
+    if (next === view) return;
     if (next === "read") {
       setDrawer(false);
       if (activeDraft) setMobilePane("draft");
     }
-    setChapterBible(next === "bible");
-    setSummary(next === "summary");
-    setPreview(next === "read");
+    updateStudioUrl({
+      tab: next, studioItem: selected, draft: next === "bible" ? undefined : draftId || undefined,
+      audiobook: undefined,
+      ...(next === "bible" && draftId ? { line: undefined, word: undefined } : {}),
+    });
   }
 
   useEffect(() => store.subscribe(render), [store]);
@@ -355,16 +387,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   }, [store]);
 
   useEffect(() => {
-    setSummary(false);
-    setChapterBible(false);
-    setDraftId("");
     setVisitedDrafts([]);
   }, [selected, category]);
 
   function select(id: string) {
-    setSummary(false);
-    setSelected(id);
-    if (overview || tasks) changeSection("chapters");
+    if (overview || tasks) changeSection("chapters", id);
+    else setSelected(id);
     setDrawer(false);
     setNotes(true);
     if (category === "chapters") remember(`${scope}:chapter`, id);
@@ -529,8 +557,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 disabled={!!activeDraft}
                 onClick={() => {
                   if (view === "summary" || view === "bible") {
-                    setSummary(false);
-                    setChapterBible(false);
+                    showView("write");
                     setNotes(true);
                   } else setNotes(!notes);
                 }}
@@ -556,7 +583,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               </summary>
               <div className="ws-version-menu">
                 <span className="ws-eyebrow">VERSIONS</span>
-                <button aria-current={!activeDraft || undefined} onClick={() => setDraftId("")}>
+                <button aria-current={!activeDraft || undefined} onClick={closeDraft}>
                   Main
                 </button>
                 {chapter.drafts?.map(d => (
@@ -870,7 +897,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             selected={selected}
             onOpenChapter={chapterId => {
               setSelection(current => ({ ...current, chapters: chapterId }));
-              changeSection("chapters");
+              changeSection("chapters", chapterId);
             }}
             onChapterEdited={chapterId => {
               if (chapterId === selected) setRestoreKey(n => n + 1);
@@ -937,7 +964,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                           <h2>Chapter summary</h2>
                           <button
                             type="button"
-                            onClick={() => setSummary(false)}
+                            onClick={() => showView("write")}
                             aria-label="Close chapter summary"
                           >
                             Close
@@ -965,6 +992,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                         readOnly={preview || !!store.recovery || !!activeDraft}
                         annotationsReadOnly={!!store.recovery || !!activeDraft}
                         reading={preview && !activeDraft}
+                        readingPosition={pageControls ? readingPosition : undefined}
+                        audiobookState={audiobookState}
                         audiobookHeader={audiobookHeader}
                         audiobook={chapter && view === "read" && pageControls && !activeDraft ? { id: chapter.id, title: chapter.name } : undefined}
                         annotations={
@@ -1000,9 +1029,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   </>
                 )}
               </article>
-              {chapter && chapter.drafts?.filter(d => visitedDrafts.includes(d.id)).map(draft => <DraftPane key={`${chapter.id}:${draft.id}:${restoreKey}`} chapter={chapter} draft={draft} active={draft.id === activeDraft?.id} readOnly={!!store.recovery || preview}
+              {chapter && chapter.drafts?.filter(d => d.id === draftId || visitedDrafts.includes(d.id)).map(draft => <DraftPane key={`${chapter.id}:${draft.id}:${restoreKey}`} chapter={chapter} draft={draft} active={draft.id === activeDraft?.id} readOnly={!!store.recovery || preview}
                 reading={draft.id === activeDraft?.id && view === "read" && pageControls} audiobookKey={mobilePane} audiobookHeader={audiobookHeader}
-                onSelect={openDraft} onClose={() => setDraftId("")} onPromote={() => void promoteDraft()} onDelete={() => void deleteDraft()}
+                readingPosition={mobilePane === "draft" ? readingPosition : undefined} audiobookState={audiobookState}
+                onSelect={openDraft} onClose={closeDraft} onPromote={() => void promoteDraft()} onDelete={() => void deleteDraft()}
                 onChange={change => editChapter(c => changeChapterDraft(c, draft.id, change))}
                 aiEditing={{ bookId: book.id, chapterId: chapter.id, onDraft: aiDraft }} />)}
               </div>
@@ -1046,7 +1076,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     ...current,
                     [entry.type]: entry.id,
                   }));
-                  changeSection(entry.type);
+                  changeSection(entry.type, entry.id);
                   setArchived(current => current.slice(0, -1));
                 }}
               >
