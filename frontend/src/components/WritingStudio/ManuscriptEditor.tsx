@@ -31,10 +31,12 @@ import {
 
 function Toolbar({
   onAddNote,
+  noteCount,
   screenplayControls,
   aiEditing,
 }: {
   onAddNote?: () => void;
+  noteCount: number;
   screenplayControls?: ReactNode;
   aiEditing?: AiEditingContext;
 }) {
@@ -107,7 +109,7 @@ function Toolbar({
             onClick={onAddNote}
             title="Add note to selected text or current paragraph"
           >
-            + Note
+            + Note ({noteCount})
           </button>
         )}
       </div>
@@ -242,6 +244,7 @@ export function ManuscriptEditor({
     notes.current = next;
     onChange(editor.children as SlateCustomElement[], next);
   };
+  const noteCount = annotations?.filter(note => !note.general).length ?? 0;
   const canAddNote = annotations !== undefined && !annotationsReadOnly;
   useEffect(() => {
     if (!reading) {
@@ -363,6 +366,7 @@ export function ManuscriptEditor({
           screenplayControls={
             format === "screenplay" ? <ScreenplayToolbar /> : undefined
           }
+          noteCount={noteCount}
           onAddNote={canAddNote && (showAnnotations || onRevealAnnotations) ? () => addSelectionNote() : undefined}
         />
       )}
@@ -379,7 +383,7 @@ export function ManuscriptEditor({
           onMouseDown={event => event.preventDefault()}
           onClick={() => addSelectionNote()}
         >
-          + Note
+          + Note ({noteCount})
         </button>
       )}
       <div
