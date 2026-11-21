@@ -40,6 +40,13 @@ function requestSanitizer(req: Request, res: Response, next: NextFunction) {
   ) {
     return next();
   }
+  // The EPUB builder XML-escapes every field itself. HTML escaping here would
+  // turn "&" in a title into "&amp;" and break the cover data URL check.
+  if (
+    (req.method === "POST" || req.method === "PUT") &&
+    /^\/api\/reader\/studio\/[a-f0-9]{24}\/(?:epub|publication)\/?$/i.test(req.path)
+  )
+    return next();
   // Dev Board validates its own fields and renders Markdown without raw HTML.
   if (/^\/api\/dev-board(?:\/|$)/.test(req.path)) return next();
   const { body } = req;

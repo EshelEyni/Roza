@@ -2852,3 +2852,304 @@ body:has(.ws-floating-audio) .ws-draft-mode .ws-draft-pane:has([data-ws-audioboo
   color: var(--ws-on-accent);
   outline: 1px solid var(--ws-accent-hover);
 }
+
+/* Published EPUB cover on the Studio library card. */
+.ws-book-cover[data-has-cover] {
+  padding-inline-end: calc(30px + min(38%, 150px));
+}
+
+.ws-book-cover-image {
+  position: absolute;
+  inset-block: 24px;
+  inset-inline-end: 24px;
+  width: min(38%, 150px);
+  height: calc(100% - 48px);
+  max-height: 225px;
+  margin-block: auto;
+  object-fit: cover;
+  border-radius: 3px;
+  box-shadow: 0 6px 16px rgb(36 24 15 / 28%);
+}
+
+.ws-book-links .ws-book-epub {
+  font-weight: 600;
+  color: var(--ws-brand);
+}
+
+.ws-header .ws-more-menu .ws-menu-danger {
+  color: var(--roza-danger, #9c3426);
+}
+
+/* Publish EPUB dialog. */
+dialog.ws-publish-dialog {
+  width: min(680px, calc(100vw - 32px));
+  padding: 22px 26px;
+}
+
+.ws-publish-dialog form {
+  display: grid;
+  gap: 18px;
+}
+
+.ws-publish-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+dialog.ws-publish-dialog .ws-publish-head h2 {
+  margin: 0 0 2px;
+}
+
+dialog.ws-publish-dialog p.ws-publish-state {
+  margin: 0;
+  font-size: 13px;
+}
+
+dialog.ws-publish-dialog p.ws-publish-state.is-outdated {
+  color: var(--ws-brand);
+  font-weight: 600;
+}
+
+.ws-publish-body {
+  display: grid;
+  gap: 18px;
+}
+
+.ws-publish-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.ws-publish-fields {
+  flex: 1 1 300px;
+  min-width: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.ws-publish-fields label,
+.ws-publish-field {
+  display: grid;
+  gap: 5px;
+  font-size: 13px;
+  color: var(--ws-muted);
+}
+
+.ws-publish-fields input {
+  font: 15px/1.4 var(--roza-font-ui);
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--ws-line);
+  border-radius: var(--roza-radius, 7px);
+  background: var(--ws-paper);
+  color: var(--ws-ink);
+}
+
+.ws-publish-fields input:focus-visible {
+  outline: 3px solid var(--ws-focus);
+  outline-offset: 1px;
+}
+
+.ws-publish-cover {
+  flex: none;
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  width: 140px;
+}
+
+.ws-publish-cover img,
+.ws-publish-cover-empty {
+  width: 120px;
+  aspect-ratio: 2 / 3;
+  border-radius: 3px;
+  object-fit: cover;
+  box-shadow: 0 6px 16px rgb(36 24 15 / 24%);
+}
+
+.ws-publish-cover-empty {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  box-sizing: border-box;
+  border: 1px dashed var(--ws-line);
+  background: var(--ws-cover);
+  box-shadow: none;
+  text-align: center;
+  font: 400 15px/1.25 var(--roza-font-display);
+  overflow-wrap: anywhere;
+}
+
+.ws-publish-cover-empty small {
+  font: 12px var(--roza-font-ui);
+  color: var(--ws-muted);
+}
+
+.ws-publish-cover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+}
+
+dialog.ws-publish-dialog .ws-publish-cover-actions button {
+  min-height: 34px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.ws-publish-chapters,
+.ws-publish-options {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  min-width: 0;
+}
+
+.ws-publish-chapters legend,
+.ws-publish-options legend {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ws-muted);
+}
+
+.ws-publish-chapters legend span {
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-publish-chapters ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 260px;
+  overflow: auto;
+  border: 1px solid var(--ws-line);
+  border-radius: var(--roza-radius-card, 10px);
+  background: var(--ws-paper);
+}
+
+.ws-publish-chapters li + li {
+  border-top: 1px solid var(--ws-line);
+}
+
+.ws-publish-chapters label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.ws-publish-dialog input[type="checkbox"] {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--ws-brand);
+}
+
+.ws-publish-chapter-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-publish-tag {
+  margin-inline-start: 8px;
+  padding: 1px 7px;
+  border-radius: 99px;
+  background: var(--ws-soft);
+  font-size: 11px;
+  color: var(--ws-muted);
+}
+
+.ws-publish-words {
+  flex: none;
+  font-size: 12px;
+  color: var(--ws-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-publish-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+}
+
+.ws-publish-options label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.ws-publish-messages:empty {
+  display: none;
+}
+
+dialog.ws-publish-dialog .ws-publish-messages p {
+  margin: 0;
+  font-size: 13px;
+}
+
+dialog.ws-publish-dialog p.ws-publish-error {
+  color: var(--roza-danger, #9c3426);
+}
+
+dialog.ws-publish-dialog p.ws-publish-status {
+  color: var(--roza-success, #3f6b34);
+  font-weight: 600;
+}
+
+.ws-publish-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.ws-publish-spacer {
+  flex: 1;
+}
+
+@media (max-width: 560px) {
+  .ws-publish-cover {
+    width: 100%;
+    grid-template-columns: auto 1fr;
+    justify-items: start;
+    align-items: center;
+  }
+
+  .ws-publish-cover img,
+  .ws-publish-cover-empty {
+    width: 84px;
+  }
+
+  .ws-publish-spacer {
+    display: none;
+  }
+
+  .ws-publish-actions button {
+    flex: 1 1 auto;
+  }
+}

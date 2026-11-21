@@ -49,6 +49,10 @@ import "./writingStudio.css";
 import { TaskBoardView } from "./TaskBoard";
 import { AppSwitcher } from "../App/AppSwitcher";
 import { StudioFullscreenButton } from "./StudioFullscreenButton";
+import { PublishDialog } from "./PublishDialog";
+import type { BookPublishing } from "../../../../shared/types/books";
+import { useGetReaderAccess } from "../../hooks/reactQuery/get/useGetReaderAccess";
+import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 
 function preference(key: string, fallback: string) {
   try {
@@ -115,9 +119,15 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const params = useParams();
+  const { data: readerAccess } = useGetReaderAccess();
+  const { loggedInUser } = useLoginWithToken();
+  // The EPUB settings and cover live outside the draft store. The store copies
+  // the manuscript into browser storage on every edit, and a cover is large.
+  const [publishing, setPublishing] = useState<BookPublishing | undefined>(initialBook.publishing);
+  const [publishOpen, setPublishOpen] = useState(false);
   const [store] = useState(
     () =>
-      new DraftStore(initialBook, bookApi.update, {
+      new DraftStore({ ...initialBook, publishing: undefined }, bookApi.update, {
         getItem: key => localStorage.getItem(key),
         setItem: (key, value) => localStorage.setItem(key, value),
         removeItem: key => localStorage.removeItem(key),
@@ -459,6 +469,34 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     updateItem({ isArchived: true });
     select(items.find(entry => entry.id !== item.id)?.id || "");
   }
+  async function archiveBook() {
+    if (
+      !(await confirm({
+        title: "Archive this book?",
+        message: `Archive “${book.name}”? It will be removed from your library. Its data is retained, but restoring a whole book currently requires support.`,
+        confirmLabel: "Archive",
+      }))
+    )
+      return;
+    await store.flush();
+    try {
+      await bookApi.archive(book.id);
+    } catch (error) {
+      await confirm({
+        title: "Book not archived",
+        message: error instanceof Error ? error.message : "Unable to archive the manuscript. Please try again.",
+        confirmLabel: "OK",
+        cancelLabel: "Close",
+      });
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["books"] });
+    navigate("/books");
+  }
+  async function prepareForPublishing() {
+    await store.flush();
+    return !store.dirty && store.state !== "error" && !store.recovery;
+  }
   async function leave(destination = "/books") {
     await store.flush();
     if (
@@ -488,6 +526,23 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       } as React.CSSProperties}
     >
       {confirmationDialog}
+      {publishOpen && (
+        <PublishDialog
+          book={{ ...book, publishing }}
+          author={loggedInUser?.fullname || ""}
+          prepare={prepareForPublishing}
+          onPublished={result => {
+            setPublishing(result);
+            void queryClient.invalidateQueries({ queryKey: ["books"] });
+            void queryClient.invalidateQueries({ queryKey: ["readerBooks"] });
+          }}
+          onOpenReader={id => {
+            setPublishOpen(false);
+            void leave(`/reader/${id}`);
+          }}
+          onClose={() => setPublishOpen(false)}
+        />
+      )}
       {formatChapter &&
         item?.type === "chapters" &&
         item.id === formatChapter && (
@@ -650,12 +705,30 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               )}
               <span className="ws-eyebrow">STUDIO</span>
               <StudioFullscreenButton />
+              {readerAccess?.enabled && (
+                <button
+                  type="button"
+                  disabled={!!store.recovery}
+                  onClick={() => setPublishOpen(true)}
+                  aria-haspopup="dialog"
+                >
+                  Publish EPUB
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => optionsDialog.current?.showModal()}
                 aria-haspopup="dialog"
               >
                 Options
+              </button>
+              <button
+                type="button"
+                className="ws-menu-danger"
+                disabled={!!store.recovery}
+                onClick={() => void archiveBook()}
+              >
+                Archive book
               </button>
             </div>
           </ItemMenu>

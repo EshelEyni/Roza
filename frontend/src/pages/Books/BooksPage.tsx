@@ -1,5 +1,3 @@
-import { useConfirmation } from "../../components/Modals/useConfirmation";
-import { Book } from "../../../../shared/types/books";
 import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -13,7 +11,6 @@ import { ReaderSelect } from "../../components/Reader/ReaderSelect";
 import { useTranslation } from "react-i18next";
 
 export default function BooksPage() {
-  const { confirm, confirmationDialog } = useConfirmation();
   const { t } = useTranslation();
   useDocumentTitle(`Roza / ${t("writingStudioNav")}`);
   const { loggedInUser } = useLoginWithToken();
@@ -36,12 +33,6 @@ export default function BooksPage() {
       navigate(`/book-edit/${book.id}`);
     },
   });
-  const archive = useMutation({
-    mutationFn: (book: Book) => bookApi.update({ ...book, isArchived: true }),
-    onSuccess: () => {
-      void client.invalidateQueries({ queryKey: ["books"] });
-    },
-  });
   const books = [...(query.data || [])]
     .filter(book =>
       book.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
@@ -59,7 +50,6 @@ export default function BooksPage() {
   }
   return (
     <main className="ws ws-library">
-      {confirmationDialog}
       <div className="ws-library-inner">
         <header className="ws-library-heading">
           <div>
@@ -171,12 +161,6 @@ export default function BooksPage() {
             )}
           </div>
         )}
-        {archive.isError && (
-          <div className="ws-notice ws-error" role="alert">
-            {archive.error.message ||
-              "Unable to archive the manuscript. Please try again."}
-          </div>
-        )}
         <div className="ws-book-grid">
           {books.map((book, index) => (
             <article key={book.id} className="ws-book-card">
@@ -184,8 +168,12 @@ export default function BooksPage() {
                 to={`/book-edit/${book.id}`}
                 className="ws-book-cover"
                 data-color={index % 4}
+                data-has-cover={book.publishing?.cover ? "true" : undefined}
                 aria-label={`Write ${book.name}`}
               >
+                {book.publishing?.cover && (
+                  <img className="ws-book-cover-image" src={book.publishing.cover} alt="" />
+                )}
                 <span className="ws-eyebrow">
                   MANUSCRIPT / {String(index + 1).padStart(2, "0")}
                 </span>
@@ -209,22 +197,11 @@ export default function BooksPage() {
                 <Link to={`/book-edit/${book.id}`}>
                   Continue writing <span aria-hidden="true">→</span>
                 </Link>
-                <button
-                  disabled={archive.isPending}
-                  aria-label={`Archive ${book.name}`}
-                  onClick={async () => {
-                    if (
-                      await confirm({
-                        title: "Archive this book?",
-                        message: `Archive “${book.name}”? It will be removed from your library. Its data is retained, but restoring a whole book currently requires support.`,
-                        confirmLabel: "Archive",
-                      })
-                    )
-                      archive.mutate(book);
-                  }}
-                >
-                  Archive
-                </button>
+                {book.publishing?.readerBookId && (
+                  <Link to={`/reader/${book.publishing.readerBookId}`} className="ws-book-epub">
+                    Read EPUB
+                  </Link>
+                )}
               </div>
             </article>
           ))}

@@ -5,6 +5,7 @@ import {
 } from "../../../shared/types/readerDictionary";
 import { ReaderBook, ReaderBookPage, ReaderLibrarySort, ReaderLibraryView, ReaderState } from "../../../shared/types/reader";
 import { JsendResponse } from "../../../shared/types/system";
+import type { BookPublishing, BookPublishingRequest } from "../../../shared/types/books";
 
 const baseUrl = "/api/reader";
 
@@ -98,8 +99,31 @@ function saveOnLeave(id: string, state: ReaderState) {
   }).catch(() => undefined);
 }
 
+async function downloadStudioEpub(bookId: string, payload: BookPublishingRequest): Promise<Blob> {
+  try {
+    const response = await axios.post<Blob>(`${baseUrl}/studio/${bookId}/epub`, payload, {
+      withCredentials: true,
+      responseType: "blob",
+    });
+    return response.data;
+  } catch (error) {
+    let message = "Could not build the EPUB.";
+    if (axios.isAxiosError(error) && error.response?.data instanceof Blob) {
+      try {
+        message = JSON.parse(await error.response.data.text()).message || message;
+      } catch {
+        /* Keep the general message. */
+      }
+    }
+    throw new Error(message);
+  }
+}
+
 export default {
   request,
+  downloadStudioEpub,
+  publishStudioBook: (bookId: string, payload: BookPublishingRequest) =>
+    request<BookPublishing>("PUT", `/studio/${bookId}/publication`, payload),
   lookupWord: (id: string, selection: ReaderDictionaryLookup, signal = AbortSignal.timeout(15000)) =>
     request<ReaderLookupResult>("POST", "/" + id + "/dictionary", selection, signal),
   getAccess: () => request<{ enabled: boolean }>("GET", "/access"),

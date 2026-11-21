@@ -1,4 +1,5 @@
 import readerAudiobookRouter from "./readerAudiobookRouter";
+import { downloadStudioEpub, publishStudioBook } from "../../controllers/reader/studioPublicationController";
 import express from "express";
 import { listAnnotations, saveAnnotation, deleteAnnotation } from "../../controllers/reader/readerAnnotationController";
 import { checkUserAuthentication } from "../../middlewares/authGuards/authGuardsMiddleware";
@@ -51,6 +52,8 @@ const router = express.Router();
 router.use(checkUserAuthentication);
 router.get("/access", getReaderAccess);
 router.use(checkReaderAccess);
+router.post("/studio/:bookId([a-fA-F0-9]{24})/epub", downloadStudioEpub);
+router.put("/studio/:bookId([a-fA-F0-9]{24})/publication", publishStudioBook);
 router.use("/:id/audiobook", readerAudiobookRouter);
 router.get("/progress-settings", getProgressSettings);
 router.patch("/progress-settings", updateProgressSettings);

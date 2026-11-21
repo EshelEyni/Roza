@@ -65,6 +65,35 @@ export interface Book {
   isArchived: boolean;
   isReadMode: boolean;
   wordGoal?: number;
+  /** EPUB edition settings. The server writes it; manuscript autosave never sends it. */
+  publishing?: BookPublishing;
+}
+
+export type BookLanguage = "he" | "en";
+
+/** What the author chooses in the Publish EPUB dialog. */
+export interface BookPublishingOptions {
+  title: string;
+  author: string;
+  language: BookLanguage;
+  includeTitlePage: boolean;
+  includeToc: boolean;
+  /** Chapters to include, by id. Studio order decides the reading order. */
+  chapterIds: string[];
+}
+
+export interface BookPublishing extends BookPublishingOptions {
+  /** Cover image as a PNG or JPEG data URL, or empty for no cover. */
+  cover: string;
+  identifier: string;
+  readerBookId?: string;
+  publishedAt?: string;
+  /** The manuscript's updatedAt when this edition was built. */
+  sourceUpdatedAt?: string;
+}
+
+export interface BookPublishingRequest extends BookPublishingOptions {
+  cover: string;
 }
 
 export interface BasicBookDataItem {

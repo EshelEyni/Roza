@@ -166,6 +166,10 @@ test(
             updatedAt: new Date().toISOString(),
           };
           books.push(saved);
+        } else if (Object.keys(incoming).join() === "isArchived") {
+          // Archiving a whole book sends only the flag, like the real API allows.
+          saved = { ...saved, isArchived: incoming.isArchived, updatedAt: new Date().toISOString() };
+          books[books.findIndex((b) => b.id === saved.id)] = saved;
         } else {
           if (incoming.updatedAt !== saved.updatedAt) {
             res.statusCode = 409;
@@ -245,9 +249,16 @@ test(
       assert.equal(saved.wordGoal, 73_600);
       if (process.env.STUDIO_LIBRARY_ONLY === "1") {
         await page.getByRole("button", { name: "Back to library", exact: true }).click();
-        await page.getByRole("button", { name: "Archive The Shape of Quiet", exact: true }).click();
+        await page.getByRole("link", { name: "Write The Shape of Quiet", exact: true }).waitFor();
+        // Archiving moved from the library card into the Studio menu.
+        assert.equal(await page.getByRole("button", { name: /^Archive / }).count(), 0);
+        await page.getByRole("link", { name: "Continue writing", exact: true }).click();
+        await page.locator('[aria-label="Manuscript"]').waitFor();
+        await page.locator(".ws-more").click();
+        await page.getByRole("button", { name: "Archive book", exact: true }).click();
         await page.getByRole("dialog", { name: "Archive this book?" })
           .getByRole("button", { name: "Archive", exact: true }).click();
+        await page.waitForURL(/\/books$/);
         await page.getByRole("link", { name: "Write The Shape of Quiet", exact: true })
           .waitFor({ state: "detached" });
         assert.equal(saved.isArchived, true);
