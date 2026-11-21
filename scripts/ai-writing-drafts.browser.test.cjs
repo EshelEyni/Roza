@@ -562,9 +562,11 @@ test(
       await page.getByRole('dialog').getByRole('button', {name:'Delete note', exact:true}).click();
       assert.equal(await page.getByRole('textbox', {name:'Note 1', exact:true}).count(),0);
       await page.getByRole('button', {name:'Write', exact:true}).click();
+      await page.locator(".ws-line-number").first().hover();
       await page.getByRole('button', {name:'Add note to line 1', exact:true}).click();
       await page.getByRole('textbox', {name:'Annotation text', exact:true}).press('Escape');
       assert.equal(await page.locator('.ws-annotation-card').count(),0);
+      await page.locator(".ws-line-number").first().hover();
       await page.getByRole('button', {name:'Add note to line 1', exact:true}).click();
       await page.getByRole('textbox', {name:'Annotation text', exact:true}).fill('A note attached to the first row.');
       await page.getByRole('textbox', {name:'Chapter or page title', exact:true}).click();

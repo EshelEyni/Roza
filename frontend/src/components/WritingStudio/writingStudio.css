@@ -1464,7 +1464,6 @@ padding: 6px 10px;
   width: 42px;
   display: flex;
   align-items: center;
-  gap: 1px;
   pointer-events: auto;
 }
 .ws-line-number {
@@ -1480,6 +1479,14 @@ padding: 6px 10px;
   color: var(--ws-muted);
   font-size: 17px;
   line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+}
+.ws-line-number:hover + .ws-add-annotation,
+.ws-line-marker .ws-add-annotation:hover,
+.ws-line-marker .ws-add-annotation:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 .ws .ws-add-annotation:hover,
 .ws .ws-add-annotation:focus-visible {

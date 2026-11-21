@@ -265,6 +265,7 @@ test(
       assert.equal(saved.chapters[1].annotations[0].content,'Other chapter note');
       assert.equal(saved.chapters[1].annotations[0].anchor,null);
       assert.equal(saved.chapters[1].annotations[0].general,true);
+      await page.locator(".ws-line-number").first().hover();
       await page.getByRole("button", { name: "Add note to line 1", exact: true }).click();
       const activeAnnotation = page.locator(".ws-annotation-card.is-active");
       const annotationText = activeAnnotation.getByLabel("Annotation text");

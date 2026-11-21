@@ -264,6 +264,7 @@ async function runAnnotations(exactSelectionOnly) {
         });
       const bibleButton = page.getByRole("button", { name: "Chapter Bible", exact: true });
       const writeButton = page.getByRole("button", { name: "Write", exact: true });
+      await page.locator(".ws-line-number").nth(1).hover();
       await add(2).click();
       const textareaStyle = await noteText.evaluate(node => {
         const style = getComputedStyle(node);
@@ -283,6 +284,7 @@ async function runAnnotations(exactSelectionOnly) {
         [1, 0],
       );
       assert.equal((await editor.locator(".ws-annotation-highlight").allTextContents()).join(""), "A thought worth annotating.");
+      await page.locator(".ws-line-number").nth(1).hover();
       await add(2).click({ force: true });
       await noteText.fill("Check the pacing here.");
       assert.equal(
@@ -551,7 +553,17 @@ async function checkExactNoteSelections(page, chapter) {
     { start: [0, 12], end: [0, 13], expected: " ", name: "Whitespace only" },
   ];
   await editor.waitFor();
-  await page.locator(".ws-line-number").first().hover();
+  const lineNumber = page.locator(".ws-line-number").first();
+  const buttonOpacity = () => lineNote.evaluate(node => getComputedStyle(node).opacity);
+  await editor.locator("p").first().hover();
+  assert.equal(await buttonOpacity(), "0");
+  await lineNumber.hover();
+  assert.equal(await buttonOpacity(), "1");
+  await lineNote.hover();
+  assert.equal(await buttonOpacity(), "1");
+  await editor.locator("p").first().hover();
+  assert.equal(await buttonOpacity(), "0");
+  await lineNumber.hover();
   await lineNote.click();
   await quote.waitFor();
   assert.equal(await quote.textContent(), "Paragraph 1. A quiet moment in the story.");
