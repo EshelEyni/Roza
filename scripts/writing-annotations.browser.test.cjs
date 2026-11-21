@@ -481,7 +481,7 @@ async function runAnnotations(exactSelectionOnly) {
       await editor.click();
       await page.keyboard.press("Control+Home");
       await page.keyboard.press("Control+Shift+ArrowRight");
-      await page.getByRole("button", { name: "+ Note", exact: true }).click();
+      await page.getByRole("button", { name: /^\+ Note \(\d+\)$/ }).click();
       await noteText.fill("A precise passage note.");
       await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].annotations.length, 81);
@@ -504,7 +504,7 @@ async function runAnnotations(exactSelectionOnly) {
         window.getSelection().setBaseAndExtent(leaf, 0, leaf, end);
         return leaf.textContent.slice(0, end);
       });
-      await page.getByRole("button", { name: "+ Note", exact: true }).click();
+      await page.getByRole("button", { name: /^\+ Note \(\d+\)$/ }).click();
       await noteField.fill("A note from the Read Mode button.");
       await page.getByRole("button", { name: "✓ All changes saved" }).waitFor();
       assert.equal(saved.chapters[0].annotations.at(-1).quote, selectedSentence);
@@ -525,7 +525,7 @@ async function runAnnotations(exactSelectionOnly) {
 
 async function checkExactNoteSelections(page, chapter) {
   const editor = page.locator('[aria-label="Manuscript"]');
-  const addNote = page.getByRole("button", { name: "+ Note", exact: true });
+  const addNote = page.getByRole("button", { name: /^\+ Note \(\d+\)$/ });
   const lineNote = page.getByRole("button", { name: "Add note to line 1", exact: true });
   const noteField = page.getByRole("textbox", { name: "Annotation text", exact: true });
   const quote = page.locator(".ws-annotation-card.is-active .ws-note-quote");
@@ -553,6 +553,7 @@ async function checkExactNoteSelections(page, chapter) {
     { start: [0, 12], end: [0, 13], expected: " ", name: "Whitespace only" },
   ];
   await editor.waitFor();
+  assert.equal(await addNote.textContent(), "+ Note (0)");
   const lineNumber = page.locator(".ws-line-number").first();
   const buttonOpacity = () => lineNote.evaluate(node => getComputedStyle(node).opacity);
   await editor.locator("p").first().hover();
@@ -583,6 +584,7 @@ async function checkExactNoteSelections(page, chapter) {
     await noteField.fill(entry.name);
     await noteField.press("Enter");
     await saved.waitFor();
+    assert.equal(await addNote.textContent(), "+ Note (" + chapter().annotations.length + ")");
     const note = chapter().annotations.find(note => note.content === entry.name);
     assert.equal(note.quote, entry.expected);
     const backwards = entry.start[0] === entry.end[0] && entry.start[1] > entry.end[1];

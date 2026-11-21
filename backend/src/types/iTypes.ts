@@ -33,6 +33,11 @@ export interface IUser extends Document {
 export interface IBook extends Document {
   audiobookNarrator?: import("../../../shared/types/reader").ReaderAudiobookNarrator;
   taskBoard?: import("../../../shared/types/books").TaskBoard;
+  publishing?: Omit<import("../../../shared/types/books").BookPublishing, "readerBookId" | "publishedAt" | "sourceUpdatedAt"> & {
+    readerBookId?: mongoose.Types.ObjectId;
+    publishedAt?: Date;
+    sourceUpdatedAt?: Date;
+  };
   userId: mongoose.Types.ObjectId;
   name: string;
   chapters: IChapter[];

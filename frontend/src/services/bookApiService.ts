@@ -38,9 +38,13 @@ async function update(book: Book): Promise<Book> {
   try {
     // Keep timeout scoped to manuscript writes; an uncertain response retains
     // the recovery draft and the server version check makes retries safe.
+    // Publishing settings and the cover are saved by the Publish EPUB dialog.
+    // Leaving them out keeps every autosave small.
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { publishing, ...manuscript } = book;
     const response = await axios.patch<JsendResponse>(
       `/api/${baseUrl}/${book.id}`,
-      book,
+      manuscript,
       { withCredentials: true, timeout: 20000 },
     );
     return handleServerResponseData<Book>(response.data);
@@ -55,4 +59,15 @@ async function update(book: Book): Promise<Book> {
   }
 }
 
-export default { query, getById, add, update };
+/** Archives a whole manuscript. It leaves the library but its data is kept. */
+async function archive(id: string): Promise<void> {
+  try {
+    await axios.patch(`/api/${baseUrl}/${id}`, { isArchived: true }, { withCredentials: true });
+  } catch (error) {
+    if (axios.isAxiosError(error))
+      throw new Error(error.response?.data?.message || "Unable to archive the manuscript. Please try again.");
+    throw error;
+  }
+}
+
+export default { query, getById, add, update, archive };
