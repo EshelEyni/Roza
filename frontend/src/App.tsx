@@ -176,6 +176,10 @@ function App() {
       <Suspense fallback={<Loader isPageLoader={true} />}>
         <Routes>
           <Route index element={<Navigate replace to="/home" />} />
+          <Route
+            path="/publishing"
+            element={<Navigate replace to={{ pathname: "/staging-room", search: location.search, hash: location.hash }} />}
+          />
           {getRoutes()}
           <Route path="*" element={<PageNotFound />} />
         </Routes>

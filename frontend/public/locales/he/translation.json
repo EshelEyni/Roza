@@ -1,4 +1,9 @@
 {
+  "stagingRoom": {
+    "title": "חדר הכנה",
+    "unavailable": "חדר הכנה זמין למנהלי מערכת ביישום ROZA למחשב, לאחר הגדרת תיקיית הפרויקטים.",
+    "back": "חזרה ל־ROZA"
+  },
   "writingTasks": "משימות",
   "authFormTitle": {
     "login": "אין לך חשבון?",

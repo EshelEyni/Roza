@@ -3,6 +3,7 @@ artifactName: 'Roza-Setup-${version}-x64.${ext}'
 files:
   - main.cjs
   - preload.cjs
+  - staging-room-build/**/*
   - kokoro/*.cjs
   - assets/badges/*.png
   - renderer/**/*

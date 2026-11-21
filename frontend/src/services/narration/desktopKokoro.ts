@@ -106,7 +106,11 @@ export function localVoiceInstalled(status: KokoroStatus | null | undefined, mod
 
 declare global {
   interface Window {
-    rozaDesktop?: { kokoro?: DesktopKokoro; taskbar?: DesktopTaskbar };
+    rozaDesktop?: {
+      kokoro?: DesktopKokoro;
+      taskbar?: DesktopTaskbar;
+      stagingRoom?: import("../../../../shared/types/stagingRoom").StagingRoomApi;
+    };
   }
 }
 

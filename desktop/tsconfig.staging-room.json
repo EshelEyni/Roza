@@ -1,0 +1,18 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "rootDir": "..",
+    "outDir": "staging-room-build",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    "noEmitOnError": true
+  },
+  "include": [
+    "staging-room/**/*.ts"
+  ]
+}

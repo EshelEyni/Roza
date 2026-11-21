@@ -1,6 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { GiNotebook, GiBookPile, GiHouse } from "react-icons/gi";
-import { RiUserFill } from "react-icons/ri";
+import { RiUpload2Fill, RiUserFill } from "react-icons/ri";
+import { useStagingRoomAccess } from "../../hooks/useStagingRoomAccess";
 import { useGetReaderAccess } from "../../hooks/reactQuery/get/useGetReaderAccess";
 
 export type MainNavLink = {
@@ -34,6 +35,7 @@ const readingRoomIcon = (
 export function useMainNavLinks(): MainNavLink[] {
   const { t } = useTranslation();
   const { data: readerAccess } = useGetReaderAccess();
+  const stagingRoomAccess = useStagingRoomAccess();
 
   const links: MainNavLink[] = [
     { name: t("home"), icon: <GiHouse />, link: "/home" },
@@ -47,11 +49,15 @@ export function useMainNavLinks(): MainNavLink[] {
       icon: readingRoomIcon,
       link: "/reader",
     });
+  if (stagingRoomAccess) {
+    links.push({ name: t("stagingRoom.title"), icon: <RiUpload2Fill />, link: "/staging-room" });
+  }
   return links;
 }
 
 /** The main page a path belongs to, so the open reader counts as Reading Room. */
 export function mainSectionOf(pathname: string) {
+  if (pathname === "/staging-room") return "/staging-room";
   if (pathname.startsWith("/reader")) return "/reader";
   if (pathname === "/books" || pathname.startsWith("/book/") || pathname.startsWith("/book-edit/"))
     return "/books";

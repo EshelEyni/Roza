@@ -9,6 +9,26 @@ const call = async (channel, input) => {
 };
 
 contextBridge.exposeInMainWorld("rozaDesktop", {
+  ...(process.argv.includes("--roza-staging-room-enabled") && {
+    stagingRoom: {
+      listBooks: () => ipcRenderer.invoke("staging-room:books:list"),
+      getListPrefs: () => ipcRenderer.invoke("staging-room:books:prefs:get"),
+      setListPrefs: (prefs) => ipcRenderer.invoke("staging-room:books:prefs:set", prefs),
+      getBook: (slug) => ipcRenderer.invoke("staging-room:books:get", slug),
+      getChapter: (slug, file) => ipcRenderer.invoke("staging-room:books:chapter", slug, file),
+      connectionInfo: () => ipcRenderer.invoke("staging-room:db:info"),
+      testConnection: () => ipcRenderer.invoke("staging-room:db:test"),
+      prodStatus: (slug) => ipcRenderer.invoke("staging-room:prod:status", slug),
+      upload: (slug, options) => ipcRenderer.invoke("staging-room:prod:upload", slug, options),
+      pull: (slug, options) => ipcRenderer.invoke("staging-room:prod:pull", slug, options),
+      openBooksFolder: (slug) => ipcRenderer.invoke("staging-room:shell:openBooks", slug),
+      onLog: (listener) => {
+        const handler = (_e, line) => listener(line);
+        ipcRenderer.on("staging-room:log", handler);
+        return () => ipcRenderer.removeListener("staging-room:log", handler);
+      },
+    },
+  }),
   taskbar: {
     // Switches the taskbar badge to headphones while an audiobook plays.
     setAudioPlaying: (playing) => ipcRenderer.send("taskbar:audio-playing", playing === true),

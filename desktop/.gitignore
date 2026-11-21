@@ -1,4 +1,5 @@
 /dist/
 /renderer/
+/staging-room-build/
 /node_modules/
 __pycache__/

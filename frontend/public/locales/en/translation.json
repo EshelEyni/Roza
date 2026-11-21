@@ -1,4 +1,9 @@
 {
+  "stagingRoom": {
+    "title": "Staging Room",
+    "unavailable": "Staging Room is available to administrators in ROZA Desktop with a configured project folder.",
+    "back": "Back to ROZA"
+  },
   "writingTasks": "Tasks",
   "authFormTitle": {
     "login": "Don't have an account?",
