@@ -47,7 +47,13 @@ const initial = {
 test(
   "contextual annotations: editing, persistence, collision, dragging, long chapters and responsive layouts",
   { timeout: 180000 },
-  async () => {
+  () => runAnnotations(false),
+);
+test("exact mouse selections in Writing Studio notes survive reopening", { timeout: 60000 },
+  () => runAnnotations(true),
+);
+
+async function runAnnotations(exactSelectionOnly) {
     const { createServer } = await import(
       pathToFileURL(
         path.join(root, "frontend/node_modules/vite/dist/node/index.js"),
@@ -189,6 +195,16 @@ test(
       await page
         .getByRole("link", { name: "Write The Shape of Quiet", exact: true })
         .waitFor();
+      if (exactSelectionOnly) {
+        saved.chapters[0].text = [{
+          type: "paragraph",
+          children: [{ text: "Paragraph 1. A quiet" }, { text: " moment", bold: true }, { text: " in the story." }],
+        }];
+        await page.getByRole("link", { name: "Continue writing" }).click();
+        await checkExactNoteSelections(page, () => saved.chapters[0]);
+        assert.deepEqual(errors, []);
+        return;
+      }
       await page.screenshot({
         path: path.join(screenshots, "library-desktop.png"),
       });
@@ -503,5 +519,77 @@ test(
       await browser?.close();
       await server.close();
     }
-  },
-);
+}
+
+async function checkExactNoteSelections(page, chapter) {
+  const editor = page.locator('[aria-label="Manuscript"]');
+  const addNote = page.getByRole("button", { name: "+ Note", exact: true });
+  const lineNote = page.getByRole("button", { name: "Add note to line 1", exact: true });
+  const noteField = page.getByRole("textbox", { name: "Annotation text", exact: true });
+  const quote = page.locator(".ws-annotation-card.is-active .ws-note-quote");
+  const saved = page.getByRole("button", { name: /All changes saved/ });
+  const dragSelection = async (start, end) => {
+    await editor.locator("p").first().scrollIntoViewIfNeeded();
+    const [from, to] = await editor.evaluate((element, offsets) => offsets.map(([leafIndex, offset]) => {
+      const leaf = element.querySelectorAll("[data-slate-string]")[leafIndex].firstChild;
+      const range = document.createRange();
+      range.setStart(leaf, offset);
+      range.collapse(true);
+      const rect = range.getBoundingClientRect();
+      return { x: rect.left, y: (rect.top + rect.bottom) / 2 };
+    }), [start, end]);
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 10 });
+    await page.mouse.up();
+  };
+  const cases = [
+    { start: [0, 13], end: [1, 6], expected: "A quiet momen", name: "Across formatting" },
+    { start: [0, 15], end: [0, 19], expected: "quie", name: "From line button", line: true },
+    { start: [0, 12], end: [0, 11], expected: ".", name: "Reverse punctuation", reading: true },
+    { start: [0, 17], end: [0, 19], expected: "ie", name: "Partial word", shortcut: true },
+    { start: [0, 12], end: [0, 13], expected: " ", name: "Whitespace only" },
+  ];
+  await editor.waitFor();
+  await page.locator(".ws-line-number").first().hover();
+  await lineNote.click();
+  await quote.waitFor();
+  assert.equal(await quote.textContent(), "Paragraph 1. A quiet moment in the story.");
+  await noteField.press("Enter");
+  await quote.waitFor({ state: "hidden" });
+  for (const entry of cases) {
+    if (entry.reading) await page.getByRole("button", { name: "Read", exact: true }).click();
+    await dragSelection(entry.start, entry.end);
+    assert.equal(await page.evaluate(() => getSelection().toString()), entry.expected);
+    if (entry.shortcut) await page.keyboard.press("Control+Alt+n");
+    else if (entry.line) {
+      await page.locator(".ws-line-number").first().hover();
+      await lineNote.click();
+    } else await addNote.click();
+    await quote.waitFor();
+    assert.equal(await quote.textContent(), entry.expected);
+    await noteField.fill(entry.name);
+    await noteField.press("Enter");
+    await saved.waitFor();
+    const note = chapter().annotations.find(note => note.content === entry.name);
+    assert.equal(note.quote, entry.expected);
+    const backwards = entry.start[0] === entry.end[0] && entry.start[1] > entry.end[1];
+    const [start, end] = backwards ? [entry.end, entry.start] : [entry.start, entry.end];
+    assert.deepEqual(note.anchor, {
+      anchor: { path: [0, start[0]], offset: start[1] },
+      focus: { path: [0, end[0]], offset: end[1] },
+    });
+  }
+  await dragSelection([0, 16], [0, 16]);
+  await page.keyboard.press("Control+Alt+n");
+  await quote.waitFor();
+  assert.equal(await quote.textContent(), "A quiet moment in the story.");
+  await noteField.fill("Marked sentence note");
+  await noteField.press("Enter");
+  await saved.waitFor();
+  await page.reload();
+  const card = page.locator(".ws-annotation-card").getByRole("button", { name: "From line button", exact: true });
+  await card.click();
+  await quote.waitFor();
+  assert.equal(await quote.textContent(), "quie");
+}

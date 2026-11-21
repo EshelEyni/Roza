@@ -1980,16 +1980,16 @@ padding: 6px 10px;
   padding: 2px 12px 10px;
 }
 .ws .ws-annotation-card .ws-note-quote {
-  display: -webkit-box;
+  display: block;
+  white-space: pre-wrap;
   width: 100%;
   margin: 0 0 8px;
   padding: 0 0 0 8px;
   border: 0;
   border-left: 2px solid var(--ws-line);
   border-radius: 0;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+  max-height: 12em;
+  overflow: auto;
   overflow-wrap: anywhere;
   text-align: start;
   font:

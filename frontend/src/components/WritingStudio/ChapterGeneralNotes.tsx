@@ -56,7 +56,7 @@ function inlineNoteContext(editor: Editor, note: ChapterAnnotation) {
   const last = end.path[0] + 1;
   return {
     location: first === last ? `Block ${first}` : `Blocks ${first}–${last}`,
-    quote: Editor.string(editor, note.anchor).slice(0, 500),
+    quote: note.quote,
   };
 }
 

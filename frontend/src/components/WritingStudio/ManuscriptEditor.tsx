@@ -269,17 +269,26 @@ export function ManuscriptEditor({
       }
     });
   };
-  const selectedReadingSentence = (editable: HTMLElement) => {
-    const selection = editable.ownerDocument.getSelection();
-    const nativeRange = selection?.rangeCount && !selection.isCollapsed
-      ? selection.getRangeAt(0)
-      : readingMarks.markedSentence.current;
-    if (!nativeRange || !editable.contains(nativeRange.commonAncestorContainer)) return;
-    const anchor = ReactEditor.toSlateRange(editor, nativeRange, {
+  const selectedPassage = () => {
+    const editable = findRoot.current?.querySelector<HTMLElement>("[data-slate-editor]");
+    const selection = editable?.ownerDocument.getSelection();
+    if (!selection?.rangeCount || selection.isCollapsed ||
+        !editable?.contains(selection.anchorNode) || !editable.contains(selection.focusNode)) return;
+    const anchor = ReactEditor.toSlateRange(editor, selection.getRangeAt(0), {
       exactMatch: false,
       suppressThrow: true,
     });
-    return annotationSentenceRange(editor, anchor);
+    if (validAnchor(editor, anchor) && Range.isExpanded(anchor)) {
+      return { anchor, quote: selection.toString() };
+    }
+  };
+  const markedReadingSentence = () => {
+    const marked = readingMarks.markedSentence.current;
+    if (!marked || !findRoot.current?.contains(marked.commonAncestorContainer)) return;
+    return annotationSentenceRange(editor, ReactEditor.toSlateRange(editor, marked, {
+      exactMatch: false,
+      suppressThrow: true,
+    }));
   };
   const resumeReadingAtNote = (note: ChapterAnnotation) => {
     const sentence = annotationSentenceRange(editor, note.anchor);
@@ -293,29 +302,31 @@ export function ManuscriptEditor({
       readingMarks.markRange(ReactEditor.toDOMRange(editor, sentence));
     });
   };
-  const addSelectionNote = (readingAnchor?: Range) => {
-    if (!canAddNote) return;
+  const addSelectionNote = ({ shortcut, line }: { shortcut?: boolean; line?: Range } = {}) => {
+    if (!canAddNote) return false;
+    const passage = selectedPassage();
+    const readingAnchor = reading ? passage?.anchor ?? (!line ? markedReadingSentence() : undefined) : undefined;
+    if (shortcut && !readingAnchor) return false;
     if (readingAnchor) {
       readingMarks.clear();
       readingMarks.root.current?.ownerDocument.getSelection()?.removeAllRanges();
     }
     const selection = editor.selection;
-    const anchor = readingAnchor ?? (
-      selection && Range.isExpanded(selection)
-        ? selection
-        : Editor.range(
-            editor,
-            selection ? selection.anchor.path.slice(0, -1) : [0],
-          ));
+    const expandedSelection = !line && selection && Range.isExpanded(selection) ? selection : null;
+    const anchor = passage?.anchor ?? line ?? readingAnchor ?? expandedSelection ??
+      Editor.range(editor, selection ? selection.anchor.path.slice(0, -1) : [0]);
+    const selected = passage || (!readingAnchor && expandedSelection);
+    const quote = passage?.quote ?? Editor.string(editor, anchor);
     const note: ChapterAnnotation = {
       id: crypto.randomUUID(),
       content: "",
       anchor,
-      quote: Editor.string(editor, anchor).slice(0, 500),
+      quote: selected ? quote : quote.slice(0, 500),
     };
     persistNotes([...notes.current, note]);
     setActiveNote(note.id);
     onRevealAnnotations?.();
+    return true;
   };
   return (
     <Slate
@@ -364,12 +375,9 @@ export function ManuscriptEditor({
           type="button"
           className="ws-add-selection-note"
           aria-keyshortcuts="Control+Alt+N"
-          title="Add a note to the selected sentence (Ctrl+Alt+N)"
+          title="Add a note to the selected text or marked sentence (Ctrl+Alt+N)"
           onMouseDown={event => event.preventDefault()}
-          onClick={() => {
-            const editable = readingMarks.root.current?.querySelector<HTMLElement>("[data-slate-editor]");
-            addSelectionNote(editable ? selectedReadingSentence(editable) : undefined);
-          }}
+          onClick={() => addSelectionNote()}
         >
           + Note
         </button>
@@ -392,13 +400,9 @@ export function ManuscriptEditor({
           onKeyDownCapture={event => {
             if (reading && canAddNote && !event.repeat && !event.nativeEvent.isComposing &&
                 event.ctrlKey && event.altKey && !event.shiftKey && !event.metaKey &&
-                !event.getModifierState("AltGraph") && event.code === "KeyN") {
-              const sentence = selectedReadingSentence(event.currentTarget);
-              if (sentence) {
-                event.preventDefault();
-                addSelectionNote(sentence);
-                return;
-              }
+                !event.getModifierState("AltGraph") && event.code === "KeyN" && addSelectionNote({ shortcut: true })) {
+              event.preventDefault();
+              return;
             }
             readingMarks.onKeyDown?.(event);
           }}
@@ -496,6 +500,7 @@ export function ManuscriptEditor({
             notes={annotations}
             active={activeNote}
             onActive={setActiveNote}
+            onAddAtLine={line => addSelectionNote({ line })}
             onConfirm={reading ? resumeReadingAtNote : undefined}
             onReveal={onRevealAnnotations}
             visible={showAnnotations}

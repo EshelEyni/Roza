@@ -455,7 +455,9 @@ export function useManuscriptReadingMarks(enabled: boolean, editor: Editor & Rea
   const onClick = (event: MouseEvent<HTMLDivElement>) => {
     const { currentTarget, clientX, clientY } = event;
     const doc = currentTarget.ownerDocument;
-    if (doc.getSelection()?.toString().trim()) return;
+    const selection = doc.getSelection();
+    if (selection && !selection.isCollapsed &&
+        currentTarget.contains(selection.anchorNode) && currentTarget.contains(selection.focusNode)) return;
     const caret = readerCaretRange(doc, clientX, clientY);
     const block = caret?.startContainer.parentElement?.closest(blockSelector);
     clear();

@@ -75,3 +75,17 @@ test("schema rejects invalid anchor offsets and paths", async () => {
   input.annotations[0].anchor.focus.path = [0, -1];
   await assert.rejects(new Chapter(input).validate());
 });
+
+test("schema round-trips an exact selection longer than 500 characters", async () => {
+  const input = fixture();
+  const quote = " The selected passage. ".repeat(25);
+  input.text[0].children[0].text = "Before" + quote + "After";
+  input.annotations[0].quote = quote;
+  input.annotations[0].anchor.anchor.offset = "Before".length;
+  input.annotations[0].anchor.focus.offset = "Before".length + quote.length;
+  const doc = new Chapter(input);
+  await doc.validate();
+  const restored = new Chapter(JSON.parse(JSON.stringify(doc.toObject())));
+  assert.equal(restored.annotations[0].quote, quote);
+  assert.equal(restored.annotations[0].anchor.focus.offset, "Before".length + quote.length);
+});

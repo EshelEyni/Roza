@@ -26,7 +26,7 @@ const annotationSchema = new Schema(
     id: { type: String, required: true },
     general: { type: Boolean, default: undefined },
     content: { type: String, default: "", maxlength: 50000 },
-    quote: { type: String, default: "", maxlength: 500 },
+    quote: { type: String, default: "" },
     anchor: {
       type: new Schema(
         {

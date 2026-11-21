@@ -40,6 +40,7 @@ export function AnnotationMargin({
   onChange,
   legacyNotes,
   onActive,
+  onAddAtLine,
   onReveal,
   onConfirm,
 }: {
@@ -50,6 +51,7 @@ export function AnnotationMargin({
   onChange: (notes: ChapterAnnotation[]) => void;
   legacyNotes?: ReactNode;
   onActive: (id: string | null) => void;
+  onAddAtLine: (line: Range) => void;
   onReveal?: () => void;
   onConfirm?: (note: ChapterAnnotation) => void;
 }) {
@@ -298,17 +300,6 @@ export function AnnotationMargin({
       document.removeEventListener("keydown", close, true);
     };
   }, [menuFor]);
-  const add = (line: Line) => {
-    onReveal?.();
-    const note: ChapterAnnotation = {
-      id: crypto.randomUUID(),
-      content: "",
-      anchor: line.range,
-      quote: Editor.string(editor, line.range).slice(0, 500),
-    };
-    onChange([...notes, note]);
-    setActive(note.id);
-  };
   const notesById = new Map(notes.filter(note => !note.general).map(note => [note.id, note]));
   // Measurement is committed after render; removed notes must disappear immediately.
   const layout = layoutAnnotations(
@@ -379,7 +370,7 @@ export function AnnotationMargin({
                   aria-label={`Add note to line ${line.number}`}
                   title="Add note"
                   onMouseDown={event => event.preventDefault()}
-                  onClick={() => add(line)}
+                  onClick={() => onAddAtLine(line.range)}
                 >
                   +
                 </button>
