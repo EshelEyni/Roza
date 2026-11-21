@@ -5,12 +5,14 @@ import { FiCheck, FiChevronDown } from "react-icons/fi";
 export function ReaderSelect<T extends string>({
   id,
   labelId,
+  prefix,
   value,
   options,
   onChange,
 }: {
   id: string;
   labelId: string;
+  prefix?: string;
   value: T;
   options: { value: T; label: string }[];
   onChange: (value: T) => void;
@@ -108,7 +110,7 @@ export function ReaderSelect<T extends string>({
           }
         }}
       >
-        {options[selected]?.label}
+        {prefix ? <span className="reader-select-value"><span>{prefix}</span>{options[selected]?.label}</span> : options[selected]?.label}
         <FiChevronDown aria-hidden="true" />
       </button>
       {open && (

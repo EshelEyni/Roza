@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import {
   FiArchive,
   FiMoreVertical,
+  FiBookmark,
   FiRotateCcw,
   FiEdit2,
   FiTrash2,
@@ -18,11 +19,13 @@ export function ReaderBookMenu({
   archived,
   pending,
   onArchive,
+  onPin,
 }: {
   book: ReaderBook;
   archived: boolean;
   pending: boolean;
   onArchive: (book: ReaderBook) => void;
+  onPin: (book: ReaderBook) => void;
 }) {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -46,25 +49,17 @@ export function ReaderBookMenu({
     try {
       if (management === "rename") {
         const updated = await readerApiService.rename(book.id, title.trim());
-        queryClient.setQueriesData<ReaderBook[]>(
-          { queryKey: ["readerBooks", userId] },
-          (data) => data?.map((item) => (item.id === book.id ? updated : item)),
-        );
         queryClient.setQueryData<ReaderBook>(
           ["readerBook", userId, book.id],
           (data) => (data ? { ...data, title: updated.title } : undefined),
         );
       } else {
         await readerApiService.deletePermanently(book.id);
-        queryClient.setQueriesData<ReaderBook[]>(
-          { queryKey: ["readerBooks", userId] },
-          (data) => data?.filter((item) => item.id !== book.id),
-        );
         queryClient.removeQueries({
           queryKey: ["readerBook", userId, book.id],
         });
       }
-      void queryClient.invalidateQueries({ queryKey: ["readerBooks", userId] });
+      await queryClient.invalidateQueries({ queryKey: ["readerBooks", userId] });
       setManagement(null);
       trigger.current?.focus();
     } catch (cause) {
@@ -162,6 +157,19 @@ export function ReaderBookMenu({
           >
             <FiEdit2 aria-hidden="true" />
             {t("reader.renameBook")}
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            disabled={pending || saving}
+            onClick={() => {
+              setOpen(false);
+              trigger.current?.focus();
+              onPin(book);
+            }}
+          >
+            <FiBookmark aria-hidden="true" />
+            {t(book.pinned ? "reader.unpinBook" : "reader.pinBook")}
           </button>
           {archived && (
             <button

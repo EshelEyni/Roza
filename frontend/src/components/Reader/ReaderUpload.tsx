@@ -1,10 +1,10 @@
 import { ChangeEvent, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FiUpload } from "react-icons/fi";
+import { FiPlus, FiUpload } from "react-icons/fi";
 import { useQueryClient } from "@tanstack/react-query";
 import readerApiService from "../../services/readerApiService";
 
-export function ReaderUpload() {
+export function ReaderUpload({ compact = false, sheet = false }: { compact?: boolean; sheet?: boolean }) {
   const { t } = useTranslation();
   const client = useQueryClient();
   const input = useRef<HTMLInputElement>(null);
@@ -34,8 +34,9 @@ export function ReaderUpload() {
     }
   }
 
+  const Icon = compact ? FiPlus : FiUpload;
   return (
-    <div className="reader-upload">
+    <div className={"reader-upload" + (compact ? " reader-upload-compact" : sheet ? " reader-upload-sheet" : "")}>
       <input
         ref={input}
         type="file"
@@ -45,18 +46,18 @@ export function ReaderUpload() {
         disabled={progress !== null}
       />
       <button
-        className="reader-button reader-button-primary"
+        className={compact || sheet ? "reader-button" : "reader-button reader-button-primary"}
         disabled={progress !== null}
         onClick={() => input.current?.click()}
       >
-        <FiUpload aria-hidden="true" />
+        <Icon aria-hidden="true" />
         {progress === null
-          ? t("reader.upload")
+          ? t(compact ? "reader.libraryAdd" : "reader.upload")
           : progress === 100
             ? t("reader.processing")
             : t("reader.uploading", { percent: progress })}
       </button>
-      <p className="reader-hint">{t("reader.uploadHint")}</p>
+      {!compact && <p className="reader-hint">{t("reader.uploadHint")}</p>}
       {progress !== null && (
         <progress
           className="reader-upload-progress"

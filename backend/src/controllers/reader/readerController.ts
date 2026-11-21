@@ -10,6 +10,7 @@ import {
   saveReaderFile,
   removeReaderFile,
 } from "../../services/reader/readerStorageService";
+import { listReaderBooks, moveReaderBook } from "../../services/reader/readerLibraryService";
 import { permanentlyDeleteReaderBook } from "../../services/reader/readerBookManagementService";
 import { defaultReaderPreferences, readerModes } from "../../services/reader/readerUtilService";
 
@@ -18,33 +19,27 @@ const getReaderAccess = asyncErrorCatcher(async (_req: Request, res: Response) =
 });
 
 const getReaderBooks = asyncErrorCatcher(async (req: Request, res: Response) => {
-  let cursor: { activity: number; id: string } | undefined;
-  if (req.query.cursor !== undefined) {
-    try {
-      if (typeof req.query.cursor !== "string") throw new Error();
-      cursor = JSON.parse(Buffer.from(req.query.cursor, "base64url").toString());
-      if (!cursor || !Number.isSafeInteger(cursor.activity) || cursor.activity < 0 || !/^[a-f0-9]{24}$/.test(cursor.id)) throw new Error();
-    } catch { throw new AppError("Invalid library cursor.", 400); }
-  }
-  // Compute reading activity in Mongo, including legacy books without saved state.
-  const books = await ReaderBookModel.aggregate([
-    { $match: { userId: new mongoose.Types.ObjectId(getLoggedInUserIdFromReq()), archived: req.query.archived === "true" ? true : { $ne: true } } },
-    { $addFields: { activity: { $cond: [{ $gt: ["$state.savedAt", 0] }, "$state.savedAt", { $toLong: "$createdAt" }] } } },
-    ...(cursor ? [{ $match: { $or: [
-      { activity: { $lt: cursor.activity } },
-      { activity: cursor.activity, _id: { $lt: new mongoose.Types.ObjectId(cursor.id) } },
-    ] } }] : []),
-    { $sort: { activity: -1, _id: -1 } },
-    { $limit: 6 },
-    { $project: { fileId: 0, originalFileId: 0, userId: 0 } },
-  ]);
-  const page = books.slice(0, 5);
-  const last = page[page.length - 1];
-  const nextCursor = books.length > 5 ? Buffer.from(JSON.stringify({ activity: Number(last.activity), id: String(last._id) })).toString("base64url") : null;
+  const data = await listReaderBooks(getLoggedInUserIdFromReq(), req.query);
   res.setHeader("Cache-Control", "no-store");
-  res.json({ status: "success", data: {
-    books: page.map(({ activity, ...book }) => ReaderBookModel.hydrate(book).toJSON()), nextCursor,
-  } });
+  res.json({ status: "success", data });
+});
+
+const updateReaderBookOrder = asyncErrorCatcher(async (req: Request, res: Response) => {
+  await moveReaderBook(getLoggedInUserIdFromReq(), req.params.id, req.body ?? {});
+  res.json({ status: "success", data: null });
+});
+
+const updateReaderBookPin = asyncErrorCatcher(async (req: Request, res: Response) => {
+  const pinned = req.body?.pinned;
+  if (typeof pinned !== "boolean") throw new AppError("Invalid pin status.", 400);
+  if (!mongoose.isValidObjectId(req.params.id)) throw new AppError("Book not found.", 404);
+  const updated = await ReaderBookModel.findOneAndUpdate(
+    { _id: req.params.id, userId: getLoggedInUserIdFromReq() },
+    { $set: { pinned } },
+    { new: true, runValidators: true, timestamps: false },
+  );
+  if (!updated) throw new AppError("Book not found.", 404);
+  res.json({ status: "success", data: updated });
 });
 
 const addReaderBook = asyncErrorCatcher(async (req: Request, res: Response) => {
@@ -220,6 +215,8 @@ const updateReaderState = asyncErrorCatcher(async (req: Request, res: Response) 
 export {
   getReaderAccess,
   getReaderBooks,
+  updateReaderBookPin,
+  updateReaderBookOrder,
   addReaderBook,
   getReaderBook,
   getReaderFile,

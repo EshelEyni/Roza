@@ -5,6 +5,8 @@ const readerBookSchema = new Schema<IReaderBook>(
   {
     userId: { type: Schema.Types.ObjectId, required: true, index: true },
     archived: { type: Boolean, default: false },
+    pinned: { type: Boolean, default: false },
+    customRank: Number,
     audiobookNarrator: {
       type: new Schema({
         engine: { type: String, enum: ["system", "openai", "kokoro"], required: true },
@@ -54,6 +56,7 @@ const readerBookSchema = new Schema<IReaderBook>(
         delete result.fileId;
         delete result.originalFileId;
         delete result.userId;
+        delete result.customRank;
         return result;
       },
     },

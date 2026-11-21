@@ -34,7 +34,10 @@ export type ReaderAudiobookNarrator = {
   lang: string;
 };
 
+export type ReaderLibrarySort = "recent" | "title" | "author" | "added" | "custom";
+
 export type ReaderBook = {
+  pinned?: boolean;
   audiobookNarrator?: ReaderAudiobookNarrator;
   archived?: boolean;
   id: string;
@@ -48,4 +51,6 @@ export type ReaderBook = {
   updatedAt: string;
 };
 
-export type ReaderBookPage = { books: ReaderBook[]; nextCursor: string | null };
+export type ReaderLibraryView = "all" | "reading" | "unread" | "finished" | "archived";
+export type ReaderLibraryCounts = Record<Exclude<ReaderLibraryView, "archived">, number>;
+export type ReaderBookPage = { books: ReaderBook[]; nextCursor: string | null; counts?: ReaderLibraryCounts; resume?: ReaderBook };

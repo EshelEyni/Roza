@@ -3,7 +3,7 @@ import {
   ReaderDictionaryLookup,
   ReaderLookupResult,
 } from "../../../shared/types/readerDictionary";
-import { ReaderBook, ReaderBookPage, ReaderState } from "../../../shared/types/reader";
+import { ReaderBook, ReaderBookPage, ReaderLibrarySort, ReaderLibraryView, ReaderState } from "../../../shared/types/reader";
 import { JsendResponse } from "../../../shared/types/system";
 
 const baseUrl = "/api/reader";
@@ -103,11 +103,19 @@ export default {
   lookupWord: (id: string, selection: ReaderDictionaryLookup, signal = AbortSignal.timeout(15000)) =>
     request<ReaderLookupResult>("POST", "/" + id + "/dictionary", selection, signal),
   getAccess: () => request<{ enabled: boolean }>("GET", "/access"),
-  query: (archived = false, cursor: string | null = null, signal?: AbortSignal) => {
-    const params = new URLSearchParams({ archived: String(archived) });
+  query: (view: ReaderLibraryView, sort: ReaderLibrarySort, search: string, cursor: string | null, signal?: AbortSignal, resume = false) => {
+    const params = new URLSearchParams({ archived: String(view === "archived"), sort });
+    if (view !== "all" && view !== "archived") params.set("status", view);
+    if (!cursor) params.set("counts", "true");
+    if (!cursor && resume) params.set("resume", "true");
+    if (search) params.set("q", search);
     if (cursor) params.set("cursor", cursor);
     return request<ReaderBookPage>("GET", "?" + params, undefined, signal);
   },
+  setPinned: (id: string, pinned: boolean) =>
+    request<ReaderBook>("PATCH", "/" + id + "/pin", { pinned }),
+  moveBook: (id: string, anchorId: string, placement: "before" | "after", archived: boolean) =>
+    request<null>("PATCH", "/" + id + "/order", { anchorId, placement, archived }),
   setArchived: (id: string, archived: boolean) =>
     request<ReaderBook>("PATCH", "/" + id + "/archive", { archived }),
   rename: (id: string, title: string) => request<ReaderBook>("PATCH", "/" + id + "/title", { title }),

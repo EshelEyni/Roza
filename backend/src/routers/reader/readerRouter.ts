@@ -8,6 +8,8 @@ import { AppError } from "../../services/error/errorService";
 import {
   getReaderAccess,
   getReaderBooks,
+  updateReaderBookPin,
+  updateReaderBookOrder,
   addReaderBook,
   getReaderBook,
   getReaderFile,
@@ -102,6 +104,8 @@ router.get("/:id/file", getReaderFile);
 router.get("/:id", getReaderBook);
 router.patch("/:id/state", updateReaderState);
 router.patch("/:id/archive", updateReaderBookArchive);
+router.patch("/:id/pin", updateReaderBookPin);
+router.patch("/:id/order", updateReaderBookOrder);
 router.patch("/:id/title", renameReaderBook);
 router.delete("/:id", deleteReaderBook);
 

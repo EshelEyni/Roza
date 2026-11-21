@@ -32,6 +32,9 @@ test(
       "i18next",
       "react-i18next",
       "axios",
+      "@dnd-kit/core",
+      "@dnd-kit/sortable",
+      "@dnd-kit/utilities",
     ].map((name) => ({
       find: name,
       replacement: path
@@ -62,6 +65,136 @@ test(
     });
     await server.listen();
     try {
+      await t.test("eight-book pages, search, drag, keyboard moves and pins", async () => {
+        const browser = await chromium.launch({ channel: "msedge" });
+        try {
+          const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
+          page.setDefaultTimeout(10000);
+          const rows = Array.from({ length: 17 }, (_, i) => ({
+            id: String(i), title: "Book " + String(i).padStart(2, "0"),
+            author: i === 16 ? "Matching Author" : "Writer",
+            state: { progress: i === 1 ? 1 : i === 16 ? 0.5 : 0 }, pinned: false,
+          }));
+          const order = rows.map(book => book.id);
+          let orderWrites = 0;
+          let failNextPage = true;
+          await page.route("**/api/reader**", async route => {
+            const req = route.request();
+            const url = new URL(req.url());
+            const respond = data => route.fulfill({ json: { status: "success", data } });
+            if (url.pathname.endsWith("/access")) return respond({ enabled: true });
+            if (req.method() === "PATCH") {
+              const [, id, action] = url.pathname.match(/([^/]+)\/(pin|order)$/);
+              const data = req.postDataJSON();
+              if (action === "pin") return respond(Object.assign(rows[Number(id)], data));
+              orderWrites++;
+              order.splice(order.indexOf(id), 1);
+              order.splice(order.indexOf(data.anchorId) + Number(data.placement === "after"), 0, id);
+              return respond(null);
+            }
+            const [sort, term, offset, status] = ["sort", "q", "cursor", "status"].map(key => url.searchParams.get(key));
+            if (offset && failNextPage) {
+              failNextPage = false;
+              return route.fulfill({ status: 500 });
+            }
+            const matches = (sort === "custom" ? order.map(id => rows[Number(id)]) : [...rows])
+              .filter(book => !status || status === (book.state.progress === 1 ? "finished" : book.state.progress > 0 ? "reading" : "unread"))
+              .filter(book => !term || (book.title + " " + book.author).toLowerCase().includes(term.toLowerCase()))
+              .sort((a, b) => Number(b.pinned) - Number(a.pinned));
+            const start = Number(offset);
+            return respond({
+              books: matches.slice(start, start + 8),
+              nextCursor: start + 8 < matches.length ? String(start + 8) : null,
+              counts: { all: 17, reading: 1, unread: 15, finished: 1 },
+            });
+          });
+          await page.goto("http://127.0.0.1:" + server.httpServer.address().port + "/fixture");
+          const cards = page.locator("[data-book-id]");
+          const firstTitle = title => cards.first().getByRole("heading", { name: title, exact: true }).waitFor();
+          const chooseSort = async label => {
+            await page.getByRole("combobox", { name: "Sort by" }).click();
+            await page.getByRole("option", { name: label, exact: true }).click();
+          };
+          const drag = async (title, target) => {
+            const source = page.getByRole("link", { name: new RegExp(title) });
+            const destination = page.getByRole("link", { name: new RegExp(target) });
+            await source.scrollIntoViewIfNeeded();
+            await destination.scrollIntoViewIfNeeded();
+            const from = await source.boundingBox();
+            const to = await destination.boundingBox();
+            await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+            await page.mouse.down();
+            await page.locator(".is-dragging").waitFor();
+            await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 15 });
+            await page.mouse.up();
+          };
+
+          await firstTitle("Book 00");
+          assert.equal(await cards.count(), 8);
+          await page.getByRole("button", { name: "Load More", exact: true }).click();
+          await page.getByRole("alert").waitFor();
+          assert.equal(await cards.count(), 8);
+          await page.getByRole("button", { name: "Retry", exact: true }).click();
+          await cards.nth(15).waitFor();
+          assert.equal(await cards.count(), 16);
+
+          await page.getByRole("button", { name: "Reading", exact: true }).click();
+          await firstTitle("Book 16");
+          assert.equal(await cards.count(), 1);
+          await page.getByRole("button", { name: "List view", exact: true }).click();
+          await page.locator(".reader-book-list").waitFor();
+          await page.getByRole("button", { name: "Grid view", exact: true }).click();
+          await page.locator(".reader-book-list").waitFor({ state: "detached" });
+          await page.getByRole("button", { name: "All", exact: true }).click();
+          await firstTitle("Book 00");
+
+          const search = page.getByRole("searchbox", { name: "Search by title or author" });
+          await search.fill("Matching Author");
+          await page.getByRole("status").waitFor();
+          await firstTitle("Book 16");
+          assert.equal(await cards.count(), 1);
+          await search.fill("nobody");
+          await page.getByRole("heading", { name: "No matching books" }).waitFor();
+          await search.fill("");
+          await chooseSort("Title");
+          await firstTitle("Book 00");
+          await drag("Book 01", "Book 00");
+          await firstTitle("Book 01");
+          assert.equal(orderWrites, 0);
+          await page.getByRole("link", { name: /Book 01/ }).click();
+          assert.equal(new URL(page.url()).pathname, "/reader/1");
+          await page.goBack();
+          await page.reload();
+          await firstTitle("Book 00");
+          assert.match(await page.getByRole("combobox").innerText(), /Title/);
+          await chooseSort("Custom order");
+          await firstTitle("Book 00");
+          await drag("Book 01", "Book 00");
+          await firstTitle("Book 01");
+          assert.equal(orderWrites, 1);
+          await page.getByRole("button", { name: "Move Book 01 down", exact: true }).press("Enter");
+          await firstTitle("Book 00");
+          await page.getByRole("button", { name: "Move Book 01 up", exact: true }).press("Enter");
+          await firstTitle("Book 01");
+          await page.reload();
+          await firstTitle("Book 01");
+          await search.fill("Matching Author");
+          await firstTitle("Book 16");
+          await page.getByRole("button", { name: "Book actions for Book 16" }).click();
+          await page.getByRole("menuitem", { name: "Pin book", exact: true }).click();
+          await page.getByText("Pinned", { exact: true }).waitFor();
+          await search.fill("");
+          await firstTitle("Book 16");
+          await page.reload();
+          await firstTitle("Book 16");
+          await page.getByRole("button", { name: "Book actions for Book 16" }).click();
+          await page.getByRole("menuitem", { name: "Unpin book", exact: true }).click();
+          await firstTitle("Book 01");
+        } finally {
+          await browser.close();
+        }
+      });
+
       for (const mobile of [false, true])
         await t.test(
           mobile ? "iPhone WebKit" : "desktop Chromium",
@@ -99,6 +232,8 @@ test(
               await page.route("**/api/reader**", async (route) => {
                 const req = route.request(),
                   url = new URL(req.url());
+                if (url.pathname.endsWith("/access"))
+                  return route.fulfill({ json: { status: "success", data: { enabled: true } } });
                 if (fail && req.method() !== "GET")
                   return route.fulfill({
                     status: 500,
@@ -121,7 +256,7 @@ test(
                       ? [book]
                       : []
                     : book;
-                await route.fulfill({ json: { status: "success", data } });
+                await route.fulfill({ json: { status: "success", data: req.method() === "GET" ? { books: data, nextCursor: null } : data } });
               });
               const open = async () => {
                 await page
@@ -165,7 +300,7 @@ test(
               fail = false;
               await page.getByRole("button", { name: "Save title" }).click();
               await page.getByRole("dialog").waitFor({ state: "detached" });
-              await visible(page.getByText("Renamed title", { exact: true }));
+              await page.getByText("Renamed title", { exact: true }).waitFor();
               assert.equal(book.state.progress, 0.5);
               await page.reload();
               await page
@@ -189,7 +324,7 @@ test(
                 .getByRole("button", { name: "Archive", exact: true })
                 .click();
               await page
-                .getByRole("button", { name: "Archived Books", exact: true })
+                .getByRole("button", { name: "Archived", exact: true })
                 .click();
               await page
                 .getByRole("button", { name: /Book actions/ })
@@ -199,7 +334,7 @@ test(
                 .getByRole("menuitem", { name: "Restore", exact: true })
                 .click();
               await page
-                .getByRole("button", { name: "Active Books", exact: true })
+                .getByRole("button", { name: "All", exact: true })
                 .click();
               await page
                 .getByRole("button", { name: /Book actions/ })
@@ -214,7 +349,7 @@ test(
                 .getByRole("button", { name: "Archive", exact: true })
                 .click();
               await page
-                .getByRole("button", { name: "Archived Books", exact: true })
+                .getByRole("button", { name: "Archived", exact: true })
                 .click();
               await page
                 .getByRole("button", { name: /Book actions/ })
@@ -265,12 +400,7 @@ test(
                 .click();
               await page.getByRole("dialog").waitFor({ state: "detached" });
               assert.equal(deletes, 1);
-              assert.equal(
-                await page
-                  .getByRole("button", { name: /Book actions/ })
-                  .count(),
-                0,
-              );
+              await page.getByRole("button", { name: /Book actions/ }).waitFor({ state: "detached" });
               assert.deepEqual(errors, []);
             } finally {
               await browser.close();
