@@ -1,0 +1,1 @@
+import{j as s}from"./index-DWvgFJlz.js";const n=()=>s.jsxs("main",{className:"ui-not-found",children:[s.jsx("h1",{children:"Hmm...this page doesn’t exist."}),s.jsx("p",{children:"Try searching for something else."})]});export{n as default};

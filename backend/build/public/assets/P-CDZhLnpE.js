@@ -1,0 +1,1 @@
+import{j as s}from"./index-DWvgFJlz.js";const o=()=>s.jsx("hr",{className:"ui-hr"}),m=({children:r,className:t="ui-p",addedClassName:a})=>s.jsx("p",{className:`${t} ${a??""}`,children:r});export{o as H,m as P};
