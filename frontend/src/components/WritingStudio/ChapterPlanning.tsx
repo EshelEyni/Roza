@@ -114,7 +114,7 @@ export function ChapterPlanning({
   onShowInlineNotesChange?: (show: boolean) => void;
 } & PlanningNavigation) {
   const [active, setActive] = useState<StoryKind | "tasks" | "summary" | "general-notes">(
-    "characters",
+    page ? "summary" : "characters",
   );
   const Container = page ? "section" : "details";
   const [expanded, setExpanded] = useState(false);
@@ -240,7 +240,9 @@ export function ChapterPlanning({
                   <ManuscriptEditor
                     key={chapter.id}
                     value={chapter.description}
-                    label="Planning summary"
+                    primaryFindTarget={page && active === "summary"}
+                    label={page ? "Chapter summary" : "Planning summary"}
+                    placeholder="Summarize what happens in this chapter…"
                     aiEditing={{ bookId: store.book.id, chapterId: chapter.id, summary: true }}
                     readOnly={!!store.recovery}
                     onChange={description =>

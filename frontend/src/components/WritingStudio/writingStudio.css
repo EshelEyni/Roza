@@ -1798,22 +1798,28 @@ padding: 6px 10px;
   gap: 1px;
   pointer-events: auto;
 }
-.ws-line-marker button {
-  padding: 2px !important;
-  min-width: 19px;
-  min-height: 28px;
+.ws-line-number {
+  text-align: center;
+  min-width: 17px;
   font: 11px/1.3 var(--roza-font-ui);
   color: var(--ws-muted);
 }
 .ws-line-marker .ws-add-annotation {
-  opacity: 0;
-  color: var(--ws-accent);
-  background: transparent;
+  flex: 0 0 24px;
+  min-height: 28px;
+  padding: 0;
+  color: var(--ws-muted);
   font-size: 17px;
+  line-height: 1;
 }
-.ws-line-marker:hover .ws-add-annotation,
-.ws-line-marker:focus-within .ws-add-annotation {
-  opacity: 1;
+.ws .ws-add-annotation:hover,
+.ws .ws-add-annotation:focus-visible {
+  color: var(--ws-accent);
+  background: var(--ws-soft);
+}
+.ws .ws-add-annotation:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: -2px;
 }
 .ws-line-marker.has-notes .ws-line-number {
   color: var(--ws-accent);
@@ -2079,11 +2085,6 @@ padding: 6px 10px;
   height: 25px;
   padding: 4px;
 }
-@media (hover: none) {
-  .ws-line-marker .ws-add-annotation {
-    opacity: 1;
-  }
-}
 @media (max-width: 1050px) and (min-width: 761px) {
   .ws-annotated-editor > .ws-prose {
     margin-right: 222px;
@@ -2110,9 +2111,6 @@ padding: 6px 10px;
   }
   .ws-line-gutter {
     left: -40px;
-  }
-  .ws-line-marker .ws-add-annotation {
-    opacity: 1;
   }
   .ws-annotation-rail {
     position: relative;
@@ -2161,9 +2159,6 @@ padding: 6px 10px;
   color: var(--ws-accent);
   font-size: 12px;
 }
-.ws-line-marker.is-hovered .ws-add-annotation {
-  opacity: 1;
-}
 
 .ws-legacy-note, .ws-notes { --ws-editor-min-height: 100px; }
 
@@ -2208,19 +2203,9 @@ padding: 6px 10px;
   color: var(--ws-paper);
 }
 
-.ws-chapter-summary { --ws-editor-min-height: 140px; margin-bottom: 28px; padding-bottom: 24px; border-bottom: 1px solid var(--ws-line); }
-.ws-chapter-summary > header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 12px; }
-.ws-chapter-summary h2 { color: var(--ws-muted); font: 500 13px/1.5 var(--roza-font-ui); }
-.ws-chapter-summary > header button { color: var(--ws-muted); font-size: 12px; }
-.ws-chapter-summary .ws-prose { min-height: 140px; }
-.ws-chapter-summary .ws-toolbar { margin-bottom: 16px; }
-
 .ws .ws-note-body textarea,
 .ws .ws-note-body textarea:focus,
 .ws .ws-note-body textarea:focus-visible { border: 0; outline: none; box-shadow: none; }
-
-.ws-page.ws-summary-mode { max-width: 1180px; width: 100%; }
-.ws-summary-mode .ws-chapter-summary { --ws-editor-min-height: 42vh; margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
 
 .ws-category-select { position: relative; flex-shrink: 0; }
 .ws .ws-category-select > button { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; padding: 10px 12px; border: 1px solid var(--ws-line); background: var(--ws-paper); color: var(--ws-ink); font-weight: 600; text-align: start; }
@@ -2625,34 +2610,13 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
   background: var(--ws-soft);
 }
 
-.ws .ws-check-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
+.ws .ws-bible-button {
   font-size: 13px;
   padding: 6px 10px;
-  white-space: nowrap;
 }
 
-.ws-check-toggle > span {
-  width: 13px;
-  height: 13px;
-  border: 1px solid var(--ws-line);
-  border-radius: 3px;
-  display: inline-grid;
-  place-items: center;
-  font-size: 9px;
-  line-height: 1;
-}
-
-.ws-check-toggle[aria-pressed="true"] > span {
-  background: var(--ws-accent);
-  border-color: var(--ws-accent);
-  color: var(--ws-paper);
-}
-
-.ws-check-toggle[aria-pressed="true"] > span::after {
-  content: "✓";
+.ws .ws-bible-button[aria-pressed="true"] {
+  background: var(--ws-soft);
 }
 
 .ws-header-end {
@@ -2694,11 +2658,10 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
   letter-spacing: 1px;
 }
 
-.ws-header .ws-fullscreen {
-  display: inline-grid;
-  place-items: center;
-  flex: none;
-  padding: 8px;
+.ws-header .ws-more-menu .ws-fullscreen {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .ws-fullscreen svg {

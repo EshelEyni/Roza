@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { FiMaximize, FiMinimize } from "react-icons/fi";
 
 /**
- * Full-screen toggle for the studio header, matching the reader's button.
+ * Full-screen toggle for the studio menu.
  * It uses the whole page, so studio dialogs and popovers stay visible.
  */
 export function StudioFullscreenButton() {
@@ -32,12 +32,11 @@ export function StudioFullscreenButton() {
     <button
       type="button"
       className="ws-fullscreen"
-      aria-label={t("reader.fullscreen")}
-      title={t("reader.fullscreen")}
       aria-pressed={fullscreen}
       onClick={() => void toggle()}
     >
       {fullscreen ? <FiMinimize aria-hidden="true" /> : <FiMaximize aria-hidden="true" />}
+      {t("reader.fullscreen")}
     </button>
   );
 }

@@ -480,7 +480,7 @@ test(
       await page
         .getByRole("button", { name: "Close draft", exact: true })
         .click();
-      await page.getByRole("button", { name: "Summary", exact: true }).click();
+      await page.getByRole("button", { name: "Chapter Bible", exact: true }).click();
       await page.getByRole("button", { name: /^AI Edit/ }).click();
       await page
         .getByRole("button", { name: "Generate suggestion", exact: true })
@@ -495,7 +495,7 @@ test(
       );
       assert.equal(await page.locator(".ws-draft-pane:visible").count(), 0);
       await page
-        .getByRole("button", { name: "Close chapter summary", exact: true })
+        .getByRole("button", { name: "Write", exact: true })
         .click();
       // Confirm delete, autosave, reload, and chapter switch.
       await page.locator(".ws-version").click();
@@ -552,7 +552,7 @@ test(
       await page.getByRole('dialog').getByRole('button',{name:'Delete note',exact:true}).click();
       await page.getByRole('textbox', {name:'Note 1',exact:true}).fill('Keep the chapter quiet.');
 
-      await page.getByRole('button', {name:'Chapter Bible', exact:true}).click();
+      await page.getByRole('button', {name:'Write', exact:true}).click();
       assert.equal(await page.getByRole('button', {name:'+ General Note', exact:true}).count(),0);
       assert.equal(await page.locator('.ws-annotation-card').filter({hasText:'Keep the chapter quiet.'}).count(),0);
       await page.getByRole('button', {name:'Chapter Bible', exact:true}).click();
@@ -561,11 +561,11 @@ test(
       await page.getByRole('button', {name:'Delete note', exact:true}).click();
       await page.getByRole('dialog').getByRole('button', {name:'Delete note', exact:true}).click();
       assert.equal(await page.getByRole('textbox', {name:'Note 1', exact:true}).count(),0);
-      await page.getByRole('button', {name:'Chapter Bible', exact:true}).click();
-      await page.getByRole('button', {name:'Add note to paragraph 1', exact:true}).click();
+      await page.getByRole('button', {name:'Write', exact:true}).click();
+      await page.getByRole('button', {name:'Add note to line 1', exact:true}).click();
       await page.getByRole('textbox', {name:'Annotation text', exact:true}).press('Escape');
       assert.equal(await page.locator('.ws-annotation-card').count(),0);
-      await page.getByRole('button', {name:'Add note to paragraph 1', exact:true}).click();
+      await page.getByRole('button', {name:'Add note to line 1', exact:true}).click();
       await page.getByRole('textbox', {name:'Annotation text', exact:true}).fill('A note attached to the first row.');
       await page.getByRole('textbox', {name:'Chapter or page title', exact:true}).click();
       assert.equal(await page.locator('.ws-annotation-card.is-active').count(),0);

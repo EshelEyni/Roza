@@ -169,7 +169,6 @@ export function ManuscriptEditor({
   // Line count while Read Mode's Go to line dialog is open.
   const [goToLineTotal, setGoToLineTotal] = useState<number | null>(null);
   const [activeNote, setActiveNote] = useState<string | null>(null);
-  const [hoveredPath, setHoveredPath] = useState<string | null>(null);
   const activeAnchor = annotations?.find(
     (note) => note.id === activeNote,
   )?.anchor;
@@ -452,23 +451,6 @@ export function ManuscriptEditor({
           placeholder={
             draftComparison ? undefined : format === "screenplay" ? "INT. LOCATION - DAY" : placeholder
           }
-          onMouseMove={(event) => {
-            const element = (event.target as HTMLElement).closest(
-              '[data-slate-node="element"]',
-            );
-            if (!element || annotations === undefined) return;
-            try {
-              setHoveredPath(
-                ReactEditor.findPath(
-                  editor,
-                  ReactEditor.toSlateNode(editor, element),
-                ).join("."),
-              );
-            } catch {
-              /* pending DOM commit */
-            }
-          }}
-          onMouseLeave={() => setHoveredPath(null)}
           renderElement={(props) => <TextEditorElement {...props} />}
           decorate={([node, path]) => {
             if (!Text.isText(node)) return [];
@@ -513,7 +495,6 @@ export function ManuscriptEditor({
           <AnnotationMargin
             notes={annotations}
             active={activeNote}
-            hoveredPath={hoveredPath}
             onActive={setActiveNote}
             onConfirm={reading ? resumeReadingAtNote : undefined}
             onReveal={onRevealAnnotations}

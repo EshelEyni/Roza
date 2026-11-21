@@ -35,7 +35,6 @@ const fitText = (element: HTMLTextAreaElement | null) => {
 export function AnnotationMargin({
   notes,
   active,
-  hoveredPath,
   visible,
   readOnly,
   onChange,
@@ -46,7 +45,6 @@ export function AnnotationMargin({
 }: {
   notes: ChapterAnnotation[];
   active: string | null;
-  hoveredPath: string | null;
   visible: boolean;
   readOnly: boolean;
   onChange: (notes: ChapterAnnotation[]) => void;
@@ -364,26 +362,21 @@ export function AnnotationMargin({
           return (
             <div
               key={line.number}
-              className={`ws-line-marker ${attached.length ? "has-notes" : ""} ${Range.start(line.range).path.slice(0, -1).join(".") === hoveredPath ? "is-hovered" : ""}`}
+              className={`ws-line-marker ${attached.length ? "has-notes" : ""}`}
               style={{ top: line.top }}
             >
-              <button
-                type="button"
+              <span
                 className="ws-line-number"
                 title={`Paragraph ${line.number}${attached.length ? ` · ${attached.length} notes` : ""}`}
-                aria-label={`Paragraph ${line.number}${attached.length ? ", focus note" : ""}`}
-                onClick={() =>
-                  attached.length ? select(attached[0]) : !readOnly && add(line)
-                }
               >
                 {line.number}
                 {attached.length > 0 && <span aria-hidden="true"> •</span>}
-              </button>
+              </span>
               {!readOnly && (
                 <button
                   type="button"
                   className="ws-add-annotation"
-                  aria-label={`Add note to paragraph ${line.number}`}
+                  aria-label={`Add note to line ${line.number}`}
                   title="Add note"
                   onMouseDown={event => event.preventDefault()}
                   onClick={() => add(line)}

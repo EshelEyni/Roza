@@ -27,14 +27,14 @@ const book = {
       bookId: "222222222222222222222222",
       type: "chapters",
       name: "The house by the sea",
-      description: [{ type: "paragraph", children: [{ text: "" }] }],
+      description: [{ type: "paragraph", children: [{ text: "Mara returns to the coast." }] }],
       text: paragraphs.map((text) => ({ type: "paragraph", children: [{ text }] })),
       annotations: [],
     },
   ],
 };
 
-test("reading mode: Ctrl+Shift+G goes to a line", { timeout: 180000 }, async () => {
+test("writing studio: Read Mode navigation, header and line notes", { timeout: 180000 }, async () => {
   const { createServer } = await import(pathToFileURL(path.join(root, "frontend/node_modules/vite/dist/node/index.js")));
   const { default: react } = await import(
     pathToFileURL(path.join(root, "frontend/node_modules/@vitejs/plugin-react/dist/index.mjs"))
@@ -233,7 +233,7 @@ test("reading mode: Ctrl+Shift+G goes to a line", { timeout: 180000 }, async () 
     await editor.waitFor();
     assert.ok(inView(await view(), scrolledLine));
 
-    for (const [name, tab] of [["Summary", "summary"], ["Chapter Bible", "bible"], ["Write", "write"]]) {
+    for (const [name, tab] of [["Chapter Bible", "bible"], ["Write", "write"]]) {
       const button = page.getByRole("button", { name, exact: true });
       await button.click();
       await page.waitForURL(url => url.searchParams.get("tab") === tab);
@@ -241,6 +241,57 @@ test("reading mode: Ctrl+Shift+G goes to a line", { timeout: 180000 }, async () 
       await button.waitFor();
       assert.equal(await button.getAttribute("aria-pressed"), "true");
     }
+
+    const header = page.locator(".ws-header");
+    const bibleButton = header.getByRole("button", { name: "Chapter Bible", exact: true });
+    assert.deepEqual(await header.getByRole("group", { name: "Page view" }).getByRole("button").allTextContents(), ["Write", "Read"]);
+    assert.equal(await header.getByText("Annotations", { exact: true }).count(), 0);
+    assert.equal(await bibleButton.evaluate(node => node.nextElementSibling?.querySelector("summary")?.title), "Chapter versions");
+    await bibleButton.focus();
+    await page.keyboard.press("Tab");
+    assert.equal(await header.locator(".ws-version").evaluate(node => node === document.activeElement), true);
+
+    const more = header.locator(".ws-more");
+    const fullscreen = header.locator(".ws-more-menu .ws-fullscreen");
+    await fullscreen.waitFor({ state: "hidden" });
+    for (const enabled of [true, false]) {
+      await more.focus();
+      await page.keyboard.press("Enter");
+      assert.equal(await fullscreen.getAttribute("aria-pressed"), String(!enabled));
+      for (const label of ["Chapter Format", "Go to details", "Archive page"]) {
+        await page.keyboard.press("Tab");
+        assert.equal(await header.getByRole("button", { name: label, exact: true }).evaluate(node => node === document.activeElement), true);
+      }
+      await page.keyboard.press("Tab");
+      assert.equal(await fullscreen.evaluate(node => node === document.activeElement), true);
+      await page.keyboard.press("Enter");
+      await page.waitForFunction(value => Boolean(document.fullscreenElement) === value, enabled);
+    }
+
+    const bible = page.getByRole("region", { name: "Chapter Bible", exact: true });
+    await bibleButton.focus();
+    await page.keyboard.press("Enter");
+    assert.equal(await bible.getByRole("button", { name: "Summary", exact: true }).getAttribute("aria-pressed"), "true");
+    assert.equal(await bible.getByRole("textbox", { name: "Chapter summary", exact: true }).innerText(), "Mara returns to the coast.");
+
+    const noteText = page.getByRole("textbox", { name: "Annotation text", exact: true });
+    const add = n => page.getByRole("button", { name: "Add note to line " + n, exact: true });
+    await header.getByRole("button", { name: "Read", exact: true }).click();
+    await setScroll(0);
+    const number = page.locator(".ws-line-number").nth(1);
+    await number.hover();
+    assert.equal(await number.evaluate(node => getComputedStyle(node).backgroundColor), "rgba(0, 0, 0, 0)");
+    assert.equal(await number.evaluate(node => node.tabIndex), -1);
+    await number.click();
+    assert.equal(await noteText.count(), 0);
+    await add(2).hover();
+    await page.waitForFunction(() => getComputedStyle(document.querySelector('[aria-label="Add note to line 2"]')).backgroundColor !== "rgba(0, 0, 0, 0)");
+    await add(1).focus();
+    await page.keyboard.press("Tab");
+    assert.equal(await add(2).evaluate(node => node === document.activeElement && node.matches(":focus-visible")), true);
+    await page.keyboard.press("Enter");
+    await noteText.waitFor();
+    assert.match(await page.locator(".ws-annotation-card.is-active .ws-note-anchor").innerText(), /2$/);
 
     assert.deepEqual(errors, []);
   } finally {

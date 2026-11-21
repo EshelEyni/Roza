@@ -203,7 +203,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     setSelection(current => ({ ...current, [category]: id }));
     if (id !== selected) updateStudioUrl({
       studioItem: id, draft: undefined, audiobook: undefined, line: undefined, word: undefined,
-      tab: view === "summary" || view === "bible" ? "write" : view,
+      tab: view === "bible" ? "write" : view,
     });
   }
   function changeSection(next: StudioSection, itemId?: string) {
@@ -214,14 +214,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     });
     setDrawer(false);
     setSearch("");
-    setNotes(true);
   }
   const draftId = searchParams.get("draft") || "";
   const [visitedDrafts, setVisitedDrafts] = useState<string[]>([]);
   const [mobilePane, setMobilePane] = useState("draft");
   const [audiobookHeader, setAudiobookHeader] = useState<HTMLDivElement | null>(null);
   const [drawer, setDrawer] = useState(false);
-  const [notes, setNotes] = useState(true);
   const [showInlineNotes, setShowInlineNotes] = useState(false);
   const [search, setSearch] = useState("");
   const [dark, setDark] = useState(
@@ -320,11 +318,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const pageControls = !!item && !overview && !tasks;
   const isChapter = item?.type === "chapters";
   const tab = searchParams.get("tab");
-  const view = tab === "read" || (isChapter && (tab === "summary" || tab === "bible")) ? tab : "write";
+  const view = tab === "read" ? "read" : isChapter && (tab === "summary" || tab === "bible") ? "bible" : "write";
   const preview = view === "read";
-  const summary = view === "summary";
   const chapterBible = view === "bible";
-  const visibleText = summary && item?.type === "chapters" ? item.description : text;
   const line = searchParams.get("line");
   const word = searchParams.get("word");
   const readingPosition = {
@@ -417,7 +413,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     if (overview || tasks) changeSection("chapters", id);
     else setSelected(id);
     setDrawer(false);
-    setNotes(true);
     if (category === "chapters") remember(`${scope}:chapter`, id);
   }
   function updateItem(
@@ -553,43 +548,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               >
                 Read
               </button>
-              {isChapter && (
-                <button
-                  aria-pressed={view === "summary"}
-                  aria-controls="ws-chapter-summary"
-                  disabled={!!activeDraft}
-                  onClick={() => showView("summary")}
-                >
-                  Summary
-                </button>
-              )}
-              {isChapter && (
-                <button
-                  aria-pressed={view === "bible"}
-                  aria-controls="ws-chapter-bible"
-                  aria-label="Chapter Bible"
-                  onClick={() => showView("bible")}
-                >
-                  Bible
-                </button>
-              )}
             </div>
-            {isChapter && (
-              <button
-                className="ws-check-toggle"
-                aria-pressed={notes && (view === "write" || view === "read")}
-                disabled={!!activeDraft}
-                onClick={() => {
-                  if (view === "summary" || view === "bible") {
-                    showView("write");
-                    setNotes(true);
-                  } else setNotes(!notes);
-                }}
-              >
-                <span aria-hidden="true" />
-                Annotations
-              </button>
-            )}
           </div>
         )}
         <div className="ws-header-end">
@@ -599,6 +558,18 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
             savedAt={store.savedAt}
             onSave={() => void store.flush()}
           />
+          {pageControls && isChapter && (
+            <button
+              type="button"
+              className="ws-bible-button"
+              aria-pressed={chapterBible}
+              aria-controls={chapterBible ? "ws-chapter-bible" : undefined}
+              aria-label="Chapter Bible"
+              onClick={() => showView("bible")}
+            >
+              Bible
+            </button>
+          )}
           {chapter && (
             <ItemMenu>
               <summary className="ws-version" title="Chapter versions">
@@ -647,7 +618,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               </div>
             </ItemMenu>
           )}
-          <StudioFullscreenButton />
           <ItemMenu>
             <summary className="ws-more" aria-label="More" title="More">
               •••
@@ -677,6 +647,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 </>
               )}
               <span className="ws-eyebrow">STUDIO</span>
+              <StudioFullscreenButton />
               <button
                 type="button"
                 onClick={() => optionsDialog.current?.showModal()}
@@ -961,7 +932,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               {activeDraft && <nav className="ws-draft-mobile-switch" aria-label="Writing panel"><button aria-pressed={mobilePane === "main"} onClick={() => setMobilePane("main")}>Main</button><button aria-pressed={mobilePane === "draft"} onClick={() => setMobilePane("draft")}>Draft</button></nav>}
               <div className={`ws-draft-layout ws-show-${mobilePane}`}>
               <article
-                className={`ws-page ws-main-pane ${chapterBible && item.type === "chapters" ? "ws-chapter-bible-page" : ""} ${summary && item.type === "chapters" ? "ws-summary-mode" : ""}`}
+                className={`ws-page ws-main-pane ${chapterBible && item.type === "chapters" ? "ws-chapter-bible-page" : ""}`}
               >
                 {activeDraft && (
                   <h2 className="ws-main-label">
@@ -989,7 +960,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 {chapterBible && item.type === "chapters" ? (
                   <div id="ws-chapter-bible">
                     <ChapterPlanning
-                      key={`bible:${item.id}`}
+                      key={`bible:${item.id}:${restoreKey}`}
                       page
                       showInlineNotes={showInlineNotes}
                       onShowInlineNotesChange={setShowInlineNotes}
@@ -1000,72 +971,40 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   </div>
                 ) : (
                   <>
-                    {summary && item.type === "chapters" ? (
-                      <section
-                        id="ws-chapter-summary"
-                        className="ws-chapter-summary"
-                        aria-label="Chapter summary"
-                      >
-                        <header>
-                          <h2>Chapter summary</h2>
-                          <button
-                            type="button"
-                            onClick={() => showView("write")}
-                            aria-label="Close chapter summary"
-                          >
-                            Close
-                          </button>
-                        </header>
-                        <ManuscriptEditor
-                          primaryFindTarget
-                          key={`${item.id}:summary:${restoreKey}`}
-                          value={item.description}
-                          label="Chapter summary"
-                          aiEditing={{ bookId: book.id, chapterId: item.id, summary: true }}
-                          placeholder="Summarize what happens in this chapter…"
-                          readOnly={preview || !!store.recovery}
-                          reading={preview}
-                          onChange={description => updateItem({ description })}
-                        />
-                      </section>
-                    ) : (
-                      <ManuscriptEditor
-                        primaryFindTarget={!activeDraft}
-                        key={`${item.id}:${restoreKey}`}
-                        format={
-                          item.type === "chapters" ? item.format : "prose"
-                        }
-                        value={text}
-                        aiEditing={chapter ? { bookId: book.id, chapterId: chapter.id, annotations: chapter.annotations, onDraft: aiDraft } : undefined}
-                        readOnly={preview || !!store.recovery || !!activeDraft}
-                        annotationsReadOnly={!!store.recovery || !!activeDraft}
-                        reading={preview && !activeDraft}
-                        readingPosition={pageControls ? readingPosition : undefined}
-                        audiobookState={audiobookState}
-                        audiobookHeader={audiobookHeader}
-                        audiobook={chapter && view === "read" && pageControls && !activeDraft ? { id: chapter.id, title: chapter.name, manuscriptId: book.id } : undefined}
-                        annotations={
+                    <ManuscriptEditor
+                      primaryFindTarget={!activeDraft}
+                      key={`${item.id}:${restoreKey}`}
+                      format={
+                        item.type === "chapters" ? item.format : "prose"
+                      }
+                      value={text}
+                      aiEditing={chapter ? { bookId: book.id, chapterId: chapter.id, annotations: chapter.annotations, onDraft: aiDraft } : undefined}
+                      readOnly={preview || !!store.recovery || !!activeDraft}
+                      annotationsReadOnly={!!store.recovery || !!activeDraft}
+                      reading={preview && !activeDraft}
+                      readingPosition={pageControls ? readingPosition : undefined}
+                      audiobookState={audiobookState}
+                      audiobookHeader={audiobookHeader}
+                      audiobook={chapter && view === "read" && pageControls && !activeDraft ? { id: chapter.id, title: chapter.name, manuscriptId: book.id } : undefined}
+                      annotations={
+                        item.type === "chapters"
+                          ? item.annotations || []
+                          : undefined
+                      }
+                      onChange={(value, annotations) =>
+                        updateItem(
                           item.type === "chapters"
-                            ? item.annotations || []
-                            : undefined
-                        }
-                        showAnnotations={notes}
-                        onRevealAnnotations={() => setNotes(true)}
-                        onChange={(value, annotations) =>
-                          updateItem(
-                            item.type === "chapters"
-                              ? { text: value, annotations }
-                              : "text" in item
-                                ? { text: value }
-                                : { description: value },
-                          )
-                        }
-                      />
-                    )}
+                            ? { text: value, annotations }
+                            : "text" in item
+                              ? { text: value }
+                              : { description: value },
+                        )
+                      }
+                    />
                     <footer className="ws-page-footer">
                       <span>
-                        {words(visibleText).toLocaleString()} words ·{" "}
-                        {Math.max(1, Math.ceil(words(visibleText) / 200))} min
+                        {words(text).toLocaleString()} words ·{" "}
+                        {Math.max(1, Math.ceil(words(text) / 200))} min
                         read
                       </span>
                       <span className={preview ? undefined : "ws-writing-prompt"}>

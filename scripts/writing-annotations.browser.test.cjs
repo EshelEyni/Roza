@@ -243,14 +243,11 @@ test(
       });
       const add = (n) =>
         page.getByRole("button", {
-          name: "Add note to paragraph " + n,
+          name: "Add note to line " + n,
           exact: true,
         });
-      await editor.locator("p").nth(1).hover();
-      assert.equal(
-        await add(2).evaluate((node) => getComputedStyle(node).opacity),
-        "1",
-      );
+      const bibleButton = page.getByRole("button", { name: "Chapter Bible", exact: true });
+      const writeButton = page.getByRole("button", { name: "Write", exact: true });
       await add(2).click();
       const textareaStyle = await noteText.evaluate(node => {
         const style = getComputedStyle(node);
@@ -321,13 +318,9 @@ test(
         saved.chapters[0].annotations[0].anchor.anchor.path,
         [2, 0],
       );
-      const summaryButton = page.locator('button[aria-controls="ws-chapter-summary"]');
-      assert.equal(await summaryButton.innerText(), 'Summary');
-      await summaryButton.click();
-      assert.equal(await summaryButton.innerText(), 'Text');
-      await summaryButton.click();
-      assert.equal(await summaryButton.innerText(), 'Summary');
-      await summaryButton.click();
+      await bibleButton.click();
+      const bible = page.getByRole("region", { name: "Chapter Bible", exact: true });
+      assert.equal(await bible.getByRole("button", { name: "Summary", exact: true }).getAttribute("aria-pressed"), "true");
       const summaryEditor = page.getByRole('textbox',{name:'Chapter summary',exact:true});
       assert.ok((await summaryEditor.innerText()).includes('A homecoming.'));
       assert.equal(await editor.count(),0);
@@ -336,24 +329,24 @@ test(
       await summaryEditor.fill('A revised chapter summary.');
       await page.keyboard.press('Control+a');
       await page.waitForTimeout(100);
-      await page.locator('#ws-chapter-summary').getByRole('button',{name:'bold',exact:true}).click();
+      await bible.getByRole('button',{name:'bold',exact:true}).click();
       await summaryEditor.locator('strong').waitFor();
       await page.getByRole('button',{name:'All changes saved'}).waitFor();
       assert.equal(saved.chapters[0].description[0].children[0].text,'A revised chapter summary.');
       assert.equal(saved.chapters[0].description[0].children[0].bold,true);
       assert.equal(JSON.stringify(saved.chapters[0].text),originalText);
       await page.screenshot({path:path.join(screenshots,'chapter-summary.png')});
-      await page.getByRole('button',{name:'Close chapter summary'}).click();
+      await writeButton.click();
       await summaryEditor.waitFor({state:'detached'});
       await editor.waitFor();
-      await summaryButton.click();
+      await bibleButton.click();
       assert.equal(await summaryEditor.innerText(),'A revised chapter summary.');
       await page.reload();
-      await summaryButton.click();
+      await bibleButton.click();
       assert.equal(await summaryEditor.innerText(),'A revised chapter summary.');
       await page.getByRole('button',{name:/An unopened letter/}).click();
       await summaryEditor.waitFor({state:'detached'});
-      await summaryButton.click();
+      await bibleButton.click();
       assert.equal(await summaryEditor.locator("[data-slate-string]").count(), 0);
       await page.getByRole('button',{name:/The house by the sea/}).click();
       await summaryEditor.waitFor({state:'detached'});
@@ -390,7 +383,7 @@ test(
       });
       await page.reload();
       await page
-        .getByRole("button", { name: "Add note to paragraph 180", exact: true })
+        .getByRole("button", { name: "Add note to line 180", exact: true })
         .waitFor({ state: "attached" });
       assert.equal(await cards.count(), 81);
       const bounds = await cards.evaluateAll((nodes) =>
@@ -425,9 +418,7 @@ test(
           () => document.documentElement.scrollWidth <= window.innerWidth,
         ),
       );
-      await page
-        .getByRole("button", { name: "Paragraph 3, focus note", exact: true })
-        .click();
+      await cards.getByRole("button", { name: "Revision thought 2", exact: true }).click();
       assert.equal(await noteText.inputValue(), "Revision thought 2");
       await page.getByRole("button", { name: "Delete", exact: true }).click();
       const confirmation = page.getByRole('dialog', {name:'Delete this note?'});
