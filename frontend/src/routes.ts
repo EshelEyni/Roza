@@ -20,11 +20,13 @@ const BookReviewEdit = lazy(
   () => import("./pages/BookReviewEdit/BookReviewEdit"),
 );
 
+const DevBoardPage = lazy(() => import("./pages/DevBoardPage"));
 const StagingRoomPage = lazy(() => import("./pages/StagingRoomPage"));
 const ReaderPage = lazy(() => import("./pages/Reader/ReaderPage"));
 const ReaderDetails = lazy(() => import("./pages/ReaderDetails/ReaderDetails"));
 
 const routes: Route[] = [
+  { path: "/dev-board", component: DevBoardPage, authRequired: true },
   { path: "/staging-room", component: StagingRoomPage, authRequired: true },
   { path: "/reader", component: ReaderPage, authRequired: true },
   { path: "/reader/:id", component: ReaderDetails, authRequired: true },

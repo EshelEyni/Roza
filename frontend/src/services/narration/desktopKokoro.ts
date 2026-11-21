@@ -109,6 +109,7 @@ declare global {
     rozaDesktop?: {
       kokoro?: DesktopKokoro;
       taskbar?: DesktopTaskbar;
+      devBoard?: import("../../../../shared/types/devBoard").DevBoardFiles;
       stagingRoom?: import("../../../../shared/types/stagingRoom").StagingRoomApi;
     };
   }

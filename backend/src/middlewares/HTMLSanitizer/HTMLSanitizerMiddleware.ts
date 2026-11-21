@@ -40,6 +40,8 @@ function requestSanitizer(req: Request, res: Response, next: NextFunction) {
   ) {
     return next();
   }
+  // Dev Board validates its own fields and renders Markdown without raw HTML.
+  if (/^\/api\/dev-board(?:\/|$)/.test(req.path)) return next();
   const { body } = req;
   const { params } = req;
   const { query } = req;

@@ -17,6 +17,7 @@ import authRouter from "./routers/auth/authRouter";
 import bookRouter from "./routers/book/bookRouter";
 import bookReviewRouter from "./routers/bookReview/bookReviewRouter";
 import readerRouter from "./routers/reader/readerRouter";
+import devBoardRouter from "./routers/devBoard/devBoardRouter";
 import { requestLimiter } from "./services/rateLimiterService";
 
 const isProdEnv = process.env.NODE_ENV === "production";
@@ -70,6 +71,7 @@ if (!isProdEnv)
   });
 
 app.use("/api/reader", readerRouter);
+app.use("/api/dev-board", devBoardRouter);
 app.use("/api/user", userRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/book", bookRouter);

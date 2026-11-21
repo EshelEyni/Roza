@@ -8,7 +8,15 @@ const call = async (channel, input) => {
   return result.data;
 };
 
+const devBoardMethods = [
+  "readImport", "chooseImport", "readImportAttachment", "chooseAttachments", "readChosenAttachment",
+  "cacheAttachment", "revealAttachment", "copy", "paste",
+];
+
 contextBridge.exposeInMainWorld("rozaDesktop", {
+  devBoard: Object.fromEntries(devBoardMethods.map(method => [
+    method, (...args) => ipcRenderer.invoke("dev-board:" + method, ...args),
+  ])),
   ...(process.argv.includes("--roza-staging-room-enabled") && {
     stagingRoom: {
       listBooks: () => ipcRenderer.invoke("staging-room:books:list"),

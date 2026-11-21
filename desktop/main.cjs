@@ -1,9 +1,11 @@
-const { app, BrowserWindow, ipcMain, nativeImage, screen, session, shell } = require("electron");
+const { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, screen, session, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
 const { existsSync, readdirSync } = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { createKokoroDesktop } = require("./kokoro/index.cjs");
+
+const { registerDevBoard } = require("./dev-board/index.cjs");
 
 const origin = "https://roza.esheleyni.com";
 const renderer = path.join(__dirname, "renderer");
@@ -252,6 +254,7 @@ app.whenReady().then(async () => {
     if (isMainFrame) onPageNavigated(window, url);
   });
   registerTaskbarBadge(window);
+  registerDevBoard({ app, ipcMain, dialog, clipboard, shell, window, origin });
   registerStagingRoom(window, browserSession);
   window.webContents.setWindowOpenHandler(({ url }) => {
     openInBrowser(url);
