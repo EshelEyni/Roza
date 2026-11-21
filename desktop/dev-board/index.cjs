@@ -26,7 +26,7 @@ async function boundedRead(filename, limit) {
   return bytes;
 }
 
-function registerDevBoard({ app, ipcMain, dialog, clipboard, shell, window, origin }) {
+function registerDevBoard({ app, ipcMain, dialog, clipboard, shell, window, origin, checkAdmin }) {
   const defaultSource = path.resolve(__dirname, "..", "..", "..", "ticket-master", "data");
   const source = process.env.ROZA_DEV_BOARD_IMPORT_DIR;
   let importDir = source && path.isAbsolute(source) ? source : !app.isPackaged ? defaultSource : null;
@@ -124,11 +124,14 @@ function registerDevBoard({ app, ipcMain, dialog, clipboard, shell, window, orig
     paste: () => clipboard.readText(),
   };
 
+  const fromDevBoard = (event) =>
+    !window.isDestroyed() && event.sender === window.webContents &&
+    event.senderFrame === window.webContents.mainFrame &&
+    window.webContents.getURL().split(/[?#]/, 1)[0] === origin + "/dev-board";
+
   for (const [method, handle] of Object.entries(handlers)) {
-    ipcMain.handle("dev-board:" + method, (event, ...args) => {
-      const contents = window.webContents;
-      if (event.sender !== contents || event.senderFrame !== contents.mainFrame ||
-          contents.getURL().split(/[?#]/, 1)[0] !== origin + "/dev-board") {
+    ipcMain.handle("dev-board:" + method, async (event, ...args) => {
+      if (!fromDevBoard(event) || !await checkAdmin().catch(() => false) || !fromDevBoard(event)) {
         throw new Error("Dev Board file access denied.");
       }
       return handle(...args);

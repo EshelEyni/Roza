@@ -54,7 +54,7 @@ export function useMainNavLinks(): MainNavLink[] {
   if (stagingRoomAccess) {
     links.push({ name: t("stagingRoom.title"), icon: <RiUpload2Fill />, link: "/staging-room" });
   }
-  if (loggedInUser) links.push({ name: "Dev Board", icon: <RiTaskLine />, link: "/dev-board" });
+  if (loggedInUser?.roles?.includes("admin")) links.push({ name: "Dev Board", icon: <RiTaskLine />, link: "/dev-board" });
   return links;
 }
 

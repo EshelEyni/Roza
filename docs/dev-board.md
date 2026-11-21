@@ -1,6 +1,6 @@
 # Dev Board
 
-Sign in to ROZA and select **Dev Board**. Tickets, Trash, and attachment contents are stored in MongoDB for the signed-in account. The desktop profile contains only cached copies of attachments you reveal or open in File Explorer.
+Sign in to ROZA as an administrator and select **Dev Board**. Tickets, Trash, and attachment contents are stored in MongoDB for the signed-in account. The desktop profile contains only cached copies of attachments you reveal or open in File Explorer.
 
 ## Migrate an existing board
 

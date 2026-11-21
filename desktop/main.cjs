@@ -254,7 +254,19 @@ app.whenReady().then(async () => {
     if (isMainFrame) onPageNavigated(window, url);
   });
   registerTaskbarBadge(window);
-  registerDevBoard({ app, ipcMain, dialog, clipboard, shell, window, origin });
+  registerDevBoard({
+    app, ipcMain, dialog, clipboard, shell, window, origin,
+    async checkAdmin() {
+      const response = await browserSession.fetch((devApiOrigin || origin) + "/api/dev-board/access", {
+        bypassCustomProtocolHandlers: true,
+        credentials: "include",
+        cache: "no-store",
+        redirect: "error",
+        signal: AbortSignal.timeout(10000),
+      });
+      return response.status === 204;
+    },
+  });
   registerStagingRoom(window, browserSession);
   window.webContents.setWindowOpenHandler(({ url }) => {
     openInBrowser(url);
