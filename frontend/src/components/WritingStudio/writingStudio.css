@@ -962,11 +962,6 @@ dialog.ws-options-dialog .ws-options p {
     display: none;
   }
 
-  .ws-header .ws-save {
-    margin-inline-start: auto;
-    max-width: none;
-  }
-
   .ws-header button {
     min-height: 36px;
     padding: 6px 10px;
@@ -977,6 +972,8 @@ dialog.ws-options-dialog .ws-options p {
   }
 
   .ws-layout {
+    --ws-mobile-nav-height: 46px;
+    position: relative;
     flex-direction: column;
   }
 
@@ -987,7 +984,7 @@ dialog.ws-options-dialog .ws-options p {
     text-align: start;
     border-radius: 0 !important;
     border-bottom: 1px solid var(--ws-line) !important;
-    min-height: 46px;
+    min-height: var(--ws-mobile-nav-height);
     flex-shrink: 0;
   }
 
@@ -1006,7 +1003,7 @@ dialog.ws-options-dialog .ws-options p {
   .ws-sidebar.ws-drawer-open {
     display: flex;
     position: absolute;
-    top: 145px;
+    top: var(--ws-mobile-nav-height);
     bottom: 0;
     inset-inline-start: 0;
     width: min(320px, 90vw);
@@ -2570,8 +2567,13 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 }
 
 .ws-header .ws-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   padding-inline: 14px;
 }
+
+.ws-back svg { width: 16px; height: 16px; }
 
 .ws-header .ws-book-heading {
   flex: 1 1 0;
@@ -2592,22 +2594,74 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 }
 
 .ws-segmented {
-  display: inline-flex;
-  gap: 1px;
-  padding: 2px;
+  position: relative;
+  isolation: isolate;
+  display: inline-grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2px;
+  padding: 3px;
   border: 1px solid var(--ws-line);
-  border-radius: 6px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ws-bg) 75%, var(--ws-soft));
+  box-shadow: inset 0 1px 3px #0001;
+}
+
+.ws-segmented::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  pointer-events: none;
+  inset-block: 3px;
+  inset-inline: 3px calc(50% + 1px);
+  border-radius: inherit;
+  background: var(--ws-raised);
+  box-shadow: 0 2px 5px #0003;
+  transition: inset-inline-start 340ms cubic-bezier(.25, .75, .3, 1.1),
+    inset-inline-end 340ms cubic-bezier(.25, .75, .3, 1.1) 90ms;
+}
+
+.ws-segmented[data-view="read"]::before {
+  inset-inline: calc(50% + 1px) 3px;
+  transition-delay: 90ms, 0ms;
+}
+
+.ws-segmented[data-view="bible"]::before {
+  visibility: hidden;
 }
 
 .ws .ws-segmented button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 12px;
+  border-radius: 999px;
   font-size: 13px;
-  padding: 5px 12px;
-  border-radius: 4px;
+  font-weight: 600;
+  line-height: 1;
   white-space: nowrap;
+  color: var(--ws-muted);
+}
+
+.ws .ws-segmented button:hover {
+  background: transparent;
+  color: var(--ws-ink);
 }
 
 .ws .ws-segmented button[aria-pressed="true"] {
-  background: var(--ws-soft);
+  color: var(--ws-ink);
+}
+
+.ws-segmented svg {
+  width: 15px;
+  height: 15px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ws-segmented::before {
+    transition: none;
+  }
 }
 
 .ws .ws-bible-button {
@@ -2628,13 +2682,6 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
   min-width: 0;
 }
 
-.ws-header-end .ws-save {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-width: 0;
-}
-
 .ws-header .ws-item-menu summary {
   font-size: 13px;
   padding: 6px 10px;
@@ -2648,6 +2695,16 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 .ws-header .ws-version {
   border: 1px solid var(--ws-line);
 }
+
+.ws-bible-button svg { display: none; }
+
+.ws-header .ws-version {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ws-version svg { width: 14px; height: 14px; flex: none; }
 
 .ws-version small {
   color: var(--ws-muted);
@@ -2700,10 +2757,6 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 }
 
 @media (max-width: 1180px) {
-  .ws-header-end .ws-save {
-    max-width: 120px;
-  }
-
   .ws-version small {
     display: none;
   }
@@ -2720,36 +2773,6 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
     width: 100%;
     justify-content: center;
     padding-bottom: 2px;
-  }
-}
-
-@media (max-width: 700px) {
-  .ws-header {
-    min-height: 0;
-  }
-
-  .ws-header .ws-book-heading {
-    flex-basis: auto;
-  }
-
-  .ws-header-end {
-    flex: none;
-  }
-
-  .ws-header-end .ws-save {
-    max-width: 96px;
-  }
-
-  .ws-header-views {
-    justify-content: space-between;
-  }
-
-  .ws .ws-segmented button {
-    padding: 6px 9px;
-  }
-
-  .ws-sidebar.ws-drawer-open {
-    top: 160px;
   }
 }
 
@@ -2816,6 +2839,132 @@ dialog.ws-go-to-line-dialog p.ws-go-to-line-range { margin: 6px 0 18px; font-siz
 .ws-save-error .ws-save-dot {
   background: var(--ws-error);
   opacity: 1;
+}
+
+@media (max-width: 700px) {
+  .ws-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) repeat(4, auto);
+    align-items: center;
+    reading-flow: grid-rows;
+    gap: 10px 6px;
+    min-height: 0;
+    padding: 10px 10px 8px;
+  }
+
+  .ws-header-end { display: contents; }
+
+  .ws-header .ws-back {
+    grid-area: 1 / 1;
+    justify-self: start;
+    display: grid;
+    place-items: center;
+    width: 36px;
+    padding: 0;
+    margin: 0;
+    border-inline-end: 0 !important;
+    border-radius: 8px !important;
+  }
+
+  .ws-header .ws-back svg { width: 21px; height: 21px; }
+
+  .ws-header .ws-book-heading {
+    grid-area: 1 / 1 / 2 / 5;
+    margin-inline: 40px 28px;
+  }
+
+  .ws-header .ws-book-heading .ws-eyebrow { font-size: 9px; }
+
+  .ws-header .ws-book-heading input {
+    font: 600 22px/1.2 Georgia, serif;
+  }
+
+  .ws .ws-header .ws-save {
+    grid-area: 1 / 1 / 2 / 5;
+    justify-self: end;
+    align-self: center;
+    min-width: 24px;
+    min-height: 28px;
+    height: 28px;
+    padding: 0 8px;
+  }
+
+  .ws-header .ws-save-error > span[aria-hidden="true"]:not(.ws-save-dot) { display: none; }
+
+  .ws-header .ws-item-menu:has(> .ws-more) { grid-area: 2 / 5; justify-self: end; }
+
+  .ws-header .ws-more {
+    display: grid;
+    place-items: center;
+    min-width: 36px;
+    min-height: 38px;
+    padding: 0;
+  }
+
+  .ws-header-end > .app-switcher { grid-area: 1 / 5; justify-self: end; margin: 0; }
+
+  .ws .ws-header .ws-app-switcher {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    padding: 2px;
+    border: 1px solid var(--ws-line);
+    border-radius: 50%;
+  }
+
+  .ws-header .ws-app-switcher img { width: 32px; height: 32px; }
+
+  .ws-header-views {
+    grid-area: 2 / 1;
+    order: 0;
+    padding: 0;
+  }
+
+  .ws-header-views .ws-segmented { width: 100%; }
+
+  .ws .ws-segmented button { padding: 4px; gap: 4px; }
+
+  .ws .ws-header .ws-bible-button,
+  .ws-header .ws-version {
+    min-height: 36px;
+    padding: 0 7px;
+    border: 1px solid var(--ws-line);
+    border-radius: 9px;
+    font-size: 13px;
+  }
+
+  .ws .ws-header .ws-bible-button {
+    grid-area: 2 / 2;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .ws-bible-button svg { display: block; width: 13px; height: 13px; }
+
+  .ws-header .ws-item-menu:has(> .ws-version) { grid-area: 2 / 3; min-width: 0; }
+
+  .ws-version-label {
+    max-width: clamp(34px, 15vw, 100px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ws-header-audiobook { grid-area: 2 / 4; justify-self: end; }
+  .ws-header-audiobook:has(.ws-header-audio-player) { grid-area: 3 / 1 / 4 / -1; }
+  .ws-header-audiobook .ws-audiobook-launch { width: 38px; min-height: 38px; }
+  .ws-header-audiobook .ws-audiobook-launch svg { width: 20px; height: 20px; }
+}
+
+@media (max-width: 360px) {
+  .ws-header { column-gap: 4px; }
+  .ws .ws-segmented button { gap: 3px; padding-inline: 2px; }
+  .ws-segmented svg { width: 13px; height: 13px; }
+  .ws .ws-header .ws-bible-button,
+  .ws-header .ws-version { padding-inline: 5px; }
+  .ws-header .ws-more { min-width: 32px; }
+  .ws-header-audiobook .ws-audiobook-launch { width: 32px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

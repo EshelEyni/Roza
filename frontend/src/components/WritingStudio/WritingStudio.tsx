@@ -1,3 +1,4 @@
+import { FiArrowLeft, FiBook, FiBookOpen, FiChevronDown, FiEdit3 } from "react-icons/fi";
 import { DraftPane } from "./DraftPane";
 import { createChapterDraft, changeChapterDraft, draftDisplayName, draftTimestamp, isMainBackup, matchingMainDraft, promoteChapterDraft } from "./chapterDrafts";
 import { Chapter, ChapterAnnotation } from "../../../../shared/types/books";
@@ -513,7 +514,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
           onClick={() => void leave()}
           aria-label="Back to library"
         >
-          ← <span>Library</span>
+          <FiArrowLeft aria-hidden="true" /> <span>Library</span>
         </button>
         <div className="ws-book-heading">
           <span className="ws-eyebrow">{pageContext}</span>
@@ -538,14 +539,16 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         </div>
         {pageControls && (
           <div className="ws-header-views">
-            <div className="ws-segmented" role="group" aria-label="Page view">
+            <div className="ws-segmented" data-view={view} role="group" aria-label="Page view">
               <button aria-pressed={view === "write"} onClick={() => showView("write")}>
+                <FiEdit3 aria-hidden="true" />
                 Write
               </button>
               <button
                 aria-pressed={view === "read"}
                 onClick={() => showView("read")}
               >
+                <FiBookOpen aria-hidden="true" />
                 Read
               </button>
             </div>
@@ -567,14 +570,16 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               aria-label="Chapter Bible"
               onClick={() => showView("bible")}
             >
+              <FiBook aria-hidden="true" />
               Bible
             </button>
           )}
           {chapter && (
             <ItemMenu>
               <summary className="ws-version" title="Chapter versions">
-                {activeDraft ? draftDisplayName(activeDraft) : "Main"}
-                <small> · {drafts.length} {drafts.length === 1 ? "draft" : "drafts"}</small> ▾
+                <span className="ws-version-label">{activeDraft ? draftDisplayName(activeDraft) : "Main"}</span>
+                <small> · {drafts.length} {drafts.length === 1 ? "draft" : "drafts"}</small>
+                <FiChevronDown aria-hidden="true" />
               </summary>
               <div className="ws-version-menu">
                 <span className="ws-eyebrow">VERSIONS</span>
