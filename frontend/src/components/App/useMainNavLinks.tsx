@@ -63,7 +63,7 @@ export function mainSectionOf(pathname: string) {
   if (pathname === "/dev-board") return "/dev-board";
   if (pathname === "/staging-room") return "/staging-room";
   if (pathname.startsWith("/reader")) return "/reader";
-  if (pathname === "/books" || pathname.startsWith("/book/") || pathname.startsWith("/book-edit/"))
+  if (pathname === "/books" || pathname.startsWith("/book-edit/"))
     return "/books";
   if (pathname.startsWith("/review")) return "/reviews";
   if (pathname.startsWith("/profile")) return "/profile";

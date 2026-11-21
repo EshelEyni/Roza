@@ -75,10 +75,7 @@ function App() {
   const isReadingRoom =
     location.pathname === "/reader" || location.pathname.startsWith("/reader/");
   useFavicon(isReadingRoom ? READER_FAVICON : DEFAULT_FAVICON);
-  const isWritingArea =
-    isStudioOpen ||
-    location.pathname === "/books" ||
-    location.pathname.startsWith("/book/");
+  const isWritingArea = isStudioOpen || location.pathname === "/books";
 
   useEffect(() => {
     document.documentElement.classList.toggle(

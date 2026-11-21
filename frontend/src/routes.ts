@@ -11,7 +11,6 @@ const BooksPage = lazy(() => import("./pages/Books/BooksPage"));
 const BookReviewsPage = lazy(
   () => import("./pages/BookReviewsPage/BookReviewsPage"),
 );
-const BookDetails = lazy(() => import("./pages/BookDetails/BookDetails"));
 const BookReviewDetails = lazy(
   () => import("./pages/BookReviewDetails/BookReviewDetails"),
 );
@@ -51,11 +50,6 @@ const routes: Route[] = [
     component: BookReviewsPage,
     authRequired: true,
     provider: BookReviewsProvider,
-  },
-  {
-    path: "book/:id/:dataItemType?/:dataItemId?",
-    component: BookDetails,
-    authRequired: true,
   },
   {
     path: "book-edit/:id/:dataItemType?/:dataItemId?",

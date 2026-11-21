@@ -49,36 +49,6 @@
   "asc": "סדר עולה",
   "desc": "סדר יורד",
   "search": "חיפוש",
-  "BtnAddBookItem": {
-    "chapters": "הוספת פרק",
-    "characters": "הוספת דמות",
-    "themes": "הוספת נושא",
-    "plotlines": "הוספת קו עלילה",
-    "notes": "הוספת הערה"
-  },
-  "btnOpen": "פתח",
-  "confirmItemDeleteMsg": {
-    "title": "מחיקת פריט",
-    "msg": "האם אתה בטוח שברצונך למחוק את הפריט?"
-  },
-  "DataBookItemTitle": {
-    "chapters": "פרק",
-    "characters": "דמות",
-    "themes": "נושא",
-    "plotlines": "קו עלילה",
-    "notes": "הערה"
-  },
-  "placeholders": {
-    "name": {
-      "chapters": "שם הפרק",
-      "characters": "שם הדמות",
-      "themes": "שם התמה",
-      "plotlines": "שם קו העלילה",
-      "notes": "הערה"
-    },
-    "description": "תיאור",
-    "text": "טקסט"
-  },
   "btnEdit": "עריכה",
   "btnDelete": "מחיקה",
   "btnSave": "שמירה",
@@ -87,7 +57,6 @@
   "book": "ספר",
   "description": "תיאור",
   "text": "טקסט",
-  "goToDetails": "עבור לפרטים",
   "goToBook": "עבור לספר",
   "archiveBookMsg": {
     "title": "מחיקת ספר",

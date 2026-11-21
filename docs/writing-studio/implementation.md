@@ -29,7 +29,7 @@ The original implementation was audited in source; no before screenshot was capt
 ## Improved existing functionality
 
 - Book creation with pending/error states; title search and recent/title/word-count sorting.
-- Direct entry into writing; legacy `/book/:id` details and chapter PDF remain available through Details.
+- Manuscript cards open the editor directly.
 - Book and chapter titles are editable in context.
 - Chapters, characters, plotlines, themes and notes retain their existing Slate structures and IDs.
 - Chapter descriptions become optional chapter notes.

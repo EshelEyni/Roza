@@ -48,36 +48,6 @@
   "asc": "Ascending",
   "desc": "Descending",
   "search": "Search",
-  "BtnAddBookItem": {
-    "chapters": "Add Chapter",
-    "characters": "Add Character",
-    "themes": "Add Theme",
-    "plotlines": "Add Plotline",
-    "notes": "Add Note"
-  },
-  "btnOpen": "Open",
-  "confirmItemDeleteMsg": {
-    "title": "Delete Item",
-    "msg": "Are you sure you want to delete the item?"
-  },
-  "DataBookItemTitle": {
-    "chapters": "Chapter",
-    "characters": "Character",
-    "themes": "Theme",
-    "plotlines": "Plotline",
-    "notes": "Note"
-  },
-  "placeholders": {
-    "name": {
-      "chapters": "Chapter Name",
-      "characters": "Character Name",
-      "themes": "Theme Name",
-      "plotlines": "Plotline Name",
-      "notes": "Note Number"
-    },
-    "description": "Description",
-    "text": "Text"
-  },
   "btnEdit": "Edit",
   "btnDelete": "Delete",
   "btnSave": "Save",
@@ -86,7 +56,6 @@
   "book": "Book",
   "description": "Description",
   "text": "Text",
-  "goToDetails": "Go to Details",
   "gotToBook": "Go to Book",
   "archiveBookMsg": {
     "title": "Delete Book",

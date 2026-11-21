@@ -258,7 +258,7 @@ test("writing studio: Read Mode navigation, header and line notes", { timeout: 1
       await more.focus();
       await page.keyboard.press("Enter");
       assert.equal(await fullscreen.getAttribute("aria-pressed"), String(!enabled));
-      for (const label of ["Chapter Format", "Go to details", "Archive page"]) {
+      for (const label of ["Chapter Format", "Archive page"]) {
         await page.keyboard.press("Tab");
         assert.equal(await header.getByRole("button", { name: label, exact: true }).evaluate(node => node === document.activeElement), true);
       }

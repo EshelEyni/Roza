@@ -201,7 +201,7 @@ test(
     });
     await server.listen();
     let browser;
-    const screenshots = path.join(root, "docs/writing-studio/screenshots");
+    const screenshots = process.env.STUDIO_SCREENSHOT_DIR || path.join(root, "docs/writing-studio/screenshots");
     fs.mkdirSync(screenshots, { recursive: true });
     try {
       browser = await chromium.launch({
@@ -225,108 +225,16 @@ test(
       await page.screenshot({
         path: path.join(screenshots, "library-desktop.png"),
       });
-      await page
-        .getByRole("link", { name: "Details for The Shape of Quiet" })
-        .click();
-      await page
-        .getByRole("heading", { name: "The Shape of Quiet", exact: true })
-        .waitFor();
-      assert.equal(
-        await page.locator(".ws-book-stats dd").first().innerText(),
-        "63",
-      );
-      await page
-        .getByRole("button", { name: "Rename book", exact: true })
-        .click();
-      await page
-        .getByLabel("Book title", { exact: true })
-        .fill("The Shape of Quiet — revised");
-      fail = true;
-      await page
-        .getByRole("button", { name: "Save title", exact: true })
-        .click();
-      await page
-        .getByRole("alert")
-        .filter({ hasText: "Test network unavailable" })
-        .waitFor();
-      assert.ok(
-        await page
-          .getByRole("heading", { name: "The Shape of Quiet", exact: true })
-          .isVisible(),
-      );
-      fail = false;
-      await page
-        .getByRole("button", { name: "Save title", exact: true })
-        .click();
-      await page
-        .getByRole("heading", {
-          name: "The Shape of Quiet — revised",
-          exact: true,
-        })
-        .waitFor();
-      await page
-        .getByRole("button", { name: "Characters 0", exact: true })
-        .click();
-      await page
-        .getByRole("heading", { name: "A place for your ideas.", exact: true })
-        .waitFor();
-      await page
-        .getByRole("button", { name: "Chapters 2", exact: true })
-        .click();
-      await page.getByLabel("Search book contents").fill("unopened");
-      assert.equal(await page.locator(".ws-content-list > li").count(), 1);
-      await page.getByLabel("Search book contents").fill("");
-      assert.equal(
-        await page.evaluate(() => {
-          window.scrollTo(0, 100);
-          return document.scrollingElement.scrollTop > 0;
-        }),
-        true,
-      );
-      await page.evaluate(() => window.scrollTo(0, 0));
-      await page.screenshot({
-        path: path.join(screenshots, "book-overview-desktop.png"),
-      });
-      await page
-        .getByRole("link", { name: /The house by the sea When Mara/ })
-        .click();
-      await page
-        .getByRole("heading", { name: "The house by the sea", exact: true })
-        .waitFor();
-      assert.ok(
-        (await page.locator(".ws-preview").first().innerText()).includes(
-          "When Mara",
-        ),
-      );
-      const pdfEvent = page.waitForEvent("download");
-      await page
-        .getByRole("button", { name: "Download chapter PDF", exact: true })
-        .click();
-      assert.ok((await pdfEvent).suggestedFilename().includes("The house"));
-      await page
-        .getByRole("link", { name: "All chapters", exact: true })
-        .click();
-      await page
-        .getByRole("button", { name: "Read manuscript", exact: true })
-        .click();
-      assert.equal(await page.locator(".ws-reading-page").count(), 2);
-      await page
-        .getByRole("button", { name: "Back to overview", exact: true })
-        .click();
-      await page.setViewportSize({ width: 390, height: 844 });
-      assert.equal(
-        await page.evaluate(
-          () => document.documentElement.scrollWidth <= innerWidth,
-        ),
-        true,
-      );
-      await page.screenshot({
-        path: path.join(screenshots, "book-overview-mobile.png"),
-      });
+      assert.equal(await page.getByRole("link", { name: /Details for/ }).count(), 0);
+      for (const suffix of ["", "/chapters/" + initial.chapters[0].id]) {
+        await page.goto(base + "book/" + initial.id + suffix);
+        await page.getByRole("heading", { name: "Hmm...this page doesn’t exist." }).waitFor();
+      }
+      await page.goto(base + "books");
       const legacyGoalKey = `roza:studio:${initial.userId}:${initial.id}:goal`;
       await page.evaluate(key => localStorage.setItem(key, "73600"), legacyGoalKey);
       await page
-        .getByRole("link", { name: "Continue writing →", exact: true })
+        .getByRole("link", { name: "Continue writing", exact: true })
         .click();
       await page.setViewportSize({ width: 1365, height: 900 });
       const editor = page.locator('[aria-label="Manuscript"]');
@@ -335,6 +243,18 @@ test(
       assert.equal(await goalMeter.getAttribute("max"), "73600");
       await page.waitForFunction(key => localStorage.getItem(key) === null, legacyGoalKey);
       assert.equal(saved.wordGoal, 73_600);
+      if (process.env.STUDIO_LIBRARY_ONLY === "1") {
+        await page.getByRole("button", { name: "Back to library", exact: true }).click();
+        await page.getByRole("button", { name: "Archive The Shape of Quiet", exact: true }).click();
+        await page.getByRole("dialog", { name: "Archive this book?" })
+          .getByRole("button", { name: "Archive", exact: true }).click();
+        await page.getByRole("link", { name: "Write The Shape of Quiet", exact: true })
+          .waitFor({ state: "detached" });
+        assert.equal(saved.isArchived, true);
+        assert.deepEqual(saved.chapters, initial.chapters);
+        assert.deepEqual(errors, []);
+        return;
+      }
       await page.screenshot({
         path: path.join(screenshots, "studio-desktop.png"),
       });

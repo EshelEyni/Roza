@@ -1,6 +1,7 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const path = require("node:path");
 const ts = require("../frontend/node_modules/typescript");
 require.extensions[".ts"] = (module, file) =>
   module._compile(
@@ -254,4 +255,22 @@ test("preview renderer preserves formatting and escapes manuscript HTML", () => 
   assert.match(html, /<h2 style="text-align:center"><strong>A &lt;new&gt; beginning<\/strong><\/h2>/);
   assert.match(html, /<blockquote><u><em>&lt;script&gt;/);
   assert.ok(!html.includes("<script>"));
+});
+
+test("studio theme references resolve to application palette tokens", () => {
+  const css = fs.readFileSync(
+    path.join(
+      __dirname,
+      "../frontend/src/components/WritingStudio/writingStudio.css",
+    ),
+    "utf8",
+  );
+  const palette = require("../frontend/tailwind.config.cjs").theme.extend
+    .colors;
+  const referenced = [...css.matchAll(/theme\("colors\.([^"]+)"\)/g)].map(
+    (match) => match[1],
+  );
+  assert.ok(referenced.length > 15);
+  for (const token of referenced)
+    assert.ok(palette[token], `Missing app color: ${token}`);
 });

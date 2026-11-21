@@ -209,12 +209,6 @@ export default function BooksPage() {
                 <Link to={`/book-edit/${book.id}`}>
                   Continue writing <span aria-hidden="true">→</span>
                 </Link>
-                <Link
-                  to={`/book/${book.id}`}
-                  aria-label={`Details for ${book.name}`}
-                >
-                  Details
-                </Link>
                 <button
                   disabled={archive.isPending}
                   aria-label={`Archive ${book.name}`}

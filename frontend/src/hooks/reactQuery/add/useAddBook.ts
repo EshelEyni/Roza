@@ -14,7 +14,7 @@ export function useAddBook() {
         queryKey: ["books"],
       });
 
-      navigate(`/book/${data.id}`);
+      navigate(`/book-edit/${data.id}`);
     },
   });
 

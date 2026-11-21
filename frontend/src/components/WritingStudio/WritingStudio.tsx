@@ -642,9 +642,6 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       Chapter Format
                     </button>
                   )}
-                  <button type="button" onClick={() => void leave(`/book/${book.id}`)}>
-                    Go to details
-                  </button>
                   <button disabled={!!store.recovery} onClick={archive}>
                     Archive page
                   </button>

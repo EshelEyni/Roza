@@ -20,7 +20,7 @@ export const BookPreview: FC<BookPreviewProps> = ({ book }) => {
   const navigate = useNavigate();
 
   function handlePreviewClick() {
-    navigate(`/book/${book.id}`);
+    navigate(`/book-edit/${book.id}`);
   }
 
   function getItemsLength(type: BooKDataItemType) {
