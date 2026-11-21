@@ -2,6 +2,17 @@
   box-sizing: border-box;
 }
 
+@media (prefers-reduced-motion: no-preference) {
+  *,
+  *::before,
+  *::after {
+    // Limit the default to paint changes so layout and pointer-driven movement stay responsive.
+    transition-property: background-color, border-color, box-shadow, color, fill, opacity, outline-color, stroke;
+    transition-duration: 150ms;
+    transition-timing-function: ease;
+  }
+}
+
 html {
   font-family: var(--font-primary);
   @include scrollbar;
