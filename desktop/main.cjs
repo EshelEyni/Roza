@@ -127,6 +127,10 @@ const badges = {
   reading: { file: "reading.png", label: "Reading room" },
   audio: { file: "audio.png", label: "Audiobook playing" },
   writing: { file: "writing.png", label: "Writing studio" },
+  staging: { file: "staging.png", label: "Staging room" },
+  devBoard: { file: "dev-board.png", label: "Dev board" },
+  profile: { file: "profile.png", label: "Profile" },
+  reviews: { file: "reviews.png", label: "My reviews" },
 };
 const loadedImages = {};
 const taskbar = { area: "other", audioPlaying: false, icon: null, badge: undefined };
@@ -150,6 +154,10 @@ function areaOf(url) {
     const { pathname } = new URL(url);
     if (pathname === "/reader" || pathname.startsWith("/reader/")) return "reading";
     if (pathname === "/books" || pathname.startsWith("/book/") || pathname.startsWith("/book-edit/")) return "writing";
+    if (pathname === "/staging-room" || pathname.startsWith("/staging-room/")) return "staging";
+    if (pathname === "/dev-board" || pathname.startsWith("/dev-board/")) return "devBoard";
+    if (pathname === "/profile" || pathname.startsWith("/profile/")) return "profile";
+    if (pathname === "/reviews" || pathname.startsWith("/reviews/") || pathname.startsWith("/review/") || pathname.startsWith("/review-edit/")) return "reviews";
   } catch {}
   return "other";
 }
@@ -163,7 +171,11 @@ function updateTaskbar(window) {
   }
   if (process.platform !== "win32") return;
   const badge = taskbar.area === "reading" ? (taskbar.audioPlaying ? "audio" : "reading")
-    : taskbar.area === "writing" ? "writing" : null;
+    : taskbar.area === "writing" ? "writing"
+    : taskbar.area === "staging" ? "staging"
+    : taskbar.area === "devBoard" ? "devBoard"
+    : taskbar.area === "profile" ? "profile"
+    : taskbar.area === "reviews" ? "reviews" : null;
   if (badge === taskbar.badge) return;
   window.setOverlayIcon(badge ? overlayImage(window, badge) : null, badge ? badges[badge].label : "");
   taskbar.badge = badge;
