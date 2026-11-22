@@ -124,7 +124,7 @@ For the existing checkout on this PC, start with `cd C:\dev\Roza` and run the in
 
 ## Environment configuration
 
-Two complete templates are committed: [root `.env.example`](.env.example) and [backend `.env.example`](backend/.env.example). They contain identical settings, local demo database names, a demo user ID and a demo login secret. API keys are intentionally blank. Replace the demo secret and user ID before using your account.
+The [backend environment template](backend/.env.example) includes local demo database names, a demo user ID and a demo login secret. API keys are intentionally blank. Replace the demo secret and user ID before using your account.
 
 For a fresh local setup, copy the backend template (skip this if `backend/.env` already exists):
 
@@ -132,9 +132,7 @@ For a fresh local setup, copy the backend template (skip this if `backend/.env` 
 Copy-Item backend/.env.example backend/.env
 ```
 
-If launching the backend directly from the repository root, copy the root template to `.env` instead. Do not overwrite existing environment files; add missing settings from the examples while retaining your real values.
-
-The backend calls `dotenv.config()` without an explicit path, so it reads `.env` from its working directory. `npm run dev` and `npm --prefix backend run dev` launch it from `backend/` and load `backend/.env`. Root `.env` is for launches from the root or explicit Docker `--env-file` use. The files are not merged; existing process/container environment variables take precedence.
+The backend calls `dotenv.config()` without an explicit path, so it reads `.env` from its working directory. `npm run dev` and `npm --prefix backend run dev` launch it from `backend/` and load `backend/.env`. For local Docker runs, pass `--env-file backend/.env`. Existing process and container environment variables take precedence.
 
 | Settings | Purpose |
 | --- | --- |
@@ -158,7 +156,7 @@ Image uploads use the cloud name and upload preset defined in `frontend/src/serv
 
 ## Running locally
 
-Ensure MongoDB is available and the environment files are configured.
+Ensure MongoDB is available and `backend/.env` is configured.
 
 ### Start frontend and backend separately
 
@@ -361,7 +359,7 @@ See [the Reader PRD](docs/epub-reader-prd.md) for the complete product scope.
 
 Open the **Book chat** button in the reader toolbar for a general question. To discuss a passage, select up to 20,000 characters and choose **Ask AI**. The right-side panel keeps the passage visible, supports English and Hebrew questions, and lets you create, reopen, and delete saved conversations for that book. With a selection attached, Send and Enter also work with an empty question: the selected text is submitted as-is and the saved custom instructions decide the task and language. An entirely empty message with no selected text remains blocked. Press Enter to send or Shift+Enter for a new line. No AI request is made until you send a question.
 
-Add the following server-only keys to both environment files used by this project (`.env` and `backend/.env`), then restart the backend:
+Add the following server-only keys to `backend/.env` and restart the backend:
 
 ```dotenv
 OPENAI_API_KEY=your-openai-api-key
@@ -427,7 +425,7 @@ When the local dictionaries have no Hebrew entry, Roza can use **Google Translat
 3. Open **APIs & Services → Library**, search for **Cloud Translation API**, and enable it.
 4. Open **APIs & Services → Credentials → Create credentials → API key**.
 5. Edit the key. Under **API restrictions**, choose **Restrict key** and select **Cloud Translation API**. This is a backend key: use server public-IP restrictions where practical, rather than browser HTTP-referrer restrictions. For local development, a changing public IP may make an IP restriction impractical; keep the API restriction enabled.
-6. Put the key in `backend/.env`, and keep the root `.env` copy in sync if you use it:
+6. Put the key in `backend/.env`:
 
 ```dotenv
 GOOGLE_TRANSLATE_API_KEY=your-google-cloud-api-key
@@ -435,7 +433,7 @@ GOOGLE_TRANSLATE_API_KEY=your-google-cloud-api-key
 
 7. Restart the backend. There is no frontend env setting, and the key must not be put in a `VITE_` variable or browser code.
 
-With the documented launch commands, `backend/.env` is the file actually loaded. Both real env files are ignored by Git. An empty/missing key disables the Google fallback without affecting local dictionaries.
+`backend/.env` is ignored by Git. An empty or missing key disables the Google fallback without affecting local dictionaries.
 
 The backend authenticates using the `x-goog-api-key` header, not a URL parameter. Source/target are explicitly `en`/`he`; the API returns one automatic translation rather than dictionary definitions, alternative senses or examples. The reader labels it as automatic, displays Google's official linked attribution badge, and keeps English pronunciation available.
 
