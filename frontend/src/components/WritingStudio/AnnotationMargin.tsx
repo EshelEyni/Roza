@@ -14,7 +14,7 @@ import {
   useRef,
   useState,
 } from "react";
-import { Editor, Node, Range } from "slate";
+import { Editor, Node, Point, Range } from "slate";
 import { ReactEditor, useSlate } from "slate-react";
 import { ChapterAnnotation } from "../../../../shared/types/books";
 import { layoutAnnotations, manuscriptLines, validAnchor } from "./annotations";
@@ -300,7 +300,17 @@ export function AnnotationMargin({
       document.removeEventListener("keydown", close, true);
     };
   }, [menuFor]);
-  const notesById = new Map(notes.filter(note => !note.general).map(note => [note.id, note]));
+  const orderedNotes = notes.filter(note => !note.general).map(note => ({
+    note,
+    start: validAnchor(editor, note.anchor) ? Range.start(note.anchor) : null,
+  })).sort((a, b) => {
+    if (!a.start) return b.start ? 1 : 0;
+    if (!b.start) return -1;
+    return Point.compare(a.start, b.start);
+  });
+  const notesById = new Map(
+    orderedNotes.map(({ note }, index) => [note.id, { note, number: index + 1 }]),
+  );
   // Measurement is committed after render; removed notes must disappear immediately.
   const layout = layoutAnnotations(
     positions.filter(position => notesById.has(position.id)),
@@ -387,7 +397,7 @@ export function AnnotationMargin({
             </p>
           )}
           {layout.map(position => {
-            const note = notesById.get(position.id)!;
+            const { note, number } = notesById.get(position.id)!;
             const expanded = active === note.id;
             const detached = !note.general && !validAnchor(editor, note.anchor);
             const line =
@@ -516,7 +526,7 @@ export function AnnotationMargin({
                   }}
                 >
                   <span className="ws-note-anchor">
-                    ¶ {detached ? "–" : line ? line.number : ""}
+                    #{number}
                   </span>
                   {!expanded && (
                     <button
