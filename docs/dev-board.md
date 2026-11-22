@@ -34,4 +34,6 @@ An agent can write UTF-8 JSON into the configured import directory. Keep desktop
 
 Read the latest source before changing it. Use a stable, unique ID and write a complete valid file by replacing it atomically. Source edits apply to imported tickets until they are edited in Dev Board. After that, use the board to edit them. Removing a row from the source does not delete the database ticket. Use Trash to remove it from the active board.
 
+To remove a ticket permanently, open it in Trash and choose **Delete forever**. This deletes the ticket and its attachments from MongoDB and cannot be undone. ROZA remembers the deleted ID, so a later import skips that ticket even if it is still in `tickets.json`.
+
 To import attachments, put the files under `attachments/<SHA-256 of the ticket ID>/` next to `tickets.json`. Attachments are limited to 12 MiB each. In ROZA Desktop, **Add files** uploads selected files to the ticket. **Open folder** and **Show in Explorer** materialize a local copy. HTML attachments are revealed in Explorer and can be handed off without executing them in ROZA.

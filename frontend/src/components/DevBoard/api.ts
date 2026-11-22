@@ -45,14 +45,14 @@ export function createDevBoardApi(account: string) {
       const snapshot = source.content + JSON.stringify(source.attachments);
       if (snapshot === importedSnapshot) return null;
 
-      const result: { conflicts: string[] } = await (await request("/import", {
+      const result: { conflicts: string[]; skipped?: string[] } = await (await request("/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: source.content,
       })).json();
       const failed: string[] = [];
       for (const { id, filename } of source.attachments) {
-        if (result.conflicts.includes(id)) continue;
+        if (result.conflicts.includes(id) || result.skipped?.includes(id)) continue;
         try {
           const bytes = await desktopFiles.readImportAttachment(id, filename);
           await upload(id, filename, bytes, true);
@@ -85,6 +85,9 @@ export function createDevBoardApi(account: string) {
     },
     async trash(id: string, deleted: boolean): Promise<DevTicket[]> {
       return (await request(`/${encodeURIComponent(id)}/trash`, json("PATCH", { deleted }))).json();
+    },
+    async deleteForever(id: string): Promise<DevTicket[]> {
+      return (await request(`/${encodeURIComponent(id)}`, { method: "DELETE" })).json();
     },
     async addAttachments(id: string) {
       if (!desktopFiles) return null;

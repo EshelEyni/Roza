@@ -5,6 +5,7 @@ import Markdown from 'react-markdown';
 import { fromMarkdown } from "./fromMarkdown";
 import type { DevTicket as Ticket, DevTicketDraft as Draft } from "../../../../shared/types/devBoard";
 import { createDevBoardApi, desktopFiles } from "./api";
+import { useConfirmation } from "../Modals/useConfirmation";
 import "./devBoard.scss";
 
 function importMessage(result: { conflicts: string[]; failed: string[] }, success = '') {
@@ -28,6 +29,7 @@ export function DevBoard({ account }: { account: string }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
+  const { confirm, confirmationDialog } = useConfirmation();
   const dialog = useRef<HTMLDialogElement>(null);
   const loading = useRef(false);
   const writing = useRef(false);
@@ -224,10 +226,21 @@ export function DevBoard({ account }: { account: string }) {
             <span role="status">{notice}</span>
             <button className="ui-btn ui-btn-small" disabled={busy} onClick={() => void action(async () => { await api.copy(current.markdown); setNotice('Markdown copied'); })}>Copy Markdown</button>
             {!current.deletedAt && <button className="ui-btn ui-btn-small" disabled={busy} onClick={() => { setNotice(''); setDraft(current); }}>Edit</button>}
+            {current.deletedAt && <Button variant="danger" disabled={busy} onClick={() => void action(async () => {
+              const confirmed = await confirm({
+                title: 'Delete ticket forever?',
+                message: `"${current.title}" and its ${current.attachments.length === 1 ? 'attachment' : 'attachments'} will be permanently deleted. This cannot be undone.`,
+                confirmLabel: 'Delete forever',
+              });
+              if (!confirmed) return;
+              setTickets(await api.deleteForever(current.id));
+              close();
+            })}>Delete forever</Button>}
             <Button variant={current.deletedAt ? "primary" : "danger"} disabled={busy} onClick={() => void action(async () => { setTickets(await api.trash(current.id, !current.deletedAt)); close(); })}>{current.deletedAt ? 'Restore ticket' : 'Move to trash'}</Button>
           </footer>
         </>}
       </dialog>
+      {confirmationDialog}
     </div>
   );
 }

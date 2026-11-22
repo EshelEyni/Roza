@@ -29,7 +29,9 @@ type StoredAttachment = {
 
 const tickets = () => mongoose.connection.db!.collection<StoredTicket>("dev_board_tickets");
 const attachments = () => mongoose.connection.db!.collection<StoredAttachment>("dev_board_attachments", { promoteBuffers: true });
-const digest = (...values: string[]) => createHash("sha256").update(JSON.stringify(values)).digest("hex");
+// Hard-deleted ticket IDs, so a later folder import does not bring them back.
+const deletedIds = () => mongoose.connection.db!.collection<{ _id: string; owner: string; deletedAt: string }>("dev_board_deleted_ids");
+const digest =(...values: string[]) => createHash("sha256").update(JSON.stringify(values)).digest("hex");
 const duplicate = (error: unknown) => (error as { code?: number })?.code === 11000;
 
 function owner() {
@@ -144,8 +146,16 @@ router.post("/import", asyncErrorCatcher(async (req, res) => {
     throw new AppError("Duplicate IDs in the ticket file.", 400);
   }
 
+  const removed = new Set((await deletedIds()
+    .find({ owner: account, _id: { $in: incoming.map(row => row._id) } }, { projection: { _id: 1 } })
+    .toArray()).map(row => row._id));
   const conflicts: string[] = [];
+  const skipped: string[] = [];
   for (const row of incoming) {
+    if (removed.has(row._id)) {
+      skipped.push(row.id);
+      continue;
+    }
     try {
       await tickets().insertOne(row);
     } catch (error) {
@@ -162,7 +172,21 @@ router.post("/import", asyncErrorCatcher(async (req, res) => {
       conflicts.push(row.id);
     }
   }
-  res.json({ conflicts });
+  res.json({ conflicts, skipped });
+}));
+
+router.delete("/:id", asyncErrorCatcher(async (req, res) => {
+  const account = owner();
+  const ticket = await requireTicket(req, account);
+  if (ticket.deletedAt === null) throw new AppError("Move the ticket to Trash before deleting it.", 409);
+  await deletedIds().updateOne(
+    { _id: ticket._id, owner: account },
+    { $set: { deletedAt: new Date().toISOString() } },
+    { upsert: true },
+  );
+  await attachments().deleteMany({ owner: account, ticket: ticket.id });
+  await tickets().deleteOne({ _id: ticket._id, owner: account, deletedAt: { $ne: null } });
+  res.json(await list(account));
 }));
 
 router.patch("/:id/trash", asyncErrorCatcher(async (req, res) => {
