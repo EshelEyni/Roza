@@ -70,6 +70,7 @@ export async function pullWith(
     };
     if (c.annotations !== undefined) data.annotations = c.annotations;
     if (c.drafts !== undefined) data.drafts = c.drafts;
+    if (c.mainSourceDraftId !== undefined) data.mainSourceDraftId = c.mainSourceDraftId;
     if (c.taskBoard !== undefined) data.taskBoard = clean(c.taskBoard);
     for (const k of PLANNING_KINDS) for (const n of Object.keys(c.planning[k] || {})) linked.add(`${k}:${n}`);
     return data;
@@ -140,10 +141,14 @@ export async function pullWith(
     else delete book.wordGoal;
     if (c.taskBoard !== undefined) book.taskBoard = c.taskBoard;
     else delete book.taskBoard;
+    if (c.publishing !== undefined) book.publishing = c.publishing;
+    else delete book.publishing;
+    if (c.audiobookNarrator !== undefined) book.audiobookNarrator = c.audiobookNarrator;
+    else delete book.audiobookNarrator;
     bookState = bookPrint(c);
     bookChanged = true;
     pulledEntities++;
-    log("ok", "Pulled the book's name, word goal and task board into book.json.");
+    log("ok", "Pulled the book's name, word goal, task board, publishing settings and narrator into book.json.");
   }
   if (bookChanged) loaded.bookMtimeMs = Date.now();
 

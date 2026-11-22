@@ -33,6 +33,35 @@ const ticketFields = {
   markdown: markdown.optional().describe("The full ticket body in Markdown."),
 };
 const richText = z.union([z.string(), z.array(z.any())]);
+// Slate nodes exactly as the Writing Studio stores them: [{ type, align?, children: [{ text, bold?, italic?, underline? }] }].
+const slate = z.array(z.record(z.any())).describe("Slate nodes, as the Writing Studio stores them.");
+const taskBoard = z.object({ lists: z.array(z.any()) }).passthrough();
+const planning = z.object({
+  characters: z.record(z.string()).optional(),
+  themes: z.record(z.string()).optional(),
+  plotlines: z.record(z.string()).optional(),
+}).describe("Links to story elements by name, each with a note: { characters: { Ann: \"POV\" } }.");
+const userIdField = z.string().regex(/^[a-f0-9]{24}$/i).describe("Id of the ROZA user who owns the live book.");
+const bookFields = {
+  bookName: z.string().min(1).max(300).optional(),
+  userId: userIdField.optional(),
+  language: z.enum(["he", "en"]).optional(),
+  wordGoal: z.number().int().min(1).max(10_000_000).nullable().optional(),
+  taskBoard: taskBoard.nullable().optional(),
+  publishing: z.record(z.any()).nullable().optional()
+    .describe("EPUB settings: title, author, language, includeTitlePage, includeToc, chapterIds (live chapter ids), cover, identifier, readerBookId, publishedAt, sourceUpdatedAt."),
+  audiobookNarrator: z.object({ engine: z.string(), voice: z.string(), name: z.string(), lang: z.string().optional() })
+    .passthrough().nullable().optional(),
+  characters: z.record(richText).nullable().optional(),
+  themes: z.record(z.tuple([z.string(), richText])).nullable().optional(),
+  plotlines: z.record(z.tuple([z.string(), richText])).nullable().optional(),
+  notes: z.record(richText).nullable().optional(),
+  replaceText: z.array(z.tuple([z.string(), z.string()])).nullable().optional()
+    .describe("Find/replace pairs Push applies to the whole live book."),
+  archiveInProd: z.array(z.string()).nullable().optional().describe("Live chapter names Push archives."),
+  syncChapterOrder: z.boolean().nullable().optional().describe("true: Push orders the live chapters like the staged numbers."),
+};
+const chapterFile = z.object({ file: z.string().min(1).max(200), data: z.record(z.any()) });
 
 export function createMcpServer({ db, userId, clientId }: Context): McpServer {
   const server = new McpServer(
@@ -42,6 +71,7 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
         "ROZA tools for the author's Dev Board (tickets) and Staging Room (staged books). " +
         "Staging Room changes stay staged: the author reviews them and pushes to the live books in ROZA. " +
         "Chapter text is Markdown: # and ## headings, > quotes, - and 1. lists, **bold**, *italic*, <u>underline</u>; each line is its own paragraph. " +
+        "To keep every field exactly (alignment, screenplay layout, notes, drafts, planning, task boards), read chapters with view \"full\" and send Slate nodes. " +
         "Replacing or removing a staged chapter keeps a backup, but still confirm with the author first. " +
         "Nothing can be permanently deleted through these tools.",
     },
@@ -146,7 +176,9 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
     "staging_get_project",
     {
       title: "Read a staged project",
-      description: "Returns the staged book details (characters, themes, plotlines, notes, task board…) and its chapter list.",
+      description:
+        "Returns every field of the staged book (owner, characters, themes, plotlines, notes, task board, publishing, narrator, push edits), " +
+        "its link to the live book, and its chapter list.",
       inputSchema: { slug },
       annotations: read,
     },
@@ -156,53 +188,97 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
     "staging_get_chapter",
     {
       title: "Read a staged chapter",
-      description: "Returns a staged chapter's title, description, notes and full text as Markdown.",
-      inputSchema: { slug, number: chapterNumber },
+      description:
+        'Reads a staged chapter. view "markdown" (default) gives the title, description and text as Markdown, plus notes, drafts and planning. ' +
+        'view "full" gives the stored chapter exactly: Slate text and description, planning, notes, drafts, task board and mainSourceDraftId.',
+      inputSchema: { slug, number: chapterNumber, view: z.enum(["markdown", "full"]).optional() },
       annotations: read,
     },
-    async args => run(() => staging.getChapter(args.slug, args.number)),
+    async args => run(() => staging.getChapter(args.slug, args.number, args.view)),
   );
   server.registerTool(
     "staging_create_project",
     {
       title: "Create a staged project",
-      description: "Creates an empty staged project for a new book. Push it from the Staging Room to create the live book.",
+      description:
+        "Creates an empty staged project for a new book. Push it from the Staging Room to create the live book. " +
+        "userId defaults to the signed-in author.",
       inputSchema: {
         slug: z.string().min(1).max(200).describe("Short project name, e.g. my-lost-time."),
         bookName: z.string().min(1).max(300),
         language: z.enum(["he", "en"]),
+        userId: userIdField.optional(),
       },
       annotations: write,
     },
-    async args => runWrite("staging_create_project", args.slug, () => staging.createProject(args.slug, args.bookName, args.language)),
+    async args =>
+      runWrite("staging_create_project", args.slug, () => staging.createProject(args.slug, args.bookName, args.language, args.userId)),
+  );
+  server.registerTool(
+    "staging_import_project",
+    {
+      title: "Import a staged project",
+      description:
+        "Creates a staged project from a full book (book.json), chapter files and sync state (.publish-state.json), " +
+        "like the Staging Room's Import folder. The sync state links it to the live book, so Push updates that book. " +
+        "Refuses if the project exists. For large books, import the book and state first, then add chapters with staging_save_chapter and staging_update_chapter.",
+      inputSchema: {
+        slug: z.string().min(1).max(200).describe("Short project name, e.g. my-lost-time."),
+        book: z.record(z.any()).describe("The whole book: bookName, userId, language, characters, themes, plotlines, notes, and any other book field."),
+        chapters: z.array(chapterFile).max(2000).optional().describe("Chapter files: { file: \"01.json\", data: { number, name, text, ... } }."),
+        state: z.record(z.any()).optional().describe("The sync state: prodBookId, dbName, chapters (file → live chapter id), fingerprints."),
+      },
+      annotations: write,
+    },
+    async args => runWrite("staging_import_project", args.slug, () => staging.importProject(args as never)),
   );
   server.registerTool(
     "staging_save_chapter",
     {
       title: "Save a staged chapter",
       description:
-        'Saves Markdown as a staged chapter. mode "create" adds chapter `number` and refuses if it exists. ' +
-        'mode "replace" overwrites it after the author confirms; the old version goes to a backup.',
+        'Saves a staged chapter\'s text, as Markdown or as Slate nodes. mode "create" adds chapter `number` and refuses if it exists. ' +
+        'mode "replace" overwrites the text after the author confirms; the old version goes to a backup. ' +
+        "Set the chapter's other fields with staging_update_chapter.",
       inputSchema: {
         slug,
         number: chapterNumber,
         title: z.string().max(200).optional().describe("Chapter title. Replace keeps the old title if omitted."),
-        text: markdown.min(1).describe("The full chapter text in Markdown."),
+        text: z.union([markdown.min(1), slate.min(1)]).describe("The full chapter text: Markdown, or Slate nodes to keep alignment and screenplay layout."),
         mode: z.enum(["create", "replace"]),
+        file: z.string().min(1).max(200).optional()
+          .describe('create only: the chapter file name from the project\'s sync state (e.g. "01.json"), so it stays linked to its live chapter.'),
       },
       annotations: overwrite,
     },
-    async args => runWrite("staging_save_chapter", `${args.slug}#${args.number}`, () => staging.saveChapter(args)),
+    async args => runWrite("staging_save_chapter", `${args.slug}#${args.number}`, () => staging.saveChapter(args as never)),
   );
   server.registerTool(
     "staging_update_chapter",
     {
-      title: "Edit staged chapter details",
-      description: "Changes a staged chapter's title and/or description (Markdown). The old version goes to a backup.",
-      inputSchema: { slug, number: chapterNumber, title: z.string().max(200).optional(), description: markdown.optional() },
+      title: "Edit staged chapter fields",
+      description:
+        "Changes any field of a staged chapter except its text and number: title, description (Markdown or Slate), format, " +
+        "planning, annotations (chapter notes), drafts, taskBoard and mainSourceDraftId. Fields left out stay as they are. " +
+        "null removes a field from the staged chapter, so Push leaves the live chapter's version alone. The old version goes to a backup.",
+      inputSchema: {
+        slug,
+        number: chapterNumber,
+        title: z.string().max(200).optional(),
+        description: z.union([markdown, slate]).nullable().optional(),
+        format: z.enum(["prose", "screenplay"]).optional(),
+        planning: planning.nullable().optional(),
+        annotations: z.array(z.record(z.any())).nullable().optional()
+          .describe("Chapter notes: { id, general?, content, quote, anchor: { anchor: { path, offset }, focus: { path, offset } } | null }."),
+        drafts: z.array(z.record(z.any())).nullable().optional()
+          .describe("Drafts: { id, kind?, summary?, chapterId, name, text (Slate), createdAt, updatedAt, annotations?, format? }."),
+        taskBoard: taskBoard.nullable().optional(),
+        mainSourceDraftId: z.string().max(200).nullable().optional(),
+      },
       annotations: overwrite,
     },
-    async args => runWrite("staging_update_chapter", `${args.slug}#${args.number}`, () => staging.updateChapter(args)),
+    async ({ slug: project, number, ...changes }) =>
+      runWrite("staging_update_chapter", `${project}#${number}`, () => staging.updateChapter({ slug: project, number, ...changes } as never)),
   );
   server.registerTool(
     "staging_remove_chapter",
@@ -231,18 +307,10 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
       description:
         `Replaces the given book fields (${EDITABLE_BOOK_FIELDS.join(", ")}). Fields left out stay as they are. ` +
         "characters and notes map name → text; themes and plotlines map name → [\"#rrggbb\", text]. " +
-        "Text is a plain string (lines become paragraphs) or Slate nodes. Send the whole map for any field you change. The old book goes to a backup.",
-      inputSchema: {
-        slug,
-        bookName: z.string().min(1).max(300).optional(),
-        language: z.enum(["he", "en"]).optional(),
-        wordGoal: z.number().int().min(1).max(10_000_000).nullable().optional(),
-        taskBoard: z.object({ lists: z.array(z.any()) }).optional(),
-        characters: z.record(richText).optional(),
-        themes: z.record(z.tuple([z.string(), richText])).optional(),
-        plotlines: z.record(z.tuple([z.string(), richText])).optional(),
-        notes: z.record(richText).optional(),
-      },
+        "Text is a plain string (lines become paragraphs) or Slate nodes. Send the whole map for any field you change. " +
+        "null on wordGoal, publishing or audiobookNarrator tells Push to remove it from the live book; null on other fields removes them from the staged book. " +
+        "The old book goes to a backup.",
+      inputSchema: { slug, ...bookFields },
       annotations: overwrite,
     },
     async ({ slug: project, ...changes }) =>

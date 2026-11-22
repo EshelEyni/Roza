@@ -14,7 +14,7 @@ These are the only collections the connector opens:
 | --- | --- |
 | `dev_board_tickets` | Create tickets, edit any field or the Markdown, move to Trash and restore. Trash keeps the ticket. |
 | `dev_board_attachments` | Add files to a ticket and read them. A taken name is saved as `name (2).ext`. Nothing is overwritten. |
-| `staging_room_projects` | Create staged projects. Edit book details, characters, themes, plotlines, notes and the task board. Add, replace, rename, reorder and remove staged chapters. |
+| `staging_room_projects` | Create and import staged projects. Edit every field of a staged book and its chapters: the same fields a Writing Studio book has, plus the Push edits. Add, replace, rename, reorder and remove staged chapters. |
 | `staging_room_backups` | Add a backup before every replace, edit or removal. Read and restore Claude's backups. Backups are never changed or deleted. |
 | `staging_room_preferences` | Set the project list order and hidden projects. |
 | `mcp_oauth_clients`, `mcp_oauth_grants` | The connector's own sign-in records. No tool reaches them. |
@@ -26,7 +26,14 @@ Not opened at all: `books`, `users`, `book_reviews`, every `reader_*` collection
 
 Claude only edits the staged copy. To move the changes into the live book, open the project in the Staging Room, click **Compare**, review it, and **Push**. Claude has no Push or Pull tool. Pull reads the live books, so Claude has no Pull either.
 
-Claude also cannot set the staged project's prod-edit directives (`replaceText`, `archiveInProd`, `syncChapterOrder`). They change the live book on Push, so they stay in your hands.
+Claude can edit every field of a staged book, including the Push edits (`replaceText`, `archiveInProd`, `syncChapterOrder`) and the book's owner (`userId`). These change the live book only when you Push, and Compare lists them before you confirm.
+
+A staged book stores the same fields as a Writing Studio book:
+
+- **Book:** name, owner, language, word goal, task board, publishing settings, audiobook narrator, characters, themes, plotlines and notes.
+- **Chapters:** number, name, format, description, text, planning links and their notes, chapter notes, drafts (with kind and summary), the main text's source draft (`mainSourceDraftId`) and the task board.
+
+Markdown is a convenient way to write text, but it can't hold alignment or screenplay layout. To keep a chapter exactly, Claude reads it with `view: "full"` and sends Slate nodes.
 
 ### Undo
 
@@ -45,14 +52,15 @@ Claude also cannot set the staged project's prod-edit directives (`replaceText`,
 | `devboard_add_attachment` | Adds a text or base64 file (up to 600 KB). |
 | `devboard_read_attachment` | Reads a file. |
 | `staging_list_projects` | Lists staged projects and list preferences. |
-| `staging_get_project` | Reads book details and the chapter list. |
-| `staging_get_chapter` | Reads a chapter as Markdown. |
+| `staging_get_project` | Reads every book field, the link to the live book, and the chapter list. |
+| `staging_get_chapter` | Reads a chapter as Markdown, or with `view: "full"` exactly as stored. |
 | `staging_create_project` | Creates an empty staged project. |
-| `staging_save_chapter` | Saves Markdown as a chapter: `create` refuses if the number exists; `replace` overwrites after a backup. |
-| `staging_update_chapter` | Changes a chapter's title or description. |
+| `staging_import_project` | Creates a project from a full book, chapter files and sync state, like **Import folder**. |
+| `staging_save_chapter` | Saves chapter text as Markdown or Slate: `create` refuses if the number exists; `replace` overwrites after a backup. |
+| `staging_update_chapter` | Changes any other chapter field: title, description, format, planning, notes, drafts, task board, source draft. |
 | `staging_remove_chapter` | Removes a chapter from the staged project, after a backup. |
 | `staging_set_chapter_order` | Renumbers chapters. |
-| `staging_update_book` | Changes book details, characters, themes, plotlines, notes, task board. |
+| `staging_update_book` | Changes any book field, including publishing, narrator, owner and the Push edits. |
 | `staging_set_preferences` | Sets the project list order and hidden projects. |
 | `staging_list_backups` | Lists a project's backups. |
 | `staging_restore_backup` | Restores a chapter or book details from one of Claude's backups. |

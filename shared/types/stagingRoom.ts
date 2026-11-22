@@ -1,4 +1,6 @@
 /** Types shared by the Electron main process and the React renderer. Type-only. */
+import type { BookPublishing } from "./books";
+import type { ReaderAudiobookNarrator } from "./reader";
 
 export interface SlateText {
   text: string;
@@ -34,6 +36,9 @@ export interface ChapterAnnotation {
 
 export interface ChapterDraft {
   id: string;
+  /** "main-backup": the Writing Studio's copy of the main text, made when a draft became the main text. */
+  kind?: "main-backup";
+  summary?: string;
   chapterId: string;
   name: string;
   text: SlateElement[];
@@ -55,6 +60,10 @@ export interface LocalBookFile {
   /** Roza's word goal for the book. null = remove it from Roza on push. */
   wordGoal?: number | null;
   taskBoard?: TaskBoard;
+  /** EPUB publishing settings, as Roza stores them. Dates are ISO strings. null = remove from Roza on push. */
+  publishing?: StagedPublishing | null;
+  /** The book's audiobook narrator. null = remove from Roza on push. */
+  audiobookNarrator?: ReaderAudiobookNarrator | null;
   /** name -> description */
   characters?: Record<string, RichText>;
   /** name -> [hex color, description] */
@@ -85,8 +94,13 @@ export interface LocalChapterFile {
    */
   annotations?: ChapterAnnotation[];
   drafts?: ChapterDraft[];
+  /** Id of the draft the main text came from (Writing Studio "Make main"). */
+  mainSourceDraftId?: string;
   taskBoard?: TaskBoard;
 }
+
+/** Roza's publishing settings. chapterIds are live chapter ids. */
+export type StagedPublishing = BookPublishing;
 
 /** books/<slug>/.publish-state.json — written after each successful upload. */
 export interface PublishState {
@@ -104,7 +118,7 @@ export interface PublishState {
   /** Full-data fingerprints (every field, formatting and notes included). Used before the two above. */
   fullPrints?: Record<string, string>;
   fullEntityPrints?: Record<string, string>;
-  /** book name + word goal + task board at the last sync */
+  /** book settings (name, word goal, task board, publishing, narrator) at the last sync */
   bookPrint?: string;
 }
 

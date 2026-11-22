@@ -53,6 +53,11 @@ export function validateBook(book: LocalBookFile, chapters: LoadedChapter[]): st
     errors.push("book.json: wordGoal must be a whole number from 1 to 10,000,000 (or null to remove it)");
   if (book.taskBoard !== undefined && !Array.isArray(book.taskBoard?.lists))
     errors.push('book.json: taskBoard must look like { "lists": [...] }');
+  for (const field of ["publishing", "audiobookNarrator"] as const)
+    if (book[field] != null && (typeof book[field] !== "object" || Array.isArray(book[field])))
+      errors.push(`book.json: ${field} must be an object (or null to remove it)`);
+  if (book.publishing && !Array.isArray(book.publishing.chapterIds ?? []))
+    errors.push("book.json: publishing.chapterIds must be a list of chapter ids");
 
   if (book.replaceText !== undefined && (!Array.isArray(book.replaceText) ||
       book.replaceText.some((p) => !Array.isArray(p) || p.length !== 2 || typeof p[0] !== "string" || !p[0] || typeof p[1] !== "string")))
@@ -89,6 +94,8 @@ export function validateBook(book: LocalBookFile, chapters: LoadedChapter[]): st
     }
     if (data.taskBoard !== undefined && !Array.isArray(data.taskBoard?.lists))
       errors.push(`${where}: taskBoard must look like { "lists": [...] }`);
+    if (data.mainSourceDraftId !== undefined && typeof data.mainSourceDraftId !== "string")
+      errors.push(`${where}: mainSourceDraftId must be a draft id`);
     for (const kind of ["characters", "themes", "plotlines"] as const)
       for (const name of Object.keys(data.planning?.[kind] || {}))
         if (!(name in (book[kind] || {})))

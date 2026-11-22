@@ -36,11 +36,12 @@ import {
   prodBookContent,
   prodChapterContent,
   prodEntityContent,
+  publishingCopy,
   reattachNotes,
 } from "./fullData";
 import { validatePlanning } from "./planningValidation";
 import { planProdEdits } from "./prodEdits";
-import { bookModelFor, bookSchema } from "./rozaSchema";
+import { bookModelFor, bookSchema, STAGING_BOOK_MODEL } from "./rozaSchema";
 import { countWords, fingerprint, plainParagraphs, toSlate } from "./slate";
 
 export type Logger = (level: LogLine["level"], text: string) => void;
@@ -167,6 +168,10 @@ function buildChapter(
     chapter.taskBoard = data.taskBoard;
     fields.push("taskBoard");
   }
+  if (data.mainSourceDraftId !== undefined) {
+    chapter.mainSourceDraftId = data.mainSourceDraftId;
+    fields.push("mainSourceDraftId");
+  }
   return { chapter, fields, moved, detached, localFix };
 }
 
@@ -190,6 +195,15 @@ function buildNewBook(loaded: LoadedBook, Book: Model<any>) {
   });
   const chapters: ProdItem[] = built.map((b) => ({ ...b.chapter, taskBoard: remapBoard(b.chapter.taskBoard, chapterIds) }) as ProdItem);
   const bookBoard = remapBoard(loaded.book.taskBoard, chapterIds);
+  const publishing = loaded.book.publishing
+    ? {
+        ...loaded.book.publishing,
+        // Selected chapters may be ids of an earlier copy of this book: map them to the new ids.
+        chapterIds: (loaded.book.publishing.chapterIds || [])
+          .map((id) => chapterIds.get(String(id)))
+          .filter((id): id is string => !!id),
+      }
+    : undefined;
   const doc = new Book({
     _id: bookId,
     userId: new Types.ObjectId(loaded.book.userId),
@@ -198,6 +212,8 @@ function buildNewBook(loaded: LoadedBook, Book: Model<any>) {
     ...lists,
     taskBoard: bookBoard,
     ...(loaded.book.wordGoal != null ? { wordGoal: loaded.book.wordGoal } : {}),
+    ...(publishing ? { publishing } : {}),
+    ...(loaded.book.audiobookNarrator ? { audiobookNarrator: loaded.book.audiobookNarrator } : {}),
     filterBy: "chapters",
   });
   return {
@@ -224,7 +240,7 @@ function writeBoardsBack(loaded: LoadedBook, boards: { book?: TaskBoard; chapter
 export async function validateProject(loaded: LoadedBook): Promise<string[]> {
   if (loaded.errors.length) return loaded.errors;
   try {
-    const Book = (mongoose.models.StagingRoomBook as Model<any>) || mongoose.model("StagingRoomBook", bookSchema, "books");
+    const Book = (mongoose.models[STAGING_BOOK_MODEL] as Model<any>) || mongoose.model(STAGING_BOOK_MODEL, bookSchema, "books");
     const { doc, bookId } = buildNewBook(loaded, Book);
     await doc.validate();
     validatePlanning(plain(toObj(doc)), String(bookId));
@@ -374,10 +390,20 @@ function entityChangesOf(loaded: LoadedBook, prod: ProdBook | null): NonNullable
   return out;
 }
 
-/* the book's own fields: name, word goal, task board */
+/* the book's own fields: name, word goal, task board, publishing settings, narrator */
 
-const localBookContent = (loaded: LoadedBook): BookContent =>
-  clean({ name: loaded.book.bookName, wordGoal: loaded.book.wordGoal, taskBoard: loaded.book.taskBoard });
+const localBookContent = (loaded: LoadedBook): BookContent => ({
+  ...clean<BookContent>({
+    name: loaded.book.bookName,
+    wordGoal: loaded.book.wordGoal,
+    taskBoard: loaded.book.taskBoard,
+    audiobookNarrator: loaded.book.audiobookNarrator ?? undefined,
+  }),
+  ...(loaded.book.publishing ? { publishing: publishingCopy(loaded.book.publishing) } : {}),
+});
+
+/** Book settings that book.json leaves out are not tracked: Push leaves Roza's version alone. */
+const BOOK_SETTING_FIELDS = ["wordGoal", "taskBoard", "publishing", "audiobookNarrator"] as const;
 
 function bookChangeOf(loaded: LoadedBook, prod: ProdBook | null): ProdStatus["bookChange"] {
   if (!prod) return undefined;
@@ -389,7 +415,7 @@ function bookChangeOf(loaded: LoadedBook, prod: ProdBook | null): ProdStatus["bo
   if (base) direction = decide(bookPrint(local) !== base, bookPrint(remote) !== base);
   else {
     // Never synced these fields: if book.json doesn't set them, they only exist in Roza.
-    const untracked = loaded.book.wordGoal === undefined && loaded.book.taskBoard === undefined && local.name === remote.name;
+    const untracked = BOOK_SETTING_FIELDS.every((f) => loaded.book[f] === undefined) && local.name === remote.name;
     direction = untracked ? "pull" : "conflict";
   }
   return { direction, diff: diffParagraphs(bookLines(local), bookLines(remote)), summary: bookReport(local, remote) };
@@ -544,17 +570,28 @@ export async function uploadWith(
   ) as unknown as Record<EntityKind, ProdItem[]>;
   const updatedCount = ENTITY_KINDS.reduce((n, k) => n + updatedEntities[k].length, 0);
 
-  // The book's own fields (name, word goal, task board), when ticked. Fields book.json leaves out stay as they are.
+  // The book's own settings, when ticked. Fields book.json leaves out stay as they are; null removes them.
   const bookFields: Record<string, unknown> = {};
-  let unsetWordGoal = false;
+  const unsetBookFields: string[] = [];
   if (wantUpdate.has(BOOK_SETTINGS_KEY) && bookChangeOf(loaded, prod)) {
     const b = loaded.book;
+    const local = localBookContent(loaded);
+    const remote = prodBookContent(prod);
     if (b.bookName !== prod.name) bookFields.name = b.bookName;
-    if (b.wordGoal === null) unsetWordGoal = prod.wordGoal != null;
-    else if (b.wordGoal !== undefined && b.wordGoal !== prod.wordGoal) bookFields.wordGoal = b.wordGoal;
+    if (b.wordGoal === null) {
+      if (prod.wordGoal != null) unsetBookFields.push("wordGoal");
+    } else if (b.wordGoal !== undefined && b.wordGoal !== prod.wordGoal) bookFields.wordGoal = b.wordGoal;
     if (b.taskBoard !== undefined && hashOf(b.taskBoard) !== hashOf(prod.taskBoard)) bookFields.taskBoard = b.taskBoard;
+    if (b.publishing === null) {
+      if (prod.publishing) unsetBookFields.push("publishing");
+    } else if (b.publishing !== undefined && bookPrint({ name: "", publishing: local.publishing }) !== bookPrint({ name: "", publishing: remote.publishing }))
+      bookFields.publishing = b.publishing;
+    if (b.audiobookNarrator === null) {
+      if (prod.audiobookNarrator) unsetBookFields.push("audiobookNarrator");
+    } else if (b.audiobookNarrator !== undefined && hashOf(local.audiobookNarrator) !== hashOf(remote.audiobookNarrator))
+      bookFields.audiobookNarrator = b.audiobookNarrator;
   }
-  const bookUpdate = Object.keys(bookFields).length > 0 || unsetWordGoal;
+  const bookUpdate = Object.keys(bookFields).length > 0 || unsetBookFields.length > 0;
 
   const matches = matchChapters(loaded, prod);
   const overwrite = new Set(options.overwriteChapters);
@@ -581,6 +618,8 @@ export async function uploadWith(
     name: (bookFields.name as string) ?? prod.name,
     ...(bookFields.taskBoard ? { taskBoard: bookFields.taskBoard } : {}),
     ...(bookFields.wordGoal !== undefined ? { wordGoal: bookFields.wordGoal } : {}),
+    ...(bookFields.publishing ? { publishing: bookFields.publishing } : {}),
+    ...(bookFields.audiobookNarrator ? { audiobookNarrator: bookFields.audiobookNarrator } : {}),
     chapters: [...builtNew, ...builtReplaced].map((b) => b.chapter),
     ...Object.fromEntries(ENTITY_KINDS.map((k) => [k, [...newEntities[k], ...updatedEntities[k]]])),
   });
@@ -631,7 +670,7 @@ export async function uploadWith(
   if (castReplaced.length || updatedCount || bookUpdate) {
     const $set: Record<string, unknown> = { updatedAt: now, ...castBook };
     const $unset: Record<string, ""> = {};
-    if (unsetWordGoal) $unset.wordGoal = "";
+    for (const f of unsetBookFields) $unset[f] = "";
     const arrayFilters: Record<string, unknown>[] = castReplaced.map((c, i) => {
       const f = `c${i}`;
       for (const field of replacedFields.get(String(c._id))!) $set[`chapters.$[${f}].${field}`] = c[field];
@@ -656,7 +695,7 @@ export async function uploadWith(
     if (castReplaced.length) log("ok", `Updated ${castReplaced.length} chapter(s) in Roza.`);
     if (updatedCount) log("ok", `Updated ${updatedCount} story element(s) in Roza.`);
     if (bookUpdate) {
-      const what = [...Object.keys(bookFields), ...(unsetWordGoal ? ["wordGoal (removed)"] : [])].join(", ");
+      const what = [...Object.keys(bookFields), ...unsetBookFields.map((f) => `${f} (removed)`)].join(", ");
       edits.push(`Updated the book's ${what}`);
       log("ok", `Updated the book's ${what} in Roza.`);
     }

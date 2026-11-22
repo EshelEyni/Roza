@@ -2,7 +2,8 @@
  * Full-data view of chapters, story elements and the book itself, used by Compare,
  * Pull and Push so that every field Roza stores is seen, not only the text:
  * name, format, description, text (with formatting), planning links and notes,
- * chapter notes (annotations), drafts and task boards.
+ * chapter notes (annotations), drafts, the main text's source draft and task boards,
+ * plus the book's name, word goal, task board, publishing settings and narrator.
  *
  * The same "content" shape is built from the local files and from the prod document,
  * so comparing them is a plain hash comparison.
@@ -16,8 +17,10 @@ import type {
   LocalPlanning,
   RichText,
   SlateElement,
+  StagedPublishing,
   TaskBoard,
 } from "../../../../shared/types/stagingRoom";
+import type { ReaderAudiobookNarrator } from "../../../../shared/types/reader";
 import { countWords, plainParagraphs, toSlate } from "./slate";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -157,6 +160,7 @@ export interface ChapterContent {
   planning: LocalPlanning;
   annotations?: ChapterAnnotation[];
   drafts?: ChapterDraft[];
+  mainSourceDraftId?: string;
   taskBoard?: TaskBoard;
 }
 
@@ -169,6 +173,7 @@ export function localChapterContent(data: LocalChapterFile): ChapterContent {
     planning: data.planning || {},
     annotations: data.annotations,
     drafts: data.drafts,
+    mainSourceDraftId: data.mainSourceDraftId,
     taskBoard: data.taskBoard,
   };
 }
@@ -182,6 +187,7 @@ export function prodChapterContent(ch: ProdItem, names: Record<PlanningKind, Map
     planning: planningToNames(ch.planning, names),
     annotations: ch.annotations,
     drafts: ch.drafts,
+    mainSourceDraftId: ch.mainSourceDraftId || undefined,
     taskBoard: ch.taskBoard,
   });
 }
@@ -207,8 +213,11 @@ export function chapterLines(c: ChapterContent): string[] {
     ...(c.annotations || []).map(annotationLine),
     ...(c.drafts || []).flatMap((d) => [
       `Draft “${d.name}” · ${countWords(d.text)} words · ${(d.annotations || []).length} note(s) · updated ${d.updatedAt}`,
+      ...(d.kind ? [`Draft “${d.name}” kind: ${d.kind}`] : []),
+      ...(d.summary ? [`Draft “${d.name}” summary: ${d.summary}`] : []),
       ...slateLines(d.text, `Draft “${d.name}”: `),
     ]),
+    ...(c.mainSourceDraftId ? [`Main text from draft: ${c.mainSourceDraftId}`] : []),
     ...taskBoardLines(c.taskBoard),
   ];
 }
@@ -306,6 +315,7 @@ export function chapterReport(local: ChapterContent, prod: ChapterContent): stri
     planningReport(local.planning, prod.planning),
     listReport(local.annotations, prod.annotations, "Notes"),
     listReport(local.drafts, prod.drafts, "Drafts"),
+    (local.mainSourceDraftId || "") !== (prod.mainSourceDraftId || "") ? "Main text source draft differs" : undefined,
     hashOf(local.taskBoard) !== hashOf(prod.taskBoard) ? "Task board differs" : undefined,
   ].filter((x): x is string => !!x);
 }
@@ -355,9 +365,28 @@ export interface BookContent {
   name: string;
   wordGoal?: number | null;
   taskBoard?: TaskBoard;
+  publishing?: StagedPublishing;
+  audiobookNarrator?: ReaderAudiobookNarrator;
 }
 
-export const bookPrint = (c: BookContent) => hashOf(c);
+/**
+ * A copy of Roza's publishing settings. `clean` is not used here: it drops `false`,
+ * and includeTitlePage / includeToc default to true, so `false` must be kept.
+ */
+export function publishingCopy(value: unknown): StagedPublishing | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const { _id: _ignored, ...rest } = JSON.parse(JSON.stringify(value)) as Record<string, unknown>;
+  return rest as unknown as StagedPublishing;
+}
+
+/** Publishing settings in a form where a missing flag and `true` compare equal (Roza's default). */
+const publishingKey = (p: StagedPublishing | undefined) =>
+  p && { ...p, includeTitlePage: p.includeTitlePage === false ? "no" : "yes", includeToc: p.includeToc === false ? "no" : "yes" };
+
+export const bookPrint = (c: BookContent) => hashOf({ ...c, publishing: publishingKey(c.publishing) });
+
+const publishingDiffers = (a: BookContent, b: BookContent) =>
+  hashOf(publishingKey(a.publishing)) !== hashOf(publishingKey(b.publishing));
 
 export const bookReport = (local: BookContent, prod: BookContent): string[] =>
   [
@@ -370,16 +399,46 @@ export const bookReport = (local: BookContent, prod: BookContent): string[] =>
         ? `Task board: only in Roza (${plural((prod.taskBoard?.lists || []).reduce((n: number, l: any) => n + (l.cards || []).length, 0), "card")})`
         : "Task board differs"
       : undefined,
+    publishingDiffers(local, prod)
+      ? local.publishing === undefined
+        ? "Publishing settings: only in Roza"
+        : prod.publishing === undefined
+          ? "Publishing settings: only here"
+          : "Publishing settings differ"
+      : undefined,
+    hashOf(local.audiobookNarrator) !== hashOf(prod.audiobookNarrator)
+      ? `Narrator: ${narratorText(local.audiobookNarrator)} here, ${narratorText(prod.audiobookNarrator)} in Roza`
+      : undefined,
   ].filter((x): x is string => !!x);
+
+const narratorText = (n: ReaderAudiobookNarrator | undefined) => (n ? `${n.name} (${n.engine})` : "none");
+
+function publishingLines(p: StagedPublishing | undefined): string[] {
+  if (!p) return [];
+  return [
+    `Publishing · title: ${p.title}`,
+    ...(p.author ? [`Publishing · author: ${p.author}`] : []),
+    `Publishing · language: ${p.language}`,
+    `Publishing · title page: ${p.includeTitlePage === false ? "no" : "yes"} · table of contents: ${p.includeToc === false ? "no" : "yes"}`,
+    `Publishing · ${plural((p.chapterIds || []).length, "chapter")} selected`,
+    `Publishing · cover: ${p.cover ? "yes" : "none"}`,
+    `Publishing · identifier: ${p.identifier}`,
+    ...(p.publishedAt ? [`Publishing · published: ${p.publishedAt}`] : []),
+  ];
+}
 
 export const bookLines = (c: BookContent) => [
   `Book name: ${c.name}`,
   ...(c.wordGoal ? [`Word goal: ${c.wordGoal.toLocaleString()}`] : []),
   ...taskBoardLines(c.taskBoard),
+  ...publishingLines(c.publishing),
+  ...(c.audiobookNarrator ? [`Narrator: ${narratorText(c.audiobookNarrator)}`] : []),
 ];
 
-export const prodBookContent = (prod: ProdItem): BookContent =>
-  clean({ name: prod.name, wordGoal: prod.wordGoal, taskBoard: prod.taskBoard });
+export const prodBookContent = (prod: ProdItem): BookContent => ({
+  ...clean<BookContent>({ name: prod.name, wordGoal: prod.wordGoal, taskBoard: prod.taskBoard, audiobookNarrator: prod.audiobookNarrator }),
+  ...(prod.publishing ? { publishing: publishingCopy(prod.publishing) } : {}),
+});
 
 /* ---------- keeping notes attached when the text changes ---------- */
 

@@ -15,7 +15,7 @@ interface Item {
 }
 
 const kindLabel = (k: string) => k.replace(/s$/, "");
-/** Key for the book's own fields (name, word goal, task board); matches the main process. */
+/** Key for the book's own fields (name, word goal, task board, publishing, narrator); matches the main process. */
 const BOOK_KEY = "book:settings";
 
 /** Items Push would send: everything that is new or newer locally. Conflicts start unticked. */
@@ -54,7 +54,7 @@ export function pushItems(status: ProdStatus): Item[] {
     items.push({
       key: BOOK_KEY,
       title: "Book settings",
-      detail: `name, word goal, task board · ${b.direction === "push" ? "edited locally" : "changed in both places: ticking replaces Roza's version"}`,
+      detail: `name, word goal, task board, publishing, narrator · ${b.direction === "push" ? "edited locally" : "changed in both places: ticking replaces Roza's version"}`,
       ticked: b.direction === "push",
       warn: b.direction === "conflict",
       diff: b.diff,
@@ -99,7 +99,7 @@ export function pullItems(status: ProdStatus): Item[] {
     items.push({
       key: BOOK_KEY,
       title: "Book settings",
-      detail: `name, word goal, task board · ${b.direction === "pull" ? "edited in Roza" : "changed in both places: ticking replaces your local version"}`,
+      detail: `name, word goal, task board, publishing, narrator · ${b.direction === "pull" ? "edited in Roza" : "changed in both places: ticking replaces your local version"}`,
       ticked: b.direction === "pull",
       warn: b.direction === "conflict",
       diff: b.diff,
