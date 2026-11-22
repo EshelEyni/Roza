@@ -1,89 +1,30 @@
-import { createHash, randomBytes } from "node:crypto";
-import { mongo } from "mongoose";
-const { ObjectId } = mongo;
-import type { HistoryEvent, LocalBookFile, LocalChapterFile, PublishState, RichText, SlateElement } from "../../../shared/types/stagingRoom";
+import { createHash, randomUUID } from "node:crypto";
+import type {
+  ChapterAnnotation,
+  EntityKind,
+  LiveCopy,
+  SlateElement,
+  StagedChange,
+  StagedTask,
+} from "../../../shared/types/stagingRoom";
 import type { ConnectorDb } from "./connectorDb";
 import { ConnectorError } from "./connectorError";
 import { markdownToSlate, slateToMarkdown } from "./slateMarkdown";
-import { LoadedBook, LoadedChapter, validateBook } from "../services/stagingRoom/bookFiles";
-import { addEvent, changedKeys } from "../services/stagingRoom/history";
-import { validateProject } from "../services/stagingRoom/sync";
-import { countWords } from "../services/stagingRoom/slate";
+import { changeTitle, elementHash } from "../services/stagingRoom/changes";
+import { isV2, ProjectRow } from "../services/stagingRoom/project";
+import { checkSlate, countWords } from "../services/stagingRoom/slate";
 
-// Staging Room access for the Claude connector. It changes staged projects only.
-// It never reads or writes the live books: Compare, Push and Pull stay in the
-// Staging Room UI. Storage rules mirror routers/stagingRoom/stagingRoomRouter.ts.
+// Staging Room access for the Claude connector (Staging Room v2, docs/staging-room-prd.md).
 //
-// Before anything is replaced or removed, the old version is copied to
-// staging_room_backups. Backups are only ever added, never changed or deleted.
+// Claude only ADDS pending changes to a staged book: new drafts (the default for chapter
+// text), Main edits when the author asks, new chapters, story elements, notes and tasks.
+// It never deletes anything and never writes the live books. The author approves each
+// change in the Staging Room.
+//
+// The connector's database user cannot read the live books. It reads the copy of the
+// live book that the ROZA backend keeps on each staging row (row.live).
 
-type Project = {
-  _id: string;
-  owner: string;
-  slug: string;
-  book: LocalBookFile;
-  chapters: LoadedChapter[];
-  revision?: number;
-  bookMtimeMs?: number;
-  state: LoadedBook["state"];
-  lease?: { id: string; until: Date };
-  /** Staging Room history, newest last (services/stagingRoom/history.ts) */
-  history?: HistoryEvent[];
-};
-type Snapshot = { source: "claude"; reason: string; file?: string; chapter?: LocalChapterFile; book?: LocalBookFile };
-type Backup = { reason: string; snapshot: Snapshot };
-
-// Every field of a staged book. userId is the owner of the live book that Push
-// writes to; it is kept as staged and never reset to the connector's account.
-export const EDITABLE_BOOK_FIELDS = [
-  "bookName",
-  "userId",
-  "language",
-  "wordGoal",
-  "taskBoard",
-  "publishing",
-  "audiobookNarrator",
-  "characters",
-  "themes",
-  "plotlines",
-  "notes",
-  "replaceText",
-  "archiveInProd",
-  "syncChapterOrder",
-] as const;
-type EditableBookField = (typeof EDITABLE_BOOK_FIELDS)[number];
-export type BookChanges = { [K in EditableBookField]?: LocalBookFile[K] | null };
-// For these, null is stored: it tells Push to remove the field from the live book.
-// For the other optional fields, null removes the field from the staged book.
-const NULL_MEANS_REMOVE_LIVE = new Set<string>(["wordGoal", "publishing", "audiobookNarrator"]);
-const REQUIRED_BOOK_FIELDS = new Set<string>(["bookName", "userId"]);
-
-// Every field of a staged chapter except its number (use staging_set_chapter_order)
-// and text (use staging_save_chapter). null removes an optional field from the
-// staged chapter, so Push leaves the live chapter's version alone.
-export type ChapterChanges = {
-  title?: string;
-  description?: string | SlateElement[] | null;
-  format?: "prose" | "screenplay";
-  planning?: LocalChapterFile["planning"] | null;
-  annotations?: LocalChapterFile["annotations"] | null;
-  drafts?: LocalChapterFile["drafts"] | null;
-  taskBoard?: LocalChapterFile["taskBoard"] | null;
-  mainSourceDraftId?: string | null;
-};
-const CHAPTER_FIELDS = ["planning", "annotations", "drafts", "taskBoard", "mainSourceDraftId"] as const;
-
-export type ProjectImport = {
-  slug: string;
-  book: LocalBookFile;
-  chapters?: { file: string; data: LocalChapterFile }[];
-  state?: PublishState;
-};
-
-const projectKey = (owner: string, slug: string) =>
-  createHash("sha256").update(JSON.stringify([owner, slug])).digest("hex");
-const pad = (n: number) => String(n).padStart(2, "0");
-const clone = <T>(value: T): T => structuredClone(value);
+const projectKey = (owner: string, slug: string) => createHash("sha256").update(JSON.stringify([owner, slug])).digest("hex");
 
 function checkSlug(value: string) {
   if (!value.trim() || value.length > 200 || value === "." || value === ".." || /[/\\\x00-\x1f]/.test(value))
@@ -91,435 +32,237 @@ function checkSlug(value: string) {
   return value;
 }
 
-/** clientId is the connector app (Claude, ChatGPT, ...). History shows it as the source of each change. */
+type Text = string | SlateElement[];
+type NoteInput = { quote?: string; content: string };
+
+/** clientId is the connector app (Claude, ChatGPT, ...). The Staging Room shows changes by it as from Claude. */
 export function createStagingStore(db: ConnectorDb, owner: string, clientId?: string) {
   const projects = () => db.stagingProjects();
 
-  async function load(slug: string): Promise<Project> {
+  async function load(slug: string): Promise<ProjectRow> {
     checkSlug(slug);
-    const row = (await projects().findOne({ _id: projectKey(owner, slug), owner } as never)) as Project | null;
-    if (!row) throw new ConnectorError(`No staged project "${slug}". Call staging_list_projects.`);
+    const row = (await projects().findOne({ _id: projectKey(owner, slug), owner } as never)) as { version?: unknown } | null;
+    if (!row) throw new ConnectorError(`No staged book "${slug}". Call staging_list_projects.`);
+    if (!isV2(row))
+      throw new ConnectorError(`"${slug}" needs a one-time upgrade. Ask the author to open Staging Room once, then try again.`);
     return row;
   }
 
-  function loaded(row: Pick<Project, "slug" | "book" | "chapters" | "state" | "bookMtimeMs">): LoadedBook {
-    const state = row.state?.dbName && row.state.dbName !== db.dbName() ? {} : row.state || {};
-    return {
-      slug: row.slug,
-      book: row.book,
-      chapters: row.chapters,
-      state,
-      bookMtimeMs: row.bookMtimeMs,
-      errors: validateBook(row.book, row.chapters),
-    };
+  function liveOf(row: ProjectRow): LiveCopy {
+    if (!row.live) throw new ConnectorError(`"${row.slug}" is not in Writing Studio yet. Add chapters with staging_add_chapter.`);
+    return row.live;
   }
 
-  function findChapter(row: Project, number: number) {
-    const matches = row.chapters.filter(chapter => chapter.data.number === number);
-    if (!matches.length)
-      throw new ConnectorError(
-        `"${row.slug}" has no chapter ${number}. Chapters: ${row.chapters.map(c => c.data.number).join(", ") || "none"}.`,
-      );
-    if (matches.length > 1)
-      throw new ConnectorError(`"${row.slug}" has ${matches.length} chapters numbered ${number}. Fix the numbering first.`);
-    return matches[0];
+  /** Chapters are numbered 1..n in the live order. */
+  function chapterAt(row: ProjectRow, number: number) {
+    const live = liveOf(row);
+    const chapter = live.chapters[number - 1];
+    if (!chapter) throw new ConnectorError(`"${row.slug}" has no chapter ${number}. It has ${live.chapters.length} chapter(s).`);
+    return chapter;
   }
 
-  // Applies a change to a copy of the project, validates it like the Staging
-  // Room does, saves backups, then writes it only if nobody changed the project
-  // in the meantime and it is not syncing.
-  async function mutate<T>(slug: string, summary: string, change: (row: Project, backups: Backup[]) => T) {
-    const row = await load(slug);
-    if (row.lease && new Date(row.lease.until) > new Date())
-      throw new ConnectorError(`"${slug}" is syncing right now. Try again in a few minutes.`);
-    const draft = clone(row);
-    const backups: Backup[] = [];
-    const result = change(draft, backups);
-    draft.chapters.sort((a, b) => a.data.number - b.data.number || a.file.localeCompare(b.file));
-    const errors = await validateProject(loaded(draft));
-    if (errors.length) throw new ConnectorError(`Not saved. The project would be invalid: ${errors[0]}`);
-
-    const backupIds: string[] = [];
-    for (const backup of backups) {
-      const inserted = await db.stagingBackups().insertOne({
-        owner,
-        projectId: row._id,
-        slug: row.slug,
-        kind: "staged",
-        snapshot: backup.snapshot,
-        createdAt: new Date(),
-      });
-      backupIds.push(String(inserted.insertedId));
+  function toSlate(text: Text, screenplay = false): SlateElement[] {
+    if (typeof text === "string") {
+      if (screenplay) throw new ConnectorError("This chapter is a screenplay. Markdown can't keep its layout. Send Slate nodes.");
+      return markdownToSlate(text) as SlateElement[];
     }
-    const history = addEvent(row.history, {
-      source: "connector",
-      ...(clientId ? { clientId } : {}),
-      summary,
-      keys: changedKeys(row, draft),
-      ...(backupIds[0] ? { backupId: backupIds[0], backupScope: "item" as const } : {}),
-    });
-    const revision = row.revision ?? 0;
-    const saved = await projects().updateOne(
-      {
-        _id: row._id,
-        owner,
-        $and: [
-          { $or: [{ lease: { $exists: false } }, { "lease.until": { $lte: new Date() } }] },
-          revision === 0 ? { $or: [{ revision: 0 }, { revision: { $exists: false } }] } : { revision },
-        ],
-      } as never,
-      { $set: { book: draft.book, chapters: draft.chapters, bookMtimeMs: draft.bookMtimeMs, history }, $inc: { revision: 1 } },
-      { ignoreUndefined: true },
-    );
-    if (!saved.matchedCount)
-      throw new ConnectorError(`"${slug}" changed while saving. Nothing was saved. Read it again and retry.`);
-    return { ...result, revision: revision + 1, backupIds };
+    const errors = checkSlate(text, "Text");
+    if (errors.length) throw new ConnectorError(errors[0]);
+    return text;
+  }
+
+  const notesOf = (notes: NoteInput[] | undefined): ChapterAnnotation[] | undefined =>
+    notes?.length
+      ? notes.map((n) => ({ id: randomUUID(), content: n.content, quote: n.quote ?? "", anchor: null, ...(n.quote ? {} : { general: true }) }))
+      : undefined;
+
+  const stamp = () => {
+    const now = new Date().toISOString();
+    return { id: randomUUID(), createdAt: now, updatedAt: now, by: "connector" as const, ...(clientId ? { clientId } : {}) };
+  };
+
+  /** Adds a change, or replaces the one with the same id. Refused while an approval is writing. */
+  async function save(row: ProjectRow, change: StagedChange, replaces?: StagedChange) {
+    const filter = {
+      _id: row._id,
+      owner,
+      $or: [{ lease: { $exists: false } }, { "lease.until": { $lte: new Date() } }],
+      ...(replaces ? { changes: { $elemMatch: { id: replaces.id, updatedAt: replaces.updatedAt } } } : {}),
+    };
+    const update = replaces
+      ? { $set: { "changes.$": change }, $inc: { revision: 1 } }
+      : { $push: { changes: change }, $inc: { revision: 1 } };
+    const r = await projects().updateOne(filter as never, update as never);
+    if (!r.matchedCount)
+      throw new ConnectorError(`"${row.slug}" changed while saving (the author may be approving or editing). Nothing was saved. Read it again and retry.`);
+    return { slug: row.slug, changeId: change.id, pending: change.kind, title: changeTitle(change, row.live), saved: replaces ? "updated" : "added" };
   }
 
   async function listProjects() {
-    const [rows, prefs] = await Promise.all([
-      projects().find({ owner }).sort({ slug: 1 }).toArray() as unknown as Promise<Project[]>,
-      db.stagingPreferences().findOne({ _id: owner } as never),
-    ]);
-    const order: string[] = prefs?.order ?? [];
-    const hidden = new Set<string>(prefs?.hidden ?? []);
-    const rank = new Map(order.map((slug, i) => [slug, i]));
-    rows.sort((a, b) => (rank.get(a.slug) ?? rows.length) - (rank.get(b.slug) ?? rows.length));
+    const rows = (await projects().find({ owner }).sort({ slug: 1 }).toArray()) as unknown as (ProjectRow | { slug: string; version?: number })[];
     return {
-      projects: rows.map(row => ({
-        slug: row.slug,
-        bookName: row.book.bookName,
-        language: row.book.language || "en",
-        chapterCount: row.chapters.length,
-        words: row.chapters.reduce((sum, c) => sum + countWords(c.data.text), 0),
-        hidden: hidden.has(row.slug),
-        lastUploadAt: row.state?.lastUploadAt ?? null,
-        revision: row.revision ?? 0,
-      })),
-      preferences: { order, hidden: [...hidden], showHidden: prefs?.showHidden === true },
+      projects: rows.map((row) =>
+        isV2(row)
+          ? {
+              slug: row.slug,
+              bookName: row.live?.name ?? row.bookName,
+              inWritingStudio: !!row.liveBookId,
+              chapters: row.live?.chapters.length ?? 0,
+              pendingChanges: row.changes.length,
+            }
+          : { slug: row.slug, needsUpgrade: "Ask the author to open Staging Room once." },
+      ),
     };
   }
 
   async function getProject(slug: string) {
     const row = await load(slug);
+    const live = row.live;
     return {
       slug: row.slug,
-      revision: row.revision ?? 0,
-      book: row.book,
-      link: {
-        prodBookId: row.state?.prodBookId ?? null,
-        dbName: row.state?.dbName ?? null,
-        lastSyncAt: row.state?.lastSyncAt ?? null,
-      },
-      chapters: row.chapters.map(({ file, data }) => ({
-        number: data.number,
-        file,
-        title: data.name,
-        format: data.format || "prose",
-        words: countWords(data.text),
-        notes: (data.annotations || []).length,
-        drafts: (data.drafts || []).length,
-        planningLinks: Object.values(data.planning || {}).reduce((n, links) => n + Object.keys(links || {}).length, 0),
-        taskBoard: data.taskBoard !== undefined,
-        liveChapterId: row.state?.chapters?.[file] ?? null,
+      bookName: live?.name ?? row.bookName,
+      inWritingStudio: !!row.liveBookId,
+      liveCopiedAt: live?.copiedAt ?? null,
+      chapters: (live?.chapters ?? []).map((c, i) => ({
+        number: i + 1,
+        title: c.name,
+        format: c.format,
+        words: countWords(c.text),
+        drafts: c.drafts.map((d) => d.name),
       })),
-      errors: (await validateProject(loaded(row))).slice(0, 5),
+      characters: (live?.characters ?? []).map((x) => x.name),
+      themes: (live?.themes ?? []).map((x) => x.name),
+      plotlines: (live?.plotlines ?? []).map((x) => x.name),
+      notes: (live?.notes ?? []).map((x) => x.name),
+      pendingChanges: row.changes.map((c) => ({ changeId: c.id, kind: c.kind, title: changeTitle(c, live), updatedAt: c.updatedAt })),
     };
   }
 
-  // "markdown" is easy to read and edit. "full" returns the stored chapter exactly:
-  // Slate text and description, planning, notes, drafts, task board and the rest.
+  /** The live chapter, plus your pending draft or Main edit for it. */
   async function getChapter(slug: string, number: number, view: "markdown" | "full" = "markdown") {
     const row = await load(slug);
-    const { file, data } = findChapter(row, number);
-    if (view === "full") return { slug, number, file, liveChapterId: row.state?.chapters?.[file] ?? null, data };
+    const chapter = chapterAt(row, number);
+    const pending = row.changes.filter(
+      (c): c is Extract<StagedChange, { kind: "draft" | "main" }> => (c.kind === "draft" || c.kind === "main") && c.chapterId === chapter.id,
+    );
+    const show = (text: SlateElement[]) => (view === "full" ? text : slateToMarkdown(text));
     return {
       slug,
       number,
-      file,
-      title: data.name,
-      format: data.format || "prose",
-      words: countWords(data.text),
-      description: slateToMarkdown(data.description),
-      planning: data.planning ?? {},
-      notes: (data.annotations || []).map(note => ({ id: note.id, general: !!note.general, quote: note.quote, content: note.content })),
-      drafts: (data.drafts || []).map(draft => ({ id: draft.id, name: draft.name, kind: draft.kind, words: countWords(draft.text) })),
-      mainSourceDraftId: data.mainSourceDraftId ?? null,
-      text: slateToMarkdown(data.text),
+      title: chapter.name,
+      format: chapter.format,
+      words: countWords(chapter.text),
+      drafts: chapter.drafts.map((d) => d.name),
+      main: show(chapter.text),
+      pending: pending.map((c) => ({
+        changeId: c.id,
+        kind: c.kind,
+        ...(c.kind === "draft" ? { name: c.name } : {}),
+        words: countWords(c.text),
+        text: show(c.text),
+      })),
     };
   }
 
-  async function insertProject(row: Project, what: string) {
-    const errors = await validateProject(loaded(row));
-    if (errors.length) throw new ConnectorError(`Not ${what}: ${errors[0]}`);
-    row.history = addEvent([], { source: "connector", ...(clientId ? { clientId } : {}), summary: `${what === "created" ? "Created" : "Imported"} the project`, keys: [] });
-    try {
-      await projects().insertOne(row as never);
-    } catch (error) {
-      if ((error as { code?: number }).code === 11000)
-        throw new ConnectorError(`A staged project named "${row.slug}" already exists.`);
-      throw error;
-    }
-  }
-
-  async function createProject(slug: string, bookName: string, language: "he" | "en", userId?: string) {
+  async function createProject(slug: string, bookName: string, language: "he" | "en") {
     checkSlug(slug);
     if (!bookName.trim()) throw new ConnectorError("bookName is required.");
-    const now = Date.now();
-    const row: Project = {
+    const row: ProjectRow = {
       _id: projectKey(owner, slug),
       owner,
       slug,
-      book: { bookName: bookName.trim(), userId: userId || owner, language },
-      chapters: [],
-      revision: 0,
-      bookMtimeMs: now,
-      state: {},
-    };
-    await insertProject(row, "created");
-    return { slug, bookName: row.book.bookName, userId: row.book.userId, revision: 0 };
-  }
-
-  // Same rules as the Staging Room's Import folder (routers/stagingRoom/stagingRoomRouter.ts):
-  // the book, chapter files and sync state are stored as given, after validation.
-  async function importProject(input: ProjectImport) {
-    checkSlug(input.slug);
-    const now = Date.now();
-    const chapters = (input.chapters || []).map(chapter => {
-      if (!/^[^/\\\x00-\x1f]+\.json$/i.test(chapter.file))
-        throw new ConnectorError(`"${chapter.file}" is not a valid chapter file name, e.g. 01.json.`);
-      return { file: chapter.file, data: chapter.data, mtimeMs: now };
-    }).sort((a, b) => a.data.number - b.data.number || a.file.localeCompare(b.file));
-    if (new Set(chapters.map(c => c.file)).size !== chapters.length) throw new ConnectorError("Duplicate chapter file names.");
-    const row: Project = {
-      _id: projectKey(owner, input.slug),
-      owner,
-      slug: input.slug,
-      book: input.book,
-      chapters,
-      revision: 0,
-      bookMtimeMs: now,
-      state: input.state ?? {},
-    };
-    await insertProject(row, "imported");
-    return {
-      slug: row.slug,
-      bookName: row.book.bookName,
-      userId: row.book.userId,
-      chapters: chapters.length,
-      linkedToLiveBook: row.state.prodBookId ?? null,
+      version: 2,
+      bookName: bookName.trim(),
+      userId: owner,
+      language,
+      changes: [],
       revision: 0,
     };
+    try {
+      await projects().insertOne(row as never);
+    } catch (error) {
+      if ((error as { code?: number }).code === 11000) throw new ConnectorError(`A staged book named "${slug}" already exists.`);
+      throw error;
+    }
+    return { slug, bookName: row.bookName, note: "The book is created in Writing Studio when the author approves its first change." };
   }
 
-  async function saveChapter(input: {
-    slug: string;
-    number: number;
-    title?: string;
-    text: string | SlateElement[];
-    mode: "create" | "replace";
-    file?: string;
-  }) {
-    const fromMarkdown = typeof input.text === "string";
-    const slate = (fromMarkdown ? markdownToSlate(input.text as string) : input.text) as LocalChapterFile["text"];
-    if (input.file !== undefined && (input.mode !== "create" || !/^[^/\\\x00-\x1f]+\.json$/i.test(input.file)))
-      throw new ConnectorError('file is only for mode "create" and must look like 01.json.');
-    return mutate(input.slug, input.mode === "create" ? `Added chapter ${input.number}` : `Replaced the text of chapter ${input.number}`, (row, backups) => {
-      const now = Date.now();
-      const existing = row.chapters.filter(chapter => chapter.data.number === input.number);
-      if (input.mode === "create") {
-        if (existing.length)
-          throw new ConnectorError(
-            `Chapter ${input.number} already exists in "${row.slug}" ("${existing[0].data.name}"). ` +
-              'Nothing was saved. Ask the author to confirm, then use mode "replace".',
-          );
-        if (input.file !== undefined && row.chapters.some(chapter => chapter.file === input.file))
-          throw new ConnectorError(`"${input.file}" is already used by another chapter.`);
-        let file = input.file ?? `${pad(input.number)}.json`;
-        while (row.chapters.some(chapter => chapter.file === file))
-          file = `${pad(input.number)}-${randomBytes(2).toString("hex")}.json`;
-        row.chapters.push({
-          file,
-          mtimeMs: now,
-          data: { number: input.number, name: input.title?.trim() || `Chapter ${input.number}`, format: "prose", text: slate },
-        });
-        return { slug: row.slug, number: input.number, file, mode: "create", words: countWords(slate) };
-      }
-      const chapter = findChapter(row, input.number);
-      if (fromMarkdown && chapter.data.format === "screenplay")
-        throw new ConnectorError(`Chapter ${input.number} is a screenplay. Markdown can't keep its layout. Send the text as Slate nodes.`);
-      backups.push({
-        reason: `Before Claude replaced chapter ${input.number}`,
-        snapshot: { source: "claude", reason: "replace chapter", file: chapter.file, chapter: clone(chapter.data) },
-      });
-      chapter.data.text = slate;
-      if (input.title?.trim()) chapter.data.name = input.title.trim();
-      // Old notes point into the old text. They stay in the backup. Without them,
-      // Push keeps ROZA's notes and re-attaches them by quote.
-      delete chapter.data.annotations;
-      chapter.mtimeMs = now;
-      return { slug: row.slug, number: input.number, file: chapter.file, mode: "replace", words: countWords(slate) };
-    });
+  async function writeDraft(input: { slug: string; number: number; text: Text; name?: string; newDraft?: boolean; notes?: NoteInput[] }) {
+    const row = await load(input.slug);
+    const chapter = chapterAt(row, input.number);
+    const text = toSlate(input.text, chapter.format === "screenplay");
+    const existing = input.newDraft
+      ? undefined
+      : row.changes.find(
+          (c): c is Extract<StagedChange, { kind: "draft" }> => c.kind === "draft" && c.chapterId === chapter.id && c.by === "connector",
+        );
+    const name = input.name?.trim() || existing?.name || `Claude · ${new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
+    if (existing) {
+      const notes = input.notes ? notesOf(input.notes) : existing.notes;
+      return save(row, { ...existing, name, text, ...(notes ? { notes } : {}), updatedAt: new Date().toISOString() }, existing);
+    }
+    return save(row, { ...stamp(), kind: "draft", chapterId: chapter.id, name, text, baseHash: chapter.mainHash, notes: notesOf(input.notes) });
   }
 
-  async function updateChapter(input: { slug: string; number: number } & ChapterChanges) {
-    const { slug, number, ...changes } = input;
-    const keys = Object.keys(changes).filter(key => (changes as Record<string, unknown>)[key] !== undefined);
-    if (!keys.length) throw new ConnectorError("Nothing to change.");
-    return mutate(slug, `Edited chapter ${number}: ${keys.join(", ")}`, (row, backups) => {
-      const chapter = findChapter(row, number);
-      backups.push({
-        reason: `Before Claude edited chapter ${number} details`,
-        snapshot: { source: "claude", reason: "edit chapter details", file: chapter.file, chapter: clone(chapter.data) },
-      });
-      const data = chapter.data as unknown as Record<string, unknown>;
-      if (changes.title !== undefined) {
-        if (!changes.title.trim()) throw new ConnectorError("title cannot be empty.");
-        chapter.data.name = changes.title.trim();
-      }
-      if (changes.description === null) delete chapter.data.description;
-      else if (changes.description !== undefined)
-        chapter.data.description = (typeof changes.description === "string"
-          ? markdownToSlate(changes.description)
-          : changes.description) as LocalChapterFile["text"];
-      if (changes.format !== undefined) chapter.data.format = changes.format;
-      for (const field of CHAPTER_FIELDS) {
-        const value = changes[field];
-        if (value === null) delete data[field];
-        else if (value !== undefined) data[field] = value;
-      }
-      chapter.mtimeMs = Date.now();
-      return { slug: row.slug, number, file: chapter.file, changed: keys };
-    });
+  async function editMain(input: { slug: string; number: number; text: Text; notes?: NoteInput[] }) {
+    const row = await load(input.slug);
+    const chapter = chapterAt(row, input.number);
+    const text = toSlate(input.text, chapter.format === "screenplay");
+    const existing = row.changes.find(
+      (c): c is Extract<StagedChange, { kind: "main" }> => c.kind === "main" && c.chapterId === chapter.id && c.by === "connector",
+    );
+    if (existing) return save(row, { ...existing, text, ...(input.notes ? { notes: notesOf(input.notes) } : {}), updatedAt: new Date().toISOString() }, existing);
+    return save(row, { ...stamp(), kind: "main", chapterId: chapter.id, text, baseHash: chapter.mainHash, notes: notesOf(input.notes) });
   }
 
-  async function removeChapter(slug: string, number: number) {
-    return mutate(slug, `Removed chapter ${number}`, (row, backups) => {
-      const chapter = findChapter(row, number);
-      backups.push({
-        reason: `Before Claude removed chapter ${number}`,
-        snapshot: { source: "claude", reason: "remove chapter", file: chapter.file, chapter: clone(chapter.data) },
-      });
-      row.chapters = row.chapters.filter(c => c !== chapter);
-      return { slug: row.slug, removed: number, title: chapter.data.name };
-    });
+  async function addChapter(input: { slug: string; title: string; text: Text; after?: number; changeId?: string; notes?: NoteInput[] }) {
+    const row = await load(input.slug);
+    if (!input.title.trim()) throw new ConnectorError("title is required.");
+    const text = toSlate(input.text);
+    if (input.changeId) {
+      const existing = row.changes.find((c): c is Extract<StagedChange, { kind: "chapter" }> => c.kind === "chapter" && c.id === input.changeId);
+      if (!existing) throw new ConnectorError(`No pending new chapter with changeId ${input.changeId}.`);
+      return save(row, { ...existing, name: input.title.trim(), text, ...(input.notes ? { notes: notesOf(input.notes) } : {}), updatedAt: new Date().toISOString() }, existing);
+    }
+    const afterId = input.after === undefined ? null : input.after === 0 ? null : chapterAt(row, input.after).id;
+    return save(row, { ...stamp(), kind: "chapter", name: input.title.trim(), afterId, text, notes: notesOf(input.notes) });
   }
 
-  async function setChapterOrder(slug: string, order: number[]) {
-    return mutate(slug, "Changed the chapter order", row => {
-      const current = row.chapters.map(c => c.data.number).sort((a, b) => a - b);
-      const given = [...order].sort((a, b) => a - b);
-      if (new Set(order).size !== order.length || JSON.stringify(current) !== JSON.stringify(given))
-        throw new ConnectorError(`order must list every current chapter number once: ${current.join(", ")}.`);
-      const now = Date.now();
-      const byNumber = new Map(row.chapters.map(c => [c.data.number, c]));
-      order.forEach((oldNumber, i) => {
-        const chapter = byNumber.get(oldNumber)!;
-        if (chapter.data.number !== i + 1) chapter.mtimeMs = now;
-        chapter.data.number = i + 1;
-      });
-      return { slug: row.slug, chapters: order.map((oldNumber, i) => ({ was: oldNumber, now: i + 1 })) };
-    });
+  async function setElement(input: { slug: string; kind: EntityKind; name: string; text: Text; color?: string }) {
+    const row = await load(input.slug);
+    const name = input.name.trim();
+    if (!name) throw new ConnectorError("name is required.");
+    const text = typeof input.text === "string" ? (markdownToSlate(input.text) as SlateElement[]) : toSlate(input.text);
+    const withColor = input.kind === "themes" || input.kind === "plotlines";
+    if (input.color && !withColor) throw new ConnectorError("Only themes and plotlines have a colour.");
+    const current = row.live?.[input.kind].find((x) => x.name === name);
+    const color = withColor ? input.color || current?.color || "#937e6e" : undefined;
+    if (current && current.hash === elementHash(color, text)) return { slug: row.slug, unchanged: true, note: "It already reads like this in Writing Studio." };
+    const existing = row.changes.find(
+      (c): c is Extract<StagedChange, { kind: "element" }> => c.kind === "element" && c.element === input.kind && c.name === name,
+    );
+    if (existing) return save(row, { ...existing, text, ...(color ? { color } : {}), updatedAt: new Date().toISOString() }, existing);
+    return save(row, { ...stamp(), kind: "element", element: input.kind, name, ...(color ? { color } : {}), text, baseHash: current?.hash ?? null });
   }
 
-  async function updateBook(slug: string, changes: BookChanges) {
-    return mutate(slug, `Edited the book: ${Object.keys(changes).filter(k => (changes as Record<string, unknown>)[k] !== undefined).join(", ")}`, (row, backups) => {
-      const keys = Object.keys(changes).filter(key => (changes as Record<string, unknown>)[key] !== undefined);
-      if (!keys.length) throw new ConnectorError("Nothing to change.");
-      backups.push({
-        reason: "Before Claude edited the book details",
-        snapshot: { source: "claude", reason: "edit book", book: clone(row.book) },
-      });
-      const book = row.book as unknown as Record<string, unknown>;
-      for (const key of keys) {
-        const value = (changes as Record<string, unknown>)[key];
-        if (value === null && REQUIRED_BOOK_FIELDS.has(key)) throw new ConnectorError(`${key} cannot be removed.`);
-        if (value === null && !NULL_MEANS_REMOVE_LIVE.has(key)) delete book[key];
-        else book[key] = value;
-      }
-      row.bookMtimeMs = Date.now();
-      return { slug: row.slug, changed: keys };
-    });
+  async function addNotes(input: { slug: string; number: number; notes: NoteInput[] }) {
+    const row = await load(input.slug);
+    const chapter = chapterAt(row, input.number);
+    if (!input.notes.length) throw new ConnectorError("notes is empty.");
+    return save(row, { ...stamp(), kind: "notes", chapterId: chapter.id, notes: notesOf(input.notes)! });
   }
 
-  async function setPreferences(prefs: { order?: string[]; hidden?: string[]; showHidden?: boolean }) {
-    const current = ((await db.stagingPreferences().findOne({ _id: owner } as never)) || {}) as { order?: string[]; hidden?: string[]; showHidden?: boolean };
-    const unique = (list: unknown) => [...new Set((list as string[]) || [])];
-    const data = {
-      order: unique(prefs.order ?? current.order),
-      hidden: unique(prefs.hidden ?? current.hidden),
-      showHidden: prefs.showHidden ?? current.showHidden === true,
-    };
-    await db.stagingPreferences().updateOne({ _id: owner } as never, { $set: data }, { upsert: true });
-    return data;
-  }
-
-  async function listBackups(slug: string) {
-    const row = await load(slug);
-    const rows = await db.stagingBackups()
-      .find({ owner, projectId: row._id }, { projection: { "snapshot.chapter.text": 0, "snapshot.book": 0 } })
-      .sort({ createdAt: -1 })
-      .limit(50)
-      .toArray();
-    return rows.map(backup => ({
-      backupId: String(backup._id),
-      createdAt: backup.createdAt,
-      kind: backup.kind,
-      reason: backup.snapshot?.source === "claude" ? backup.snapshot.reason : "Staging Room sync",
-      chapter: backup.snapshot?.chapter ? { number: backup.snapshot.chapter.number, title: backup.snapshot.chapter.name } : undefined,
-      restorable: backup.snapshot?.source === "claude",
+  async function addTasks(input: { slug: string; tasks: { title: string; description?: string; chapter?: number }[] }) {
+    const row = await load(input.slug);
+    if (!input.tasks.length) throw new ConnectorError("tasks is empty.");
+    const tasks: StagedTask[] = input.tasks.map((t) => ({
+      title: t.title.trim(),
+      ...(t.description ? { description: t.description } : {}),
+      ...(t.chapter ? { chapterId: chapterAt(row, t.chapter).id } : {}),
     }));
+    if (tasks.some((t) => !t.title)) throw new ConnectorError("Every task needs a title.");
+    return save(row, { ...stamp(), kind: "tasks", tasks });
   }
 
-  async function restoreBackup(slug: string, backupId: string) {
-    if (!ObjectId.isValid(backupId)) throw new ConnectorError("Invalid backupId.");
-    const row = await load(slug);
-    const backup = await db.stagingBackups().findOne({ _id: new ObjectId(backupId), owner, projectId: row._id });
-    const snapshot = backup?.snapshot as Snapshot | undefined;
-    if (!snapshot) throw new ConnectorError("No such backup for this project.");
-    if (snapshot.source !== "claude")
-      throw new ConnectorError("Only backups made by Claude can be restored here. Use the Staging Room for sync backups.");
-    return mutate(slug, "Restored a backup", (draft, backups) => {
-      const now = Date.now();
-      if (snapshot.book) {
-        backups.push({ reason: "Before Claude restored a backup", snapshot: { source: "claude", reason: "restore", book: clone(draft.book) } });
-        draft.book = clone(snapshot.book);
-        draft.bookMtimeMs = now;
-        return { slug, restored: "book" };
-      }
-      const chapter = snapshot.chapter as LocalChapterFile;
-      const current = draft.chapters.find(c => c.file === snapshot.file);
-      if (current) {
-        backups.push({
-          reason: "Before Claude restored a backup",
-          snapshot: { source: "claude", reason: "restore", file: current.file, chapter: clone(current.data) },
-        });
-        current.data = clone(chapter);
-        current.mtimeMs = now;
-      } else {
-        if (draft.chapters.some(c => c.data.number === chapter.number))
-          throw new ConnectorError(`Chapter ${chapter.number} is taken. Renumber chapters first, then restore.`);
-        draft.chapters.push({ file: snapshot.file as string, data: clone(chapter), mtimeMs: now });
-      }
-      return { slug, restored: `chapter ${chapter.number}`, title: chapter.name };
-    });
-  }
-
-  return {
-    listProjects,
-    getProject,
-    getChapter,
-    createProject,
-    importProject,
-    saveChapter,
-    updateChapter,
-    removeChapter,
-    setChapterOrder,
-    updateBook,
-    setPreferences,
-    listBackups,
-    restoreBackup,
-  };
+  return { listProjects, getProject, getChapter, createProject, writeDraft, editMain, addChapter, setElement, addNotes, addTasks };
 }
-
-export type { RichText };

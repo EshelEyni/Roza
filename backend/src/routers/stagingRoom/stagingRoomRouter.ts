@@ -2,20 +2,14 @@ import { createHash, randomUUID } from "node:crypto";
 import express, { Request } from "express";
 import mongoose from "mongoose";
 import type {
-  BookListPrefs,
-  ChapterAnnotation,
-  ChapterDraftView,
-  HistoryEvent,
-  LocalBookFile,
-  LocalChapterFile,
-  LogLine,
-  ProdStatus,
-  PullOptions,
-  PullResult,
-  ReviewPartId,
-  RevertTarget,
+  ChangeTextView,
+  LiveBookOption,
+  SlateElement,
+  StagedBookSummary,
+  StagedBookView,
+  StagedChange,
+  StagingPrefs,
   StagingProjectInput,
-  UploadOptions,
 } from "../../../../shared/types/stagingRoom";
 import { editingRequest } from "../../controllers/book/writingAiController";
 import { checkUserAuthentication } from "../../middlewares/authGuards/authGuardsMiddleware";
@@ -24,36 +18,29 @@ import { getLoggedInUserIdFromReq } from "../../services/ALSService";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
 import { askReaderAi } from "../../services/reader/readerAiService";
 import { getReaderAiSettings } from "../../services/reader/readerAiSettingsService";
-import { chapterPreview, detail, summarize, validateBook } from "../../services/stagingRoom/bookFiles";
-import type { LoadedBook, LoadedChapter } from "../../services/stagingRoom/bookFiles";
-import { addEvent, changedKeys, sourceName, sourceOf, startsEditorStep } from "../../services/stagingRoom/history";
-import { computeStatus, findProdBook, uploadWith, validateProject } from "../../services/stagingRoom/sync";
-import { pullWith } from "../../services/stagingRoom/pull";
-import { RevertError, revertWith } from "../../services/stagingRoom/revert";
-import { checkSlate } from "../../services/stagingRoom/slate";
-import type { Backup } from "../../services/stagingRoom/storageTypes";
+import {
+  ApproveError,
+  approveChanges,
+  changeViews,
+  liveCopyOf,
+  readLiveBook,
+  readView,
+} from "../../services/stagingRoom/changes";
+import { changesFromCopy, isV2, LegacyCopy, ProjectRow } from "../../services/stagingRoom/project";
+import { checkSlate, countWords } from "../../services/stagingRoom/slate";
 
-type Project = Omit<LoadedBook, "errors"> & {
-  _id: string;
-  owner: string;
-  revision: number;
-  lease?: { id: string; until: Date };
-  /** every step that changed the project, newest last */
-  history?: HistoryEvent[];
-  /** accepted changes: item key and the fingerprint of the change that was accepted */
-  review?: { key: string; print: string }[];
-};
-type Step = { source: HistoryEvent["source"]; summary: string; keys?: string[] };
-const PARTS: ReviewPartId[] = ["text", "notes", "drafts", "details", "planning", "tasks", "content"];
+/*
+ * Staging Room v2 (docs/staging-room-prd.md): each staged book is a basket of pending
+ * changes on top of the live Writing Studio book. Approving writes them to the live
+ * book; nothing here ever deletes live data.
+ */
 
 const router = express.Router();
 const conn = () => mongoose.connection;
-const projects = () => conn().db!.collection<Project>("staging_room_projects");
-const prefs = () => conn().db!.collection<BookListPrefs & { _id: string }>("staging_room_preferences");
+const projects = () => conn().db!.collection<ProjectRow>("staging_room_projects");
+const prefsColl = () => conn().db!.collection<Partial<StagingPrefs> & { _id: string; hidden?: string[] }>("staging_room_preferences");
 const backups = () => conn().db!.collection("staging_room_backups");
-const cfg = () => ({ dbName: conn().name, host: "ROZA server" });
-const key = (owner: string, slug: string) =>
-  createHash("sha256").update(JSON.stringify([owner, slug])).digest("hex");
+const key = (owner: string, slug: string) => createHash("sha256").update(JSON.stringify([owner, slug])).digest("hex");
 
 function owner() {
   const id = getLoggedInUserIdFromReq();
@@ -62,177 +49,246 @@ function owner() {
 }
 
 function slugOf(value: unknown): string {
-  if (typeof value !== "string" || !value.trim() || value.length > 200 ||
-      value === "." || value === ".." || /[/\\\x00-\x1f]/.test(value)) {
+  if (typeof value !== "string" || !value.trim() || value.length > 200 || value === "." || value === ".." || /[/\\\x00-\x1f]/.test(value))
     throw new AppError("Invalid project name.", 400);
-  }
   return value;
 }
 
-function strings(value: unknown): string[] {
-  if (!Array.isArray(value) || !value.every(item => typeof item === "string")) {
-    throw new AppError("Expected a list of strings.", 400);
-  }
-  return [...new Set(value)];
+const object = (value: unknown): value is Record<string, unknown> => !!value && typeof value === "object" && !Array.isArray(value);
+
+function ids(value: unknown): string[] {
+  if (!Array.isArray(value) || !value.length || value.length > 1000 || !value.every((v) => typeof v === "string"))
+    throw new AppError("Choose at least one change.", 400);
+  return [...new Set(value as string[])];
 }
 
-type LiveBook = Awaited<ReturnType<typeof findProdBook>>;
+const notLeased = () => ({ $or: [{ lease: { $exists: false } }, { "lease.until": { $lte: new Date() } }] });
 
-function reviewToken(row: Project, live: LiveBook): string {
-  return key(row._id, JSON.stringify([row.revision ?? 0, live?._id, live?.updatedAt]));
+/* ---------- moving rows from the old full-copy model ---------- */
+
+async function findLiveByName(userId: string, name: string) {
+  if (!mongoose.isValidObjectId(userId)) return null;
+  const matches = await conn()
+    .collection("books")
+    .find({ userId: new mongoose.Types.ObjectId(userId), name, isArchived: { $ne: true } })
+    .limit(2)
+    .toArray();
+  return matches.length === 1 ? matches[0] : null;
 }
 
-function loaded(project: Project): LoadedBook {
-  const { slug, book, chapters, bookMtimeMs } = project;
-  const state = project.state.dbName && project.state.dbName !== conn().name ? {} : project.state;
-  return { slug, book, chapters, state, bookMtimeMs, errors: validateBook(book, chapters) };
+/**
+ * An old row holds a full copy of the book. The author uploaded everything already, so a
+ * linked book starts with no pending changes; Writing Studio wins. A book that was never
+ * uploaded turns its copy into pending changes. The old copy is backed up first.
+ */
+async function migrate(row: Record<string, unknown>): Promise<ProjectRow> {
+  if (isV2(row)) return row;
+  const legacy = row as unknown as LegacyCopy & { _id: string; owner: string; slug: string; revision?: number };
+  const book = legacy.book ?? { bookName: legacy.slug, userId: legacy.owner };
+  const state = legacy.state ?? {};
+  await backups().insertOne({
+    owner: legacy.owner,
+    projectId: legacy._id,
+    slug: legacy.slug,
+    kind: "v1-copy",
+    snapshot: { book: legacy.book, chapters: legacy.chapters, state: legacy.state },
+    createdAt: new Date(),
+  });
+  const userId = mongoose.isValidObjectId(book.userId) ? book.userId : legacy.owner;
+  const sameDb = !state.dbName || state.dbName === conn().name;
+  let liveBook = sameDb && state.prodBookId ? await readLiveBook(conn(), state.prodBookId, userId) : null;
+  liveBook ??= await findLiveByName(userId, book.bookName);
+  const live = liveBook ? liveCopyOf(liveBook) : undefined;
+  const changes = liveBook ? [] : changesFromCopy({ book, chapters: legacy.chapters ?? [], state }, undefined);
+  const next: ProjectRow = {
+    _id: legacy._id,
+    owner: legacy.owner,
+    slug: legacy.slug,
+    version: 2,
+    bookName: book.bookName,
+    userId,
+    language: book.language || "en",
+    ...(liveBook ? { liveBookId: String(liveBook._id), live } : {}),
+    changes,
+    revision: (legacy.revision ?? 0) + 1,
+  };
+  await projects().updateOne(
+    { _id: legacy._id, version: { $ne: 2 } } as never,
+    {
+      $set: next,
+      $unset: { book: "", chapters: "", state: "", history: "", review: "", bookMtimeMs: "", lease: "" },
+    } as never,
+  );
+  return next;
 }
 
-async function findRow(req: Request) {
+async function findRow(req: Request): Promise<ProjectRow> {
   const account = owner();
   const row = await projects().findOne({ _id: key(account, slugOf(req.params.slug)), owner: account });
-  if (!row) throw new AppError("Staging Room project could not be found.", 404);
-  return row;
+  if (!row) throw new AppError("Staging Room book could not be found.", 404);
+  return migrate(row as never);
 }
 
-async function find(req: Request) {
-  return loaded(await findRow(req));
+/** Refreshes the row's copy of the live book. Returns the row as saved. */
+async function withFreshLive(row: ProjectRow): Promise<ProjectRow> {
+  if (!row.liveBookId) return row;
+  const book = await readLiveBook(conn(), row.liveBookId, row.userId);
+  if (!book) return row;
+  const live = liveCopyOf(book);
+  if (row.live?.updatedAt === live.updatedAt && row.live.bookId === live.bookId) return row;
+  await projects().updateOne({ _id: row._id }, { $set: { live }, $inc: { revision: 1 } });
+  return { ...row, live, revision: row.revision + 1 };
 }
 
-function readProjectJson(body: unknown): unknown {
-  try {
-    if (!object(body) || typeof body.project !== "string") throw new Error();
-    return JSON.parse(body.project);
-  } catch {
-    throw new AppError("Expected a project JSON string.", 400);
-  }
-}
-
-function object(value: unknown): value is Record<string, unknown> {
-  return !!value && typeof value === "object" && !Array.isArray(value);
-}
-
-async function projectInput(value: unknown, account: string): Promise<Project> {
-  if (!object(value)) throw new AppError("Expected a staged project.", 400);
-  const slug = slugOf(value.slug);
-  if (!object(value.book) || typeof value.book.bookName !== "string" ||
-      typeof value.book.userId !== "string" || !Array.isArray(value.chapters) ||
-      (value.state !== undefined && !object(value.state))) {
-    throw new AppError("Invalid staged book, chapter list, or sync state.", 400);
-  }
-  const input = value as unknown as StagingProjectInput;
-  const now = Date.now();
-  const chapters = input.chapters.map(chapter => {
-    if (!object(chapter) || typeof chapter.file !== "string" ||
-        !/^[^/\\\x00-\x1f]+\.json$/i.test(chapter.file) || !object(chapter.data) ||
-        typeof chapter.data.name !== "string" ||
-        ("planning" in chapter.data && !object(chapter.data.planning))) {
-      throw new AppError("Invalid staged chapter.", 400);
-    }
-    return { file: chapter.file, data: chapter.data, mtimeMs: Number.isFinite(chapter.mtimeMs) ? chapter.mtimeMs : now };
-  }).sort((a, b) => a.data.number - b.data.number || a.file.localeCompare(b.file));
-  if (new Set(chapters.map(chapter => chapter.file)).size !== chapters.length) {
-    throw new AppError("Duplicate chapter filenames.", 400);
-  }
-  const row: Project = {
-    _id: key(account, slug), owner: account, slug, book: input.book, chapters, revision: 0,
-    bookMtimeMs: Number.isFinite(input.bookMtimeMs) ? input.bookMtimeMs : now,
-    state: input.state ?? {},
+async function prefsOf(account: string, slugs: string[]): Promise<StagingPrefs> {
+  const row = await prefsColl().findOne({ _id: account });
+  const hidden = new Set(row?.hidden ?? []);
+  return {
+    order: row?.order ?? [],
+    // Before pins, books were hidden instead: every book that wasn't hidden starts pinned.
+    pinned: row?.pinned ?? slugs.filter((s) => !hidden.has(s)),
+    filter: row?.filter === "unpinned" || row?.filter === "all" ? row.filter : "pinned",
   };
-  let errors: string[];
-  try { errors = await validateProject(loaded(row)); }
-  catch { throw new AppError("Invalid staged project data.", 400); }
-  if (errors.length) throw new AppError(errors[0], 400);
-  return row;
 }
 
-async function withProject<T>(
-  req: Request,
-  step: (result: T) => Step,
-  run: (draft: LoadedBook, backup: Backup, live: LiveBook, log: (level: LogLine["level"], text: string) => void) => Promise<T>,
-) {
-  const account = owner();
-  const _id = key(account, slugOf(req.params.slug));
-  const id = randomUUID();
-  const date = new Date();
-  const filter = { _id, owner: account };
-  const row = await projects().findOneAndUpdate(
-    { ...filter, $or: [{ lease: { $exists: false } }, { "lease.until": { $lte: date } }] },
-    { $set: { lease: { id, until: new Date(date.getTime() + 15 * 60_000) } } },
-    { returnDocument: "after" },
-  );
-  if (!row) {
-    if (!await projects().findOne(filter, { projection: { _id: 1 } })) throw new AppError("Project not found.", 404);
-    throw new AppError("This project is already syncing.", 409);
-  }
-
-  const logs: LogLine[] = [];
-  const before = structuredClone({ book: row.book, chapters: row.chapters, state: row.state });
-  try {
-    const draft = loaded(row);
-    const errors = await validateProject(draft);
-    if (errors.length) throw new AppError(errors[0], 400);
-    const backup: Backup = async (kind, snapshot) => {
-      const result = await backups().insertOne({ owner: account, projectId: _id, slug: row.slug, kind, snapshot, createdAt: new Date() });
-      return String(result.insertedId);
-    };
-    const live = await findProdBook(conn(), draft);
-    if (req.body?.reviewToken !== reviewToken(row, live)) {
-      throw new AppError("The staged project or live manuscript changed. Compare again before syncing.", 409);
-    }
-    let lastBackup: string | undefined;
-    const tracked: Backup = async (kind, snapshot) => {
-      const backupId = await backup(kind, snapshot);
-      if (kind === "staged") lastBackup ??= backupId;
-      return backupId;
-    };
-    const result = await run(draft, tracked, live, (level, text) => logs.push({ at: new Date().toISOString(), level, text }));
-    const done = step(result);
-    const history = addEvent(row.history, {
-      source: done.source,
-      summary: done.summary,
-      keys: done.keys ?? changedKeys(before, draft),
-      ...(lastBackup ? { backupId: lastBackup, backupScope: "project" as const } : {}),
-    });
-    const saved = await projects().updateOne(
-      { ...filter, "lease.id": id },
-      { $set: { book: draft.book, chapters: draft.chapters, state: draft.state, bookMtimeMs: draft.bookMtimeMs, history }, $inc: { revision: 1 }, $unset: { lease: "" } },
-      { ignoreUndefined: true },
-    );
-    if (!saved.matchedCount) throw new AppError("Project changed during sync. Refresh and compare again.", 409);
-    return { result, logs };
-  } finally {
-    await projects().updateOne({ ...filter, "lease.id": id }, { $unset: { lease: "" } });
-  }
+function summary(row: ProjectRow, pinned: Set<string>): StagedBookSummary {
+  return {
+    slug: row.slug,
+    bookName: row.live?.name ?? row.bookName,
+    language: row.language,
+    linked: !!row.liveBookId,
+    chapters: row.live?.chapters.length ?? 0,
+    words: (row.live?.chapters ?? []).reduce((n, c) => n + countWords(c.text), 0),
+    pending: row.changes.length,
+    pinned: pinned.has(row.slug),
+  };
 }
+
+function bookView(row: ProjectRow): StagedBookView {
+  const claude = row.changes
+    .filter((c) => c.by === "connector")
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  const views = changeViews(row.changes, row.live);
+  return {
+    slug: row.slug,
+    bookName: row.live?.name ?? row.bookName,
+    linked: !!row.liveBookId,
+    revision: row.revision,
+    changes: views,
+    ...(claude ? { lastClaudeSave: { at: claude.updatedAt, title: views.find((v) => v.id === claude.id)?.title ?? "" } } : {}),
+  };
+}
+
+const findChange = (row: ProjectRow, id: string) => {
+  const change = row.changes.find((c) => c.id === id);
+  if (!change) throw new AppError("This change is no longer waiting. It may have been approved or discarded.", 404);
+  return change;
+};
 
 router.use(checkUserAuthentication, requireFeature("stagingRoom"), (_req, res, next) => {
   res.set("Cache-Control", "private, no-store");
   next();
 });
+
+/* ---------- books ---------- */
+
 router.get("/projects", asyncErrorCatcher(async (_req, res) => {
   const account = owner();
-  const [rows, preferences] = await Promise.all([
-    projects().find({ owner: account }).sort({ slug: 1 }).toArray(),
-    prefs().findOne({ _id: account }),
-  ]);
-  const ranks = new Map((preferences?.order ?? []).map((slug, index) => [slug, index]));
+  const raw = await projects().find({ owner: account }).sort({ slug: 1 }).toArray();
+  const rows = await Promise.all(raw.map((r) => migrate(r as never)));
+  const prefs = await prefsOf(account, rows.map((r) => r.slug));
+  const ranks = new Map(prefs.order.map((slug, index) => [slug, index]));
   rows.sort((a, b) => (ranks.get(a.slug) ?? rows.length) - (ranks.get(b.slug) ?? rows.length));
-  res.json(rows.map(row => summarize(loaded(row))));
+  const pinned = new Set(prefs.pinned);
+  res.json(rows.map((row) => summary(row, pinned)));
 }));
+
+/** The author's Writing Studio books, for "Stage a book". */
+router.get("/live-books", asyncErrorCatcher(async (_req, res) => {
+  const account = owner();
+  const [books, rows] = await Promise.all([
+    conn().collection("books")
+      .find({ userId: new mongoose.Types.ObjectId(account), isArchived: { $ne: true } }, { projection: { name: 1 } })
+      .sort({ name: 1 })
+      .toArray(),
+    projects().find({ owner: account }, { projection: { liveBookId: 1 } }).toArray(),
+  ]);
+  const staged = new Set(rows.map((r) => r.liveBookId).filter(Boolean));
+  res.json(books.map((b): LiveBookOption => ({ id: String(b._id), name: String(b.name ?? ""), staged: staged.has(String(b._id)) })));
+}));
+
+/** Stage a live book: creates its (empty) basket of changes. */
+router.post("/projects", asyncErrorCatcher(async (req, res) => {
+  const account = owner();
+  const bookId = req.body?.bookId;
+  if (typeof bookId !== "string") throw new AppError("Choose a book.", 400);
+  const book = await readLiveBook(conn(), bookId, account);
+  if (!book) throw new AppError("That book is not in Writing Studio.", 404);
+  if (await projects().findOne({ owner: account, liveBookId: bookId })) throw new AppError("This book is already in Staging Room.", 409);
+  const base = String(book.name || "book").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "book";
+  let slug = base;
+  for (let n = 2; await projects().findOne({ _id: key(account, slug) }, { projection: { _id: 1 } }); n++) slug = `${base}-${n}`;
+  const row: ProjectRow = {
+    _id: key(account, slug),
+    owner: account,
+    slug,
+    version: 2,
+    bookName: String(book.name ?? ""),
+    userId: account,
+    language: "en",
+    liveBookId: bookId,
+    live: liveCopyOf(book),
+    changes: [],
+    revision: 0,
+  };
+  await projects().insertOne(row);
+  res.status(201).json({ slug });
+}));
+
+/**
+ * Import folder: an old staged project folder. Its differences from the live book become
+ * pending changes (new drafts, new chapters, element changes). Nothing is removed.
+ */
 router.post("/projects/import", asyncErrorCatcher(async (req, res) => {
   const account = owner();
-  // Wrap the legacy JSON as text so middleware leaves names used as object keys intact.
-  const input = readProjectJson(req.body);
-  const slug = slugOf(object(input) ? input.slug : undefined);
+  let input: StagingProjectInput;
+  try {
+    // Sent as text so middleware leaves names used as object keys intact.
+    input = JSON.parse(String(req.body?.project));
+  } catch {
+    throw new AppError("Expected a project JSON string.", 400);
+  }
+  if (!object(input) || !object(input.book) || typeof input.book.bookName !== "string" || !Array.isArray(input.chapters))
+    throw new AppError("Invalid project folder.", 400);
+  const slug = slugOf(input.slug);
   if (await projects().findOne({ _id: key(account, slug), owner: account }, { projection: { _id: 1 } })) {
     res.json({ created: false });
     return;
   }
-  const row = await projectInput(input, account);
-  row.history = addEvent([], { source: "import", summary: `Imported ${row.chapters.length} chapter(s) from a folder`, keys: [] });
+  for (const c of input.chapters) {
+    if (!object(c) || !object(c.data) || typeof c.data.name !== "string" || typeof c.file !== "string") throw new AppError("Invalid chapter file.", 400);
+    const errors = checkSlate(c.data.text, `${c.file}`);
+    if (errors.length) throw new AppError(errors[0], 400);
+  }
+  const userId = mongoose.isValidObjectId(input.book.userId) ? input.book.userId : account;
+  const state = input.state ?? {};
+  let book = state.prodBookId && (!state.dbName || state.dbName === conn().name) ? await readLiveBook(conn(), state.prodBookId, userId) : null;
+  book ??= await findLiveByName(userId, input.book.bookName);
+  const live = book ? liveCopyOf(book) : undefined;
+  const row: ProjectRow = {
+    _id: key(account, slug),
+    owner: account,
+    slug,
+    version: 2,
+    bookName: input.book.bookName,
+    userId,
+    language: input.book.language || "en",
+    ...(book ? { liveBookId: String(book._id), live } : {}),
+    changes: changesFromCopy({ book: input.book, chapters: input.chapters, state }, live),
+    revision: 0,
+  };
   try {
-    await projects().insertOne(row, { ignoreUndefined: true });
+    await projects().insertOne(row);
   } catch (error) {
     if ((error as { code?: number }).code !== 11000) throw error;
     res.json({ created: false });
@@ -240,111 +296,56 @@ router.post("/projects/import", asyncErrorCatcher(async (req, res) => {
   }
   res.status(201).json({ created: true });
 }));
-router.get("/projects/:slug/draft", asyncErrorCatcher(async (req, res) => {
-  const account = owner();
-  const slug = slugOf(req.params.slug);
-  const row = await projects().findOne({ _id: key(account, slug), owner: account });
-  if (!row) throw new AppError("Staging Room project could not be found.", 404);
-  const { book, chapters, bookMtimeMs, revision } = row;
-  res.json({ slug, book, chapters, bookMtimeMs, revision: revision ?? 0 });
-}));
-router.put("/projects/:slug/draft", asyncErrorCatcher(async (req, res) => {
-  const account = owner();
-  const slug = slugOf(req.params.slug);
-  const revision = req.body?.revision;
-  if (!Number.isSafeInteger(revision) || revision < 0) throw new AppError("Expected a project revision.", 400);
-  const input = readProjectJson(req.body);
-  if (!object(input)) throw new AppError("Expected a staged project.", 400);
-  const row = await projectInput({ ...input, slug, state: undefined }, account);
-  const current = await projects().findOne({ _id: row._id, owner: account }, { projection: { book: 1, chapters: 1, state: 1, history: 1 } });
-  const history = current
-    ? addEvent(current.history, { source: "editor", name: "Project file edit", summary: "Edited the project files", keys: changedKeys(current, row) })
-    : undefined;
-  const result = await projects().updateOne(
-    {
-      _id: row._id,
-      owner: account,
-      $and: [
-        { $or: [{ lease: { $exists: false } }, { "lease.until": { $lte: new Date() } }] },
-        revision === 0 ? { $or: [{ revision }, { revision: { $exists: false } }] } : { revision },
-      ],
-    },
-    { $set: { book: row.book, chapters: row.chapters, bookMtimeMs: row.bookMtimeMs, history }, $inc: { revision: 1 } },
-    { ignoreUndefined: true },
-  );
-  if (!result.matchedCount) throw new AppError("Project changed or is syncing. Reload its draft before editing.", 409);
-  res.json({ revision: revision + 1 });
+
+router.get("/projects/:slug", asyncErrorCatcher(async (req, res) => {
+  res.json(bookView(await withFreshLive(await findRow(req))));
 }));
 
-/* ---------- Staging editor: one chapter at a time ---------- */
+/* ---------- one change ---------- */
 
-router.get("/projects/:slug/chapters/:file", asyncErrorCatcher(async (req, res) => {
+router.get("/projects/:slug/changes/:id", asyncErrorCatcher(async (req, res) => {
+  const row = await withFreshLive(await findRow(req));
+  res.json(readView(findChange(row, String(req.params.id)), row.live));
+}));
+
+function textOf(c: StagedChange): SlateElement[] {
+  if (c.kind === "draft" || c.kind === "main" || c.kind === "chapter") return c.text;
+  throw new AppError("Only drafts and chapter text can be edited.", 400);
+}
+
+router.get("/projects/:slug/changes/:id/text", asyncErrorCatcher(async (req, res) => {
   const row = await findRow(req);
-  const chapter = row.chapters.find(c => c.file === req.params.file);
-  if (!chapter) throw new AppError("Staged chapter not found.", 404);
-  const view: ChapterDraftView = {
+  const c = findChange(row, String(req.params.id));
+  const chapter = "chapterId" in c ? row.live?.chapters.find((x) => x.id === c.chapterId) : undefined;
+  const view: ChangeTextView = {
+    id: c.id,
     slug: row.slug,
-    bookName: row.book.bookName,
-    revision: row.revision ?? 0,
-    file: chapter.file,
-    name: chapter.data.name,
-    number: chapter.data.number,
-    format: chapter.data.format || "prose",
-    text: chapter.data.text,
-    annotations: chapter.data.annotations,
-    chapters: [...row.chapters]
-      .sort((a, b) => a.data.number - b.data.number)
-      .map(c => ({ file: c.file, number: c.data.number, name: c.data.name })),
+    bookName: row.live?.name ?? row.bookName,
+    title: c.kind === "chapter" ? c.name : chapter?.name ?? "Removed chapter",
+    subtitle: c.kind === "draft" ? `Draft “${c.name}”` : c.kind === "main" ? "Edit to Main" : "New chapter",
+    format: chapter?.format ?? "prose",
+    text: textOf(c),
+    updatedAt: c.updatedAt,
   };
   res.json(view);
 }));
 
-router.put("/projects/:slug/chapters/:file", asyncErrorCatcher(async (req, res) => {
+/** The Staging editor saves here. The save is refused if Claude saved a newer version meanwhile. */
+router.put("/projects/:slug/changes/:id/text", asyncErrorCatcher(async (req, res) => {
   const row = await findRow(req);
-  const revision = req.body?.revision;
-  if (!Number.isSafeInteger(revision) || revision < 0) throw new AppError("Expected a project revision.", 400);
-  if (revision !== (row.revision ?? 0)) throw new AppError("Staging changed somewhere else. Reload the chapter before saving.", 409);
-  if (row.lease && new Date(row.lease.until) > new Date()) throw new AppError("This project is syncing. Try again in a moment.", 409);
-  const index = row.chapters.findIndex(c => c.file === req.params.file);
-  if (index < 0) throw new AppError("Staged chapter not found.", 404);
-  const text = req.body?.text as LocalChapterFile["text"];
-  const slateErrors = checkSlate(text, "Text");
-  if (slateErrors.length) throw new AppError(slateErrors[0], 400);
-  const annotations = req.body?.annotations as ChapterAnnotation[] | undefined;
-  if (annotations !== undefined && !Array.isArray(annotations)) throw new AppError("Notes must be a list.", 400);
-
-  const before = structuredClone({ book: row.book, chapters: row.chapters, state: row.state });
-  const chapter: LoadedChapter = { ...row.chapters[index], data: { ...row.chapters[index].data, text }, mtimeMs: Date.now() };
-  if (annotations !== undefined) chapter.data.annotations = annotations;
-  const chapters = row.chapters.map((c, i) => (i === index ? chapter : c));
-  const errors = await validateProject(loaded({ ...row, chapters }));
-  if (errors.length) throw new AppError(`Not saved: ${errors[0]}`, 400);
-
-  let backupId: string | undefined;
-  if (startsEditorStep(row.history)) {
-    const inserted = await backups().insertOne({ owner: row.owner, projectId: row._id, slug: row.slug, kind: "staged", snapshot: before, createdAt: new Date() });
-    backupId = String(inserted.insertedId);
-  }
-  const history = addEvent(row.history, {
-    source: "editor",
-    summary: `Edited “${chapter.data.name}” in the Staging editor`,
-    keys: changedKeys(before, { book: row.book, chapters }),
-    ...(backupId ? { backupId, backupScope: "project" as const } : {}),
-  });
-  const saved = await projects().updateOne(
-    {
-      _id: row._id,
-      owner: row.owner,
-      $and: [
-        { $or: [{ lease: { $exists: false } }, { "lease.until": { $lte: new Date() } }] },
-        revision === 0 ? { $or: [{ revision }, { revision: { $exists: false } }] } : { revision },
-      ],
-    },
-    { $set: { [`chapters.${index}`]: chapter, history }, $inc: { revision: 1 } },
-    { ignoreUndefined: true },
+  const c = findChange(row, String(req.params.id));
+  textOf(c);
+  const text = req.body?.text as SlateElement[];
+  const errors = checkSlate(text, "Text");
+  if (errors.length) throw new AppError(errors[0], 400);
+  if (req.body?.updatedAt !== c.updatedAt) throw new AppError("Claude saved a newer version of this text. Load it first.", 409);
+  const updatedAt = new Date(Math.max(Date.now(), Date.parse(c.updatedAt) + 1)).toISOString();
+  const r = await projects().updateOne(
+    { _id: row._id, changes: { $elemMatch: { id: c.id, updatedAt: c.updatedAt } }, ...notLeased() } as never,
+    { $set: { "changes.$.text": text, "changes.$.updatedAt": updatedAt }, $inc: { revision: 1 } } as never,
   );
-  if (!saved.matchedCount) throw new AppError("Staging changed somewhere else. Reload the chapter before saving.", 409);
-  res.json({ revision: revision + 1 });
+  if (!r.matchedCount) throw new AppError("This text changed meanwhile. Load the newer version first.", 409);
+  res.json({ updatedAt });
 }));
 
 /** Writing Studio's AI Edit, for staged text. The answer goes back to the Staging editor only. */
@@ -362,183 +363,77 @@ router.post("/projects/:slug/ai-edit", asyncErrorCatcher(async (req, res) => {
   );
   res.json({ status: "success", data: { text: revision } });
 }));
-router.get("/projects/:slug", asyncErrorCatcher(async (req, res) => {
-  const draft = await find(req);
-  const book = detail(draft);
-  book.errors = await validateProject(draft);
-  res.json(book);
-}));
-router.get("/projects/:slug/chapter", asyncErrorCatcher(async (req, res) => {
-  const draft = await find(req);
-  const { file } = req.query;
-  if (typeof file !== "string" || !draft.chapters.some(chapter => chapter.file === file)) {
-    throw new AppError("Staged chapter not found.", 404);
-  }
-  res.json(chapterPreview(draft, file));
-}));
-router.get("/projects/:slug/compare", asyncErrorCatcher(async (req, res) => {
+
+/* ---------- approve and discard ---------- */
+
+router.post("/projects/:slug/approve", asyncErrorCatcher(async (req, res) => {
+  const chosenIds = ids(req.body?.ids);
+  const confirm = req.body?.confirm === true;
   const row = await findRow(req);
-  const draft = loaded(row);
-  if (draft.errors.length) throw new AppError(draft.errors[0], 400);
-  const live = await findProdBook(conn(), draft);
-  const status = computeStatus(draft, live, cfg());
-  const clients = await clientNames(row.history);
-  const accepted = new Map((row.review ?? []).map(r => [r.key, r.print]));
-  const mark = (key: string, item: { print?: string; accepted?: boolean; source?: unknown }) => {
-    item.accepted = !!item.print && accepted.get(key) === item.print;
-    item.source = sourceOf(row.history, key, clients);
-  };
-  for (const c of status.chapters) if (c.status !== "same") mark(c.key, c);
-  for (const e of status.entityChanges ?? []) mark(`${e.kind}:${e.name}`, e);
-  if (status.bookChange) mark("book:settings", status.bookChange);
-  res.json({ ...status, reviewToken: reviewToken(row, live) } satisfies ProdStatus);
-}));
-router.post("/projects/:slug/push", asyncErrorCatcher(async (req, res) => {
-  const options: UploadOptions = {
-    overwriteChapters: strings(req.body?.overwriteChapters),
-    updateEntities: strings(req.body?.updateEntities),
-  };
-  res.json(await withProject(
-    req,
-    () => ({ source: "push", summary: "Pushed to Writing Studio", keys: [] }),
-    (draft, backup, live, log) => uploadWith(conn(), cfg(), draft, options, backup, live, log),
-  ));
-}));
-router.post("/projects/:slug/pull", asyncErrorCatcher(async (req, res) => {
-  const options: PullOptions = { chapters: strings(req.body?.chapters), entities: strings(req.body?.entities) };
-  res.json(await withProject(
-    req,
-    (result: PullResult) => ({ source: "pull", summary: `Pulled ${result.chapters} chapter(s) and ${result.entities} other item(s) from Writing Studio` }),
-    (draft, backup, live, log) => pullWith(cfg(), draft, options, backup, live, log),
-  ));
-}));
-
-function revertTargets(value: unknown): RevertTarget[] {
-  if (!Array.isArray(value) || !value.length || value.length > 500) throw new AppError("Choose what to reject.", 400);
-  return value.map(t => {
-    if (!object(t) || typeof t.key !== "string" || !t.key ||
-        (t.part !== undefined && !PARTS.includes(t.part as ReviewPartId)) ||
-        (t.hunk !== undefined && (!Number.isSafeInteger(t.hunk) || (t.hunk as number) < 0 || t.part !== "text")) ||
-        (t.itemId !== undefined && (typeof t.itemId !== "string" || (t.part !== "notes" && t.part !== "drafts")))) {
-      throw new AppError("Invalid reject request.", 400);
-    }
-    return { key: t.key, part: t.part as ReviewPartId | undefined, hunk: t.hunk as number | undefined, itemId: t.itemId as string | undefined };
-  });
-}
-
-/** Reject: put Writing Studio's version back into Staging. */
-router.post("/projects/:slug/revert", asyncErrorCatcher(async (req, res) => {
-  const targets = revertTargets(req.body?.targets);
+  const lease = { id: randomUUID(), until: new Date(Date.now() + 5 * 60_000) };
+  const locked = await projects().findOneAndUpdate({ _id: row._id, ...notLeased() } as never, { $set: { lease } }, { returnDocument: "after" });
+  if (!locked) throw new AppError("Another approval is running. Try again in a moment.", 409);
   try {
-    res.json(await withProject(
-      req,
-      () => ({ source: "reject", summary: `Rejected ${targets.length} change(s): put back Writing Studio's version` }),
-      (draft, backup, live, log) => revertWith(cfg(), draft, targets, backup, live, log),
-    ));
-  } catch (error) {
-    if (error instanceof RevertError) throw new AppError(error.message, 400);
-    throw error;
-  }
-}));
-
-/** Accept or un-accept a change. Accepts are kept with the change's fingerprint. */
-router.put("/projects/:slug/review", asyncErrorCatcher(async (req, res) => {
-  const row = await findRow(req);
-  const { key, print, accepted } = req.body ?? {};
-  if (typeof key !== "string" || !key || key.length > 500 || typeof print !== "string" || print.length > 64 || typeof accepted !== "boolean") {
-    throw new AppError("Invalid review mark.", 400);
-  }
-  const review = (row.review ?? []).filter(r => r.key !== key);
-  if (accepted) review.push({ key, print });
-  await projects().updateOne({ _id: row._id, owner: row.owner }, { $set: { review: review.slice(-1000) } });
-  res.json({ ok: true });
-}));
-
-/** Names of the AI connector apps (Claude, ChatGPT, ...) that wrote to the project. */
-async function clientNames(history: HistoryEvent[] | undefined) {
-  const ids = [...new Set((history ?? []).map(e => e.clientId).filter((id): id is string => !!id))];
-  if (!ids.length) return new Map<string, string>();
-  const rows = await conn().db!.collection("mcp_oauth_clients")
-    .find({ clientId: { $in: ids } }, { projection: { clientId: 1, clientName: 1 } })
-    .toArray();
-  return new Map(rows.filter(r => typeof r.clientName === "string").map(r => [String(r.clientId), String(r.clientName)]));
-}
-
-router.get("/projects/:slug/history", asyncErrorCatcher(async (req, res) => {
-  const row = await findRow(req);
-  const clients = await clientNames(row.history);
-  res.json([...(row.history ?? [])].reverse().map(e => ({ ...e, name: sourceName(e, clients) })));
-}));
-
-/** Puts back what a step replaced, from the backup taken before it. */
-router.post("/projects/:slug/restore", asyncErrorCatcher(async (req, res) => {
-  const row = await findRow(req);
-  if (row.lease && new Date(row.lease.until) > new Date()) throw new AppError("This project is syncing. Try again in a moment.", 409);
-  const event = (row.history ?? []).find(e => e.id === req.body?.eventId);
-  if (!event?.backupId || !mongoose.isValidObjectId(event.backupId)) throw new AppError("This step has no backup to restore.", 400);
-  const saved = await backups().findOne({ _id: new mongoose.Types.ObjectId(event.backupId), owner: row.owner, projectId: row._id });
-  const snapshot = saved?.snapshot as
-    | { book?: LocalBookFile; chapters?: LoadedChapter[]; file?: string; chapter?: LocalChapterFile }
-    | undefined;
-  if (!snapshot) throw new AppError("The backup for this step was not found.", 404);
-
-  const before = structuredClone({ book: row.book, chapters: row.chapters, state: row.state });
-  let book = row.book;
-  let chapters = row.chapters;
-  if (snapshot.chapters && snapshot.book) {
-    book = snapshot.book;
-    chapters = snapshot.chapters;
-  } else if (snapshot.book) {
-    book = snapshot.book;
-  } else if (snapshot.chapter && snapshot.file) {
-    const chapter = { file: snapshot.file, data: snapshot.chapter, mtimeMs: Date.now() };
-    const exists = chapters.some(c => c.file === snapshot.file);
-    if (!exists && chapters.some(c => c.data.number === snapshot.chapter!.number)) {
-      throw new AppError(`Chapter ${snapshot.chapter.number} is taken. Renumber chapters first, then restore.`, 409);
+    const chosen = (locked as unknown as ProjectRow).changes.filter((c) => chosenIds.includes(c.id));
+    if (!chosen.length) throw new AppError("These changes are no longer waiting.", 404);
+    const result = await approveChanges(conn(), row, chosen, confirm, async (book) => {
+      await backups().insertOne({ owner: row.owner, projectId: row._id, slug: row.slug, kind: "live", snapshot: book, createdAt: new Date() });
+    });
+    if (result.applied.length) {
+      const book = await readLiveBook(conn(), result.bookId, row.userId);
+      await projects().updateOne(
+        { _id: row._id, "lease.id": lease.id } as never,
+        {
+          $pull: { changes: { id: { $in: result.applied } } },
+          $set: { liveBookId: result.bookId, ...(book ? { live: liveCopyOf(book) } : {}) },
+          $inc: { revision: 1 },
+        } as never,
+      );
     }
-    chapters = exists ? chapters.map(c => (c.file === snapshot.file ? chapter : c)) : [...chapters, chapter];
-  } else throw new AppError("This backup cannot be restored here.", 400);
-
-  const errors = await validateProject(loaded({ ...row, book, chapters }));
-  if (errors.length) throw new AppError(`Not restored: ${errors[0]}`, 400);
-  const inserted = await backups().insertOne({ owner: row.owner, projectId: row._id, slug: row.slug, kind: "staged", snapshot: before, createdAt: new Date() });
-  const history = addEvent(row.history, {
-    source: "restore",
-    summary: `Restored Staging to before “${event.summary}”`,
-    keys: changedKeys(before, { book, chapters }),
-    backupId: String(inserted.insertedId),
-    backupScope: "project",
-  });
-  const revision = row.revision ?? 0;
-  const result = await projects().updateOne(
-    {
-      _id: row._id,
-      owner: row.owner,
-      $and: [
-        { $or: [{ lease: { $exists: false } }, { "lease.until": { $lte: new Date() } }] },
-        revision === 0 ? { $or: [{ revision }, { revision: { $exists: false } }] } : { revision },
-      ],
-    },
-    { $set: { book, chapters, bookMtimeMs: Date.now(), history }, $inc: { revision: 1 } },
-  );
-  if (!result.matchedCount) throw new AppError("Staging changed meanwhile. Open History again and retry.", 409);
-  res.json({ ok: true });
+    const { applied: _applied, bookId: _bookId, ...out } = result;
+    res.json(out);
+  } catch (error) {
+    if (error instanceof ApproveError) throw new AppError(error.message, 409);
+    throw error;
+  } finally {
+    await projects().updateOne({ _id: row._id, "lease.id": lease.id } as never, { $unset: { lease: "" } });
+  }
 }));
+
+/** Discard removes changes from Staging only. They are kept in a backup. */
+router.post("/projects/:slug/discard", asyncErrorCatcher(async (req, res) => {
+  const chosenIds = ids(req.body?.ids);
+  const row = await findRow(req);
+  const chosen = row.changes.filter((c) => chosenIds.includes(c.id));
+  if (!chosen.length) throw new AppError("These changes are no longer waiting.", 404);
+  await backups().insertOne({ owner: row.owner, projectId: row._id, slug: row.slug, kind: "discarded", snapshot: { changes: chosen }, createdAt: new Date() });
+  await projects().updateOne(
+    { _id: row._id, ...notLeased() } as never,
+    { $pull: { changes: { id: { $in: chosen.map((c) => c.id) } } }, $inc: { revision: 1 } } as never,
+  );
+  res.json({ discarded: chosen.length });
+}));
+
+/* ---------- list preferences ---------- */
+
 router.get("/preferences", asyncErrorCatcher(async (_req, res) => {
-  const row = await prefs().findOne({ _id: owner() });
-  res.json({ hidden: row?.hidden ?? [], order: row?.order ?? [], showHidden: row?.showHidden ?? false });
+  const account = owner();
+  const rows = await projects().find({ owner: account }, { projection: { slug: 1 } }).toArray();
+  res.json(await prefsOf(account, rows.map((r) => r.slug)));
 }));
 router.put("/preferences", asyncErrorCatcher(async (req, res) => {
-  const data = { hidden: strings(req.body?.hidden), order: strings(req.body?.order), showHidden: req.body?.showHidden === true };
-  await prefs().updateOne({ _id: owner() }, { $set: data }, { upsert: true });
-  res.json(data);
-}));
-router.get("/connection", (_req, res) => {
-  res.json({ ...cfg(), configured: true, source: "ROZA backend" });
-});
-router.get("/connection/test", asyncErrorCatcher(async (_req, res) => {
-  await conn().db!.admin().ping();
-  res.json({ ok: true, message: "Connected to the ROZA database." });
+  const list = (v: unknown) => (Array.isArray(v) && v.every((x) => typeof x === "string") ? [...new Set(v as string[])].slice(0, 1000) : undefined);
+  const filter = req.body?.filter;
+  const data: Partial<StagingPrefs> = {};
+  const order = list(req.body?.order);
+  const pinned = list(req.body?.pinned);
+  if (order) data.order = order;
+  if (pinned) data.pinned = pinned;
+  if (filter === "pinned" || filter === "unpinned" || filter === "all") data.filter = filter;
+  await prefsColl().updateOne({ _id: owner() }, { $set: data }, { upsert: true });
+  const account = owner();
+  const rows = await projects().find({ owner: account }, { projection: { slug: 1 } }).toArray();
+  res.json(await prefsOf(account, rows.map((r) => r.slug)));
 }));
 
 export default router;

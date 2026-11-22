@@ -1,356 +1,266 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type {
-  BookDetail,
-  BookListPrefs,
-  BookSummary,
-  ConnectionInfo,
-  LogLine,
-  ProdStatus,
-  RevertTarget,
-  UploadResult,
-} from "../../../../shared/types/stagingRoom";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import type { StagedBookSummary, StagedBookView, StagingPrefs } from "../../../../shared/types/stagingRoom";
 import { api, errorText } from "./api";
 import { importProjects } from "./importProjects";
 import "./staging-room.scss";
-import { TopBar, Tab } from "./components/TopBar";
 import { BookList } from "./components/BookList";
-import { BookTab, BookView } from "./components/BookView";
-import { ConnectionView } from "./components/ConnectionView";
-import { LogPanel } from "./components/LogPanel";
-import { ChapterPreviewModal } from "./components/ChapterPreviewModal";
-import { SyncDialog } from "./components/SyncDialog";
+import { ChangesView } from "./components/ChangesView";
+import { ReadingView } from "./components/ReadingView";
 import { StagingEditor } from "./components/StagingEditor";
-import { HistoryView } from "./components/review/HistoryView";
-import { ReviewView } from "./components/review/ReviewView";
-import { BOOK_KEY, ReviewEntry, reviewEntries } from "./components/review/reviewModel";
 
-type Busy = "" | "status" | "upload" | "load" | "pull" | "revert";
+/*
+ * Staging Room v2 (docs/staging-room-prd.md): Claude's changes wait here as a list.
+ * Read them, edit them, then approve or discard. Nothing reaches the live book before you approve.
+ */
 
-/** Sets the accepted flag on one item of a Compare result. */
-function withAccepted(status: ProdStatus, key: string, accepted: boolean): ProdStatus {
-  return {
-    ...status,
-    chapters: status.chapters.map((c) => (c.key === key ? { ...c, accepted } : c)),
-    entityChanges: status.entityChanges?.map((e) => (`${e.kind}:${e.name}` === key ? { ...e, accepted } : e)),
-    bookChange: status.bookChange && key === BOOK_KEY ? { ...status.bookChange, accepted } : status.bookChange,
-  };
-}
+type Screen = { kind: "changes" } | { kind: "read"; id: string } | { kind: "edit"; id: string };
+type Notice = { tone: "ok" | "danger"; text: string; lines?: string[] };
+type Confirm = { ids: string[]; titles: string[] };
+
+const REFRESH_MS = 5000;
+const DEFAULT_PREFS: StagingPrefs = { order: [], pinned: [], filter: "pinned" };
 
 export function StagingRoomWorkspace() {
-  const [tab, setTab] = useState<Tab>("books");
-  const [books, setBooks] = useState<BookSummary[]>([]);
-  const [bookLoadError, setBookLoadError] = useState("");
+  const { t } = useTranslation();
+  const [books, setBooks] = useState<StagedBookSummary[]>([]);
+  const [prefs, setPrefs] = useState<StagingPrefs>(DEFAULT_PREFS);
+  const [selected, setSelected] = useState<string>();
+  const [book, setBook] = useState<StagedBookView>();
+  const [screen, setScreen] = useState<Screen>({ kind: "changes" });
+  const [busy, setBusy] = useState(false);
   const [importing, setImporting] = useState(false);
-  const [listPrefs, setListPrefs] = useState<BookListPrefs>({ order: [], hidden: [], showHidden: false });
-  const [slug, setSlug] = useState<string>();
-  const [book, setBook] = useState<BookDetail>();
-  const [status, setStatus] = useState<ProdStatus>();
-  const [connection, setConnection] = useState<ConnectionInfo>();
-  const [logs, setLogs] = useState<LogLine[]>([]);
-  const [busy, setBusy] = useState<Busy>("");
-  const [dialog, setDialog] = useState<"" | "push" | "pull">("");
-  const [preview, setPreview] = useState<string>();
-  const [lastResult, setLastResult] = useState<UploadResult>();
-  const [bookTab, setBookTab] = useState<BookTab>("overview");
-  const [reviewKey, setReviewKey] = useState<string>();
-  const [editing, setEditing] = useState<string>();
-  /** goes up whenever Staging changes, so History reloads */
-  const [historyVersion, setHistoryVersion] = useState(0);
-  const entries = useMemo(() => reviewEntries(status, book), [status, book]);
+  const [notice, setNotice] = useState<Notice>();
+  const [confirm, setConfirm] = useState<Confirm>();
+  const selectedRef = useRef(selected);
+  selectedRef.current = selected;
 
-  // Refs so the window-focus handler sees the current values.
-  const busyRef = useRef<Busy>("");
-  const dialogRef = useRef("");
-  const lastCompare = useRef(0);
-  busyRef.current = busy;
-  dialogRef.current = dialog || preview || "";
-
-  const addLog = useCallback((level: LogLine["level"], text: string) => {
-    setLogs((l) => [...l.slice(-300), { at: new Date().toISOString(), level, text }]);
+  const loadBooks = useCallback(async () => {
+    try {
+      const [list, p] = await Promise.all([api.listBooks(), api.getPrefs()]);
+      setBooks(list);
+      setPrefs(p);
+      return list;
+    } catch (e) {
+      setNotice({ tone: "danger", text: errorText(e) });
+      return [];
+    }
   }, []);
 
-  useEffect(() => api.onLog((line) => setLogs((l) => [...l.slice(-300), line])), []);
-
-  const refreshBooks = useCallback(async () => {
+  const loadBook = useCallback(async (slug: string) => {
     try {
-      const [list, prefs] = await Promise.all([api.listBooks(), api.getListPrefs()]);
-      setBooks(list);
-      setBookLoadError("");
-      setListPrefs(prefs);
-      const firstVisible = list.find((b) => prefs.showHidden || !prefs.hidden.includes(b.slug)) ?? list[0];
-      setSlug((s) => s ?? firstVisible?.slug);
+      const view = await api.getBook(slug);
+      if (selectedRef.current === slug) setBook(view);
     } catch (e) {
-      const message = errorText(e);
-      setBookLoadError(message);
-      addLog("error", message);
+      setNotice({ tone: "danger", text: errorText(e) });
     }
-  }, [addLog]);
+  }, []);
 
   useEffect(() => {
-    refreshBooks();
-    api.connectionInfo().then(setConnection, (error) => addLog("error", errorText(error)));
-  }, [refreshBooks, addLog]);
-
-  /** Re-read the local files and compare with Roza (read-only). Quiet = no busy state, no flicker. */
-  const compare = useCallback(
-    async (s: string, quiet = false): Promise<ProdStatus | undefined> => {
-      lastCompare.current = Date.now();
-      if (!quiet) setBusy("status");
-      try {
-        const loaded = await api.getBook(s);
-        setBook(loaded);
-        if (loaded.errors.length || !(await api.connectionInfo()).configured) {
-          setStatus(undefined);
-          return undefined;
-        }
-        const st = await api.prodStatus(s);
-        setStatus(st);
-        return st;
-      } catch (e) {
-        if (!quiet) addLog("error", errorText(e));
-        return undefined;
-      } finally {
-        if (!quiet) setBusy("");
+    loadBooks().then((list) => {
+      // Desktop opens the first book with waiting changes; the phone starts on the list.
+      if (window.matchMedia("(min-width: 900px)").matches) {
+        const first = list.find((b) => b.pending > 0) ?? list[0];
+        if (first) setSelected(first.slug);
       }
-    },
-    [addLog],
-  );
+    });
+  }, [loadBooks]);
 
-  // Opening a book: show it, then compare with Roza.
   useEffect(() => {
-    if (!slug) return;
-    setStatus(undefined);
-    setLastResult(undefined);
     setBook(undefined);
-    setReviewKey(undefined);
-    setEditing(undefined);
-    setBusy("load");
-    compare(slug).finally(() => setBusy(""));
-  }, [slug, compare]);
+    setScreen({ kind: "changes" });
+    if (selected) loadBook(selected);
+  }, [selected, loadBook]);
 
-  // Coming back to the window: fetch from Roza again (at most every 10 seconds, never mid-action).
+  // Claude may add changes at any time: keep the list fresh while the Changes screen is open.
   useEffect(() => {
-    const onFocus = () => {
-      if (!slug || busyRef.current || dialogRef.current) return;
-      if (Date.now() - lastCompare.current < 10_000) return;
-      compare(slug, true);
-    };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-  }, [slug, compare]);
+    if (!selected || screen.kind !== "changes") return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") loadBook(selected);
+    }, REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [selected, screen.kind, loadBook]);
 
-  async function importFolder(files: File[]) {
-    if (!files.length || importing) return;
+  const afterChange = async (slug: string) => {
+    await Promise.all([loadBook(slug), loadBooks()]);
+  };
+
+  const approve = async (ids: string[], force = false) => {
+    if (!selected) return;
+    setBusy(true);
+    setConfirm(undefined);
+    try {
+      const result = await api.approve(selected, ids, force);
+      if (result.conflicts?.length) {
+        setConfirm({ ids, titles: result.conflicts.map((c) => c.title) });
+        return;
+      }
+      setNotice({ tone: "ok", text: `Approved ${result.approved} change${result.approved === 1 ? "" : "s"}. They are in Writing Studio now.`, lines: result.messages });
+      setScreen({ kind: "changes" });
+      await afterChange(selected);
+    } catch (e) {
+      setNotice({ tone: "danger", text: errorText(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const discard = async (ids: string[]) => {
+    if (!selected) return;
+    const what = ids.length === 1 ? "this change" : `these ${ids.length} changes`;
+    if (!window.confirm(`Discard ${what}? It is removed from Staging. Writing Studio is not changed.`)) return;
+    setBusy(true);
+    try {
+      await api.discard(selected, ids);
+      setNotice({ tone: "ok", text: `Discarded ${ids.length} change${ids.length === 1 ? "" : "s"}.` });
+      setScreen({ kind: "changes" });
+      await afterChange(selected);
+    } catch (e) {
+      setNotice({ tone: "danger", text: errorText(e) });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const savePrefs = async (next: Partial<StagingPrefs>) => {
+    setPrefs((p) => ({ ...p, ...next }));
+    try {
+      setPrefs(await api.setPrefs(next));
+      setBooks(await api.listBooks());
+    } catch (e) {
+      setNotice({ tone: "danger", text: errorText(e) });
+    }
+  };
+
+  const onImport = async (files: File[]) => {
     setImporting(true);
     try {
-      const { created, existing, failures } = await importProjects(files);
-      addLog("info", `Imported ${created} project(s). ${existing} already existed.`);
-      for (const failure of failures) addLog("error", failure);
-      await refreshBooks();
-    } catch (error) {
-      addLog("error", errorText(error));
+      const r = await importProjects(files);
+      setNotice({
+        tone: r.failures.length ? "danger" : "ok",
+        text: `Imported ${r.created} book(s)${r.existing ? `, ${r.existing} already in Staging` : ""}. Differences from Writing Studio are waiting as changes.`,
+        lines: r.failures,
+      });
+      await loadBooks();
+    } catch (e) {
+      setNotice({ tone: "danger", text: errorText(e) });
     } finally {
       setImporting(false);
     }
-  }
-
-  const changeListPrefs = async (next: BookListPrefs) => {
-    // Update the screen right away, then save to books/_list.json.
-    setListPrefs(next);
-    if (next.order !== listPrefs.order) {
-      const rank = new Map(next.order.map((s, i) => [s, i]));
-      setBooks((list) => [...list].sort((a, b) => (rank.get(a.slug) ?? Infinity) - (rank.get(b.slug) ?? Infinity)));
-    }
-    try {
-      setListPrefs(await api.setListPrefs(next));
-    } catch (e) {
-      addLog("error", `Could not save the book list: ${errorText(e)}`);
-    }
   };
 
-  const open = async (mode: "push" | "pull") => {
-    if (!slug) return;
-    const st = await compare(slug);
-    if (st) setDialog(mode);
+  const closeEditor = () => {
+    setScreen({ kind: "changes" });
+    if (selected) loadBook(selected);
   };
 
-  const run = async (kind: "upload" | "pull" | "revert", action: () => Promise<void>) => {
-    if (!slug) return;
-    setDialog("");
-    setBusy(kind);
-    try {
-      await action();
-      await refreshBooks();
-    } catch (error) {
-      addLog("error", errorText(error));
-    } finally {
-      setBusy("");
-      setHistoryVersion((v) => v + 1);
-      await compare(slug, true);
-    }
-  };
-
-  const doReject = (targets: RevertTarget[]) =>
-    run("revert", async () => {
-      const result = await api.revert(slug!, { targets, reviewToken: status?.reviewToken });
-      addLog("ok", `Rejected ${result.reverted} change(s). Staging now has Writing Studio's version.`);
-    });
-
-  const accept = async (entry: ReviewEntry, accepted: boolean) => {
-    if (!slug || !entry.print) return;
-    setStatus((s) => s && withAccepted(s, entry.key, accepted));
-    try {
-      await api.setReview(slug, entry.key, entry.print, accepted);
-    } catch (error) {
-      setStatus((s) => s && withAccepted(s, entry.key, !accepted));
-      addLog("error", `Could not save the review mark: ${errorText(error)}`);
-    }
-  };
-
-  const review = (key: string) => {
-    setReviewKey(key);
-    setBookTab("changes");
-  };
-
-  const closeEditor = (then?: () => void) => {
-    setEditing(undefined);
-    setHistoryVersion((v) => v + 1);
-    if (slug) compare(slug, true);
-    then?.();
-  };
-
-  /** Readable names for History. */
-  const keyName = (key: string) => {
-    if (key === BOOK_KEY) return "Book settings";
-    if (key === "book:edits") return "Book edits";
-    const chapter = book?.chapters.find((c) => c.file === key);
-    if (chapter) return `${chapter.number} · ${chapter.name}`;
-    const entry = entries.find((e) => e.key === key);
-    if (entry) return entry.title;
-    const colon = key.indexOf(":");
-    return colon > 0 && !key.startsWith("prod:") ? key.slice(colon + 1) : key.endsWith(".json") ? key : "Removed chapter";
-  };
-
-  const doPush = (chapterKeys: string[], entityKeys: string[]) =>
-    run("upload", async () => {
-      setLastResult(
-        await api.upload(slug!, {
-          overwriteChapters: chapterKeys.filter((k) => k.endsWith(".json")),
-          updateEntities: entityKeys,
-          reviewToken: status?.reviewToken,
-        }),
-      );
-    });
-
-  const doPull = (chapterKeys: string[], entityKeys: string[]) =>
-    run("pull", async () => {
-      setLastResult(undefined);
-      await api.pull(slug!, { chapters: chapterKeys, entities: entityKeys, reviewToken: status?.reviewToken });
-    });
+  if (screen.kind === "edit" && selected)
+    return (
+      <div className="roza-staging-room sr-editing">
+        <StagingEditor slug={selected} id={screen.id} busy={busy} onClose={closeEditor} onApprove={() => approve([screen.id])} />
+        {confirm && <ConfirmDialog confirm={confirm} onCancel={() => setConfirm(undefined)} onConfirm={() => approve(confirm.ids, true)} />}
+      </div>
+    );
 
   return (
-    <div className="roza-staging-room" dir="ltr">
-      <TopBar tab={tab} onTab={setTab} connection={connection} />
-      {tab === "books" && editing && slug ? (
-        <StagingEditor
-          slug={slug}
-          file={editing}
-          changedFiles={new Set(entries.filter((e) => e.kind === "chapter" && e.file).map((e) => e.file!))}
-          onOpen={setEditing}
-          onClose={() => closeEditor()}
-          onReview={() => closeEditor(() => review(editing))}
-        />
-      ) : tab === "books" ? (
-        <div className="workspace">
-          <BookList
-            books={books}
-            prefs={listPrefs}
-            onPrefsChange={changeListPrefs}
-            selected={slug}
-            onSelect={setSlug}
-            onRefresh={refreshBooks}
-            onImport={importFolder}
-            importing={importing}
-          />
-          <main className={`main ${bookTab === "changes" ? "review-mode" : ""}`}>
-            {book && slug ? (
-              <BookView
-                book={book}
-                status={status}
-                entries={entries}
-                busy={busy}
-                lastResult={lastResult}
-                tab={bookTab}
-                onTab={setBookTab}
-                onCompare={() => slug && compare(slug)}
-                onPull={() => open("pull")}
-                onPush={() => open("push")}
-                onPreview={setPreview}
-                onReview={review}
-                onEdit={setEditing}
-              >
-                {bookTab === "changes" ? (
-                  status ? (
-                    <ReviewView
-                      entries={entries}
-                      selectedKey={reviewKey}
-                      busy={busy !== ""}
-                      onSelect={setReviewKey}
-                      onAccept={accept}
-                      onReject={doReject}
-                      onEdit={setEditing}
-                      onHistory={() => setBookTab("history")}
-                    />
-                  ) : (
-                    <p className="muted">{busy ? "Comparing with Writing Studio…" : "Compare with Writing Studio to see the changes."}</p>
-                  )
-                ) : (
-                  <HistoryView
-                    slug={slug}
-                    version={historyVersion}
-                    keyName={keyName}
-                    busy={busy !== ""}
-                    onRestored={() => {
-                      setHistoryVersion((v) => v + 1);
-                      addLog("ok", "Restored Staging from a backup.");
-                      compare(slug, true);
-                    }}
-                  />
-                )}
-              </BookView>
-            ) : (
-              bookLoadError
-                ? <p className="empty" role="alert">{bookLoadError}</p>
-                : <EmptyState loading={busy === "load"} hasBooks={books.length > 0} />
+    <div className={`roza-staging-room ${selected ? "has-book" : ""}`}>
+      <header className="sr-topbar">
+        <img src="/images/icon-512X512.png" alt="" />
+        <span className="sr-brand">Roza</span>
+        <span className="sr-brand-sub" dir="auto">
+          {t("stagingRoom.title")}
+        </span>
+        <span className="sr-topbar-note">Nothing here is live until you approve it</span>
+      </header>
+      {notice && (
+        <div className={`sr-notice ${notice.tone}`} role={notice.tone === "danger" ? "alert" : "status"}>
+          <div>
+            <strong>{notice.text}</strong>
+            {notice.lines && notice.lines.length > 0 && (
+              <ul>
+                {notice.lines.map((l, i) => (
+                  <li key={i}>{l}</li>
+                ))}
+              </ul>
             )}
-          </main>
+          </div>
+          <button className="sr-btn sr-btn-quiet sm" onClick={() => setNotice(undefined)} aria-label="Close message">
+            ✕
+          </button>
         </div>
-      ) : (
-        <ConnectionView connection={connection} onTest={() => api.testConnection()} />
       )}
-      <LogPanel logs={logs} onClear={() => setLogs([])} />
-      {preview && slug && <ChapterPreviewModal slug={slug} file={preview} onClose={() => setPreview(undefined)} />}
-      {dialog && status && (
-        <SyncDialog
-          mode={dialog}
-          status={status}
-          onCancel={() => setDialog("")}
-          onConfirm={dialog === "push" ? doPush : doPull}
+      <div className="sr-workspace">
+        <BookList
+          books={books}
+          prefs={prefs}
+          selected={selected}
+          importing={importing}
+          onSelect={setSelected}
+          onImport={onImport}
+          onPrefs={savePrefs}
+          onStaged={async (slug) => {
+            await loadBooks();
+            setSelected(slug);
+          }}
         />
-      )}
+        <main className="sr-main">
+          {!selected ? (
+            <div className="sr-empty sr-desktop-only">
+              <p>Choose a book to see Claude’s waiting changes.</p>
+            </div>
+          ) : !book ? (
+            <p className="sr-muted sr-pad">Loading…</p>
+          ) : screen.kind === "read" ? (
+            <ReadingView
+              slug={selected}
+              id={screen.id}
+              bookName={book.bookName}
+              busy={busy}
+              onBack={() => setScreen({ kind: "changes" })}
+              onEdit={() => setScreen({ kind: "edit", id: screen.id })}
+              onApprove={() => approve([screen.id])}
+              onDiscard={() => discard([screen.id])}
+            />
+          ) : (
+            <ChangesView
+              book={book}
+              busy={busy}
+              onBack={() => setSelected(undefined)}
+              onRead={(id) => setScreen({ kind: "read", id })}
+              onEdit={(id) => setScreen({ kind: "edit", id })}
+              onApprove={approve}
+              onDiscard={discard}
+            />
+          )}
+        </main>
+      </div>
+      {confirm && <ConfirmDialog confirm={confirm} onCancel={() => setConfirm(undefined)} onConfirm={() => approve(confirm.ids, true)} />}
     </div>
   );
 }
 
-function EmptyState({ loading, hasBooks }: { loading: boolean; hasBooks: boolean }) {
+function ConfirmDialog({ confirm, onCancel, onConfirm }: { confirm: Confirm; onCancel: () => void; onConfirm: () => void }) {
   return (
-    <div className="empty">
-      <h2>{loading ? "Loading…" : hasBooks ? "Pick a book" : "No books yet"}</h2>
-      {!loading && !hasBooks && (
-        <p>
-          Choose <strong>Import folder</strong> to bring existing projects into Staging Room.
-        </p>
-      )}
+    <div className="sr-overlay" onClick={onCancel}>
+      <div className="sr-modal" role="alertdialog" aria-modal="true" aria-labelledby="sr-confirm-title" onClick={(e) => e.stopPropagation()}>
+        <h2 id="sr-confirm-title">Changed in Writing Studio</h2>
+        <p>These were changed in Writing Studio after Claude read them. Approving replaces your version:</p>
+        <ul>
+          {confirm.titles.map((title) => (
+            <li key={title} dir="auto">
+              {title}
+            </li>
+          ))}
+        </ul>
+        <div className="sr-modal-actions">
+          <button className="sr-btn sr-btn-quiet" onClick={onCancel}>
+            Cancel
+          </button>
+          <button className="sr-btn sr-btn-primary" onClick={onConfirm}>
+            Approve anyway
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

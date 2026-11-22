@@ -1,153 +1,157 @@
-import { useRef, useState } from "react";
-import type { BookListPrefs, BookSummary } from "../../../../../shared/types/stagingRoom";
-import { formatDate } from "./format";
+import { useEffect, useRef, useState } from "react";
+import type { LiveBookOption, StagedBookSummary, StagingPrefs } from "../../../../../shared/types/stagingRoom";
+import { api, errorText } from "../api";
 
+const FILTERS: { id: StagingPrefs["filter"]; label: string }[] = [
+  { id: "pinned", label: "Pinned" },
+  { id: "unpinned", label: "Unpinned" },
+  { id: "all", label: "All" },
+];
+
+function PinIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden="true" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+      <path d="M15 3l6 6-3 1-4 4 1 5-2 2-4-4-5 5-1-1 5-5-4-4 2-2 5 1 4-4z" />
+    </svg>
+  );
+}
+
+/** The staged books, with pins and a Pinned / Unpinned / All filter. */
 export function BookList({
   books,
   prefs,
   selected,
-  onSelect,
-  onRefresh,
-  onImport,
   importing,
-  onPrefsChange,
+  onSelect,
+  onImport,
+  onPrefs,
+  onStaged,
 }: {
-  books: BookSummary[];
-  prefs: BookListPrefs;
+  books: StagedBookSummary[];
+  prefs: StagingPrefs;
   selected?: string;
-  onSelect: (slug: string) => void;
-  onRefresh: () => void;
-  onImport: (files: File[]) => void;
   importing: boolean;
-  onPrefsChange: (prefs: BookListPrefs) => void;
+  onSelect: (slug: string) => void;
+  onImport: (files: File[]) => void;
+  onPrefs: (prefs: Partial<StagingPrefs>) => void;
+  onStaged: (slug: string) => void;
 }) {
   const folderInput = useRef<HTMLInputElement | null>(null);
-  const [dragging, setDragging] = useState<string>();
-  const [dropTarget, setDropTarget] = useState<{ slug: string; after: boolean }>();
-
-  const hidden = new Set(prefs.hidden);
-  const hiddenCount = books.filter((b) => hidden.has(b.slug)).length;
-  const visible = prefs.showHidden ? books : books.filter((b) => !hidden.has(b.slug));
-
-  const toggleHidden = (slug: string) =>
-    onPrefsChange({
-      ...prefs,
-      hidden: hidden.has(slug) ? prefs.hidden.filter((s) => s !== slug) : [...prefs.hidden, slug],
-    });
-
-  // Reorder within the full list (hidden books keep their place even while not shown).
-  const drop = (target: string, after: boolean) => {
-    const from = dragging;
-    setDragging(undefined);
-    setDropTarget(undefined);
-    if (!from || from === target) return;
-    const order = books.map((b) => b.slug).filter((s) => s !== from);
-    const at = order.indexOf(target);
-    order.splice(after ? at + 1 : at, 0, from);
-    onPrefsChange({ ...prefs, order });
-  };
+  const [picking, setPicking] = useState(false);
+  const pinned = new Set(prefs.pinned);
+  const shown = books.filter((b) => (prefs.filter === "all" ? true : prefs.filter === "pinned" ? pinned.has(b.slug) : !pinned.has(b.slug)));
+  const togglePin = (slug: string) =>
+    onPrefs({ pinned: pinned.has(slug) ? prefs.pinned.filter((s) => s !== slug) : [...prefs.pinned, slug] });
 
   return (
-    <aside className="sidebar">
-      <div className="sidebar-head">
-        <h3>Books</h3>
-        <div className="row gap-xs">
-          <button className="btn-ghost sm" onClick={onRefresh} aria-label="Refresh projects" title="Refresh projects">
-            ↻
-          </button>
+    <aside className="sr-books" aria-label="Staged books">
+      <div className="sr-books-head">
+        <h2 className="sr-eyebrow">Books</h2>
+        <div className="sr-row">
           <input
             hidden
             type="file"
-            ref={element => {
+            ref={(element) => {
               folderInput.current = element;
               element?.setAttribute("webkitdirectory", "");
             }}
-            onChange={event => {
+            onChange={(event) => {
               onImport(Array.from(event.currentTarget.files ?? []));
               event.currentTarget.value = "";
             }}
           />
-          <button className="btn-ghost sm" disabled={importing} onClick={() => folderInput.current?.click()}>
+          <button className="sr-btn sr-btn-quiet sm" disabled={importing} onClick={() => folderInput.current?.click()}>
             {importing ? "Importing…" : "Import folder"}
+          </button>
+          <button className="sr-btn sr-btn-quiet sm" onClick={() => setPicking(true)}>
+            + Stage a book
           </button>
         </div>
       </div>
-      {hiddenCount > 0 && (
-        <label className="show-hidden">
-          <input
-            type="checkbox"
-            checked={prefs.showHidden}
-            onChange={(e) => onPrefsChange({ ...prefs, showHidden: e.target.checked })}
-          />
-          Show hidden ({hiddenCount})
-        </label>
-      )}
-      <ul className="book-list">
-        {visible.map((b) => {
-          const isHidden = hidden.has(b.slug);
-          const drop_ = dropTarget?.slug === b.slug ? (dropTarget.after ? "drop-after" : "drop-before") : "";
-          return (
-            <li
-              key={b.slug}
-              className={`book-item ${dragging === b.slug ? "dragging" : ""} ${drop_}`}
-              draggable
-              onDragStart={(e) => {
-                setDragging(b.slug);
-                e.dataTransfer.effectAllowed = "move";
-                e.dataTransfer.setData("text/plain", b.slug);
-              }}
-              onDragEnd={() => {
-                setDragging(undefined);
-                setDropTarget(undefined);
-              }}
-              onDragOver={(e) => {
-                if (!dragging) return;
-                e.preventDefault();
-                const r = e.currentTarget.getBoundingClientRect();
-                const after = e.clientY > r.top + r.height / 2;
-                if (dropTarget?.slug !== b.slug || dropTarget.after !== after) setDropTarget({ slug: b.slug, after });
-              }}
-              onDrop={(e) => {
-                e.preventDefault();
-                drop(b.slug, dropTarget?.slug === b.slug ? dropTarget.after : false);
-              }}
+      <div className="sr-chips" role="group" aria-label="Show books">
+        {FILTERS.map((f) => (
+          <button key={f.id} className={`sr-chip ${prefs.filter === f.id ? "on" : ""}`} aria-pressed={prefs.filter === f.id} onClick={() => onPrefs({ filter: f.id })}>
+            {f.label}
+          </button>
+        ))}
+      </div>
+      <ul className="sr-book-list">
+        {shown.map((b) => (
+          <li key={b.slug} className={`sr-book ${b.slug === selected ? "selected" : ""}`}>
+            <button className="sr-book-main" onClick={() => onSelect(b.slug)} aria-current={b.slug === selected ? "true" : undefined}>
+              <span className="sr-book-name" dir="auto">
+                {b.bookName}
+              </span>
+              <span className="sr-muted small">
+                {b.language.toUpperCase()} · {b.linked ? `${b.chapters} chapters · ${b.words.toLocaleString()} words` : "not in Writing Studio yet"}
+              </span>
+              {b.pending > 0 && <span className="sr-count">{b.pending} waiting</span>}
+            </button>
+            <button
+              className={`sr-pin ${pinned.has(b.slug) ? "on" : ""}`}
+              aria-label={pinned.has(b.slug) ? `Unpin ${b.bookName}` : `Pin ${b.bookName}`}
+              aria-pressed={pinned.has(b.slug)}
+              onClick={() => togglePin(b.slug)}
             >
-              <button
-                className={`book-card ${b.slug === selected ? "selected" : ""} ${isHidden ? "is-hidden" : ""}`}
-                onClick={() => onSelect(b.slug)}
-              >
-                <div className="book-card-title" dir="auto">
-                  {b.bookName}
-                </div>
-                <div className="book-card-meta">
-                  <span className="lang">{b.language.toUpperCase()}</span>
-                  <span>{b.chapterCount} ch</span>
-                  <span>{b.words.toLocaleString()} words</span>
-                </div>
-                <div className="book-card-foot">
-                  {b.errors.length ? (
-                    <span className="badge danger">{b.errors.length} issue(s)</span>
-                  ) : b.prodBookId ? (
-                    <span className="badge ok">In prod · {formatDate(b.lastUploadAt)}</span>
-                  ) : (
-                    <span className="badge neutral">Not uploaded</span>
-                  )}
-                  <span className="slug">{b.slug}</span>
-                </div>
-              </button>
-              <button
-                className="book-hide-btn"
-                title={isHidden ? "Unhide this book" : "Hide this book"}
-                onClick={() => toggleHidden(b.slug)}
-              >
-                {isHidden ? "Unhide" : "Hide"}
+              <PinIcon filled={pinned.has(b.slug)} />
+            </button>
+          </li>
+        ))}
+        {!books.length && <li className="sr-muted sr-pad">No books yet. Use “Stage a book” to add one.</li>}
+        {books.length > 0 && !shown.length && <li className="sr-muted sr-pad">No {prefs.filter} books.</li>}
+      </ul>
+      {picking && (
+        <StageBookDialog
+          onClose={() => setPicking(false)}
+          onStaged={(slug) => {
+            setPicking(false);
+            onStaged(slug);
+          }}
+        />
+      )}
+    </aside>
+  );
+}
+
+function StageBookDialog({ onClose, onStaged }: { onClose: () => void; onStaged: (slug: string) => void }) {
+  const [books, setBooks] = useState<LiveBookOption[]>();
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  useEffect(() => {
+    api.liveBooks().then(setBooks, (e) => setError(errorText(e)));
+  }, []);
+  const stage = async (id: string) => {
+    setBusy(true);
+    try {
+      onStaged((await api.stageBook(id)).slug);
+    } catch (e) {
+      setError(errorText(e));
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="sr-overlay" onClick={onClose}>
+      <div className="sr-modal" role="dialog" aria-modal="true" aria-labelledby="stage-title" onClick={(e) => e.stopPropagation()}>
+        <h2 id="stage-title">Stage a book</h2>
+        <p className="sr-muted">Choose a Writing Studio book. Claude can then add changes to it here, and nothing reaches the book until you approve.</p>
+        {error && <p className="sr-callout danger">{error}</p>}
+        {!books && !error && <p className="sr-muted">Loading…</p>}
+        <ul className="sr-pick">
+          {books?.map((b) => (
+            <li key={b.id}>
+              <button className="sr-pick-item" disabled={busy || b.staged} onClick={() => stage(b.id)}>
+                <span dir="auto">{b.name}</span>
+                {b.staged && <span className="sr-muted small">already staged</span>}
               </button>
             </li>
-          );
-        })}
-        {!books.length && <li className="muted pad">No projects in Staging Room.</li>}
-        {books.length > 0 && !visible.length && <li className="muted pad">All books are hidden.</li>}
-      </ul>
-    </aside>
+          ))}
+        </ul>
+        <div className="sr-modal-actions">
+          <button className="sr-btn sr-btn-quiet" onClick={onClose}>
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

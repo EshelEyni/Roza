@@ -1,5 +1,7 @@
 import { validatePlanning } from "./planningValidation";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
+import { refreshLiveCopies } from "../../services/stagingRoom/changes";
+import { logger } from "../../services/logger/loggerService";
 import { BookModel } from "../../models/books/bookModel";
 import { isWordGoal } from "../../models/books/schemas/bookSchema";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
@@ -136,6 +138,10 @@ const updateBook = asyncErrorCatcher(async (req: Request, res: Response, next: N
   if (!book)
     throw new AppError("This manuscript changed while saving. Export your draft and reload.", 409);
 
+  // Staging Room keeps a copy of the live book for Claude. Keep it current.
+  refreshLiveCopies(mongoose.connection, id).catch(error =>
+    logger.error("Staging Room live copy refresh failed:", error as Error),
+  );
   res.json({ status: "success", data: book });
 });
 

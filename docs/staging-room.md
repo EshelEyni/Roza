@@ -1,24 +1,39 @@
 # Staging Room
 
-Sign in to ROZA as an administrator and open **Staging Room** from the main navigation. It works in the browser and ROZA Desktop.
+Staging Room is a safe place for edits that Claude (or ChatGPT, through the same connector) makes to your books. Claude adds **pending changes**. Nothing reaches the live book in Writing Studio until you approve it. The product decisions are in [staging-room-prd.md](staging-room-prd.md).
 
-Staged projects, sync fingerprints, list preferences, and new snapshots are stored in the connected ROZA MongoDB database. Compare, Pull, and Push use the live manuscripts in that same environment. Projects and preferences belong to the signed-in administrator.
+Sign in to ROZA as an administrator and open **Staging Room** from the main navigation. It works in the browser, in ROZA Desktop and on the phone.
 
-## Same fields as the Writing Studio
+## How it works
 
-Staging Room checks and writes books with the Writing Studio's own book schema (`backend/src/models/books/schemas`). A staged book holds the same fields as a Writing Studio book:
+- **Writing Studio is always the truth.** Staging is not a copy of your book. It is a list of additions on top of it.
+- **Claude only adds.** It can add new drafts (the default for chapter text), Main edits (only when you ask), new chapters, characters, themes, plotlines, notes and tasks. It cannot delete anything.
+- **Your manual work is safe.** A draft never touches Main. A Main edit replaces Main only if you didn't change Main since Claude read it; otherwise it is added as a draft. A story element you changed since Claude read it asks before it is replaced.
+- **Approve is final.** The change goes to Writing Studio at once and leaves Staging. The live book is backed up first (`staging_room_backups`).
 
-- **Book:** name, owner, language, word goal, task board, publishing settings, audiobook narrator, characters, themes, plotlines and notes.
-- **Chapters:** number, name, format, description, text, planning links, chapter notes, drafts (with kind and summary), `mainSourceDraftId` and the task board.
+## Screens
 
-Compare, Pull and Push cover all of these. The book settings (name, word goal, task board, publishing settings and narrator) sync together under **Book settings**. A field the staged book leaves out is not tracked, and Push leaves the live version alone. For word goal, publishing and narrator, `null` removes the field from the live book on Push.
+- **Books:** your staged books with how many changes wait. Pin the ones you work on and filter Pinned, Unpinned or All. **Stage a book** adds a Writing Studio book. **Import folder** reads an old staged project folder (see below).
+- **Changes:** the waiting changes, grouped by chapter, then story elements, then tasks. Each has **Read**, **Edit** (for text), **Discard** and **Approve**. Chapters with several changes have **Approve chapter**, and the page has **Approve all**. While Claude is saving, a line shows what it is working on.
+- **Read:** the full text, with what is new compared with Writing Studio marked green. Removed text is not shown. Notes are hidden.
+- **Edit:** the Writing Studio editor with AI Edit, on the pending text, under a "STAGING COPY" banner. Claude's saves show up within a few seconds. If you are typing when Claude saves, you choose: load Claude's version or keep yours.
 
-Three things differ by design. Story elements and planning links are matched by name, not by id. Archived chapters and story elements are not staged. Display settings (`filterBy`, `isReadMode`) are not synced.
+## Where the data lives
 
-## Import legacy projects
+- `staging_room_projects`: one row per staged book: the live book it belongs to, the pending changes, and a read-only copy of the live book. The connector can't read the live books, so Claude reads that copy. The backend refreshes it when you open the book in Staging Room, after every approval, and after every Writing Studio save.
+- `staging_room_backups`: the live book before each approval, discarded changes, and the old full copies of books staged before v2.
+- `staging_room_preferences`: list order, pins and the filter.
 
-Select **Import folder** and choose the old `books` folder or a single project folder. ROZA imports `book.json`, JSON chapter files, and `.publish-state.json` when present. Importing again skips project names that already exist for your account. Keep your legacy folder as an archive for old filesystem backups and plain-text chapter copies. ROZA does not read from that folder after import.
+## Import folder
 
-Agents can submit a project through the authenticated `POST /api/staging-room/projects/import` endpoint. Send a JSON object with a `project` string containing serialized JSON with `slug`, `book`, and a `chapters` array of `{ file, data }` entries. For edits, read `GET /api/staging-room/projects/:slug/draft` and send `PUT` to the same URL with the returned `revision` and a `project` string containing the edited book and full chapter list. A stale revision is rejected. Both endpoints change staged data only. Push remains a separate action.
+Select **Import folder** and choose the old `books` folder or one project folder. ROZA reads `book.json`, the JSON chapter files and `.publish-state.json`, and compares them with the live book:
 
-MongoDB creates `staging_room_projects`, `staging_room_preferences`, and `staging_room_backups` when their first records are written. No desktop profile file, environment variable, or database connection string on the client is required.
+- a chapter whose text differs becomes a new draft,
+- a chapter the live book doesn't have becomes a new chapter,
+- a new or different story element becomes an element change.
+
+Nothing is removed. A project name that is already staged is skipped.
+
+## Upgrading from the old Staging Room
+
+Books staged before v2 held a full copy of the book. The first time Staging Room opens, each one is upgraded: the old copy is saved to `staging_room_backups`, and the book starts with no pending changes, because Writing Studio already has everything. A staged book that was never uploaded keeps its content as pending changes instead. Until a book is upgraded, Claude's tools ask you to open Staging Room once.

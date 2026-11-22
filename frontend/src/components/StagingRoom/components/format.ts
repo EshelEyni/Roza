@@ -1,14 +1,11 @@
 export const formatDate = (iso?: string) =>
-  iso
-    ? new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })
-    : "";
+  iso ? new Date(iso).toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
 
-export const statusLabel: Record<string, string> = {
-  new: "New",
-  same: "Up to date",
-  differs: "Differs",
-  pull: "Newer in Roza ↓",
-  push: "Newer here ↑",
-  conflict: "Changed in both ⚠",
-  "prod-only": "Only in Roza",
-};
+/** "12 seconds ago", "3 minutes ago", or a date. */
+export function ago(iso: string, now = Date.now()) {
+  const s = Math.max(0, Math.round((now - Date.parse(iso)) / 1000));
+  if (s < 60) return `${s} second${s === 1 ? "" : "s"} ago`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m} minute${m === 1 ? "" : "s"} ago`;
+  return formatDate(iso);
+}

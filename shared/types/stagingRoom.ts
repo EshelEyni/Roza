@@ -122,279 +122,7 @@ export interface PublishState {
   bookPrint?: string;
 }
 
-export interface ChapterSummary {
-  file: string;
-  number: number;
-  name: string;
-  words: number;
-  paragraphs: number;
-  /** chapter notes (annotations) in the local file */
-  notes: number;
-  drafts: number;
-  errors: string[];
-}
-
-export interface EntitySummary {
-  name: string;
-  color?: string;
-  text: string;
-}
-
-export interface BookSummary {
-  slug: string;
-  bookName: string;
-  language: string;
-  userId: string;
-  chapterCount: number;
-  words: number;
-  errors: string[];
-  prodBookId?: string;
-  lastUploadAt?: string;
-}
-
-export interface BookListPrefs {
-  /** Slugs in the order shown in the sidebar. Books not listed go last. */
-  order: string[];
-  hidden: string[];
-  showHidden: boolean;
-}
-
-export interface BookDetail extends BookSummary {
-  chapters: ChapterSummary[];
-  characters: EntitySummary[];
-  themes: EntitySummary[];
-  plotlines: EntitySummary[];
-  notes: EntitySummary[];
-}
-
-export interface ChapterPreview {
-  file: string;
-  name: string;
-  description: string[];
-  paragraphs: { text: string; align?: string }[];
-  planning: { kind: string; name: string; note: string }[];
-  notes: { general: boolean; quote: string; content: string; attached: boolean }[];
-}
-
-export type EntityKind = "characters" | "themes" | "plotlines" | "notes";
-
-/** A paragraph in a review diff. n is its 1-based place in that side's text (the ¶ number). */
-export interface DiffPara {
-  n: number;
-  text: string;
-}
-
-/**
- * One block of a side-by-side diff. "staging" is the staged copy, "studio" is the live
- * Writing Studio book. A "change" block has an id: Reject can undo that one change.
- */
-export type DiffBlock =
-  | { kind: "same"; staging: DiffPara; studio: DiffPara }
-  | { kind: "skip"; count: number }
-  | { kind: "change"; hunk: number; staging: DiffPara[]; studio: DiffPara[] };
-
-/** One side of a changed note or draft. */
-export interface ReviewItemSide {
-  quote?: string;
-  body: string;
-  meta?: string;
-}
-
-/** A note or draft that was added, removed or edited in Staging. Matched by id. */
-export interface ReviewItemChange {
-  id: string;
-  /** added = only in Staging, removed = only in Writing Studio */
-  change: "added" | "removed" | "edited";
-  title: string;
-  staging?: ReviewItemSide;
-  studio?: ReviewItemSide;
-  /** text diff, for an edited draft */
-  blocks?: DiffBlock[];
-}
-
-export type ReviewPartId = "text" | "notes" | "drafts" | "details" | "planning" | "tasks" | "content";
-
-/** One part of an item that differs: the chapter text, its notes, its drafts, ... */
-export interface ReviewPart {
-  id: ReviewPartId;
-  label: string;
-  /** number of changes in this part */
-  changes: number;
-  blocks?: DiffBlock[];
-  items?: ReviewItemChange[];
-}
-
-export type HistorySourceKind = "connector" | "import" | "editor" | "pull" | "push" | "reject" | "restore";
-
-/** Where a staged change came from, taken from the project's history. */
-export interface ChangeSource {
-  kind: HistorySourceKind;
-  name: string;
-  at: string;
-  summary: string;
-}
-
-/** Review fields shared by every changed item in Compare. */
-export interface ReviewFields {
-  /** what differs, split into parts */
-  parts?: ReviewPart[];
-  /** fingerprint of the change. An accept is kept only while the change stays the same. */
-  print?: string;
-  accepted?: boolean;
-  /** latest history event that touched this item */
-  source?: ChangeSource;
-}
-
-export interface ProdChapterStatus extends ReviewFields {
-  /** chapter file name, or "prod:<id>" for chapters that only exist in Roza */
-  key: string;
-  /** for "differs": which side changed since the last sync */
-  direction?: "pull" | "push" | "conflict";
-  /** short report of what differs, one line per part (text, notes, planning, ...) */
-  summary?: string[];
-  file?: string;
-  name: string;
-  status: "new" | "same" | "differs" | "prod-only";
-  localWords?: number;
-  prodWords?: number;
-}
-
-export interface ProdStatus {
-  reviewToken?: string;
-  dbName: string;
-  host: string;
-  bookExists: boolean;
-  prodBookId?: string;
-  prodUpdatedAt?: string;
-  chapters: ProdChapterStatus[];
-  entities: { kind: EntityKind; name: string; status: "new" | "exists" }[];
-  /** reorder / archive / replace-text edits the next upload will make (book.json) */
-  edits: string[];
-  /** story elements that are new locally, only in Roza, or different */
-  entityChanges?: EntityChange[];
-  /** the book's own fields (name, word goal, task board) differ. Synced with the key "book:settings". */
-  bookChange?: BookChange;
-}
-
-export interface EntityChange extends ReviewFields {
-  kind: EntityKind;
-  name: string;
-  status: "new" | "prod-only" | "differs";
-  direction?: "pull" | "push" | "conflict";
-  summary?: string[];
-}
-
-export interface BookChange extends ReviewFields {
-  direction: "pull" | "push" | "conflict";
-  summary: string[];
-}
-
-/** What to reject. key is a chapter key, "kind:name", or "book:settings". */
-export interface RevertTarget {
-  key: string;
-  /** only this part of a chapter. Left out: the whole item. */
-  part?: ReviewPartId;
-  /** only this change of the text part */
-  hunk?: number;
-  /** only this note or draft */
-  itemId?: string;
-}
-
-export interface RevertOptions {
-  reviewToken?: string;
-  targets: RevertTarget[];
-}
-
-export interface RevertResult {
-  reverted: number;
-  backupDir?: string;
-}
-
-/** One step that changed a staged project. */
-export interface HistoryEvent {
-  id: string;
-  at: string;
-  source: HistorySourceKind;
-  /** OAuth client id, for connector steps. The router turns it into a name. */
-  clientId?: string;
-  /** "Claude", "ChatGPT", "Staging editor", ... */
-  name?: string;
-  summary: string;
-  /** item keys the step changed (chapter keys, "kind:name", "book:settings") */
-  keys: string[];
-  /** backup of what the step replaced */
-  backupId?: string;
-  /** what the backup holds: one chapter or the book ("item"), or the whole project ("project") */
-  backupScope?: "item" | "project";
-}
-
-export interface ChapterSaveInput {
-  revision: number;
-  text: SlateElement[];
-  annotations?: ChapterAnnotation[];
-}
-
-export interface ChapterDraftView {
-  slug: string;
-  bookName: string;
-  revision: number;
-  file: string;
-  name: string;
-  number: number;
-  format: "prose" | "screenplay";
-  text: SlateElement[];
-  annotations?: ChapterAnnotation[];
-  chapters: { file: string; number: number; name: string }[];
-}
-
-export interface PullOptions {
-  reviewToken?: string;
-  /** chapter keys (file name, or "prod:<id>") */
-  chapters: string[];
-  /** "kind:name", or "book:settings" for the book's name, word goal and task board */
-  entities: string[];
-}
-
-export interface PullResult {
-  chapters: number;
-  entities: number;
-  backupDir?: string;
-}
-
-export interface UploadOptions {
-  reviewToken?: string;
-  /** existing story elements ("kind:name") whose Roza version should be replaced by the local one; "book:settings" for the book's own fields */
-  updateEntities?: string[];
-  /** chapter files whose prod text should be replaced by the local version */
-  overwriteChapters: string[];
-}
-
-export interface UploadResult {
-  created: boolean;
-  prodBookId: string;
-  added: Record<"chapters" | EntityKind, number>;
-  overwritten: number;
-  /** existing story elements replaced with the local version */
-  updatedEntities?: number;
-  /** reorder / archive / replace-text edits that were applied */
-  edits: string[];
-  backupPath?: string;
-}
-
-export interface ConnectionInfo {
-  configured: boolean;
-  source: string;
-  dbName?: string;
-  host?: string;
-  error?: string;
-}
-
-export interface LogLine {
-  at: string;
-  level: "info" | "ok" | "warn" | "error";
-  text: string;
-}
-
+/** A legacy staged project folder, as Import folder reads it. */
 export interface StagingProjectInput {
   slug: string;
   book: LocalBookFile;
@@ -403,23 +131,180 @@ export interface StagingProjectInput {
   state?: PublishState;
 }
 
-export interface StagingRoomApi {
-  importProject(project: StagingProjectInput): Promise<{ created: boolean }>;
-  listBooks(): Promise<BookSummary[]>;
-  getListPrefs(): Promise<BookListPrefs>;
-  setListPrefs(prefs: BookListPrefs): Promise<BookListPrefs>;
-  getBook(slug: string): Promise<BookDetail>;
-  getChapter(slug: string, file: string): Promise<ChapterPreview>;
-  connectionInfo(): Promise<ConnectionInfo>;
-  testConnection(): Promise<{ ok: boolean; message: string }>;
-  prodStatus(slug: string): Promise<ProdStatus>;
-  upload(slug: string, options: UploadOptions): Promise<UploadResult>;
-  pull(slug: string, options: PullOptions): Promise<PullResult>;
-  revert(slug: string, options: RevertOptions): Promise<RevertResult>;
-  setReview(slug: string, key: string, print: string, accepted: boolean): Promise<void>;
-  history(slug: string): Promise<HistoryEvent[]>;
-  restore(slug: string, eventId: string): Promise<void>;
-  getChapterDraft(slug: string, file: string): Promise<ChapterDraftView>;
-  saveChapterDraft(slug: string, file: string, input: ChapterSaveInput): Promise<{ revision: number }>;
-  onLog(listener: (line: LogLine) => void): () => void;
+export type EntityKind = "characters" | "themes" | "plotlines" | "notes";
+
+/* ------------------------------------------------------------------ */
+/* Staging Room v2: a basket of changes on top of the live book.       */
+/* See docs/staging-room-prd.md.                                       */
+/* ------------------------------------------------------------------ */
+
+/** A task Claude adds to the book's task board. */
+export interface StagedTask {
+  title: string;
+  description?: string;
+  /** live chapter id the card links to */
+  chapterId?: string;
+}
+
+interface ChangeBase {
+  id: string;
+  createdAt: string;
+  updatedAt: string;
+  /** who made it: the connector app (Claude, ChatGPT...), the Staging editor, or Import folder */
+  by: "connector" | "editor" | "import";
+  clientId?: string;
+}
+
+/**
+ * One pending change. Text changes remember the hash of the live Main they were based on,
+ * so approving never overwrites manual work done in Writing Studio meanwhile.
+ */
+export type StagedChange = ChangeBase &
+  (
+    | {
+        kind: "draft";
+        /** live chapter id */
+        chapterId: string;
+        name: string;
+        text: SlateElement[];
+        /** hash of the chapter's Main text when the draft was started */
+        baseHash: string;
+        notes?: ChapterAnnotation[];
+      }
+    | { kind: "main"; chapterId: string; text: SlateElement[]; baseHash: string; notes?: ChapterAnnotation[] }
+    | {
+        kind: "chapter";
+        name: string;
+        /** live chapter id (or the id of a pending new chapter) to insert after; null = at the end */
+        afterId: string | null;
+        text: SlateElement[];
+        notes?: ChapterAnnotation[];
+      }
+    | {
+        kind: "element";
+        element: EntityKind;
+        name: string;
+        color?: string;
+        text: SlateElement[];
+        /** hash of the live element when it was read; null = a new element */
+        baseHash: string | null;
+      }
+    | { kind: "notes"; chapterId: string; notes: ChapterAnnotation[] }
+    | { kind: "tasks"; tasks: StagedTask[] }
+  );
+
+export type StagedChangeKind = StagedChange["kind"];
+
+/** The read-only copy of the live book kept on the staging row (the connector can't read live books). */
+export interface LiveChapter {
+  id: string;
+  name: string;
+  format: "prose" | "screenplay";
+  text: SlateElement[];
+  /** hash of the Main text */
+  mainHash: string;
+  drafts: { id: string; name: string; words: number }[];
+}
+export interface LiveElement {
+  name: string;
+  color?: string;
+  text: SlateElement[];
+  hash: string;
+}
+export interface LiveCopy {
+  bookId: string;
+  name: string;
+  updatedAt: string;
+  chapters: LiveChapter[];
+  characters: LiveElement[];
+  themes: LiveElement[];
+  plotlines: LiveElement[];
+  notes: LiveElement[];
+  copiedAt: string;
+}
+
+/** One row in the book list. */
+export interface StagedBookSummary {
+  slug: string;
+  bookName: string;
+  language: string;
+  /** false: the book is not in Writing Studio yet; approving creates it */
+  linked: boolean;
+  chapters: number;
+  words: number;
+  pending: number;
+  pinned: boolean;
+}
+
+export type ChangeGroup =
+  | { type: "chapter"; chapterId: string; name: string; order: number }
+  | { type: "elements" }
+  | { type: "tasks" };
+
+/** A pending change as the Changes screen shows it. */
+export interface ChangeView {
+  id: string;
+  kind: StagedChangeKind;
+  group: ChangeGroup;
+  /** e.g. NEW DRAFT, 2 NOTES, CHANGED */
+  tag: string;
+  tone: "new" | "changed";
+  title: string;
+  meta: string;
+  readable: boolean;
+  editable: boolean;
+  /** set when Writing Studio changed since Claude read it */
+  warning?: string;
+  updatedAt: string;
+}
+
+export interface StagedBookView {
+  slug: string;
+  bookName: string;
+  linked: boolean;
+  revision: number;
+  changes: ChangeView[];
+  /** the newest connector save, to show "Claude is editing" */
+  lastClaudeSave?: { at: string; title: string };
+}
+
+/** The reading view: text with new words marked. Removed text is not shown. */
+export interface ReadView {
+  id: string;
+  title: string;
+  subtitle: string;
+  words: number;
+  editable: boolean;
+  paragraphs: { align?: string; segments: { text: string; isNew: boolean }[] }[];
+}
+
+/** The editor's copy of a text change. */
+export interface ChangeTextView {
+  id: string;
+  slug: string;
+  bookName: string;
+  title: string;
+  subtitle: string;
+  format: "prose" | "screenplay";
+  text: SlateElement[];
+  updatedAt: string;
+}
+
+export interface ApproveResult {
+  approved: number;
+  messages: string[];
+  /** changes whose live version changed since Claude read it; nothing was written. Approve again with confirm. */
+  conflicts?: { id: string; title: string }[];
+}
+
+export interface StagingPrefs {
+  order: string[];
+  pinned: string[];
+  filter: "pinned" | "unpinned" | "all";
+}
+
+export interface LiveBookOption {
+  id: string;
+  name: string;
+  staged: boolean;
 }

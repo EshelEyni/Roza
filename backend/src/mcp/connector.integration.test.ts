@@ -149,44 +149,47 @@ run("Claude connector", () => {
     expect(row).toMatchObject({ owner, id: created.id, editedInBoard: true, deletedAt: null });
   });
 
-  test("Staging Room: project, chapters, backups and restore", async () => {
+  test("Staging Room: Claude adds pending changes only", async () => {
     await ok("staging_create_project", { slug, bookName: "My Lost Time", language: "he" });
     expect((await call("staging_create_project", { slug, bookName: "Again", language: "he" })).text).toContain("already exists");
 
-    await ok("staging_save_chapter", { slug, number: 1, title: "One", mode: "create", text: "# Start\n\nShe *ran*.\nשלום" });
-    await ok("staging_save_chapter", { slug, number: 2, title: "Two", mode: "create", text: "Second **chapter**" });
-    const refused = await call("staging_save_chapter", { slug, number: 2, mode: "create", text: "x" });
-    expect(refused.text).toContain("Chapter 2 already exists");
+    // The ROZA backend keeps a copy of the live book on the row. Simulate one.
+    const para = (text: string) => ({ type: "paragraph", children: [{ text }] });
+    const chapterId = new Types.ObjectId().toString();
+    await connection.db!.collection("staging_room_projects").updateOne({ _id: hash(owner, slug) } as never, {
+      $set: {
+        liveBookId: new Types.ObjectId().toString(),
+        live: {
+          bookId: "x", name: "My Lost Time", updatedAt: new Date().toISOString(), copiedAt: new Date().toISOString(),
+          chapters: [{ id: chapterId, name: "One", format: "prose", text: [para("Old text")], mainHash: "h1", drafts: [] }],
+          characters: [], themes: [], plotlines: [], notes: [],
+        },
+      },
+    });
 
-    const replaced = await ok("staging_save_chapter", { slug, number: 2, mode: "replace", text: "New second" });
-    expect(replaced.backupIds).toHaveLength(1);
-    expect((await ok("staging_get_chapter", { slug, number: 1 })).text).toBe("# Start\n\nShe *ran*.\n\nשלום");
+    const first = await ok("staging_write_draft", { slug, number: 1, text: "# Start\n\nShe *ran*." });
+    const second = await ok("staging_write_draft", { slug, number: 1, text: "She ran faster.", notes: [{ quote: "faster", content: "Check pace" }] });
+    expect(second.changeId).toBe(first.changeId); // saving again updates the same draft
+    expect((await call("staging_write_draft", { slug, number: 7, text: "x" })).text).toContain("no chapter 7");
 
-    await ok("staging_update_book", { slug, characters: { Rosa: "The narrator" }, themes: { Time: ["#aa3300", "Memory"] }, wordGoal: 80000 });
+    const chapter = await ok("staging_get_chapter", { slug, number: 1 });
+    expect(chapter.main).toBe("Old text");
+    expect(chapter.pending[0]).toMatchObject({ kind: "draft", text: "She ran faster." });
+
+    await ok("staging_edit_main", { slug, number: 1, text: "New Main" });
+    await ok("staging_add_chapter", { slug, title: "Two", text: "Second **chapter**", after: 1 });
+    await ok("staging_set_element", { slug, kind: "characters", name: "Rosa", text: "The narrator" });
+    await ok("staging_add_notes", { slug, number: 1, notes: [{ content: "General thought" }] });
+    await ok("staging_add_tasks", { slug, tasks: [{ title: "Check the timeline", chapter: 1 }] });
+
     const project = await ok("staging_get_project", { slug });
-    expect(project.book).toMatchObject({ bookName: "My Lost Time", characters: { Rosa: "The narrator" }, wordGoal: 80000 });
-    expect(project.book.userId).toBeUndefined();
-
-    await ok("staging_set_chapter_order", { slug, order: [2, 1] });
-    expect((await ok("staging_get_chapter", { slug, number: 1 })).title).toBe("Two");
-
-    const removed = await ok("staging_remove_chapter", { slug, number: 2 });
-    expect(removed.title).toBe("One");
-    expect((await ok("staging_get_project", { slug })).chapters).toHaveLength(1);
-    const backups = await ok("staging_list_backups", { slug });
-    const removal = backups.backups.find((b: { reason: string }) => b.reason === "remove chapter");
-    await ok("staging_restore_backup", { slug, backupId: removal.backupId });
-    const restored = await ok("staging_get_project", { slug });
-    expect(restored.chapters.map((c: { number: number; title: string }) => [c.number, c.title])).toEqual([[1, "Two"], [2, "One"]]);
-
-    await ok("staging_set_preferences", { order: [slug], hidden: [] });
+    expect(project.pendingChanges.map((c: { kind: string }) => c.kind)).toEqual(["draft", "main", "chapter", "element", "notes", "tasks"]);
     const listed = await ok("staging_list_projects");
-    expect(listed.projects[0]).toMatchObject({ slug, chapterCount: 2 });
+    expect(listed.projects[0]).toMatchObject({ slug, pendingChanges: 6 });
 
-    // Stored exactly like the Staging Room stores it, so the UI and Push see it.
     const row = await connection.db!.collection("staging_room_projects").findOne({ _id: hash(owner, slug) } as never);
-    expect(row).toMatchObject({ owner, slug, book: { userId: owner } });
-    expect(row!.revision).toBeGreaterThan(5);
+    expect(row).toMatchObject({ owner, slug, version: 2, userId: owner });
+    expect(row!.changes[0]).toMatchObject({ kind: "draft", chapterId, baseHash: "h1", by: "connector" });
   });
 
   test("never opens collections outside the Dev Board, Staging Room and its own", () => {
@@ -199,8 +202,8 @@ run("Claude connector", () => {
   test("audits writes, rejects big requests, rotates refresh tokens", async () => {
     const audit = await db.Audit.find({ userId: owner }).lean();
     expect(audit.length).toBeGreaterThan(10);
-    expect(audit.some(a => a.tool === "staging_save_chapter" && a.outcome === "refused")).toBe(true);
-    const big = await rpc("tools/call", { name: "staging_save_chapter", arguments: { slug, number: 9, mode: "create", text: "a".repeat(1_100_000) } });
+    expect(audit.some(a => a.tool === "staging_write_draft" && a.outcome === "refused")).toBe(true);
+    const big = await rpc("tools/call", { name: "staging_add_chapter", arguments: { slug, title: "Big", text: "a".repeat(1_100_000) } });
     expect(big.status).toBe(413);
     resetWriteLimits();
     const res = await request(app).post("/oauth/token").type("form").send({ grant_type: "refresh_token", refresh_token: refresh, client_id: clientId });
