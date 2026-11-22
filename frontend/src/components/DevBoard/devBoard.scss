@@ -31,9 +31,9 @@
   .cardFoot { margin-top: auto; padding-top: 9px; border-top: 1px solid var(--roza-line); color: var(--muted); font-size: 11px; }
   .cardFoot b { font-size: 16px; color: var(--green); }
   .empty { padding: 22px; border: 1px dashed var(--roza-line-2); border-radius: 10px; color: var(--muted); }
-  dialog { width: min(825px, calc(100vw - 40px)); max-height: calc(100vh - 48px); padding: 0; margin: auto; background: var(--roza-card); border: 1px solid var(--line); border-radius: var(--roza-radius-dialog); box-shadow: var(--roza-shadow-dialog); color: inherit; }
-  dialog[open], dialog form { display: flex; flex-direction: column; min-height: 0; }
-  dialog::backdrop { background: var(--roza-scrim); }
+  dialog:not(.app-confirm-dialog) { width: min(825px, calc(100vw - 40px)); max-height: calc(100vh - 48px); padding: 0; margin: auto; background: var(--roza-card); border: 1px solid var(--line); border-radius: var(--roza-radius-dialog); box-shadow: var(--roza-shadow-dialog); color: inherit; }
+  dialog:not(.app-confirm-dialog)[open], dialog:not(.app-confirm-dialog) form { display: flex; flex-direction: column; min-height: 0; }
+  dialog:not(.app-confirm-dialog)::backdrop { background: var(--roza-scrim); }
   .modalHead, .modalFoot { padding: 15px 23px; background: var(--roza-surface); }
   .modalHead { border-bottom: 1px solid var(--line); }
   .modalHead h2 { margin: 2px 0 0; line-height: 1.2; font-size: 21px; }
@@ -56,8 +56,14 @@
   .sourceHead button { font-size: 12px; }
   textarea { width: 100%; min-height: 185px; resize: vertical; font-family: Consolas, monospace; font-size: 13px; }
   .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin-top: 14px; }
-  .fields label { display: grid; text-transform: capitalize; gap: 3px; font-weight: 600; font-size: 13px; }
+  .fields label, .fields .field { display: grid; align-content: start; text-transform: capitalize; gap: 3px; font-weight: 600; font-size: 13px; }
+  .fields .field { gap: 3px 0; }
+  .fields .field input { margin-top: 5px; }
   .fields input { min-width: 0; font-weight: 400; }
+  .fields .reader-select > button, .toolbar .reader-select > button { border-color: var(--roza-field-line); border-radius: var(--roza-radius); background: var(--roza-surface); color: var(--roza-ink); font: 400 14px/1.4 var(--roza-font-ui); }
+  .fields .reader-select-options, .toolbar .reader-select-options { background: var(--roza-surface); font-weight: 400; text-transform: none; }
+  .toolbar .groupBy { margin-right: auto; display: flex; align-items: center; gap: 8px; flex-shrink: 0; font-weight: 600; font-size: 13px; }
+  .toolbar .groupBy .reader-select { width: 140px; }
   @media (max-width: 780px) { & { grid-template-columns: 177px minmax(0,1fr); } aside { padding-inline: 10px; } }
 
   .attachments { padding: 13px 15px; margin-bottom: 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--roza-surface); }

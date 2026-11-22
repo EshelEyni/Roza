@@ -2,7 +2,8 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { H1 } from "../App/H1";
 import { Button } from "../Buttons/Button";
 import Markdown from 'react-markdown';
-import { fromMarkdown } from "./fromMarkdown";
+import { fromMarkdown, normalizeDraft, normalizePriority, normalizeStatus, priorities, statuses } from "./fromMarkdown";
+import { ReaderSelect } from "../Reader/ReaderSelect";
 import type { DevTicket as Ticket, DevTicketDraft as Draft } from "../../../../shared/types/devBoard";
 import { createDevBoardApi, desktopFiles } from "./api";
 import { useConfirmation } from "../Modals/useConfirmation";
@@ -15,7 +16,18 @@ function importMessage(result: { conflicts: string[]; failed: string[] }, succes
   return messages.join(' ') || success;
 }
 
-const editable = ['project', 'title', 'status', 'priority', 'scope', 'repository'] as const;
+const textFields = ['scope', 'repository'] as const;
+const newProject = '\u0000new-project';
+const choices = (values: string[]) => values.map((value) => ({ value, label: value }));
+type GroupBy = 'project' | 'status' | 'priority';
+const groupOptions: { value: GroupBy; label: string }[] = [
+  { value: 'project', label: 'Project' },
+  { value: 'status', label: 'Status' },
+  { value: 'priority', label: 'Priority' },
+];
+const groupKey = (ticket: Ticket, by: GroupBy) =>
+  by === 'status' ? normalizeStatus(ticket.status) : by === 'priority' ? normalizePriority(ticket.priority) : ticket.project;
+const groupOrder: Record<GroupBy, string[]> = { project: [], status: statuses, priority: [...priorities].reverse() };
 
 export function DevBoard({ account }: { account: string }) {
   const api = useMemo(() => createDevBoardApi(account), [account]);
@@ -26,9 +38,11 @@ export function DevBoard({ account }: { account: string }) {
   const [query, setQuery] = useState('');
   const [project, setProject] = useState('');
   const [trash, setTrash] = useState(false);
+  const [groupBy, setGroupBy] = useState<GroupBy>('project');
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
+  const [addingProject, setAddingProject] = useState(false);
   const { confirm, confirmationDialog } = useConfirmation();
   const dialog = useRef<HTMLDialogElement>(null);
   const loading = useRef(false);
@@ -83,6 +97,7 @@ export function DevBoard({ account }: { account: string }) {
   function close() {
     setSelected(null);
     setDraft(null);
+    setAddingProject(false);
     setNotice('');
   }
 
@@ -122,7 +137,10 @@ export function DevBoard({ account }: { account: string }) {
     const searchText = [ticket.number, ticket.title, ticket.project, ticket.status, ticket.priority, ticket.scope, ticket.repository, ticket.markdown].join(' ');
     return matchesProject && searchText.toLowerCase().includes(query.trim().toLowerCase().replace(/^#(?=\d)/, ''));
   });
-  const groups = [...new Set(visible.map((ticket) => ticket.project))].sort();
+  const groups = [...new Set(visible.map((ticket) => groupKey(ticket, groupBy)))].sort((a, b) => {
+    const order = groupOrder[groupBy];
+    return order.length ? order.indexOf(a) - order.indexOf(b) : a.localeCompare(b);
+  });
   const heading = trash ? 'Trash' : projects.includes(project) ? project : 'All tickets';
 
   return (
@@ -142,6 +160,10 @@ export function DevBoard({ account }: { account: string }) {
         </header>
         <div className="toolbar">
           <input className="ui-input" type="search" aria-label="Search tickets" placeholder="Search tickets…" value={query} onChange={(event) => setQuery(event.target.value)} />
+          <div className="groupBy">
+            <span id="group-by-label">Group by</span>
+            <ReaderSelect id="group-by" labelId="group-by-label" value={groupBy} options={groupOptions} onChange={setGroupBy} />
+          </div>
           {desktopFiles && <Button isSmall disabled={busy} onClick={() => void action(async () => {
             try {
               if (!await api.chooseImport()) return;
@@ -156,14 +178,14 @@ export function DevBoard({ account }: { account: string }) {
         {!error && !visible.length && <p className="empty">{query.trim() ? 'No tickets match your search.' : trash ? 'Trash is empty.' : 'Paste a ticket to get started.'}</p>}
         {groups.map((name) => (
           <section className="group" key={name}>
-            <h2>{name}<span>{visible.filter((ticket) => ticket.project === name).length}</span></h2>
+            <h2>{name}<span>{visible.filter((ticket) => groupKey(ticket, groupBy) === name).length}</span></h2>
             <div className="cards">
-              {visible.filter((ticket) => ticket.project === name).map((ticket) => (
+              {visible.filter((ticket) => groupKey(ticket, groupBy) === name).map((ticket) => (
                 <button className="ui-card card" key={ticket.id} onClick={() => { setNotice(''); setSelected(ticket.id); }}>
-                  <div className="cardTop"><span className="ticketNumber">{ticket.number === null ? 'Ticket' : '#' + ticket.number}</span>{ticket.priority && <span className="priority">{ticket.priority} priority</span>}</div>
+                  <div className="cardTop"><span className="ticketNumber">{ticket.number === null ? 'Ticket' : '#' + ticket.number}</span><span className="priority">{normalizePriority(ticket.priority)} priority</span></div>
                   <h3>{ticket.title}</h3>
                   {ticket.scope && <p>{ticket.scope}</p>}
-                  <div className="cardFoot"><span>{ticket.status}</span></div>
+                  <div className="cardFoot"><span>{normalizeStatus(ticket.status)}</span></div>
                 </button>
               ))}
             </div>
@@ -194,7 +216,27 @@ export function DevBoard({ account }: { account: string }) {
               setDraft(draft.id ? { ...draft, markdown } : fromMarkdown(markdown));
             }} />
             <div className="fields">
-              {editable.map((field) => <label key={field}>{field}<input className="ui-input" required={field === 'title' || field === 'project'} value={draft[field]} onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} /></label>)}
+              <div className="field">
+                <span id="field-project">Project</span>
+                <ReaderSelect id="ticket-project" labelId="field-project"
+                  value={addingProject ? newProject : draft.project}
+                  options={[...choices([...new Set([...projects, draft.project].filter((name) => name.trim()))].sort()), { value: newProject, label: 'New project…' }]}
+                  onChange={(value) => {
+                    if (value === newProject) { setAddingProject(true); setDraft({ ...draft, project: '' }); }
+                    else { setAddingProject(false); setDraft({ ...draft, project: value }); }
+                  }} />
+                {addingProject && <input className="ui-input" aria-label="New project name" placeholder="New project name" required autoFocus value={draft.project} onChange={(event) => setDraft({ ...draft, project: event.target.value })} />}
+              </div>
+              <label>Title<input className="ui-input" required value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label>
+              <div className="field">
+                <span id="field-status">Status</span>
+                <ReaderSelect id="ticket-status" labelId="field-status" value={draft.status} options={choices(statuses)} onChange={(status) => setDraft({ ...draft, status })} />
+              </div>
+              <div className="field">
+                <span id="field-priority">Priority</span>
+                <ReaderSelect id="ticket-priority" labelId="field-priority" value={draft.priority} options={choices(priorities)} onChange={(priority) => setDraft({ ...draft, priority })} />
+              </div>
+              {textFields.map((field) => <label key={field}>{field}<input className="ui-input" value={draft[field]} onChange={(event) => setDraft({ ...draft, [field]: event.target.value })} /></label>)}
               <label>Ticket number<input className="ui-input" type="number" min="0" step="1" value={draft.number ?? ''} onChange={(event) => setDraft({ ...draft, number: event.target.value === '' ? null : Number(event.target.value) })} /></label>
             </div>
           </div>
@@ -225,7 +267,7 @@ export function DevBoard({ account }: { account: string }) {
           <footer className="modalFoot">
             <span role="status">{notice}</span>
             <button className="ui-btn ui-btn-small" disabled={busy} onClick={() => void action(async () => { await api.copy(current.markdown); setNotice('Markdown copied'); })}>Copy Markdown</button>
-            {!current.deletedAt && <button className="ui-btn ui-btn-small" disabled={busy} onClick={() => { setNotice(''); setDraft(current); }}>Edit</button>}
+            {!current.deletedAt && <button className="ui-btn ui-btn-small" disabled={busy} onClick={() => { setNotice(''); setDraft(normalizeDraft(current)); }}>Edit</button>}
             {current.deletedAt && <Button variant="danger" disabled={busy} onClick={() => void action(async () => {
               const confirmed = await confirm({
                 title: 'Delete ticket forever?',
