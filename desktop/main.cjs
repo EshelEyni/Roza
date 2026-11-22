@@ -71,9 +71,14 @@ function isApi(url) {
 async function checkDesktopAccess(browserSession, endpoint) {
   if (!browserSession) return false;
   try {
-    const response = await browserSession.fetch((devApiOrigin || origin) + endpoint, {
+    const url = (devApiOrigin || origin) + endpoint;
+    const [loginCookie] = await browserSession.cookies.get({ url, name: "loginToken" });
+    if (!loginCookie?.value) return false;
+    // Main-process requests lack the renderer's same-site context.
+    const response = await browserSession.fetch(url, {
       bypassCustomProtocolHandlers: true,
-      credentials: "include",
+      credentials: "omit",
+      headers: { Authorization: "Bearer " + loginCookie.value },
       cache: "no-store",
       redirect: "error",
       signal: AbortSignal.timeout(10000),
@@ -210,7 +215,7 @@ function registerStagingRoom(window, browserSession) {
   const fromStagingRoom = (event) =>
     !window.isDestroyed() && event.sender === window.webContents &&
     event.senderFrame === window.webContents.mainFrame &&
-    window.webContents.getURL().split(/[?#]/, 1)[0] === origin + "/staging-room";
+    window.webContents.getURL().split(/[?#]/, 1)[0].replace(/\/$/, "") === origin + "/staging-room";
 
   // Share a live check across concurrent requests from the same page.
   for (const [action, handle] of Object.entries(handlers)) {

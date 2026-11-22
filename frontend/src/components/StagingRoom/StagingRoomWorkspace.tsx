@@ -15,6 +15,7 @@ type Busy = "" | "status" | "upload" | "load" | "pull";
 export function StagingRoomWorkspace() {
   const [tab, setTab] = useState<Tab>("books");
   const [books, setBooks] = useState<BookSummary[]>([]);
+  const [bookLoadError, setBookLoadError] = useState("");
   const [listPrefs, setListPrefs] = useState<BookListPrefs>({ order: [], hidden: [], showHidden: false });
   const [slug, setSlug] = useState<string>();
   const [book, setBook] = useState<BookDetail>();
@@ -43,11 +44,14 @@ export function StagingRoomWorkspace() {
     try {
       const [list, prefs] = await Promise.all([api.listBooks(), api.getListPrefs()]);
       setBooks(list);
+      setBookLoadError("");
       setListPrefs(prefs);
       const firstVisible = list.find((b) => prefs.showHidden || !prefs.hidden.includes(b.slug)) ?? list[0];
       setSlug((s) => s ?? firstVisible?.slug);
     } catch (e) {
-      addLog("error", errorText(e));
+      const message = errorText(e);
+      setBookLoadError(message);
+      addLog("error", message);
     }
   }, [addLog]);
 
@@ -180,7 +184,9 @@ export function StagingRoomWorkspace() {
                 onPreview={setPreview}
               />
             ) : (
-              <EmptyState loading={busy === "load"} hasBooks={books.length > 0} />
+              bookLoadError
+                ? <p className="empty" role="alert">{bookLoadError}</p>
+                : <EmptyState loading={busy === "load"} hasBooks={books.length > 0} />
             )}
           </main>
         </div>
