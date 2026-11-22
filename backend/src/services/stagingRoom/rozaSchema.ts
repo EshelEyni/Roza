@@ -190,4 +190,4 @@ export const bookSchema = new Schema(
 );
 
 export const bookModelFor = (conn: Connection) =>
-  conn.models.Book || conn.model("Book", bookSchema, "books");
+  conn.models.StagingRoomBook || conn.model("StagingRoomBook", bookSchema, "books");

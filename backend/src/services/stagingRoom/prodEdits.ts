@@ -7,7 +7,7 @@
  * Pure: takes the raw prod document and returns the new arrays plus a description
  * of what would change. The caller writes them (with backup + updatedAt guard).
  */
-import type { LocalBookFile } from "../../../shared/types/stagingRoom";
+import type { LocalBookFile } from "../../../../shared/types/stagingRoom";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type Item = Record<string, any>;

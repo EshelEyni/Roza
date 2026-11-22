@@ -9,15 +9,12 @@
   "repository": "https://github.com/EshelEyni/Roza.git",
   "scripts": {
     "build:frontend": "npm --prefix ../frontend run build -- --mode desktop --outDir ../desktop/renderer --emptyOutDir",
-    "build:staging-room": "node ../frontend/node_modules/typescript/bin/tsc -p tsconfig.staging-room.json",
-    "start": "npm run build:staging-room && npm run build:frontend && electron .",
-    "dist:win": "npm run build:staging-room && npm run build:frontend && electron-builder --win nsis --x64 --publish never",
-    "dist:mac": "npm run build:staging-room && npm run build:frontend && electron-builder --mac dir --arm64 --publish never"
+    "start": "npm run build:frontend && electron .",
+    "dist:win": "npm run build:frontend && electron-builder --win nsis --x64 --publish never",
+    "dist:mac": "npm run build:frontend && electron-builder --mac dir --arm64 --publish never"
   },
   "dependencies": {
-    "dotenv": "^16.6.1",
-    "electron-updater": "6.8.12",
-    "mongoose": "^8.24.10"
+    "electron-updater": "6.8.12"
   },
   "devDependencies": {
     "electron": "45.3.4",

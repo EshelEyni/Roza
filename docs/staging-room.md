@@ -1,15 +1,13 @@
-# Staging Room in ROZA Desktop
+# Staging Room
 
-Sign in to ROZA Desktop as an administrator and select **Staging Room**. Review proposed chapters and edits in the main ROZA window before applying them to the manuscript. Use the main navigation to return to another area of ROZA.
+Sign in to ROZA as an administrator and open **Staging Room** from the main navigation. It works in the browser and ROZA Desktop.
 
-Save a file named `staging-room.json` in ROZA Desktop's user profile. On Windows this is normally `%APPDATA%\Roza\staging-room.json`. If you launch with `npm run desktop:dev`, use `%APPDATA%\Roza-Dev\staging-room.json`.
+Staged projects, sync fingerprints, list preferences, and new snapshots are stored in the connected ROZA MongoDB database. Compare, Pull, and Push use the live manuscripts in that same environment. Projects and preferences belong to the signed-in administrator.
 
-```json
-{
-  "projectFolder": "C:/dev/roza-publish"
-}
-```
+## Import legacy projects
 
-Use the absolute path of the folder that contains `books/` and the optional database `.env`. Fully quit and reopen ROZA Desktop after editing the file. The file takes precedence over the existing `ROZA_STAGING_ROOM_HOME` and `ROZA_PUBLISH_HOME` environment variables. Development builds also discover a sibling `roza-publish` checkout containing `books/`.
+Select **Import folder** and choose the old `books` folder or a single project folder. ROZA imports `book.json`, JSON chapter files, and `.publish-state.json` when present. Importing again skips project names that already exist for your account. Keep your legacy folder as an archive for old filesystem backups and plain-text chapter copies. ROZA does not read from that folder after import.
 
-The workspace reads the existing book files, list preferences, backup files, and sync state in place. It uses the same publisher database configuration, including the existing ROZA backend `.env` fallback. Compare, Pull and Push work against that configured database. Configure Staging Room only on machines trusted with those credentials and use one publisher at a time per project folder.
+Agents can submit a project through the authenticated `POST /api/staging-room/projects/import` endpoint. Send a JSON object with a `project` string containing serialized JSON with `slug`, `book`, and a `chapters` array of `{ file, data }` entries. For edits, read `GET /api/staging-room/projects/:slug/draft` and send `PUT` to the same URL with the returned `revision` and a `project` string containing the edited book and full chapter list. A stale revision is rejected. Both endpoints change staged data only. Push remains a separate action.
+
+MongoDB creates `staging_room_projects`, `staging_room_preferences`, and `staging_room_backups` when their first records are written. No desktop profile file, environment variable, or database connection string on the client is required.

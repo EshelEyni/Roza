@@ -57,13 +57,10 @@ export function ConnectionView({
         <section className="panel prose">
           <h2>How it connects</h2>
           <p>
-            Roza Publish writes straight to Roza's MongoDB. It reads <code>DB_URL</code> and <code>PROD_DB_NAME</code>{" "}
-            from <code>roza-publish/.env</code> if that file exists, otherwise from Roza's{" "}
-            <code>backend/.env</code>. Passwords are never shown or copied.
+            The ROZA API stores staged projects in its MongoDB database. Push applies selected changes to the live manuscript in the same ROZA environment.
           </p>
           <p>
-            Before changing a book that already exists, the app saves a copy of it in <code>books/&lt;name&gt;/backups/</code>.
-            It only adds what's missing. It replaces a chapter only when you tick “Replace in Roza”.
+            Staging Room saves a live manuscript snapshot before Push and a staged project snapshot before Pull.
           </p>
         </section>
       </div>

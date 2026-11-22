@@ -1,6 +1,6 @@
 const { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, screen, session, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
-const { existsSync, readFileSync, readdirSync } = require("node:fs");
+const { existsSync, readdirSync } = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { createKokoroDesktop } = require("./kokoro/index.cjs");
@@ -22,29 +22,6 @@ function devSwitch(name) {
 const devApiOrigin = devSwitch("api-origin") ? new URL(devSwitch("api-origin")).origin : null;
 const devDataDir = devSwitch("data-dir");
 if (devDataDir) app.setPath("userData", path.resolve(app.getPath("appData"), devDataDir));
-const devStagingRoomHome = path.resolve(__dirname, "..", "..", "roza-publish");
-function readStagingRoomHome(profile) {
-  const filename = path.join(profile, "staging-room.json");
-  try {
-    const settings = JSON.parse(readFileSync(filename, "utf8").replace(/^\uFEFF/, ""));
-    const projectFolder = settings?.projectFolder;
-    if (typeof projectFolder !== "string" || !path.isAbsolute(projectFolder)) {
-      throw new Error("projectFolder must be an absolute path.");
-    }
-    return path.normalize(projectFolder);
-  } catch (error) {
-    if (error.code !== "ENOENT") {
-      console.warn("Could not read Staging Room settings:", filename, error.message);
-    }
-    return null;
-  }
-}
-
-const configuredStagingRoomHome = readStagingRoomHome(app.getPath("userData")) ||
-  process.env.ROZA_STAGING_ROOM_HOME || process.env.ROZA_PUBLISH_HOME ||
-  (!app.isPackaged && existsSync(path.join(devStagingRoomHome, "books")) ? devStagingRoomHome : null);
-const stagingRoomHome = configuredStagingRoomHome && path.isAbsolute(configuredStagingRoomHome)
-  ? configuredStagingRoomHome : null;
 let mainWindow = null;
 const kokoro = createKokoroDesktop({
   app, origin, getWindow: () => mainWindow,
@@ -207,41 +184,6 @@ function registerTaskbarBadge(window) {
   });
 }
 
-function registerStagingRoom(window, browserSession) {
-  if (!stagingRoomHome) return;
-  const { stagingRoomHandlers } = require("./staging-room-build/desktop/staging-room/handlers.js");
-  const handlers = stagingRoomHandlers(stagingRoomHome, shell.openPath);
-  let authorization;
-  const fromStagingRoom = (event) =>
-    !window.isDestroyed() && event.sender === window.webContents &&
-    event.senderFrame === window.webContents.mainFrame &&
-    window.webContents.getURL().split(/[?#]/, 1)[0].replace(/\/$/, "") === origin + "/staging-room";
-
-  // Share a live check across concurrent requests from the same page.
-  for (const [action, handle] of Object.entries(handlers)) {
-    ipcMain.handle("staging-room:" + action, async (event, ...args) => {
-      if (!fromStagingRoom(event)) throw new Error("Staging Room access denied.");
-      authorization ??= checkDesktopAccess(browserSession, "/api/auth/features/staging-room")
-        .finally(() => { authorization = undefined; });
-      if (!await authorization || !fromStagingRoom(event)) throw new Error("Staging Room access denied.");
-      const log = (level, message) => {
-        if (fromStagingRoom(event)) {
-          event.sender.send("staging-room:log", { at: new Date().toISOString(), level, text: redact(message) });
-        }
-      };
-      try {
-        return await handle(log, ...args);
-      } catch (error) {
-        throw new Error(redact(error instanceof Error ? error.message : String(error)));
-      }
-    });
-  }
-}
-
-function redact(message) {
-  return String(message).replace(/mongodb(?:\+srv)?:\/\/[^\s"'<>]+/gi, "[database address]");
-}
-
 function openInBrowser(url) {
   const target = new URL(url);
   if (target.protocol === "https:" && !target.username && !target.password) {
@@ -268,7 +210,6 @@ app.whenReady().then(async () => {
       contextIsolation: true,
       nodeIntegration: false,
       preload: path.join(__dirname, "preload.cjs"),
-      additionalArguments: stagingRoomHome ? ["--roza-staging-room-enabled"] : [],
     },
   });
   mainWindow = window;
@@ -289,7 +230,6 @@ app.whenReady().then(async () => {
     app, ipcMain, dialog, clipboard, shell, window, origin,
     checkAdmin: () => checkDesktopAccess(browserSession, "/api/dev-board/access"),
   });
-  registerStagingRoom(window, browserSession);
   window.webContents.setWindowOpenHandler(({ url }) => {
     openInBrowser(url);
     return { action: "deny" };

@@ -1,7 +1,7 @@
 {
   "stagingRoom": {
     "title": "Staging Room",
-    "unavailable": "Staging Room is available to administrators in ROZA Desktop with a configured project folder.",
+    "unavailable": "Staging Room is available to administrators.",
     "back": "Back to ROZA"
   },
   "writingTasks": "Tasks",

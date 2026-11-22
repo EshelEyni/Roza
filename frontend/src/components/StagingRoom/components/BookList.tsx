@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { BookListPrefs, BookSummary } from "../../../../../shared/types/stagingRoom";
 import { formatDate } from "./format";
 
@@ -8,7 +8,8 @@ export function BookList({
   selected,
   onSelect,
   onRefresh,
-  onOpenFolder,
+  onImport,
+  importing,
   onPrefsChange,
 }: {
   books: BookSummary[];
@@ -16,9 +17,11 @@ export function BookList({
   selected?: string;
   onSelect: (slug: string) => void;
   onRefresh: () => void;
-  onOpenFolder: () => void;
+  onImport: (files: File[]) => void;
+  importing: boolean;
   onPrefsChange: (prefs: BookListPrefs) => void;
 }) {
+  const folderInput = useRef<HTMLInputElement | null>(null);
   const [dragging, setDragging] = useState<string>();
   const [dropTarget, setDropTarget] = useState<{ slug: string; after: boolean }>();
 
@@ -49,11 +52,23 @@ export function BookList({
       <div className="sidebar-head">
         <h3>Books</h3>
         <div className="row gap-xs">
-          <button className="btn-ghost sm" onClick={onRefresh} title="Reload from disk">
+          <button className="btn-ghost sm" onClick={onRefresh} aria-label="Refresh projects" title="Refresh projects">
             ↻
           </button>
-          <button className="btn-ghost sm" onClick={onOpenFolder}>
-            Folder
+          <input
+            hidden
+            type="file"
+            ref={element => {
+              folderInput.current = element;
+              element?.setAttribute("webkitdirectory", "");
+            }}
+            onChange={event => {
+              onImport(Array.from(event.currentTarget.files ?? []));
+              event.currentTarget.value = "";
+            }}
+          />
+          <button className="btn-ghost sm" disabled={importing} onClick={() => folderInput.current?.click()}>
+            {importing ? "Importing…" : "Import folder"}
           </button>
         </div>
       </div>
@@ -130,7 +145,7 @@ export function BookList({
             </li>
           );
         })}
-        {!books.length && <li className="muted pad">No books in the books folder.</li>}
+        {!books.length && <li className="muted pad">No projects in Staging Room.</li>}
         {books.length > 0 && !visible.length && <li className="muted pad">All books are hidden.</li>}
       </ul>
     </aside>

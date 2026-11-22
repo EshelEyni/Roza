@@ -1,5 +1,3 @@
-import fs from "fs";
-import path from "path";
 import type {
   BookDetail,
   BookSummary,
@@ -9,7 +7,7 @@ import type {
   LocalBookFile,
   LocalChapterFile,
   PublishState,
-} from "../../../shared/types/stagingRoom";
+} from "../../../../shared/types/stagingRoom";
 import { asSlate } from "./fullData";
 import { checkSlate, countWords, elementText, plainParagraphs } from "./slate";
 
@@ -22,7 +20,6 @@ export interface LoadedChapter {
 
 export interface LoadedBook {
   slug: string;
-  dir: string;
   book: LocalBookFile;
   chapters: LoadedChapter[];
   state: PublishState;
@@ -31,60 +28,8 @@ export interface LoadedBook {
   bookMtimeMs?: number;
 }
 
-export const booksDir = (root: string) => path.join(root, "books");
-
-const readJson = <T>(file: string): T => JSON.parse(fs.readFileSync(file, "utf8")) as T;
-
-export function listSlugs(root: string): string[] {
-  const dir = booksDir(root);
-  if (!fs.existsSync(dir)) return [];
-  return fs
-    .readdirSync(dir, { withFileTypes: true })
-    .filter((d) => d.isDirectory() && fs.existsSync(path.join(dir, d.name, "book.json")))
-    .map((d) => d.name)
-    .sort();
-}
-
-function safeSlug(root: string, slug: string): string {
-  const dir = path.resolve(booksDir(root), slug);
-  if (path.dirname(dir) !== path.resolve(booksDir(root))) throw new Error(`Invalid book: ${slug}`);
-  return dir;
-}
-
-export function loadBook(root: string, slug: string): LoadedBook {
-  const dir = safeSlug(root, slug);
-  const book = readJson<LocalBookFile>(path.join(dir, "book.json"));
-  const errors: string[] = [];
-  const chaptersDir = path.join(dir, "chapters");
-  const chapters: LoadedChapter[] = [];
-  if (fs.existsSync(chaptersDir)) {
-    for (const file of fs.readdirSync(chaptersDir).filter((f) => f.endsWith(".json"))) {
-      try {
-        const full = path.join(chaptersDir, file);
-        chapters.push({ file, data: readJson<LocalChapterFile>(full), mtimeMs: fs.statSync(full).mtimeMs });
-      } catch (e) {
-        errors.push(`${file}: not valid JSON (${(e as Error).message})`);
-      }
-    }
-  }
-  chapters.sort((a, b) => (a.data.number ?? 0) - (b.data.number ?? 0) || a.file.localeCompare(b.file));
-  const statePath = path.join(dir, ".publish-state.json");
-  const state = fs.existsSync(statePath) ? readJson<PublishState>(statePath) : {};
-  errors.push(...validateBook(book, chapters));
-  const bookMtimeMs = fs.statSync(path.join(dir, "book.json")).mtimeMs;
-  return { slug, dir, book, chapters, state, errors, bookMtimeMs };
-}
-
 export function saveState(loaded: LoadedBook, state: PublishState) {
-  fs.writeFileSync(path.join(loaded.dir, ".publish-state.json"), JSON.stringify(state, null, 2) + "\n");
-}
-
-export function writeBackup(loaded: LoadedBook, prodDoc: unknown): string {
-  const dir = path.join(loaded.dir, "backups");
-  fs.mkdirSync(dir, { recursive: true });
-  const file = path.join(dir, `prod-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
-  fs.writeFileSync(file, JSON.stringify(prodDoc, null, 2));
-  return file;
+  loaded.state = state;
 }
 
 const HEX = /^#[0-9a-f]{6}$/i;

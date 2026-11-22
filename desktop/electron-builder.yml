@@ -4,7 +4,6 @@ files:
   - main.cjs
   - preload.cjs
   - dev-board/*.cjs
-  - staging-room-build/**/*
   - kokoro/*.cjs
   - assets/badges/*.png
   - renderer/**/*

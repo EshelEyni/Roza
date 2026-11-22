@@ -17,7 +17,7 @@ import type {
   RichText,
   SlateElement,
   TaskBoard,
-} from "../../../shared/types/stagingRoom";
+} from "../../../../shared/types/stagingRoom";
 import { countWords, plainParagraphs, toSlate } from "./slate";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */

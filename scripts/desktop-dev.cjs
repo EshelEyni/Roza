@@ -109,7 +109,6 @@ function stopTree(child) {
     log("Page files are up to date (use -- --rebuild to force a build).");
   }
 
-  npm(["run", "build:staging-room"], desktop);
   log(`Opening Roza (API: http://localhost:${PORT}, app data: %APPDATA%\\${DATA_DIR}).`);
   const app = spawn(electron, [desktop, `--api-origin=http://localhost:${PORT}`, `--data-dir=${DATA_DIR}`], { cwd: desktop, stdio: "inherit" });
   app.once("exit", (code) => {

@@ -1,4 +1,4 @@
-import type { DiffLine } from "../../../shared/types/stagingRoom";
+import type { DiffLine } from "../../../../shared/types/stagingRoom";
 
 const norm = (s: string) => s.replace(/\s+/g, " ").trim();
 

@@ -1,4 +1,4 @@
-import type { SlateElement, SlateText } from "../../../shared/types/stagingRoom";
+import type { SlateElement, SlateText } from "../../../../shared/types/stagingRoom";
 
 const isText = (n: SlateText | SlateElement): n is SlateText =>
   typeof (n as SlateText).text === "string" && !(n as SlateElement).children;

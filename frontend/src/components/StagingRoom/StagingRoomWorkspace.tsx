@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { BookDetail, BookListPrefs, BookSummary, ConnectionInfo, LogLine, ProdStatus, UploadResult } from "../../../../shared/types/stagingRoom";
 import { api, errorText } from "./api";
+import { importProjects } from "./importProjects";
 import "./staging-room.scss";
 import { TopBar, Tab } from "./components/TopBar";
 import { BookList } from "./components/BookList";
@@ -16,6 +17,7 @@ export function StagingRoomWorkspace() {
   const [tab, setTab] = useState<Tab>("books");
   const [books, setBooks] = useState<BookSummary[]>([]);
   const [bookLoadError, setBookLoadError] = useState("");
+  const [importing, setImporting] = useState(false);
   const [listPrefs, setListPrefs] = useState<BookListPrefs>({ order: [], hidden: [], showHidden: false });
   const [slug, setSlug] = useState<string>();
   const [book, setBook] = useState<BookDetail>();
@@ -106,6 +108,21 @@ export function StagingRoomWorkspace() {
     return () => window.removeEventListener("focus", onFocus);
   }, [slug, compare]);
 
+  async function importFolder(files: File[]) {
+    if (!files.length || importing) return;
+    setImporting(true);
+    try {
+      const { created, existing, failures } = await importProjects(files);
+      addLog("info", `Imported ${created} project(s). ${existing} already existed.`);
+      for (const failure of failures) addLog("error", failure);
+      await refreshBooks();
+    } catch (error) {
+      addLog("error", errorText(error));
+    } finally {
+      setImporting(false);
+    }
+  }
+
   const changeListPrefs = async (next: BookListPrefs) => {
     // Update the screen right away, then save to books/_list.json.
     setListPrefs(next);
@@ -147,6 +164,7 @@ export function StagingRoomWorkspace() {
         await api.upload(slug!, {
           overwriteChapters: chapterKeys.filter((k) => k.endsWith(".json")),
           updateEntities: entityKeys,
+          reviewToken: status?.reviewToken,
         }),
       );
     });
@@ -154,7 +172,7 @@ export function StagingRoomWorkspace() {
   const doPull = (chapterKeys: string[], entityKeys: string[]) =>
     run("pull", async () => {
       setLastResult(undefined);
-      await api.pull(slug!, { chapters: chapterKeys, entities: entityKeys });
+      await api.pull(slug!, { chapters: chapterKeys, entities: entityKeys, reviewToken: status?.reviewToken });
     });
 
   return (
@@ -169,7 +187,8 @@ export function StagingRoomWorkspace() {
             selected={slug}
             onSelect={setSlug}
             onRefresh={refreshBooks}
-            onOpenFolder={() => { void api.openBooksFolder().catch((error) => addLog("error", errorText(error))); }}
+            onImport={importFolder}
+            importing={importing}
           />
           <main className="main">
             {book ? (
@@ -213,7 +232,7 @@ function EmptyState({ loading, hasBooks }: { loading: boolean; hasBooks: boolean
       <h2>{loading ? "Loading…" : hasBooks ? "Pick a book" : "No books yet"}</h2>
       {!loading && !hasBooks && (
         <p>
-          Put a book in <code>books/&lt;name&gt;/book.json</code> with chapters in <code>books/&lt;name&gt;/chapters/</code>.
+          Choose <strong>Import folder</strong> to bring existing projects into Staging Room.
         </p>
       )}
     </div>

@@ -146,13 +146,13 @@ export function SyncDialog({
         <p className="muted">
           {mode === "push"
             ? "Sends your local changes to Roza. Roza's current book is backed up first."
-            : "Copies Roza's changes into your local files. Your local files are backed up first. Nothing in Roza changes."}
+            : "Copies selected live changes into the staged project after saving a snapshot."}
         </p>
 
         {!status.bookExists && mode === "push" ? (
           <p>The book isn't in Roza yet. Push creates it with every local chapter and story element.</p>
         ) : nothing ? (
-          <p>{mode === "push" ? "Roza already has all your local changes." : "Your local files already have everything from Roza."}</p>
+          <p>{mode === "push" ? "Roza already has all your local changes." : "The staged project already has everything from Roza."}</p>
         ) : (
           <ul className="pick-list">
             {items.map((it) => (

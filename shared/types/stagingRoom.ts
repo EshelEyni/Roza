@@ -188,6 +188,7 @@ export interface ProdChapterStatus {
 }
 
 export interface ProdStatus {
+  reviewToken?: string;
   dbName: string;
   host: string;
   bookExists: boolean;
@@ -211,6 +212,7 @@ export interface ProdStatus {
 }
 
 export interface PullOptions {
+  reviewToken?: string;
   /** chapter keys (file name, or "prod:<id>") */
   chapters: string[];
   /** "kind:name", or "book:settings" for the book's name, word goal and task board */
@@ -224,6 +226,7 @@ export interface PullResult {
 }
 
 export interface UploadOptions {
+  reviewToken?: string;
   /** existing story elements ("kind:name") whose Roza version should be replaced by the local one; "book:settings" for the book's own fields */
   updateEntities?: string[];
   /** chapter files whose prod text should be replaced by the local version */
@@ -256,7 +259,16 @@ export interface LogLine {
   text: string;
 }
 
+export interface StagingProjectInput {
+  slug: string;
+  book: LocalBookFile;
+  chapters: { file: string; data: LocalChapterFile; mtimeMs?: number }[];
+  bookMtimeMs?: number;
+  state?: PublishState;
+}
+
 export interface StagingRoomApi {
+  importProject(project: StagingProjectInput): Promise<{ created: boolean }>;
   listBooks(): Promise<BookSummary[]>;
   getListPrefs(): Promise<BookListPrefs>;
   setListPrefs(prefs: BookListPrefs): Promise<BookListPrefs>;
@@ -267,6 +279,5 @@ export interface StagingRoomApi {
   prodStatus(slug: string): Promise<ProdStatus>;
   upload(slug: string, options: UploadOptions): Promise<UploadResult>;
   pull(slug: string, options: PullOptions): Promise<PullResult>;
-  openBooksFolder(slug?: string): Promise<void>;
   onLog(listener: (line: LogLine) => void): () => void;
 }

@@ -56,7 +56,7 @@ export function BookView(p: Props) {
           </div>
         </div>
         <div className="actions">
-          <button className="btn-ghost" onClick={p.onCompare} disabled={working} title="Re-read the local files and compare with Roza">
+          <button className="btn-ghost" onClick={p.onCompare} disabled={working} title="Compare this staged project with the live manuscript">
             {p.busy === "status" || p.busy === "load" ? "Comparing…" : "Compare"}
           </button>
           <button className="btn-secondary" onClick={p.onPull} disabled={working || hasErrors || !status?.bookExists}>

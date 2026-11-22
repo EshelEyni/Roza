@@ -1,6 +1,4 @@
 import crypto from "crypto";
-import fs from "fs";
-import path from "path";
 import mongoose, { Connection, Model, Types } from "mongoose";
 import type {
   ChapterAnnotation,
@@ -12,9 +10,9 @@ import type {
   TaskBoard,
   UploadOptions,
   UploadResult,
-} from "../../../shared/types/stagingRoom";
-import { loadBook, LoadedBook, saveState, writeBackup } from "./bookFiles";
-import { DbConfig, loadDbConfig, maskHost } from "./config";
+} from "../../../../shared/types/stagingRoom";
+import { LoadedBook, saveState } from "./bookFiles";
+import type { Backup, DbInfo } from "./storageTypes";
 import { diffParagraphs } from "./diff";
 import {
   asSlate,
@@ -58,30 +56,6 @@ const ENTITY_KINDS: EntityKind[] = ["characters", "themes", "plotlines", "notes"
 const live = (items: ProdItem[] | undefined) => (items || []).filter((x) => x && x.isArchived !== true);
 const plain = (v: unknown) => JSON.parse(JSON.stringify(v));
 const toObj = (doc: mongoose.Document) => doc.toObject({ virtuals: false, transform: false } as any) as ProdBook;
-
-export async function withDb<T>(root: string, fn: (conn: Connection, cfg: DbConfig) => Promise<T>): Promise<T> {
-  const cfg = loadDbConfig(root);
-  const conn = await mongoose
-    .createConnection(cfg.url, { dbName: cfg.dbName, serverSelectionTimeoutMS: 15000 })
-    .asPromise();
-  try {
-    return await fn(conn, cfg);
-  } finally {
-    await conn.close();
-  }
-}
-
-export async function testConnection(root: string): Promise<{ ok: boolean; message: string }> {
-  try {
-    return await withDb(root, async (conn, cfg) => {
-      await conn.db!.admin().ping();
-      const books = await conn.collection("books").estimatedDocumentCount();
-      return { ok: true, message: `Connected to "${cfg.dbName}" on ${maskHost(cfg.url)} (${books} books).` };
-    });
-  } catch (e) {
-    return { ok: false, message: (e as Error).message };
-  }
-}
 
 /* ---------- building Roza-shaped items from local files ---------- */
 
@@ -236,28 +210,21 @@ function buildNewBook(loaded: LoadedBook, Book: Model<any>) {
 
 /** After creating a book: task cards now point at the new chapter ids; write that back to the local files. */
 function writeBoardsBack(loaded: LoadedBook, boards: { book?: TaskBoard; chapters: (TaskBoard | undefined)[] }) {
-  const save = (file: string, board: TaskBoard) => {
-    const data = JSON.parse(fs.readFileSync(file, "utf8"));
-    fs.writeFileSync(file, JSON.stringify({ ...data, taskBoard: board }, null, 2) + "\n");
-  };
   if (boards.book && hashOf(boards.book) !== hashOf(loaded.book.taskBoard)) {
-    save(path.join(loaded.dir, "book.json"), boards.book);
     loaded.book.taskBoard = boards.book;
   }
   loaded.chapters.forEach((c, i) => {
     const board = boards.chapters[i];
     if (!board || hashOf(board) === hashOf(c.data.taskBoard)) return;
-    save(path.join(loaded.dir, "chapters", c.file), board);
     c.data.taskBoard = board;
   });
 }
 
 /** Full local check with Roza's schema and planning rules. No database needed. */
-export async function validateLocal(root: string, slug: string): Promise<string[]> {
-  const loaded = loadBook(root, slug);
+export async function validateProject(loaded: LoadedBook): Promise<string[]> {
   if (loaded.errors.length) return loaded.errors;
   try {
-    const Book = (mongoose.models.Book as Model<any>) || mongoose.model("Book", bookSchema, "books");
+    const Book = (mongoose.models.StagingRoomBook as Model<any>) || mongoose.model("StagingRoomBook", bookSchema, "books");
     const { doc, bookId } = buildNewBook(loaded, Book);
     await doc.validate();
     validatePlanning(plain(toObj(doc)), String(bookId));
@@ -428,12 +395,12 @@ function bookChangeOf(loaded: LoadedBook, prod: ProdBook | null): ProdStatus["bo
   return { direction, diff: diffParagraphs(bookLines(local), bookLines(remote)), summary: bookReport(local, remote) };
 }
 
-export function computeStatus(loaded: LoadedBook, prod: ProdBook | null, cfg: DbConfig): ProdStatus {
+export function computeStatus(loaded: LoadedBook, prod: ProdBook | null, cfg: DbInfo): ProdStatus {
   const matches = matchChapters(loaded, prod);
   const matchedIds = new Set(matches.filter((m) => m.prod).map((m) => String(m.prod!._id)));
   return {
     dbName: cfg.dbName,
-    host: maskHost(cfg.url),
+    host: cfg.host,
     bookExists: !!prod,
     prodBookId: prod ? String(prod._id) : undefined,
     prodUpdatedAt: prod?.updatedAt ? new Date(prod.updatedAt).toISOString() : undefined,
@@ -494,26 +461,6 @@ async function applyProdEdits(conn: Connection, loaded: LoadedBook, bookId: Type
   return plan.messages;
 }
 
-export async function prodStatus(root: string, slug: string): Promise<ProdStatus> {
-  const loaded = loadBook(root, slug);
-  if (loaded.errors.length) throw new Error(`Fix local errors first: ${loaded.errors[0]}`);
-  return withDb(root, async (conn, cfg) => computeStatus(loaded, await findProdBook(conn, loaded), cfg));
-}
-
-/* ---------- uploading ---------- */
-
-export async function upload(
-  root: string,
-  slug: string,
-  options: UploadOptions,
-  log: Logger = noLog,
-): Promise<UploadResult> {
-  const loaded = loadBook(root, slug);
-  if (loaded.errors.length) throw new Error(`Fix local errors first: ${loaded.errors[0]}`);
-
-  return withDb(root, (conn, cfg) => uploadWith(conn, cfg, loaded, options, log));
-}
-
 function logNotes(log: Logger, built: BuiltChapter[]) {
   const moved = built.reduce((n, b) => n + b.moved, 0);
   const detached = built.reduce((n, b) => n + b.detached, 0);
@@ -524,15 +471,15 @@ function logNotes(log: Logger, built: BuiltChapter[]) {
 /** Upload using an open connection (exported for tests). */
 export async function uploadWith(
   conn: Connection,
-  cfg: DbConfig,
+  cfg: DbInfo,
   loaded: LoadedBook,
   options: UploadOptions,
+  backup: Backup,
+  prod: ProdBook | null,
   log: Logger = noLog,
 ): Promise<UploadResult> {
-  log("info", `Connected to "${cfg.dbName}" on ${maskHost(cfg.url)}.`);
+  log("info", `Connected to "${cfg.dbName}" on ${cfg.host}.`);
   const Book = bookModelFor(conn) as Model<any>;
-  const prod = await findProdBook(conn, loaded);
-
   if (!prod) {
     log("info", `"${loaded.book.bookName}" is not in prod yet. Creating it.`);
     const { doc, bookId, chapterIds, boards } = buildNewBook(loaded, Book);
@@ -568,7 +515,7 @@ export async function uploadWith(
   }
 
   const bookId = prod._id as Types.ObjectId;
-  const backupPath = writeBackup(loaded, prod);
+  const backupPath = await backup("live", prod);
   log("info", `Backed up the current prod book to ${backupPath}`);
 
   // Story elements Roza doesn't have yet.
@@ -754,9 +701,6 @@ export async function uploadWith(
 function writeLocalFixes(loaded: LoadedBook, built: { m: ChapterMatch; b: BuiltChapter }[], log: Logger) {
   for (const { m, b } of built) {
     if (!b.localFix) continue;
-    const file = path.join(loaded.dir, "chapters", m.local.file);
-    const data = { ...JSON.parse(fs.readFileSync(file, "utf8")), ...b.localFix };
-    fs.writeFileSync(file, JSON.stringify(data, null, 2) + "\n");
     Object.assign(m.local.data, b.localFix);
     log("info", `Updated the note positions in chapters/${m.local.file} to match.`);
   }
@@ -765,7 +709,7 @@ function writeLocalFixes(loaded: LoadedBook, built: { m: ChapterMatch; b: BuiltC
 const zeroCounts = (): UploadResult["added"] => ({ chapters: 0, characters: 0, themes: 0, plotlines: 0, notes: 0 });
 
 /** After a push: remember chapter ids, and fingerprints of everything that is now the same on both sides. */
-function saveIds(loaded: LoadedBook, cfg: DbConfig, prod: ProdBook) {
+function saveIds(loaded: LoadedBook, cfg: DbInfo, prod: ProdBook) {
   const matches = matchChapters(loaded, prod);
   const fullPrints: Record<string, string> = {};
   for (const m of matches) {

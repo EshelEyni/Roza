@@ -1,15 +1,7 @@
-/**
- * Pull from Roza: copy the prod version of chapters, story elements and the book's own
- * fields back into the local books/<slug>/ files: every field Roza stores (text with
- * formatting, description, planning, notes, drafts, task boards). Local files are backed
- * up first to books/<slug>/local-backups/<time>/. Nothing in prod is changed.
- */
-import fs from "fs";
-import path from "path";
-import { Connection } from "mongoose";
-import type { EntityKind, LocalChapterFile, PullOptions, PullResult, SlateElement } from "../../../shared/types/stagingRoom";
-import { loadBook, LoadedBook, saveState } from "./bookFiles";
-import { DbConfig } from "./config";
+/** Pull selected live changes into the staged project. */
+import type { EntityKind, LocalChapterFile, PullOptions, PullResult } from "../../../../shared/types/stagingRoom";
+import { LoadedBook, saveState } from "./bookFiles";
+import type { Backup, DbInfo } from "./storageTypes";
 import {
   bookPrint,
   chapterPrint,
@@ -23,7 +15,7 @@ import {
   prodChapterContent,
   prodEntityContent,
 } from "./fullData";
-import { BOOK_SETTINGS_KEY, findProdBook, Logger, matchChapters, withDb } from "./sync";
+import { BOOK_SETTINGS_KEY, Logger, matchChapters } from "./sync";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type ProdItem = Record<string, any>;
@@ -32,44 +24,15 @@ const ENTITY_KINDS: EntityKind[] = ["characters", "themes", "plotlines", "notes"
 const live = (items: ProdItem[] | undefined) => (items || []).filter((x) => x && x.isArchived !== true);
 const noLog: Logger = () => undefined;
 
-/** Plain-text copy with *italic* / **bold** markers, matching the NN.txt files. */
-function slateToTxt(nodes: SlateElement[]): string {
-  const leaf = (n: any): string => {
-    if (typeof n?.text === "string" && !n.children) {
-      let t = n.text as string;
-      if (n.bold) t = `**${t}**`;
-      if (n.italic) t = `*${t}*`;
-      return t;
-    }
-    return (n?.children || []).map(leaf).join("");
-  };
-  return nodes.map(leaf).join("\n\n") + "\n";
-}
-
-function backupLocal(loaded: LoadedBook): string {
-  const dir = path.join(loaded.dir, "local-backups", new Date().toISOString().replace(/[:.]/g, "-"));
-  fs.mkdirSync(path.join(dir, "chapters"), { recursive: true });
-  fs.copyFileSync(path.join(loaded.dir, "book.json"), path.join(dir, "book.json"));
-  const chaptersDir = path.join(loaded.dir, "chapters");
-  if (fs.existsSync(chaptersDir))
-    for (const f of fs.readdirSync(chaptersDir)) fs.copyFileSync(path.join(chaptersDir, f), path.join(dir, "chapters", f));
-  return dir;
-}
-
-export async function pull(root: string, slug: string, options: PullOptions, log: Logger = noLog): Promise<PullResult> {
-  const loaded = loadBook(root, slug);
-  return withDb(root, (conn, cfg) => pullWith(conn, cfg, loaded, options, log));
-}
-
 /** Pull using an open connection (exported for tests). */
 export async function pullWith(
-  conn: Connection,
-  cfg: DbConfig,
+  cfg: DbInfo,
   loaded: LoadedBook,
   options: PullOptions,
+  backup: Backup,
+  prod: ProdItem | null,
   log: Logger = noLog,
 ): Promise<PullResult> {
-  const prod = await findProdBook(conn, loaded);
   if (!prod) throw new Error(`"${loaded.book.bookName}" is not in "${cfg.dbName}" yet. Nothing to pull.`);
   const wantChapters = new Set(options.chapters);
   const wantEntities = new Set(options.entities);
@@ -78,12 +41,10 @@ export async function pullWith(
     return { chapters: 0, entities: 0 };
   }
 
-  const backupDir = backupLocal(loaded);
-  log("info", `Backed up the local files to ${backupDir}`);
+  const backupDir = await backup("staged", { book: loaded.book, chapters: loaded.chapters, state: loaded.state });
+  log("info", `Saved a staged project snapshot ${backupDir}`);
 
   const names = liveNames(prod);
-  const chaptersDir = path.join(loaded.dir, "chapters");
-  fs.mkdirSync(chaptersDir, { recursive: true });
   const state = {
     ...loaded.state,
     chapters: { ...(loaded.state.chapters || {}) },
@@ -115,8 +76,10 @@ export async function pullWith(
   };
 
   const writeChapter = (file: string, data: LocalChapterFile, prodId: string) => {
-    fs.writeFileSync(path.join(chaptersDir, file), JSON.stringify(data, null, 2) + "\n");
-    fs.writeFileSync(path.join(chaptersDir, file.replace(/\.json$/, ".txt")), slateToTxt(data.text));
+    const index = loaded.chapters.findIndex(chapter => chapter.file === file);
+    const chapter = { file, data, mtimeMs: Date.now() };
+    if (index < 0) loaded.chapters.push(chapter);
+    else loaded.chapters[index] = chapter;
     state.chapters[file] = prodId;
     state.fullPrints[file] = chapterPrint(localChapterContent(data));
     pulledChapters++;
@@ -138,18 +101,18 @@ export async function pullWith(
     if (usedNumbers.has(number)) number = Math.max(0, ...usedNumbers) + 1;
     usedNumbers.add(number);
     let file = `${pad(number)}.json`;
-    while (fs.existsSync(path.join(chaptersDir, file))) file = `${pad(number)}-${String(ch._id).slice(-4)}.json`;
+    if (loaded.chapters.some(chapter => chapter.file === file)) file = `${pad(number)}-${String(ch._id).slice(-4)}.json`;
     const data = fromProd(ch, number);
     writeChapter(file, data, String(ch._id));
     log("ok", `Pulled new chapter "${data.name}" into chapters/${file}.`);
   });
 
-  // 3. book.json: story elements and the book's own fields. Other book.json fields stay as they are.
-  const bookPath = path.join(loaded.dir, "book.json");
-  const book = JSON.parse(fs.readFileSync(bookPath, "utf8"));
+  const book = loaded.book;
+  const editableBook = book as Record<EntityKind, Record<string, ReturnType<typeof entityToLocal>> | undefined>;
   // Story elements a pulled chapter links to must exist locally, or the chapter would not validate.
   for (const key of linked) {
-    const [kind, name] = [key.slice(0, key.indexOf(":")), key.slice(key.indexOf(":") + 1)];
+    const [rawKind, name] = [key.slice(0, key.indexOf(":")), key.slice(key.indexOf(":") + 1)];
+    const kind = rawKind as EntityKind;
     if (!(name in (book[kind] || {})) && !wantEntities.has(key)) {
       wantEntities.add(key);
       log("info", `Also pulling ${kind.replace(/s$/, "")} "${name}", which a pulled chapter links to.`);
@@ -161,8 +124,8 @@ export async function pullWith(
     for (const item of live(prod[kind])) {
       const key = `${kind}:${item.name}`;
       if (!wantEntities.has(key)) continue;
-      book[kind] = book[kind] || {};
-      book[kind][item.name] = entityToLocal(kind, item);
+      const entries = editableBook[kind] ?? (editableBook[kind] = {});
+      Object.defineProperty(entries, item.name, { value: entityToLocal(kind, item), enumerable: true, writable: true, configurable: true });
       state.fullEntityPrints[key] = entityPrint(prodEntityContent(kind, item));
       pulledEntities++;
       bookChanged = true;
@@ -182,7 +145,7 @@ export async function pullWith(
     pulledEntities++;
     log("ok", "Pulled the book's name, word goal and task board into book.json.");
   }
-  if (bookChanged) fs.writeFileSync(bookPath, JSON.stringify(book, null, 2) + "\n");
+  if (bookChanged) loaded.bookMtimeMs = Date.now();
 
   saveState(loaded, {
     ...state,
