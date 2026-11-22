@@ -47,6 +47,19 @@ describe("review diff blocks", () => {
     expect(parts[1].items?.[0].change).toBe("added");
     expect(parts[2].items?.[0].change).toBe("removed");
   });
+
+  it("names the promoted draft instead of showing its id", () => {
+    const draft = (id: string, name: string) => ({ id, chapterId: "c", name, text: [], createdAt: "", updatedAt: "" });
+    const base = { name: "One", format: "prose", planning: {}, text: [para("Hi.")] };
+    const parts = chapterParts(
+      { ...base, mainSourceDraftId: "d2", drafts: [draft("d2", "Version 2")] },
+      { ...base, mainSourceDraftId: "gone", drafts: [] },
+    );
+    const info = parts.find(p => p.id === "details");
+    expect(info?.label).toBe("Chapter info");
+    const lines = info?.blocks?.flatMap(b => (b.kind === "change" ? [...b.staging, ...b.studio].map(l => l.text) : []));
+    expect(lines).toEqual(["Promoted to Main from draft “Version 2”", "Promoted to Main from a draft that is no longer in this chapter"]);
+  });
 });
 
 function project(text: string[], annotations: LocalChapterFile["annotations"]): LoadedBook {

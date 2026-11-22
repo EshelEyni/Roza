@@ -216,8 +216,14 @@ function detailLines(c: ChapterContent): string[] {
     `Title: ${c.name}`,
     `Format: ${c.format}`,
     ...slateLines(c.description, "Description: "),
-    ...(c.mainSourceDraftId ? [`Main text comes from draft ${c.mainSourceDraftId}`] : []),
+    ...(c.mainSourceDraftId ? [`Promoted to Main from ${promotedName(c)}`] : []),
   ];
+}
+
+/** Writing Studio's "Promoted to Main" draft, by name. The id alone means nothing to the author. */
+function promotedName(c: ChapterContent): string {
+  const draft = c.drafts?.find((d) => d.id === c.mainSourceDraftId);
+  return draft ? `draft “${draft.name}”` : "a draft that is no longer in this chapter";
 }
 
 const planningLines = (c: ChapterContent) =>
@@ -249,7 +255,7 @@ export function chapterParts(staging: ChapterContent | null, studio: ChapterCont
           ),
         )
       : undefined,
-    linePart("details", "Details", detailLines(a), detailLines(b)),
+    linePart("details", "Chapter info", detailLines(a), detailLines(b)),
     linePart("planning", "Planning", planningLines(a), planningLines(b)),
     whole || a.taskBoard !== undefined ? linePart("tasks", "Tasks", taskBoardLines(a.taskBoard), taskBoardLines(b.taskBoard)) : undefined,
   ];

@@ -316,7 +316,7 @@ export function chapterReport(local: ChapterContent, prod: ChapterContent): stri
     planningReport(local.planning, prod.planning),
     listReport(local.annotations, prod.annotations, "Notes"),
     listReport(local.drafts, prod.drafts, "Drafts"),
-    (local.mainSourceDraftId || "") !== (prod.mainSourceDraftId || "") ? "Main text source draft differs" : undefined,
+    (local.mainSourceDraftId || "") !== (prod.mainSourceDraftId || "") ? "Promoted-to-Main draft differs" : undefined,
     hashOf(local.taskBoard) !== hashOf(prod.taskBoard) ? "Task board differs" : undefined,
   ].filter((x): x is string => !!x);
 }
