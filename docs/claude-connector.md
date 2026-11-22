@@ -157,6 +157,8 @@ Claude connects to ROZA from Anthropic's cloud for every Claude app, including t
 
 ## Testing
 
+For a step-by-step manual test with real Claude, see [claude-connector-testing.md](claude-connector-testing.md).
+
 - Converter unit tests: `npx jest src/mcp/slateMarkdown` (in `backend/`).
 - End-to-end test against a real database. It covers sign-in, every tool, refusals, backups and restore, the body limit and token rotation. It also checks that the connector never opens a collection outside the list above. It refuses to run on a database whose name contains `prod`:
 

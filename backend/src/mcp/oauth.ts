@@ -10,7 +10,7 @@ import type { ConnectorDb } from "./connectorDb";
 // short-lived bearer token (PKCE S256 only). Tokens are stored as HMACs keyed by
 // MCP_TOKEN_SECRET, so changing that secret revokes every token at once.
 
-export const SCOPE = "roza.chapters";
+export const SCOPE = "roza.connector";
 const CODE_TTL = 5 * 60 * 1000;
 export const ACCESS_TTL = 60 * 60 * 1000;
 const REFRESH_TTL = 30 * 24 * 60 * 60 * 1000;
