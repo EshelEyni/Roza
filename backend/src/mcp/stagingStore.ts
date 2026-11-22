@@ -1,11 +1,12 @@
 import { createHash, randomBytes } from "node:crypto";
 import { mongo } from "mongoose";
 const { ObjectId } = mongo;
-import type { LocalBookFile, LocalChapterFile, PublishState, RichText, SlateElement } from "../../../shared/types/stagingRoom";
+import type { HistoryEvent, LocalBookFile, LocalChapterFile, PublishState, RichText, SlateElement } from "../../../shared/types/stagingRoom";
 import type { ConnectorDb } from "./connectorDb";
 import { ConnectorError } from "./connectorError";
 import { markdownToSlate, slateToMarkdown } from "./slateMarkdown";
 import { LoadedBook, LoadedChapter, validateBook } from "../services/stagingRoom/bookFiles";
+import { addEvent, changedKeys } from "../services/stagingRoom/history";
 import { validateProject } from "../services/stagingRoom/sync";
 import { countWords } from "../services/stagingRoom/slate";
 
@@ -26,6 +27,8 @@ type Project = {
   bookMtimeMs?: number;
   state: LoadedBook["state"];
   lease?: { id: string; until: Date };
+  /** Staging Room history, newest last (services/stagingRoom/history.ts) */
+  history?: HistoryEvent[];
 };
 type Snapshot = { source: "claude"; reason: string; file?: string; chapter?: LocalChapterFile; book?: LocalBookFile };
 type Backup = { reason: string; snapshot: Snapshot };
@@ -88,7 +91,8 @@ function checkSlug(value: string) {
   return value;
 }
 
-export function createStagingStore(db: ConnectorDb, owner: string) {
+/** clientId is the connector app (Claude, ChatGPT, ...). History shows it as the source of each change. */
+export function createStagingStore(db: ConnectorDb, owner: string, clientId?: string) {
   const projects = () => db.stagingProjects();
 
   async function load(slug: string): Promise<Project> {
@@ -124,7 +128,7 @@ export function createStagingStore(db: ConnectorDb, owner: string) {
   // Applies a change to a copy of the project, validates it like the Staging
   // Room does, saves backups, then writes it only if nobody changed the project
   // in the meantime and it is not syncing.
-  async function mutate<T>(slug: string, change: (row: Project, backups: Backup[]) => T) {
+  async function mutate<T>(slug: string, summary: string, change: (row: Project, backups: Backup[]) => T) {
     const row = await load(slug);
     if (row.lease && new Date(row.lease.until) > new Date())
       throw new ConnectorError(`"${slug}" is syncing right now. Try again in a few minutes.`);
@@ -147,6 +151,13 @@ export function createStagingStore(db: ConnectorDb, owner: string) {
       });
       backupIds.push(String(inserted.insertedId));
     }
+    const history = addEvent(row.history, {
+      source: "connector",
+      ...(clientId ? { clientId } : {}),
+      summary,
+      keys: changedKeys(row, draft),
+      ...(backupIds[0] ? { backupId: backupIds[0], backupScope: "item" as const } : {}),
+    });
     const revision = row.revision ?? 0;
     const saved = await projects().updateOne(
       {
@@ -157,7 +168,7 @@ export function createStagingStore(db: ConnectorDb, owner: string) {
           revision === 0 ? { $or: [{ revision: 0 }, { revision: { $exists: false } }] } : { revision },
         ],
       } as never,
-      { $set: { book: draft.book, chapters: draft.chapters, bookMtimeMs: draft.bookMtimeMs }, $inc: { revision: 1 } },
+      { $set: { book: draft.book, chapters: draft.chapters, bookMtimeMs: draft.bookMtimeMs, history }, $inc: { revision: 1 } },
       { ignoreUndefined: true },
     );
     if (!saved.matchedCount)
@@ -241,6 +252,7 @@ export function createStagingStore(db: ConnectorDb, owner: string) {
   async function insertProject(row: Project, what: string) {
     const errors = await validateProject(loaded(row));
     if (errors.length) throw new ConnectorError(`Not ${what}: ${errors[0]}`);
+    row.history = addEvent([], { source: "connector", ...(clientId ? { clientId } : {}), summary: `${what === "created" ? "Created" : "Imported"} the project`, keys: [] });
     try {
       await projects().insertOne(row as never);
     } catch (error) {
@@ -312,7 +324,7 @@ export function createStagingStore(db: ConnectorDb, owner: string) {
     const slate = (fromMarkdown ? markdownToSlate(input.text as string) : input.text) as LocalChapterFile["text"];
     if (input.file !== undefined && (input.mode !== "create" || !/^[^/\\\x00-\x1f]+\.json$/i.test(input.file)))
       throw new ConnectorError('file is only for mode "create" and must look like 01.json.');
-    return mutate(input.slug, (row, backups) => {
+    return mutate(input.slug, input.mode === "create" ? `Added chapter ${input.number}` : `Replaced the text of chapter ${input.number}`, (row, backups) => {
       const now = Date.now();
       const existing = row.chapters.filter(chapter => chapter.data.number === input.number);
       if (input.mode === "create") {
@@ -354,7 +366,7 @@ export function createStagingStore(db: ConnectorDb, owner: string) {
     const { slug, number, ...changes } = input;
     const keys = Object.keys(changes).filter(key => (changes as Record<string, unknown>)[key] !== undefined);
     if (!keys.length) throw new ConnectorError("Nothing to change.");
-    return mutate(slug, (row, backups) => {
+    return mutate(slug, `Edited chapter ${number}: ${keys.join(", ")}`, (row, backups) => {
       const chapter = findChapter(row, number);
       backups.push({
         reason: `Before Claude edited chapter ${number} details`,
@@ -382,7 +394,7 @@ export function createStagingStore(db: ConnectorDb, owner: string) {
   }
 
   async function removeChapter(slug: string, number: number) {
-    return mutate(slug, (row, backups) => {
+    return mutate(slug, `Removed chapter ${number}`, (row, backups) => {
       const chapter = findChapter(row, number);
       backups.push({
         reason: `Before Claude removed chapter ${number}`,
@@ -394,7 +406,7 @@ export function createStagingStore(db: ConnectorDb, owner: string) {
   }
 
   async function setChapterOrder(slug: string, order: number[]) {
-    return mutate(slug, row => {
+    return mutate(slug, "Changed the chapter order", row => {
       const current = row.chapters.map(c => c.data.number).sort((a, b) => a - b);
       const given = [...order].sort((a, b) => a - b);
       if (new Set(order).size !== order.length || JSON.stringify(current) !== JSON.stringify(given))
@@ -411,7 +423,7 @@ export function createStagingStore(db: ConnectorDb, owner: string) {
   }
 
   async function updateBook(slug: string, changes: BookChanges) {
-    return mutate(slug, (row, backups) => {
+    return mutate(slug, `Edited the book: ${Object.keys(changes).filter(k => (changes as Record<string, unknown>)[k] !== undefined).join(", ")}`, (row, backups) => {
       const keys = Object.keys(changes).filter(key => (changes as Record<string, unknown>)[key] !== undefined);
       if (!keys.length) throw new ConnectorError("Nothing to change.");
       backups.push({
@@ -467,7 +479,7 @@ export function createStagingStore(db: ConnectorDb, owner: string) {
     if (!snapshot) throw new ConnectorError("No such backup for this project.");
     if (snapshot.source !== "claude")
       throw new ConnectorError("Only backups made by Claude can be restored here. Use the Staging Room for sync backups.");
-    return mutate(slug, (draft, backups) => {
+    return mutate(slug, "Restored a backup", (draft, backups) => {
       const now = Date.now();
       if (snapshot.book) {
         backups.push({ reason: "Before Claude restored a backup", snapshot: { source: "claude", reason: "restore", book: clone(draft.book) } });

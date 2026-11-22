@@ -39,6 +39,16 @@ export const api: StagingRoomApi = {
   prodStatus: slug => request(projectUrl(slug) + "/compare"),
   upload: (slug, options) => sync(projectUrl(slug) + "/push", options),
   pull: (slug, options) => sync(projectUrl(slug) + "/pull", options),
+  revert: (slug, options) => sync(projectUrl(slug) + "/revert", options),
+  setReview: async (slug, key, print, accepted) => {
+    await request(projectUrl(slug) + "/review", "PUT", { key, print, accepted });
+  },
+  history: slug => request(projectUrl(slug) + "/history"),
+  restore: async (slug, eventId) => {
+    await request(projectUrl(slug) + "/restore", "POST", { eventId });
+  },
+  getChapterDraft: (slug, file) => request(projectUrl(slug) + "/chapters/" + encodeURIComponent(file)),
+  saveChapterDraft: (slug, file, input) => request(projectUrl(slug) + "/chapters/" + encodeURIComponent(file), "PUT", input),
   onLog(listener) {
     listeners.add(listener);
     return () => { listeners.delete(listener); };
@@ -46,3 +56,6 @@ export const api: StagingRoomApi = {
 };
 
 export const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
+
+/** Writing Studio's AI Edit, pointed at the staged copy. */
+export const stagingAiEditUrl = (slug: string) => endpoint + projectUrl(slug) + "/ai-edit";

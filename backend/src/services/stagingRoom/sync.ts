@@ -13,19 +13,16 @@ import type {
 } from "../../../../shared/types/stagingRoom";
 import { LoadedBook, saveState } from "./bookFiles";
 import type { Backup, DbInfo } from "./storageTypes";
-import { diffParagraphs } from "./diff";
+import { bookParts, chapterParts, entityParts, reviewPrint } from "./review";
 import {
   asSlate,
   BookContent,
-  bookLines,
   bookPrint,
   bookReport,
   ChapterContent,
-  chapterLines,
   chapterPrint,
   chapterReport,
   clean,
-  entityLines,
   entityReport,
   entityPrint as fullEntityPrint,
   hashOf,
@@ -369,10 +366,11 @@ function entityChangesOf(loaded: LoadedBook, prod: ProdBook | null): NonNullable
     const localMap = localEntities(loaded, kind);
     const prodItems = live(prod?.[kind]);
     for (const name of Object.keys(localMap))
-      if (!prodItems.some((x) => x.name === name)) out.push({ kind, name, status: "new" });
+      if (!prodItems.some((x) => x.name === name))
+        out.push({ kind, name, status: "new", parts: entityParts(localEntityContent(kind, localMap[name]), null) });
     for (const item of prodItems) {
       if (!(item.name in localMap)) {
-        out.push({ kind, name: item.name, status: "prod-only" });
+        out.push({ kind, name: item.name, status: "prod-only", parts: entityParts(null, prodEntityContent(kind, item)) });
         continue;
       }
       const value = localMap[item.name];
@@ -382,7 +380,7 @@ function entityChangesOf(loaded: LoadedBook, prod: ProdBook | null): NonNullable
         name: item.name,
         status: "differs",
         direction: entityDirection(loaded, kind, value, item),
-        diff: diffParagraphs(entityLines(localEntityContent(kind, value)), entityLines(prodEntityContent(kind, item))),
+        parts: entityParts(localEntityContent(kind, value), prodEntityContent(kind, item)),
         summary: entityReport(localEntityContent(kind, value), prodEntityContent(kind, item)),
       });
     }
@@ -418,13 +416,22 @@ function bookChangeOf(loaded: LoadedBook, prod: ProdBook | null): ProdStatus["bo
     const untracked = BOOK_SETTING_FIELDS.every((f) => loaded.book[f] === undefined) && local.name === remote.name;
     direction = untracked ? "pull" : "conflict";
   }
-  return { direction, diff: diffParagraphs(bookLines(local), bookLines(remote)), summary: bookReport(local, remote) };
+  return { direction, parts: bookParts(local, remote), summary: bookReport(local, remote) };
+}
+
+/** Adds each change's review fingerprint. */
+function withPrints(status: ProdStatus): ProdStatus {
+  for (const c of status.chapters) if (c.parts) c.print = reviewPrint(c.key, c.parts);
+  for (const e of status.entityChanges || []) if (e.parts) e.print = reviewPrint(`${e.kind}:${e.name}`, e.parts);
+  if (status.bookChange?.parts) status.bookChange.print = reviewPrint(BOOK_SETTINGS_KEY, status.bookChange.parts);
+  return status;
 }
 
 export function computeStatus(loaded: LoadedBook, prod: ProdBook | null, cfg: DbInfo): ProdStatus {
   const matches = matchChapters(loaded, prod);
   const matchedIds = new Set(matches.filter((m) => m.prod).map((m) => String(m.prod!._id)));
-  return {
+  const names = liveNames(prod);
+  return withPrints({
     dbName: cfg.dbName,
     host: cfg.host,
     bookExists: !!prod,
@@ -434,7 +441,7 @@ export function computeStatus(loaded: LoadedBook, prod: ProdBook | null, cfg: Db
       ...matches.map((m) => ({
         key: m.local.file,
         direction: m.prod && m.differs ? directionOf(loaded, m) : undefined,
-        diff: m.prod && m.differs ? diffParagraphs(chapterLines(m.localContent), chapterLines(m.prodContent!)) : undefined,
+        parts: !m.prod ? chapterParts(m.localContent, null) : m.differs ? chapterParts(m.localContent, m.prodContent!) : undefined,
         summary: m.prod && m.differs ? chapterReport(m.localContent, m.prodContent!) : undefined,
         file: m.local.file,
         name: m.local.data.name,
@@ -449,6 +456,7 @@ export function computeStatus(loaded: LoadedBook, prod: ProdBook | null, cfg: Db
           name: c.name as string,
           status: "prod-only" as const,
           prodWords: countWords(c.text),
+          parts: chapterParts(null, prodChapterContent(c, names)),
         })),
     ],
     entities: ENTITY_KINDS.flatMap((kind) =>
@@ -461,7 +469,7 @@ export function computeStatus(loaded: LoadedBook, prod: ProdBook | null, cfg: Db
     edits: prod ? planProdEdits(loaded.book, prod, localNumbersOf(matches)).messages : [],
     entityChanges: entityChangesOf(loaded, prod),
     bookChange: bookChangeOf(loaded, prod),
-  };
+  });
 }
 
 const localNumbersOf = (matches: ChapterMatch[]) =>

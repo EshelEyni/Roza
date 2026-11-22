@@ -49,9 +49,9 @@ function requestSanitizer(req: Request, res: Response, next: NextFunction) {
     return next();
   // Dev Board validates its own fields and renders Markdown without raw HTML.
   if (/^\/api\/dev-board(?:\/|$)/.test(req.path)) return next();
-  // Staging project JSON is validated by the router and Slate renders its text as text.
-  if ((req.method === "POST" && /^\/api\/staging-room\/projects\/import\/?$/i.test(req.path)) ||
-      (req.method === "PUT" && /^\/api\/staging-room\/projects\/[^/]+\/draft\/?$/i.test(req.path))) return next();
+  // Staging Room validates its own input, Slate renders its text as text, and item
+  // keys must stay exact ("characters:Tom & Jerry"). HTML escaping would corrupt them.
+  if (/^\/api\/staging-room(?:\/|$)/.test(req.path)) return next();
   const { body } = req;
   const { params } = req;
   const { query } = req;

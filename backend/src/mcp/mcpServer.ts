@@ -77,7 +77,7 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
     },
   );
   const devBoard = createDevBoardStore(db, userId);
-  const staging = createStagingStore(db, userId);
+  const staging = createStagingStore(db, userId, clientId);
   const read = { readOnlyHint: true, openWorldHint: false };
   const write = { readOnlyHint: false, destructiveHint: false, openWorldHint: false };
   const overwrite = { readOnlyHint: false, destructiveHint: true, openWorldHint: false };

@@ -1,6 +1,5 @@
 import { useState } from "react";
-import type { DiffLine, ProdStatus } from "../../../../../shared/types/stagingRoom";
-import { DiffView } from "./DiffView";
+import type { ProdStatus } from "../../../../../shared/types/stagingRoom";
 
 interface Item {
   key: string;
@@ -9,7 +8,9 @@ interface Item {
   ticked: boolean;
   locked?: boolean;
   warn?: boolean;
-  diff?: DiffLine[];
+  accepted?: boolean;
+  /** who made the change, from History */
+  source?: string;
   /** short report of what differs */
   summary?: string[];
 }
@@ -24,40 +25,43 @@ export function pushItems(status: ProdStatus): Item[] {
   for (const c of status.chapters) {
     if (c.status === "new")
       items.push({ key: c.key, title: c.name, detail: `new chapter · ${c.localWords?.toLocaleString()} words`, ticked: true, locked: true });
-    else if (c.status === "differs" && c.direction !== "pull")
+    else if (c.status === "differs" && (c.direction !== "pull" || c.accepted))
       items.push({
         key: c.key,
         title: c.name,
         detail: c.direction === "push" ? "edited locally" : "changed in both places: ticking replaces Roza's version",
         ticked: c.direction === "push",
         warn: c.direction === "conflict",
-        diff: c.diff,
+        accepted: c.accepted,
+        source: c.source?.name,
       summary: c.summary,
       });
   }
   for (const e of status.entityChanges || []) {
     const key = `${e.kind}:${e.name}`;
     if (e.status === "new") items.push({ key, title: e.name, detail: `new ${kindLabel(e.kind)}`, ticked: true, locked: true });
-    else if (e.status === "differs" && e.direction !== "pull")
+    else if (e.status === "differs" && (e.direction !== "pull" || e.accepted))
       items.push({
         key,
         title: e.name,
         detail: `${kindLabel(e.kind)} · ${e.direction === "push" ? "edited locally" : "changed in both places: ticking replaces Roza's version"}`,
         ticked: e.direction === "push",
         warn: e.direction === "conflict",
-        diff: e.diff,
+        accepted: e.accepted,
+        source: e.source?.name,
       summary: e.summary,
       });
   }
   const b = status.bookChange;
-  if (b && b.direction !== "pull")
+  if (b && (b.direction !== "pull" || b.accepted))
     items.push({
       key: BOOK_KEY,
       title: "Book settings",
       detail: `name, word goal, task board, publishing, narrator · ${b.direction === "push" ? "edited locally" : "changed in both places: ticking replaces Roza's version"}`,
       ticked: b.direction === "push",
       warn: b.direction === "conflict",
-      diff: b.diff,
+      accepted: b.accepted,
+      source: b.source?.name,
       summary: b.summary,
     });
   return items;
@@ -76,7 +80,8 @@ export function pullItems(status: ProdStatus): Item[] {
         detail: c.direction === "pull" ? "edited in Roza" : "changed in both places: ticking replaces your local version",
         ticked: c.direction === "pull",
         warn: c.direction === "conflict",
-        diff: c.diff,
+        accepted: c.accepted,
+        source: c.source?.name,
       summary: c.summary,
       });
   }
@@ -90,7 +95,8 @@ export function pullItems(status: ProdStatus): Item[] {
         detail: `${kindLabel(e.kind)} · ${e.direction === "pull" ? "edited in Roza" : "changed in both places: ticking replaces your local version"}`,
         ticked: e.direction === "pull",
         warn: e.direction === "conflict",
-        diff: e.diff,
+        accepted: e.accepted,
+        source: e.source?.name,
       summary: e.summary,
       });
   }
@@ -102,7 +108,8 @@ export function pullItems(status: ProdStatus): Item[] {
       detail: `name, word goal, task board, publishing, narrator · ${b.direction === "pull" ? "edited in Roza" : "changed in both places: ticking replaces your local version"}`,
       ticked: b.direction === "pull",
       warn: b.direction === "conflict",
-      diff: b.diff,
+      accepted: b.accepted,
+      source: b.source?.name,
       summary: b.summary,
     });
   return items;
@@ -121,8 +128,11 @@ export function SyncDialog({
 }) {
   const items = mode === "push" ? pushItems(status) : pullItems(status);
   const edits = mode === "push" ? status.edits || [] : [];
-  const [picked, setPicked] = useState(() => new Set(items.filter((i) => i.ticked).map((i) => i.key)));
-  const [open, setOpen] = useState<Set<string>>(new Set());
+  // Once anything is accepted in Changes, Push starts with exactly the accepted items.
+  const reviewed = mode === "push" && items.some((i) => i.accepted);
+  const [picked, setPicked] = useState(
+    () => new Set(items.filter((i) => i.locked || (reviewed ? i.accepted : i.ticked)).map((i) => i.key)),
+  );
   const flip = (set: Set<string>, k: string) => {
     const next = new Set(set);
     if (next.has(k)) next.delete(k);
@@ -148,6 +158,11 @@ export function SyncDialog({
             ? "Sends your local changes to Roza. Roza's current book is backed up first."
             : "Copies selected live changes into the staged project after saving a snapshot."}
         </p>
+        {reviewed && (
+          <p className="small muted">
+            Ticked: the changes you accepted. New items are always sent. To keep one out, reject it in Changes.
+          </p>
+        )}
 
         {!status.bookExists && mode === "push" ? (
           <p>The book isn't in Roza yet. Push creates it with every local chapter and story element.</p>
@@ -169,11 +184,8 @@ export function SyncDialog({
                       <div dir="auto" className="pick-title">
                         <strong>{it.title}</strong> <span className="muted small">{it.detail}</span>
                       </div>
-                      {it.diff && (
-                        <button className="link small pick-toggle" onClick={() => setOpen((s) => flip(s, it.key))}>
-                          {open.has(it.key) ? "Hide changes" : "Show changes"}
-                        </button>
-                      )}
+                      {it.accepted && <span className="badge ok xs">Accepted</span>}
+                      {it.source && <span className="muted small pick-toggle">by {it.source}</span>}
                     </div>
                     {it.summary && it.summary.length > 0 && (
                       <ul className="pick-summary small">
@@ -182,7 +194,6 @@ export function SyncDialog({
                         ))}
                       </ul>
                     )}
-                    {open.has(it.key) && <DiffView diff={it.diff} />}
                   </div>
                 </div>
               </li>

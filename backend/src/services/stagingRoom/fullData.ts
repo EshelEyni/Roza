@@ -113,7 +113,8 @@ function markedText(node: any): string {
   return (node?.children || []).map(markedText).join("");
 }
 
-function slateLines(nodes: unknown, prefix = ""): string[] {
+/** One line per top-level node, with formatting markers. Blank nodes give "". */
+export function slateLines(nodes: unknown, prefix = ""): string[] {
   if (!Array.isArray(nodes)) return [];
   return nodes.map((el: any) => {
     const body = markedText(el);
@@ -228,7 +229,7 @@ function annotationLine(a: ChapterAnnotation): string {
   return `Note on “${a.quote}” (${where}): ${a.content}`;
 }
 
-function taskBoardLines(board: TaskBoard | undefined): string[] {
+export function taskBoardLines(board: TaskBoard | undefined): string[] {
   return (board?.lists || []).flatMap((l: any) => [
     `Task list · ${l.title}`,
     ...(l.cards || []).flatMap((c: any) => [

@@ -1,17 +1,40 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import type { BookDetail, BookListPrefs, BookSummary, ConnectionInfo, LogLine, ProdStatus, UploadResult } from "../../../../shared/types/stagingRoom";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type {
+  BookDetail,
+  BookListPrefs,
+  BookSummary,
+  ConnectionInfo,
+  LogLine,
+  ProdStatus,
+  RevertTarget,
+  UploadResult,
+} from "../../../../shared/types/stagingRoom";
 import { api, errorText } from "./api";
 import { importProjects } from "./importProjects";
 import "./staging-room.scss";
 import { TopBar, Tab } from "./components/TopBar";
 import { BookList } from "./components/BookList";
-import { BookView } from "./components/BookView";
+import { BookTab, BookView } from "./components/BookView";
 import { ConnectionView } from "./components/ConnectionView";
 import { LogPanel } from "./components/LogPanel";
 import { ChapterPreviewModal } from "./components/ChapterPreviewModal";
 import { SyncDialog } from "./components/SyncDialog";
+import { StagingEditor } from "./components/StagingEditor";
+import { HistoryView } from "./components/review/HistoryView";
+import { ReviewView } from "./components/review/ReviewView";
+import { BOOK_KEY, ReviewEntry, reviewEntries } from "./components/review/reviewModel";
 
-type Busy = "" | "status" | "upload" | "load" | "pull";
+type Busy = "" | "status" | "upload" | "load" | "pull" | "revert";
+
+/** Sets the accepted flag on one item of a Compare result. */
+function withAccepted(status: ProdStatus, key: string, accepted: boolean): ProdStatus {
+  return {
+    ...status,
+    chapters: status.chapters.map((c) => (c.key === key ? { ...c, accepted } : c)),
+    entityChanges: status.entityChanges?.map((e) => (`${e.kind}:${e.name}` === key ? { ...e, accepted } : e)),
+    bookChange: status.bookChange && key === BOOK_KEY ? { ...status.bookChange, accepted } : status.bookChange,
+  };
+}
 
 export function StagingRoomWorkspace() {
   const [tab, setTab] = useState<Tab>("books");
@@ -28,6 +51,12 @@ export function StagingRoomWorkspace() {
   const [dialog, setDialog] = useState<"" | "push" | "pull">("");
   const [preview, setPreview] = useState<string>();
   const [lastResult, setLastResult] = useState<UploadResult>();
+  const [bookTab, setBookTab] = useState<BookTab>("overview");
+  const [reviewKey, setReviewKey] = useState<string>();
+  const [editing, setEditing] = useState<string>();
+  /** goes up whenever Staging changes, so History reloads */
+  const [historyVersion, setHistoryVersion] = useState(0);
+  const entries = useMemo(() => reviewEntries(status, book), [status, book]);
 
   // Refs so the window-focus handler sees the current values.
   const busyRef = useRef<Busy>("");
@@ -93,6 +122,8 @@ export function StagingRoomWorkspace() {
     setStatus(undefined);
     setLastResult(undefined);
     setBook(undefined);
+    setReviewKey(undefined);
+    setEditing(undefined);
     setBusy("load");
     compare(slug).finally(() => setBusy(""));
   }, [slug, compare]);
@@ -143,7 +174,7 @@ export function StagingRoomWorkspace() {
     if (st) setDialog(mode);
   };
 
-  const run = async (kind: "upload" | "pull", action: () => Promise<void>) => {
+  const run = async (kind: "upload" | "pull" | "revert", action: () => Promise<void>) => {
     if (!slug) return;
     setDialog("");
     setBusy(kind);
@@ -154,8 +185,50 @@ export function StagingRoomWorkspace() {
       addLog("error", errorText(error));
     } finally {
       setBusy("");
+      setHistoryVersion((v) => v + 1);
       await compare(slug, true);
     }
+  };
+
+  const doReject = (targets: RevertTarget[]) =>
+    run("revert", async () => {
+      const result = await api.revert(slug!, { targets, reviewToken: status?.reviewToken });
+      addLog("ok", `Rejected ${result.reverted} change(s). Staging now has Writing Studio's version.`);
+    });
+
+  const accept = async (entry: ReviewEntry, accepted: boolean) => {
+    if (!slug || !entry.print) return;
+    setStatus((s) => s && withAccepted(s, entry.key, accepted));
+    try {
+      await api.setReview(slug, entry.key, entry.print, accepted);
+    } catch (error) {
+      setStatus((s) => s && withAccepted(s, entry.key, !accepted));
+      addLog("error", `Could not save the review mark: ${errorText(error)}`);
+    }
+  };
+
+  const review = (key: string) => {
+    setReviewKey(key);
+    setBookTab("changes");
+  };
+
+  const closeEditor = (then?: () => void) => {
+    setEditing(undefined);
+    setHistoryVersion((v) => v + 1);
+    if (slug) compare(slug, true);
+    then?.();
+  };
+
+  /** Readable names for History. */
+  const keyName = (key: string) => {
+    if (key === BOOK_KEY) return "Book settings";
+    if (key === "book:edits") return "Book edits";
+    const chapter = book?.chapters.find((c) => c.file === key);
+    if (chapter) return `${chapter.number} · ${chapter.name}`;
+    const entry = entries.find((e) => e.key === key);
+    if (entry) return entry.title;
+    const colon = key.indexOf(":");
+    return colon > 0 && !key.startsWith("prod:") ? key.slice(colon + 1) : key.endsWith(".json") ? key : "Removed chapter";
   };
 
   const doPush = (chapterKeys: string[], entityKeys: string[]) =>
@@ -178,7 +251,16 @@ export function StagingRoomWorkspace() {
   return (
     <div className="roza-staging-room" dir="ltr">
       <TopBar tab={tab} onTab={setTab} connection={connection} />
-      {tab === "books" ? (
+      {tab === "books" && editing && slug ? (
+        <StagingEditor
+          slug={slug}
+          file={editing}
+          changedFiles={new Set(entries.filter((e) => e.kind === "chapter" && e.file).map((e) => e.file!))}
+          onOpen={setEditing}
+          onClose={() => closeEditor()}
+          onReview={() => closeEditor(() => review(editing))}
+        />
+      ) : tab === "books" ? (
         <div className="workspace">
           <BookList
             books={books}
@@ -190,18 +272,52 @@ export function StagingRoomWorkspace() {
             onImport={importFolder}
             importing={importing}
           />
-          <main className="main">
-            {book ? (
+          <main className={`main ${bookTab === "changes" ? "review-mode" : ""}`}>
+            {book && slug ? (
               <BookView
                 book={book}
                 status={status}
+                entries={entries}
                 busy={busy}
                 lastResult={lastResult}
+                tab={bookTab}
+                onTab={setBookTab}
                 onCompare={() => slug && compare(slug)}
                 onPull={() => open("pull")}
                 onPush={() => open("push")}
                 onPreview={setPreview}
-              />
+                onReview={review}
+                onEdit={setEditing}
+              >
+                {bookTab === "changes" ? (
+                  status ? (
+                    <ReviewView
+                      entries={entries}
+                      selectedKey={reviewKey}
+                      busy={busy !== ""}
+                      onSelect={setReviewKey}
+                      onAccept={accept}
+                      onReject={doReject}
+                      onEdit={setEditing}
+                      onHistory={() => setBookTab("history")}
+                    />
+                  ) : (
+                    <p className="muted">{busy ? "Comparing with Writing Studio…" : "Compare with Writing Studio to see the changes."}</p>
+                  )
+                ) : (
+                  <HistoryView
+                    slug={slug}
+                    version={historyVersion}
+                    keyName={keyName}
+                    busy={busy !== ""}
+                    onRestored={() => {
+                      setHistoryVersion((v) => v + 1);
+                      addLog("ok", "Restored Staging from a backup.");
+                      compare(slug, true);
+                    }}
+                  />
+                )}
+              </BookView>
             ) : (
               bookLoadError
                 ? <p className="empty" role="alert">{bookLoadError}</p>

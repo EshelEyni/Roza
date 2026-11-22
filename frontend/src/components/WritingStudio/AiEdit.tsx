@@ -19,6 +19,8 @@ export type AiEditingContext = {
   bookId: string;
   chapterId: string;
   summary?: boolean;
+  /** Where to send the text. Default: the live chapter's AI edit route. The Staging editor uses its own. */
+  endpoint?: string;
   annotations?: ChapterAnnotation[];
   onDraft?: (
     text: SlateCustomElement[],
@@ -117,7 +119,8 @@ export function AiEdit({ context }: { context: AiEditingContext }) {
     setRevision(undefined);
     try {
       const result = await axios.post(
-        `/api/book/${context.bookId}/chapters/${context.chapterId}/ai-edit`,
+        context.endpoint ??
+          `/api/book/${context.bookId}/chapters/${context.chapterId}/ai-edit`,
         {
           text: snapshot.original,
           action,
