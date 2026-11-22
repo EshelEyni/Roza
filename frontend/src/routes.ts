@@ -25,10 +25,10 @@ const ReaderPage = lazy(() => import("./pages/Reader/ReaderPage"));
 const ReaderDetails = lazy(() => import("./pages/ReaderDetails/ReaderDetails"));
 
 const routes: Route[] = [
-  { path: "/dev-board", component: DevBoardPage, authRequired: true },
-  { path: "/staging-room", component: StagingRoomPage, authRequired: true },
-  { path: "/reader", component: ReaderPage, authRequired: true },
-  { path: "/reader/:id", component: ReaderDetails, authRequired: true },
+  { path: "/dev-board", component: DevBoardPage, authRequired: true, feature: "devBoard" },
+  { path: "/staging-room", component: StagingRoomPage, authRequired: true, feature: "stagingRoom" },
+  { path: "/reader", component: ReaderPage, authRequired: true, feature: "reader" },
+  { path: "/reader/:id", component: ReaderDetails, authRequired: true, feature: "reader" },
   {
     path: "/home",
     component: HomePage,
@@ -43,6 +43,7 @@ const routes: Route[] = [
   {
     path: "/books",
     component: BooksPage,
+    feature: "writingStudio",
     authRequired: true,
   },
   {
@@ -54,6 +55,7 @@ const routes: Route[] = [
   {
     path: "book-edit/:id/:dataItemType?/:dataItemId?",
     component: BookEdit,
+    feature: "writingStudio",
     authRequired: true,
   },
   {

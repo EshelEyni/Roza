@@ -22,8 +22,7 @@ async function serveKokoroAudio(request, url, audioDir) {
   const headers = new Headers({
     "Content-Type": "audio/wav",
     "Accept-Ranges": "bytes",
-    // Both narration and preview URLs include a content hash.
-    "Cache-Control": "private, max-age=31536000, immutable",
+    "Cache-Control": "private, no-store",
     "X-Content-Type-Options": "nosniff",
   });
   const range = request.headers.get("range")?.match(/^bytes=(\d*)-(\d*)$/);

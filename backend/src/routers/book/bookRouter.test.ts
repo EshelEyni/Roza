@@ -31,7 +31,7 @@ describe("Book Router", () => {
 
   beforeAll(async () => {
     await connectToTestDB();
-    user = await createTestUser();
+    user = await createTestUser({ isAdmin: true });
     token = getLoginTokenStrForTest(user.id);
     await BookModel.insertMany(
       createTestBooks({

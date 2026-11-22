@@ -21,6 +21,7 @@ const checkUserAuthentication = asyncErrorCatcher(
     const changedPasswordAfter = currentUser.changedPasswordAfter(timeStamp);
     if (changedPasswordAfter)
       return next(new AppError("User recently changed password! Please log in again.", 401));
+    res.locals.authenticatedRoles = currentUser.roles;
     next();
   },
 );
@@ -31,7 +32,7 @@ const checkAdminAuthorization = asyncErrorCatcher(
     if (!loggedInUserId) return next(new AppError("User not logged in", 401));
     const user = await UserModel.findById(loggedInUserId).setOptions({ skipHooks: true }).exec();
     if (!user) return next(new AppError("User not found", 404));
-    if (!user.roles.includes("admin"))
+    if (!Array.isArray(user.roles) || !user.roles.includes("admin"))
       return next(new AppError("You do not have permission to perform this action", 403));
     next();
   },

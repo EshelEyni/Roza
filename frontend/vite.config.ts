@@ -1,5 +1,5 @@
 import { VitePWA } from "vite-plugin-pwa";
-import { defineConfig } from "vite";
+import { defineConfig, searchForWorkspaceRoot } from "vite";
 import react from "@vitejs/plugin-react";
 
 // https://vitejs.dev/config/
@@ -8,6 +8,7 @@ export default defineConfig(({ mode }) => ({
     host: "0.0.0.0",
     port: 5173,
     strictPort: true,
+    fs: { allow: [searchForWorkspaceRoot(process.cwd()), "../backend/src/config", "../shared"] },
     proxy: {
       "/api": {
         target: "http://127.0.0.1:3030",
@@ -74,7 +75,7 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         runtimeCaching: [
           { urlPattern: /\/api\/book(?:\/|\?|$)/, handler: "NetworkOnly" },
-          { urlPattern: /\/api\/reader(?:\/|\?|$)/, handler: "NetworkOnly" },
+          { urlPattern: /\/api\/(?:reader|auth|dev-board)(?:\/|\?|$)/, handler: "NetworkOnly" },
           {
             urlPattern: /\/api\/.*/,
             handler: "NetworkFirst",

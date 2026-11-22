@@ -10,9 +10,10 @@ const mockUser = "507f1f77bcf86cd799439011";
 const bookId = "507f1f77bcf86cd799439012";
 const documentId = "507f1f77bcf86cd799439014";
 jest.mock("../../services/ALSService", () => ({ getLoggedInUserIdFromReq: () => mockUser }));
+let mockRoles: string[] | undefined;
 jest.mock("../../middlewares/authGuards/authGuardsMiddleware", () => ({
   checkUserAuthentication: (req: Request, res: Response, next: NextFunction) =>
-    req.headers.authorization ? next() : res.sendStatus(401),
+    req.headers.authorization ? (res.locals.authenticatedRoles = mockRoles, next()) : res.sendStatus(401),
 }));
 jest.mock("../../models/reader/readerBookModel", () => ({
   ReaderBookModel: { exists: jest.fn() },
@@ -55,8 +56,7 @@ const selectChain = (value: unknown) => {
 describe("reader book documents", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env.READER_ENABLED = "true";
-    process.env.READER_ALLOWED_USER_IDS = mockUser;
+    mockRoles = ["admin"];
     (ReaderBookModel.exists as jest.Mock).mockResolvedValue({ _id: bookId });
     (ReaderDocumentModel.countDocuments as jest.Mock).mockResolvedValue(0);
     (ReaderDocumentModel.create as jest.Mock).mockImplementation(async value => ({ id: documentId, ...value }));

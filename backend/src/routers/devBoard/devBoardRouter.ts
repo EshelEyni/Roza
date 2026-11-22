@@ -3,7 +3,8 @@ import path from "node:path";
 import express, { Request } from "express";
 import mongoose from "mongoose";
 import type { DevTicket } from "../../../../shared/types/devBoard";
-import { checkAdminAuthorization, checkUserAuthentication } from "../../middlewares/authGuards/authGuardsMiddleware";
+import { checkUserAuthentication } from "../../middlewares/authGuards/authGuardsMiddleware";
+import { requireFeature } from "../../middlewares/authGuards/featureAccessMiddleware";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
 
@@ -95,7 +96,7 @@ async function requireTicket(req: Request, account: string, active = false) {
   return ticket;
 }
 
-router.use(checkUserAuthentication, checkAdminAuthorization, (_req, res, next) => {
+router.use(checkUserAuthentication, requireFeature("devBoard"), (_req, res, next) => {
   res.set("Cache-Control", "private, no-store");
   next();
 });

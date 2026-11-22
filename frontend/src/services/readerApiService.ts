@@ -126,7 +126,6 @@ export default {
     request<BookPublishing>("PUT", `/studio/${bookId}/publication`, payload),
   lookupWord: (id: string, selection: ReaderDictionaryLookup, signal = AbortSignal.timeout(15000)) =>
     request<ReaderLookupResult>("POST", "/" + id + "/dictionary", selection, signal),
-  getAccess: () => request<{ enabled: boolean }>("GET", "/access"),
   query: (view: ReaderLibraryView, sort: ReaderLibrarySort, search: string, cursor: string | null, signal?: AbortSignal, resume = false) => {
     const params = new URLSearchParams({ archived: String(view === "archived"), sort });
     if (view !== "all" && view !== "archived") params.set("status", view);

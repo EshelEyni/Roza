@@ -3,7 +3,7 @@ import mongoose from "mongoose";
 import { ReaderBookModel } from "../../models/reader/readerBookModel";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
-import { isReaderEnabled } from "../../services/reader/readerAccessService";
+import { canAccessFeature } from "../../config/featureAccess";
 import { parseEpub } from "../../services/reader/epubService";
 import {
   getReaderBucket,
@@ -15,7 +15,8 @@ import { permanentlyDeleteReaderBook } from "../../services/reader/readerBookMan
 import { defaultReaderPreferences, readerModes } from "../../services/reader/readerUtilService";
 
 const getReaderAccess = asyncErrorCatcher(async (_req: Request, res: Response) => {
-  res.json({ status: "success", data: { enabled: isReaderEnabled(getLoggedInUserIdFromReq()) } });
+  res.set("Cache-Control", "private, no-store");
+  res.json({ status: "success", data: { enabled: canAccessFeature("reader", res.locals.authenticatedRoles) } });
 });
 
 const getReaderBooks = asyncErrorCatcher(async (req: Request, res: Response) => {

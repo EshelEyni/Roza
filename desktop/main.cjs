@@ -1,6 +1,6 @@
 const { app, BrowserWindow, clipboard, dialog, ipcMain, nativeImage, screen, session, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
-const { existsSync, readdirSync } = require("node:fs");
+const { existsSync, readFileSync, readdirSync } = require("node:fs");
 const path = require("node:path");
 const { pathToFileURL } = require("node:url");
 const { createKokoroDesktop } = require("./kokoro/index.cjs");
@@ -23,12 +23,33 @@ const devApiOrigin = devSwitch("api-origin") ? new URL(devSwitch("api-origin")).
 const devDataDir = devSwitch("data-dir");
 if (devDataDir) app.setPath("userData", path.resolve(app.getPath("appData"), devDataDir));
 const devStagingRoomHome = path.resolve(__dirname, "..", "..", "roza-publish");
-const configuredStagingRoomHome = process.env.ROZA_STAGING_ROOM_HOME || process.env.ROZA_PUBLISH_HOME ||
+function readStagingRoomHome(profile) {
+  const filename = path.join(profile, "staging-room.json");
+  try {
+    const settings = JSON.parse(readFileSync(filename, "utf8").replace(/^\uFEFF/, ""));
+    const projectFolder = settings?.projectFolder;
+    if (typeof projectFolder !== "string" || !path.isAbsolute(projectFolder)) {
+      throw new Error("projectFolder must be an absolute path.");
+    }
+    return path.normalize(projectFolder);
+  } catch (error) {
+    if (error.code !== "ENOENT") {
+      console.warn("Could not read Staging Room settings:", filename, error.message);
+    }
+    return null;
+  }
+}
+
+const configuredStagingRoomHome = readStagingRoomHome(app.getPath("userData")) ||
+  process.env.ROZA_STAGING_ROOM_HOME || process.env.ROZA_PUBLISH_HOME ||
   (!app.isPackaged && existsSync(path.join(devStagingRoomHome, "books")) ? devStagingRoomHome : null);
 const stagingRoomHome = configuredStagingRoomHome && path.isAbsolute(configuredStagingRoomHome)
   ? configuredStagingRoomHome : null;
 let mainWindow = null;
-const kokoro = createKokoroDesktop({ app, origin, getWindow: () => mainWindow });
+const kokoro = createKokoroDesktop({
+  app, origin, getWindow: () => mainWindow,
+  checkAccess: () => checkDesktopAccess(mainWindow?.webContents.session, "/api/auth/features/local-audiobooks"),
+});
 const csp = [
   "default-src 'self'",
   "base-uri 'self'",
@@ -45,6 +66,22 @@ const csp = [
 
 function isApi(url) {
   return url.pathname === "/api" || url.pathname.startsWith("/api/");
+}
+
+async function checkDesktopAccess(browserSession, endpoint) {
+  if (!browserSession) return false;
+  try {
+    const response = await browserSession.fetch((devApiOrigin || origin) + endpoint, {
+      bypassCustomProtocolHandlers: true,
+      credentials: "include",
+      cache: "no-store",
+      redirect: "error",
+      signal: AbortSignal.timeout(10000),
+    });
+    return response.status === 204;
+  } catch {
+    return false;
+  }
 }
 
 function registerRenderer(browserSession) {
@@ -74,6 +111,10 @@ function registerRenderer(browserSession) {
         });
       }
       return fetchNetwork(request, { credentials: "include", redirect: "error", cache: "no-store" });
+    }
+    if (url.pathname.startsWith("/__kokoro/") &&
+        !await checkDesktopAccess(browserSession, "/api/auth/features/local-audiobooks")) {
+      return new Response(null, { status: 403 });
     }
     const kokoroAudio = await kokoro.handleAudio(request, url);
     if (kokoroAudio) return kokoroAudio;
@@ -172,26 +213,11 @@ function registerStagingRoom(window, browserSession) {
     window.webContents.getURL().split(/[?#]/, 1)[0] === origin + "/staging-room";
 
   // Share a live check across concurrent requests from the same page.
-  async function checkAdmin() {
-    const response = await browserSession.fetch(
-      (devApiOrigin || origin) + "/api/auth/login/with-token",
-      {
-        bypassCustomProtocolHandlers: true,
-        credentials: "include",
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(10000),
-      },
-    );
-    if (!response.ok) return false;
-    const { status, data } = await response.json();
-    return status === "success" && Array.isArray(data?.roles) && data.roles.includes("admin");
-  }
-
   for (const [action, handle] of Object.entries(handlers)) {
     ipcMain.handle("staging-room:" + action, async (event, ...args) => {
       if (!fromStagingRoom(event)) throw new Error("Staging Room access denied.");
-      authorization ??= checkAdmin().catch(() => false).finally(() => { authorization = undefined; });
+      authorization ??= checkDesktopAccess(browserSession, "/api/auth/features/staging-room")
+        .finally(() => { authorization = undefined; });
       if (!await authorization || !fromStagingRoom(event)) throw new Error("Staging Room access denied.");
       const log = (level, message) => {
         if (fromStagingRoom(event)) {
@@ -256,16 +282,7 @@ app.whenReady().then(async () => {
   registerTaskbarBadge(window);
   registerDevBoard({
     app, ipcMain, dialog, clipboard, shell, window, origin,
-    async checkAdmin() {
-      const response = await browserSession.fetch((devApiOrigin || origin) + "/api/dev-board/access", {
-        bypassCustomProtocolHandlers: true,
-        credentials: "include",
-        cache: "no-store",
-        redirect: "error",
-        signal: AbortSignal.timeout(10000),
-      });
-      return response.status === 204;
-    },
+    checkAdmin: () => checkDesktopAccess(browserSession, "/api/dev-board/access"),
   });
   registerStagingRoom(window, browserSession);
   window.webContents.setWindowOpenHandler(({ url }) => {

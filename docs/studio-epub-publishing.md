@@ -106,7 +106,7 @@ Every `<html>` carries `lang` and `dir`. Hebrew books set `page-progression-dire
 
 ### 7.2 API
 
-Both routes sit under the reader router, after `checkReaderAccess`. Both load the Studio book by id and the logged-in user.
+Both routes sit under the reader router, after the Reader, Writing Studio, and Studio Publishing feature gates. Both load the Studio book by id and the logged-in user.
 
 | Method | Path | Purpose |
 | --- | --- | --- |

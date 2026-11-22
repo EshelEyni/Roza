@@ -1,9 +1,8 @@
 import { useTranslation } from "react-i18next";
 import { GiNotebook, GiBookPile, GiHouse } from "react-icons/gi";
 import { RiTaskLine, RiUpload2Fill, RiUserFill } from "react-icons/ri";
-import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
+import { useFeatureAccess } from "../../hooks/useFeatureAccess";
 import { useStagingRoomAccess } from "../../hooks/useStagingRoomAccess";
-import { useGetReaderAccess } from "../../hooks/reactQuery/get/useGetReaderAccess";
 
 export type MainNavLink = {
   name: string;
@@ -35,26 +34,27 @@ const readingRoomIcon = (
 /** The app's main pages, in header order. Reading Room shows only with reader access. */
 export function useMainNavLinks(): MainNavLink[] {
   const { t } = useTranslation();
-  const { data: readerAccess } = useGetReaderAccess();
-  const { loggedInUser } = useLoginWithToken();
+  const readerAccess = useFeatureAccess("reader");
+  const studioAccess = useFeatureAccess("writingStudio");
+  const devBoardAccess = useFeatureAccess("devBoard");
   const stagingRoomAccess = useStagingRoomAccess();
 
   const links: MainNavLink[] = [
     { name: t("home"), icon: <GiHouse />, link: "/home" },
     { name: t("profile"), icon: <RiUserFill />, link: "/profile" },
     { name: t("myReviewsNav"), icon: <GiNotebook />, link: "/reviews" },
-    { name: t("writingStudioNav"), icon: <GiBookPile />, link: "/books" },
   ];
-  if (readerAccess?.enabled)
-    links.splice(3, 0, {
+  if (readerAccess)
+    links.push({
       name: t("reader.nav"),
       icon: readingRoomIcon,
       link: "/reader",
     });
+  if (studioAccess) links.push({ name: t("writingStudioNav"), icon: <GiBookPile />, link: "/books" });
   if (stagingRoomAccess) {
     links.push({ name: t("stagingRoom.title"), icon: <RiUpload2Fill />, link: "/staging-room" });
   }
-  if (loggedInUser?.roles?.includes("admin")) links.push({ name: "Dev Board", icon: <RiTaskLine />, link: "/dev-board" });
+  if (devBoardAccess) links.push({ name: "Dev Board", icon: <RiTaskLine />, link: "/dev-board" });
   return links;
 }
 

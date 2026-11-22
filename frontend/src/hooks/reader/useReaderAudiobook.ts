@@ -3,6 +3,7 @@ import { audiobookSpeechSlice, audiobookSeek, audiobookWordAt, type AudiobookSec
 import { loadAudiobookConfig, saveAudiobookNarrator, loadStudioNarrator, saveStudioNarrator, openAiBlock, ReaderOpenAiAudio, type AudiobookConfig, type AudiobookEngine } from "../../services/readerOpenAiAudio";
 import type { ReaderAudiobookNarrator } from "../../../../shared/types/reader";
 import { ReaderKokoroAudio } from "../../services/narration/kokoroAudio";
+import { useFeatureAccess } from "../useFeatureAccess";
 import { desktopKokoro, isEnglishBook, localVoiceInstalled, type KokoroStatus } from "../../services/narration/desktopKokoro";
 import { setDesktopAudioPlaying } from "../../services/desktopTaskbar";
 import { defaultKokoroVoice, kokoroLang, kokoroVoice } from "../../services/narration/kokoroVoices";
@@ -54,7 +55,8 @@ export function useReaderAudiobook(
   const ai = useRef<ReaderOpenAiAudio>();
   if (!ai.current && bookId) ai.current = new ReaderOpenAiAudio(bookId, () => pause("Audio interrupted · press Play to continue"));
   const kokoro = useRef<ReaderKokoroAudio>();
-  if (!kokoro.current && localBookId && desktopKokoro()) kokoro.current = new ReaderKokoroAudio(localBookId);
+  const localAccess = useFeatureAccess("localAudiobooks");
+  if (localAccess && !kokoro.current && localBookId && desktopKokoro()) kokoro.current = new ReaderKokoroAudio(localBookId);
   const [kokoroStatus, setKokoroStatus] = useState<KokoroStatus | null | undefined>(() => desktopKokoro() ? undefined : null);
   const kokoroStatusRef = useRef(kokoroStatus); kokoroStatusRef.current = kokoroStatus;
   const [localVoice, setLocalVoice] = useState(defaultKokoroVoice);
@@ -102,8 +104,8 @@ export function useReaderAudiobook(
   /** Why Kokoro can or cannot narrate this book right now. */
   function kokoroAvailability(): KokoroAvailability {
     const status = kokoroStatusRef.current;
-    if (status === null || !kokoro.current) return "website";
-    if (status === undefined) return "checking";
+    if (!localAccess || !kokoro.current) return "website";
+    if (!status) return "checking";
     if (!status.installed) return "not-installed";
     if (!isEnglishBook(languageRef.current?.()) || !looksLatin(position.current.section)) return "not-english";
     return "ready";
@@ -422,7 +424,7 @@ export function useReaderAudiobook(
     void load(target, 1, wantPlay.current);
   }
   async function refreshKokoro() {
-    const api = desktopKokoro();
+    const api = localAccess ? desktopKokoro() : null;
     if (!api) return null;
     try {
       const next = await api.status();
@@ -486,7 +488,7 @@ export function useReaderAudiobook(
     return () => setDesktopAudioPlaying(false);
   }, [playing]);
   useEffect(() => {
-    const api = desktopKokoro();
+    const api = localAccess ? desktopKokoro() : null;
     if (!api) return;
     void refreshKokoro();
     // Install progress arrives as events; a finished install refreshes the whole status.
@@ -506,7 +508,7 @@ export function useReaderAudiobook(
       if (!install.installing) void refreshKokoro();
     });
     return () => { stop(); stopAddon?.(); };
-  }, []);
+  }, [localAccess]);
   useEffect(() => {
     void load();
     const updateVoices = () => setVoices(Array.from(new Map((synth?.getVoices() || []).filter(item => item.voiceURI).map(item => [item.voiceURI, item])).values()));

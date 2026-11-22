@@ -20,9 +20,9 @@ const ADDONS = ["chatterbox"];
 const CHATTERBOX_IDLE_MS = 10 * 60 * 1000;
 
 /**
- * @param {{ app: Electron.App, origin: string, getWindow: () => Electron.BrowserWindow | null }} options
+ * @param {{ app: Electron.App, origin: string, getWindow: () => Electron.BrowserWindow | null, checkAccess: () => Promise<boolean> }} options
  */
-function createKokoroDesktop({ app, origin, getWindow }) {
+function createKokoroDesktop({ app, origin, getWindow, checkAccess }) {
   const root = path.join(app.getPath("userData"), "kokoro");
   const runtimeDir = path.join(root, "runtime");
   const audioDir = path.join(root, "audio");
@@ -129,12 +129,12 @@ function createKokoroDesktop({ app, origin, getWindow }) {
   // Only the app's own top-level page may call these; book iframes (same origin) may not.
   const allowed = (event) => {
     const frame = event.senderFrame;
-    if (!frame || frame !== event.sender.mainFrame) return false;
+    if (!frame || event.sender !== getWindow()?.webContents || frame !== event.sender.mainFrame) return false;
     try { return new URL(frame.url).origin === origin; } catch { return false; }
   };
 
   const handle = (channel, fn) => ipcMain.handle(channel, async (event, input) => {
-    if (!allowed(event)) return { ok: false, error: "Not allowed." };
+    if (!allowed(event) || !await checkAccess() || !allowed(event)) return { ok: false, error: "Not allowed." };
     try {
       await ready;
       return { ok: true, data: await fn(input ?? {}, event) };

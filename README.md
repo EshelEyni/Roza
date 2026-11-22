@@ -142,7 +142,6 @@ The backend calls `dotenv.config()` without an explicit path, so it reads `.env`
 | `LOCAL_DB_URL`, `TEST_DB_NAME` | Dedicated test databases; tests may delete their contents. |
 | `JWT_SECRET_CODE`, `JWT_EXPIRATION_TIME` | Login token signing secret and lifetime. Replace the public demo secret. |
 | `NODE_ENV` | Runtime mode. Existing npm scripts supply it automatically. |
-| `READER_ENABLED`, `READER_ALLOWED_USER_IDS` | Enable EPUB Reader and allow your actual MongoDB user ID (comma-separated for multiple users). |
 | `OPENAI_API_KEY`, `READER_AI_MODEL` | Optional Reader AI chat key and legacy model default; per-user settings can override the model. |
 | `READER_AUDIOBOOK_ENABLED`, `READER_AUDIOBOOK_MODEL` | Optional OpenAI narration flag and server-selected model. Disabled in the examples. |
 | `READER_AUDIOBOOK_WORD_TIMINGS` | Defaults to `true`: adds a timestamp transcription pass for word highlighting (about $0.006/audio minute). Set `false` for passage-only highlighting. Temporary `whisper-1` support retires February 26, 2027; see the audiobook documentation. |
@@ -348,14 +347,7 @@ The backend package declares `ISC`, but the repository does not include a standa
 
 The private Reader library supports DRM-free reflowable EPUBs up to 25 MiB. Files are stored in MongoDB GridFS; no S3 credentials or AI API key are required for upload and reading.
 
-Enable it in `backend/.env` (and keep the root copy in sync if used):
-
-```dotenv
-READER_ENABLED=true
-READER_ALLOWED_USER_IDS=your-roza-user-object-id
-```
-
-The feature is disabled by default. Use the relevant account IDs for each environment; multiple IDs can be comma-separated. These are Roza MongoDB user IDs, not usernames or GitHub IDs. Restart the backend after changing environment settings. The backend checks both the flag and user allowlist for every Reader operation and checks file/state ownership. Unauthorized users do not see Reader navigation.
+The Reader is available to signed-in administrators. The backend checks the current account role and enforces file and reading-state ownership. See [Feature access](docs/feature-access.md).
 
 Open **Reader** to upload an EPUB, then open a library card to read. The reader supports contents navigation, page buttons/arrow keys, continuous scrolling, text size, fonts, spacing, width, page colors, and fullscreen. Reading location and settings save to the database; an unsynced indicator offers retry, with browser-local recovery for pending changes. Original uploads and sanitized reading copies are kept private. Hebrew dictionary lookup, automatic vocabulary saves, and AI book chat are available. Details are below.
 
@@ -376,7 +368,7 @@ OPENAI_API_KEY=your-openai-api-key
 READER_AI_MODEL=gpt-4.1-mini
 ```
 
-`OPENAI_API_KEY` requires an API project with billing and access to the chosen model. `READER_AI_MODEL` is optional and defaults to `gpt-4.1-mini`; choose a model compatible with the OpenAI Responses API and the configured output limit. These variables are never sent to the frontend. Use Node.js 20 or later for the backend's built-in `fetch` implementation. Existing `READER_ENABLED` and `READER_ALLOWED_USER_IDS` restrictions apply to every chat endpoint.
+`OPENAI_API_KEY` requires an API project with billing and access to the chosen model. `READER_AI_MODEL` is optional and defaults to `gpt-4.1-mini`; choose a model compatible with the OpenAI Responses API and the configured output limit. These variables are never sent to the frontend. Use Node.js 20 or later for the backend's built-in `fetch` implementation. The Reader role gate applies to every chat endpoint. See [Feature access](docs/feature-access.md).
 
 The backend resolves exact passages from the user's sanitized EPUB in GridFS. Limits are centralized in `backend/src/services/reader/readerAiConfig.ts`: 10,000 question characters, 20,000 selected-passage characters, 8,000 custom-instruction characters, up to eight retrieved excerpts totaling 16,000 characters, and four–six recent completed question/answer pairs within an 80,000-byte serialized UTF-8 budget. A persistent rolling summary carries older discussion. Up to two older relevant pairs can be recalled with exact wording within a separate 16,000-byte budget. These are conservative byte/character limits, not exact token counts; the combined serialized instructions/input are limited to 240,000 UTF-8 bytes before a provider call. Limits are ceilings, not targets to fill. There are no embedding API calls. Once the unsummarized tail exceeds six pairs, one summary call compacts the older part and normally leaves four pairs in full. This allows the next two requests to reuse the summary; the following update adds only newly aged turns. Summaries use the selected model, with a 45-second deadline, 1,800 output tokens for mini / 6,000 combined reasoning-output tokens for GPT-6, and a 6,000-character saved-summary ceiling (the prompt targets 4,000). They therefore incur additional API usage only when updated. Legacy long chats are compacted in bounded batches, at most one summary call per request; uncovered history remains visibly disclosed. Large source turns can reduce batching efficiency.
 

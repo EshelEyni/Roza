@@ -2,6 +2,7 @@ import { FC, useState } from "react";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { LoginForm } from "./LoginForm";
 import { SignupForm } from "./SignupForm";
+import { useFeatureAccess } from "../../hooks/useFeatureAccess";
 import { useGetBooks } from "../../hooks/reactQuery/get/useGetBooks";
 import { Loader } from "../../components/Loaders/Loader";
 import { useTranslation } from "react-i18next";
@@ -23,6 +24,7 @@ const HomePage: FC = () => {
 
   const { t } = useTranslation();
   const { loggedInUser, isLoadingLoggedInUser } = useLoginWithToken();
+  const studioAccess = useFeatureAccess("writingStudio");
   const {
     books,
     errorBooks,
@@ -32,7 +34,7 @@ const HomePage: FC = () => {
     isBooksAvailable,
     isNoBooks,
   } = useGetBooks({
-    enabled: !!loggedInUser,
+    enabled: studioAccess,
     limit: 9,
     sort: "-createdAt",
   });
@@ -108,17 +110,21 @@ const HomePage: FC = () => {
             {loggedInUser.username}
           </H1>
           <Hr />
-          <BookList
-            books={slicedBooks}
-            errorBooks={errorBooks}
-            isLoadingBooks={isLoadingBooks}
-            isErrorBooks={isErrorBooks}
-            isSuccessBooks={isSuccessBooks}
-            isNoBooks={isNoBooks}
-            isBooksAvailable={isBooksAvailable}
-            isHomePage={true}
-          />
-          <Hr />
+          {studioAccess && (
+            <>
+              <BookList
+                books={slicedBooks}
+                errorBooks={errorBooks}
+                isLoadingBooks={isLoadingBooks}
+                isErrorBooks={isErrorBooks}
+                isSuccessBooks={isSuccessBooks}
+                isNoBooks={isNoBooks}
+                isBooksAvailable={isBooksAvailable}
+                isHomePage={true}
+              />
+              <Hr />
+            </>
+          )}
           <BookReviewList
             reviews={slicedReviews}
             errorReviews={errorReviews}

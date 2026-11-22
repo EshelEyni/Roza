@@ -10,9 +10,10 @@ jest.mock("../../services/reader/googleTranslateService", () => ({
 
 let mockUserId = "507f1f77bcf86cd799439011";
 jest.mock("../../services/ALSService", () => ({ getLoggedInUserIdFromReq: () => mockUserId }));
+let mockRoles: string[] | undefined;
 jest.mock("../../middlewares/authGuards/authGuardsMiddleware", () => ({
   checkUserAuthentication: (req: Request, res: Response, next: NextFunction) =>
-    req.headers.authorization ? next() : res.status(401).json({ status: "fail" }),
+    req.headers.authorization ? (res.locals.authenticatedRoles = mockRoles, next()) : res.status(401).json({ status: "fail" }),
 }));
 jest.mock("../../models/reader/readerBookModel", () => ({
   ReaderBookModel: {
@@ -45,22 +46,20 @@ describe("Reader access and isolation", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockUserId = "507f1f77bcf86cd799439011";
-    process.env.READER_ENABLED = "true";
-    process.env.READER_ALLOWED_USER_IDS = mockUserId;
+    mockRoles = ["admin"];
   });
 
   it("requires authentication even for the access endpoint", async () => {
     expect((await request(app).get("/api/reader/access")).status).toBe(401);
   });
 
-  it("hides the feature and denies direct requests when disabled or unlisted", async () => {
-    process.env.READER_ENABLED = "false";
+  it("denies a regular or legacy account with the previously allowed ID", async () => {
+    mockRoles = ["user"];
     expect(
       (await request(app).get("/api/reader/access").set("Authorization", "test")).body.data.enabled,
     ).toBe(false);
     expect((await request(app).get("/api/reader").set("Authorization", "test")).status).toBe(403);
-    process.env.READER_ENABLED = "true";
-    process.env.READER_ALLOWED_USER_IDS = "another-user";
+    mockRoles = undefined;
     expect(
       (
         await request(app)

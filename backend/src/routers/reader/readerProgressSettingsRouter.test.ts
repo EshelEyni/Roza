@@ -7,10 +7,11 @@ let mockOwner = "507f1f77bcf86cd799439011";
 jest.mock("../../services/ALSService", () => ({
   getLoggedInUserIdFromReq: () => mockOwner,
 }));
+let mockRoles: string[] | undefined;
 jest.mock("../../middlewares/authGuards/authGuardsMiddleware", () => ({
   checkUserAuthentication: (req: Request, res: Response, next: NextFunction) =>
     req.headers.authorization
-      ? next()
+      ? (res.locals.authenticatedRoles = mockRoles, next())
       : res.status(401).json({ status: "fail" }),
 }));
 jest.mock("../../models/reader/readerProgressSettingsModel", () => ({
@@ -38,8 +39,7 @@ describe("User progress settings", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockOwner = "507f1f77bcf86cd799439011";
-    process.env.READER_ENABLED = "true";
-    process.env.READER_ALLOWED_USER_IDS = mockOwner;
+    mockRoles = ["admin"];
     (ReaderProgressSettingsModel.findOne as jest.Mock).mockResolvedValue(null);
     (
       ReaderProgressSettingsModel.findOneAndUpdate as jest.Mock
@@ -47,7 +47,7 @@ describe("User progress settings", () => {
   });
   it("requires authentication and reader access", async () => {
     expect((await request(app).get(endpoint)).status).toBe(401);
-    process.env.READER_ENABLED = "false";
+    mockRoles = ["user"];
     expect(
       (
         await request(app)
@@ -94,7 +94,6 @@ describe("User progress settings", () => {
           .data,
       ).toEqual(settings);
       mockOwner = "507f1f77bcf86cd799439012";
-      process.env.READER_ALLOWED_USER_IDS = mockOwner;
       (ReaderProgressSettingsModel.findOne as jest.Mock).mockResolvedValue(
         null,
       );

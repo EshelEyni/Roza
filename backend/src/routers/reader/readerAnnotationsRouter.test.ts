@@ -9,9 +9,10 @@ const mockUser = "507f1f77bcf86cd799439011";
 const bookId = "507f1f77bcf86cd799439012";
 const annotationId = "507f1f77bcf86cd799439013";
 jest.mock("../../services/ALSService", () => ({ getLoggedInUserIdFromReq: () => mockUser }));
+let mockRoles: string[] | undefined;
 jest.mock("../../middlewares/authGuards/authGuardsMiddleware", () => ({
   checkUserAuthentication: (req: Request, res: Response, next: NextFunction) =>
-    req.headers.authorization ? next() : res.sendStatus(401),
+    req.headers.authorization ? (res.locals.authenticatedRoles = mockRoles, next()) : res.sendStatus(401),
 }));
 jest.mock("../../models/reader/readerBookModel", () => ({
   ReaderBookModel: { exists: jest.fn() },
@@ -47,8 +48,7 @@ const base = "/reader/" + bookId + "/annotations";
 describe("saved reader annotations", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env.READER_ENABLED = "true";
-    process.env.READER_ALLOWED_USER_IDS = mockUser;
+    mockRoles = ["admin"];
     (ReaderBookModel.exists as jest.Mock).mockResolvedValue({ _id: bookId });
     (ReaderAnnotationModel.find as jest.Mock).mockResolvedValue([{ id: annotationId, ...data }]);
     (ReaderAnnotationModel.findOneAndUpdate as jest.Mock).mockResolvedValue({
@@ -59,7 +59,7 @@ describe("saved reader annotations", () => {
   });
   it("requires authentication and enabled reader access", async () => {
     expect((await request(app).get(base)).status).toBe(401);
-    process.env.READER_ENABLED = "false";
+    mockRoles = ["user"];
     expect((await request(app).put(base).set("Authorization", "test").send(data)).status).toBe(403);
     expect(ReaderBookModel.exists).not.toHaveBeenCalled();
   });

@@ -8,7 +8,7 @@ import {
   saveAudiobookNarrator,
 } from "../../controllers/reader/readerAudiobookController";
 
-// Parent readerRouter applies authentication and the existing Reader allowlist.
+// Parent readerRouter applies authentication and the Reader feature gate.
 const router = express.Router({ mergeParams: true });
 router.get("/config", getAudiobookConfig);
 router.patch("/narrator", saveAudiobookNarrator);

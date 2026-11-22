@@ -12,6 +12,7 @@ const login = asyncErrorCatcher(async (req: Request, res: Response) => {
 });
 
 const loginWithToken = asyncErrorCatcher(async (req: Request, res: Response) => {
+  res.set("Cache-Control", "private, no-store");
   const sendProdFailedResponse = () => {
     res.send({
       status: "success",

@@ -2,7 +2,6 @@ import { useTranslation } from "react-i18next";
 import { FiGrid, FiList, FiPlay, FiSearch, FiSliders } from "react-icons/fi";
 import { Link } from "react-router-dom";
 import { GiBookCover, GiBookshelf } from "react-icons/gi";
-import { ReaderAccess } from "../../components/Reader/ReaderAccess";
 import { ReaderBookGrid } from "../../components/Reader/ReaderBookGrid";
 import { useEffect, useState } from "react";
 import { arrayMove } from "@dnd-kit/sortable";
@@ -215,9 +214,7 @@ export default function ReaderPage() {
   useDocumentTitle(`Roza / ${t("reader.nav")}`);
   return (
     <main className="reader-library">
-      <ReaderAccess>
-        {loggedInUser && <ReaderLibrary key={loggedInUser.id} userId={loggedInUser.id} />}
-      </ReaderAccess>
+      {loggedInUser && <ReaderLibrary key={loggedInUser.id} userId={loggedInUser.id} />}
     </main>
   );
 }

@@ -57,7 +57,7 @@ function geRouteElement(route: TypeOfRoute) {
     <route.component />
   );
 
-  return route.authRequired ? <AuthGuard component={component} /> : component;
+  return route.authRequired ? <AuthGuard component={component} feature={route.feature} /> : component;
 }
 
 function App() {

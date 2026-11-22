@@ -1,9 +1,7 @@
-import { useLoginWithToken } from "./reactQuery/get/useLoginWithToken";
+import { useFeatureAccess } from "./useFeatureAccess";
 
 export function useStagingRoomAccess() {
-  const { loggedInUser } = useLoginWithToken();
-
-  return loggedInUser?.roles?.includes("admin")
+  return useFeatureAccess("stagingRoom")
     ? window.rozaDesktop?.stagingRoom
     : undefined;
 }

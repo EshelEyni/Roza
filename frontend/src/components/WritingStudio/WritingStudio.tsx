@@ -51,7 +51,7 @@ import { AppSwitcher } from "../App/AppSwitcher";
 import { StudioFullscreenButton } from "./StudioFullscreenButton";
 import { PublishDialog } from "./PublishDialog";
 import type { BookPublishing } from "../../../../shared/types/books";
-import { useGetReaderAccess } from "../../hooks/reactQuery/get/useGetReaderAccess";
+import { useFeatureAccess } from "../../hooks/useFeatureAccess";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 
 function preference(key: string, fallback: string) {
@@ -119,7 +119,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const params = useParams();
-  const { data: readerAccess } = useGetReaderAccess();
+  const readerAccess = useFeatureAccess("reader");
+  const publishingAccess = useFeatureAccess("studioPublishing");
+  const canPublish = readerAccess && publishingAccess;
   const { loggedInUser } = useLoginWithToken();
   // The EPUB settings and cover live outside the draft store. The store copies
   // the manuscript into browser storage on every edit, and a cover is large.
@@ -526,7 +528,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       } as React.CSSProperties}
     >
       {confirmationDialog}
-      {publishOpen && (
+      {publishOpen && canPublish && (
         <PublishDialog
           book={{ ...book, publishing }}
           author={loggedInUser?.fullname || ""}
@@ -705,7 +707,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               )}
               <span className="ws-eyebrow">STUDIO</span>
               <StudioFullscreenButton />
-              {readerAccess?.enabled && (
+              {canPublish && (
                 <button
                   type="button"
                   disabled={!!store.recovery}

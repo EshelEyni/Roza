@@ -15,9 +15,10 @@ let sourceText = "Hello world.",
   edition = 0;
 let narrator: { engine: string; voice: string; name: string; lang: string } | undefined;
 jest.mock("../../services/ALSService", () => ({ getLoggedInUserIdFromReq: () => mockUser }));
+let mockRoles: string[] | undefined;
 jest.mock("../../middlewares/authGuards/authGuardsMiddleware", () => ({
   checkUserAuthentication: (req: Request, res: Response, next: NextFunction) =>
-    req.headers.authorization ? next() : res.status(401).json({ status: "fail" }),
+    req.headers.authorization ? (res.locals.authenticatedRoles = mockRoles, next()) : res.status(401).json({ status: "fail" }),
 }));
 jest.mock("../../models/reader/readerBookModel", () => ({
   ReaderBookModel: { findOne: jest.fn(), findOneAndUpdate: jest.fn() },
@@ -87,8 +88,7 @@ describe("backend-only audiobook API", () => {
     narrator = undefined;
     mockUser = owner;
     edition++;
-    process.env.READER_ENABLED = "true";
-    process.env.READER_ALLOWED_USER_IDS = owner;
+    mockRoles = ["admin"];
     process.env.READER_AUDIOBOOK_ENABLED = "true";
     process.env.OPENAI_API_KEY = "test-only-secret";
     delete process.env.READER_AUDIOBOOK_MODEL;
@@ -121,11 +121,10 @@ describe("backend-only audiobook API", () => {
   });
   it("requires authentication, reader access and ownership for every endpoint", async () => {
     expect((await request(app).get(base + "/config")).status).toBe(401);
-    process.env.READER_ENABLED = "false";
+    mockRoles = ["user"];
     expect((await get(base + "/config")).status).toBe(403);
-    process.env.READER_ENABLED = "true";
+    mockRoles = ["admin"];
     mockUser = "507f1f77bcf86cd799439012";
-    process.env.READER_ALLOWED_USER_IDS = mockUser;
     expect((await get(base + "/config")).status).toBe(404);
     expect((await post()).status).toBe(404);
     expect((await get(base + "/chunks/" + "a".repeat(64))).status).toBe(404);
@@ -254,7 +253,7 @@ describe("backend-only audiobook API", () => {
   it("guards preview generation and narrator writes with authentication and ownership", async () => {
     expect((await request(app).post(base+"/preview").send({})).status).toBe(401);
     expect((await request(app).patch(base+"/narrator").send({})).status).toBe(401);
-    mockUser = "507f1f77bcf86cd799439012"; process.env.READER_ALLOWED_USER_IDS = mockUser;
+    mockUser = "507f1f77bcf86cd799439012";
     expect((await request(app).post(base+"/preview").set("Authorization","test").send({})).status).toBe(404);
     expect((await request(app).patch(base+"/narrator").set("Authorization","test").send({})).status).toBe(404);
     expect(ReaderBookModel.findOneAndUpdate).not.toHaveBeenCalled();

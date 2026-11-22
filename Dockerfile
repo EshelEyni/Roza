@@ -5,6 +5,7 @@ RUN npm ci
 COPY shared/ /shared/
 RUN ./node_modules/.bin/tsc --build /shared/tsconfig.json --force
 COPY frontend/ .
+COPY backend/src/config/featureAccess.ts /backend/src/config/featureAccess.ts
 RUN npm run build
 
 FROM node:current-alpine3.19 AS be-build

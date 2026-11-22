@@ -1,0 +1,21 @@
+# ROZA feature access
+
+The role policy is declared in [featureAccess.ts](../backend/src/config/featureAccess.ts). Add a feature and its allowed roles there, then use its key in the route and navigation or control, and in the HTTP or desktop permission check. An empty role list disables the feature.
+
+ROZA creates accounts with the `user` role. The administrative role is `admin`, including for accounts that have both roles. Any account without a recognized grant is denied. Login and session refresh return the stored account roles to the browser. The API verifies the token and reads the current account from MongoDB on each protected request. It returns 401 for an invalid session and 403 for an authenticated account without the feature. The browser refreshes the session on focus and every 30 seconds in an active tab. Blocked deep links redirect to Home. Desktop privileged actions use the current session and a server-backed permission check.
+
+## Implemented feature inventory
+
+| Feature | Frontend entry points | API or desktop surface | Policy |
+| --- | --- | --- | --- |
+| Reading Room and EPUB Reader | Reading Room navigation, `/reader`, `/reader/:id` | `/api/reader` library and upload, book metadata and file, state, archive, pin, order and title | `reader` |
+| Reader tools | In-book contents, search, page and sentence modes, speed reading, annotations, documents, AI chat, dictionary, vocabulary and review, progress and keyboard settings | `/api/reader/{progress-settings,keyboard-settings,ai-settings}`; `/api/reader/:id/{annotations,documents,conversations,dictionary,flags,review}`. Navigation, search and display also run locally in the Reader. | `reader` |
+| Audiobook playback and preferences | Reader Audiobook Mode; Studio Read Mode with manuscript narrator selection | `/api/reader/:id/audiobook/*` for Reader streaming, preview and narrator; `/api/book/:id/audiobook/narrator` for Studio narrator | `reader` or `writingStudio` by entry point |
+| Local and expressive voices | Desktop narrator picker, Kokoro and Chatterbox installers, offline narration and export dialogs | `kokoro:*` IPC and `/__kokoro/*` local audio; `GET /api/auth/features/local-audiobooks` checks permission | Entry-point policy plus `localAudiobooks` |
+| Writing Studio library, manuscript editor and planning | Writing Studio navigation, `/books`, `/book-edit/:id/:dataItemType?/:dataItemId?`. Includes versions and Main backups, draft comparisons and summaries, manuscript Find, Read Mode and Go to Line, chapter and inline notes, planning, task board, and screenplay tools. | `GET/POST /api/book`, `GET/PATCH /api/book/:id` for manuscript data and versions; Find, Read Mode, and screenplay PDF export also run client-side. | `writingStudio` |
+| Studio AI editing | Manuscript chapter and draft AI edit controls | `POST /api/book/:id/chapters/:chapterId/ai-edit` | `writingStudio` |
+| Studio EPUB publishing | Publish EPUB in the Studio, download and publish dialog, Read EPUB links | `POST /api/reader/studio/:bookId/epub`, `PUT /api/reader/studio/:bookId/publication` | `writingStudio`, `reader`, and `studioPublishing` |
+| Publishing Desk (Staging Room) | Desktop Staging Room navigation and `/staging-room`; `/publishing` redirects there | Desktop `staging-room:*` IPC for manuscript staging, comparisons and sync; `GET /api/auth/features/staging-room` checks permission | `stagingRoom` plus the configured desktop bridge |
+| Dev Board | Dev Board navigation and `/dev-board` | `/api/dev-board` for tickets, imports, Trash and attachments; `/api/dev-board/access` for desktop permission; `dev-board:*` IPC for local conveniences | `devBoard` |
+
+Each policy above grants `admin` access and denies `user`, missing roles, and unknown roles. The Studio workspace gate covers the existing manuscript library and editing as well as recent additions because the current routes and book endpoints serve them together. Home, Profile and Reviews retain their existing access. Reader's authenticated `GET /api/reader/access` reports only whether the caller has Reader access. Reader and manuscript operations still apply per-account ownership checks. Audiobook provider configuration and the Staging Room desktop setup still determine whether those integrations are available.

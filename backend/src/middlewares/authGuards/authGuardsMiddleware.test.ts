@@ -31,7 +31,7 @@ describe("auth Guards Middleware", () => {
 
     beforeEach(() => {
       req = {};
-      res = {};
+      res = { locals: {} };
       next = jest.fn();
     });
 
@@ -145,7 +145,7 @@ describe("auth Guards Middleware", () => {
 
     beforeEach(() => {
       req = {};
-      res = {};
+      res = { locals: {} };
       next = jest.fn();
     });
 

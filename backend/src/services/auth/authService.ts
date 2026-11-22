@@ -29,7 +29,8 @@ async function loginWithToken(loginToken: string): Promise<UserAuthResult> {
 }
 
 async function signup(userCreds: UserCredenitials): Promise<UserAuthResult> {
-  const user = await UserModel.create(userCreds);
+  const { username, fullname, password, passwordConfirm, email } = userCreds;
+  const user = await UserModel.create({ username, fullname, password, passwordConfirm, email });
   const token = tokenService.signToken(user.id);
   return { user: user as unknown as User, token };
 }

@@ -3,7 +3,7 @@ import { downloadStudioEpub, publishStudioBook } from "../../controllers/reader/
 import express from "express";
 import { listAnnotations, saveAnnotation, deleteAnnotation } from "../../controllers/reader/readerAnnotationController";
 import { checkUserAuthentication } from "../../middlewares/authGuards/authGuardsMiddleware";
-import { checkReaderAccess } from "../../services/reader/readerAccessService";
+import { requireFeature } from "../../middlewares/authGuards/featureAccessMiddleware";
 import { MAX_EPUB_SIZE } from "../../services/reader/epubService";
 import { AppError } from "../../services/error/errorService";
 import {
@@ -51,9 +51,10 @@ const router = express.Router();
 
 router.use(checkUserAuthentication);
 router.get("/access", getReaderAccess);
-router.use(checkReaderAccess);
-router.post("/studio/:bookId([a-fA-F0-9]{24})/epub", downloadStudioEpub);
-router.put("/studio/:bookId([a-fA-F0-9]{24})/publication", publishStudioBook);
+router.use(requireFeature("reader"));
+const requireStudioPublishing = [requireFeature("writingStudio"), requireFeature("studioPublishing")];
+router.post("/studio/:bookId([a-fA-F0-9]{24})/epub", requireStudioPublishing, downloadStudioEpub);
+router.put("/studio/:bookId([a-fA-F0-9]{24})/publication", requireStudioPublishing, publishStudioBook);
 router.use("/:id/audiobook", readerAudiobookRouter);
 router.get("/progress-settings", getProgressSettings);
 router.patch("/progress-settings", updateProgressSettings);

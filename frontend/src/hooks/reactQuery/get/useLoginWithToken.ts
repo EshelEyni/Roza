@@ -14,6 +14,7 @@ export function useLoginWithToken(): UseLoginWithTokenResult {
     queryKey: ["loggedInUser"],
     queryFn: authApiService.loginWithToken,
     retry: 0,
+    refetchInterval: 30_000,
   });
 
   return {

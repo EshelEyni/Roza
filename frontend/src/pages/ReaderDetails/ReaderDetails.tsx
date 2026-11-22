@@ -1,7 +1,6 @@
 import { useParams, Link } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslation } from "react-i18next";
-import { ReaderAccess } from "../../components/Reader/ReaderAccess";
 import { EpubReader } from "../../components/Reader/EpubReader";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
@@ -45,9 +44,7 @@ function ReaderDetailsContent() {
 export default function ReaderDetails() {
   return (
     <main className="reader-details">
-      <ReaderAccess>
-        <ReaderDetailsContent />
-      </ReaderAccess>
+      <ReaderDetailsContent />
     </main>
   );
 }

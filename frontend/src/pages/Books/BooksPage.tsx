@@ -2,6 +2,7 @@ import { FormEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
+import { useFeatureAccess } from "../../hooks/useFeatureAccess";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import bookApi from "../../services/bookApiService";
 import { getDefaultBook } from "../../services/bookUtilService";
@@ -14,6 +15,8 @@ export default function BooksPage() {
   const { t } = useTranslation();
   useDocumentTitle(`Roza / ${t("writingStudioNav")}`);
   const { loggedInUser } = useLoginWithToken();
+  const readerAccess = useFeatureAccess("reader");
+  const publishingAccess = useFeatureAccess("studioPublishing");
   const navigate = useNavigate();
   const client = useQueryClient();
   const [search, setSearch] = useState("");
@@ -197,7 +200,7 @@ export default function BooksPage() {
                 <Link to={`/book-edit/${book.id}`}>
                   Continue writing <span aria-hidden="true">→</span>
                 </Link>
-                {book.publishing?.readerBookId && (
+                {readerAccess && publishingAccess && book.publishing?.readerBookId && (
                   <Link to={`/reader/${book.publishing.readerBookId}`} className="ws-book-epub">
                     Read EPUB
                   </Link>

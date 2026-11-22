@@ -27,7 +27,7 @@ Let the user turn a Writing Studio book into an EPUB and read it in the Reading 
 - [x] `publishing` subdocument on the Studio book, saved with `timestamps: false`.
 - [x] `POST /api/reader/studio/:bookId/epub` returns the file and stores nothing.
 - [x] `PUT /api/reader/studio/:bookId/publication` creates the library book, or replaces the files of the existing one and removes unused old files.
-- [x] Both routes are behind `checkReaderAccess` and load only the user's own book.
+- [x] Both routes are behind the Reader, Writing Studio, and Studio Publishing feature gates and load only the user's own book.
 - [x] Covers: PNG or JPEG data URL, at most 2 MiB, checked by file signature.
 - [x] The request sanitizer skips the two endpoints, because the builder escapes text itself.
 

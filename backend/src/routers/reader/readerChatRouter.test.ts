@@ -13,9 +13,10 @@ const mockRetrieve = jest.fn(() => ({
   context: [{ label: "Current passage", text: "A quiet garden." }],
 }));
 jest.mock("../../services/ALSService", () => ({ getLoggedInUserIdFromReq: () => mockOwner }));
+let mockRoles: string[] | undefined;
 jest.mock("../../middlewares/authGuards/authGuardsMiddleware", () => ({
   checkUserAuthentication: (req: Request, res: Response, next: NextFunction) =>
-    req.headers.authorization ? next() : res.status(401).json({ status: "fail" }),
+    req.headers.authorization ? (res.locals.authenticatedRoles = mockRoles, next()) : res.status(401).json({ status: "fail" }),
 }));
 jest.mock("../../models/reader/readerBookModel", () => ({
   ReaderBookModel: { findOne: jest.fn() },
@@ -86,8 +87,7 @@ describe("Reader conversations", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     chatLimiter.resetKey(mockOwner);
-    process.env.READER_ENABLED = "true";
-    process.env.READER_ALLOWED_USER_IDS = mockOwner;
+    mockRoles = ["admin"];
     process.env.OPENAI_API_KEY = "test-only";
     (ReaderBookModel.findOne as jest.Mock).mockReturnValue({
       select: jest
@@ -117,9 +117,9 @@ describe("Reader conversations", () => {
     const completed = calls.find(call => call[1].$set?.["turns.$[turn].status"] === "completed");
     expect(completed[1].$set["turns.$[turn].excerpts"]).toContainEqual({ label: "Current passage", text: "A quiet garden." });
   });
-  it("requires authentication and the existing reader allowlist", async () => {
+  it("requires authentication and the Reader feature role", async () => {
     expect((await request(app).get(base)).status).toBe(401);
-    process.env.READER_ENABLED = "false";
+    mockRoles = ["user"];
     expect((await request(app).post(base).set("Authorization", "test").send({})).status).toBe(403);
     expect(ReaderBookModel.findOne).not.toHaveBeenCalled();
   });

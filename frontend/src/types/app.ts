@@ -8,6 +8,7 @@ import {
 import { User } from "../../../shared/types/user";
 import { BaseEditor } from "slate";
 import { ReactEditor } from "slate-react";
+import type { Feature } from "../../../backend/src/config/featureAccess";
 
 type RouteProvider = ({
   children,
@@ -23,6 +24,7 @@ export interface Route {
   component: LazyExoticComponent<FC>;
   nestedRoutes?: Route[];
   authRequired: boolean;
+  feature?: Feature;
   provider?: RouteProvider;
 }
 

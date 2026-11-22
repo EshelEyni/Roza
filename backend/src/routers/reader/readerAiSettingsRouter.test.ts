@@ -5,9 +5,10 @@ import readerRouter from "./readerRouter";
 
 const mockOwner = "507f1f77bcf86cd799439011";
 jest.mock("../../services/ALSService", () => ({ getLoggedInUserIdFromReq: () => mockOwner }));
+let mockRoles: string[] | undefined;
 jest.mock("../../middlewares/authGuards/authGuardsMiddleware", () => ({
   checkUserAuthentication: (req: Request, res: Response, next: NextFunction) =>
-    req.headers.authorization ? next() : res.status(401).json({ status: "fail" }),
+    req.headers.authorization ? (res.locals.authenticatedRoles = mockRoles, next()) : res.status(401).json({ status: "fail" }),
 }));
 jest.mock("../../models/reader/readerAiSettingsModel", () => ({
   ReaderAiSettingsModel: { findOne: jest.fn(), findOneAndUpdate: jest.fn() },
@@ -29,14 +30,13 @@ const defaults = { model: "default", answerLength: "standard", simpleLanguage: t
 describe("Reader AI settings", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    process.env.READER_ENABLED = "true";
-    process.env.READER_ALLOWED_USER_IDS = mockOwner;
+    mockRoles = ["admin"];
     (ReaderAiSettingsModel.findOne as jest.Mock).mockResolvedValue(null);
     (ReaderAiSettingsModel.findOneAndUpdate as jest.Mock).mockResolvedValue({});
   });
   it("requires authentication and reader access", async () => {
     expect((await request(app).get("/api/reader/ai-settings")).status).toBe(401);
-    process.env.READER_ENABLED = "false";
+    mockRoles = ["user"];
     expect(
       (
         await request(app)
