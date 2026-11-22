@@ -19,6 +19,14 @@ export function paintNativeHighlight(
   view.CSS.highlights.set(name, highlight);
   return () => { view.CSS.highlights.delete(name); style.remove(); };
 }
+/**
+ * Fill for the epub.js SVG mark that sits on top of the book text.
+ * With native highlights the SVG only keeps epub.js range bookkeeping, so it must never paint:
+ * an opaque SVG rectangle covers the word and hides its letters.
+ */
+export function nativeHighlightMarkFill(background: string): string {
+  return typeof Highlight !== "undefined" && typeof CSS !== "undefined" && CSS.highlights ? "transparent" : background;
+}
 /** Paint opaque background and foreground without modifying EPUB text or its CFIs. */
 export function bindNativeHighlight(value: unknown, background: string, foreground: string): () => void {
   const annotation = value as Annotation | undefined;
@@ -31,7 +39,12 @@ export function bindNativeHighlight(value: unknown, background: string, foregrou
     if (!doc || !element) return;
     paints.get(doc)?.();
     const remove = paintNativeHighlight(mark.range, background, foreground);
-    if (!remove) return;
+    if (!remove) {
+      // No native highlight in this document: the SVG mark is the only visible paint.
+      element.style.fill = background;
+      paints.set(doc, () => element.style.removeProperty("fill"));
+      return;
+    }
     // Retain epub.js range bookkeeping; native highlights supply the visible paint.
     element.style.fill = "transparent";
     element.dataset.readerNativeHighlight = "reader-mark-" + sequence;

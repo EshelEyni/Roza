@@ -1,5 +1,5 @@
 import { readerMarkTextColor, readerPassageColor } from "./readerMarkColors";
-import { bindNativeHighlight } from "./readerNativeHighlight";
+import { bindNativeHighlight, nativeHighlightMarkFill } from "./readerNativeHighlight";
 import type { Rendition } from "epubjs";
 import type { ReaderPassage } from "../../../shared/types/readerChat";
 
@@ -57,7 +57,7 @@ export class ReaderPassageMarker {
         undefined,
         this.markerClass || "reader-locator-" + color,
         {
-          fill: background,
+          fill: nativeHighlightMarkFill(background),
           "fill-opacity": "1",
           "mix-blend-mode": "multiply",
           "pointer-events": "none",

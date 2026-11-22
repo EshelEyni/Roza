@@ -1,5 +1,5 @@
 import { readerSelectionColor, readingWordTextColor } from "../../services/readerMarkColors";
-import { bindNativeHighlight } from "../../services/readerNativeHighlight";
+import { bindNativeHighlight, nativeHighlightMarkFill } from "../../services/readerNativeHighlight";
 import { readerAiLimits } from "../../services/readerAiLimits";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Contents, Location } from "epubjs";
@@ -159,7 +159,7 @@ export function useReaderSelection(onBeforeSelection?: () => void) {
             undefined,
             "reader-selection-highlight",
             {
-              fill: active.runtime.stateRef.current.preferences.selectionColor || readerSelectionColor,
+              fill: nativeHighlightMarkFill(active.runtime.stateRef.current.preferences.selectionColor || readerSelectionColor),
               "fill-opacity": "1",
               "mix-blend-mode": "multiply",
               "pointer-events": "none",

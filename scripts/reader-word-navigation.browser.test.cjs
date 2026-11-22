@@ -222,6 +222,11 @@ test(
       assert.equal(lookups.length, 0);
       await key("ArrowRight");
       assert.equal(await mark(), "Note");
+      assert.equal(
+        await page.evaluate(() => document.querySelector(".reader-keyboard-word").getAttribute("fill")),
+        "transparent",
+        "The SVG word mark never paints over the letters; the native highlight paints the word",
+      );
       const sentenceHighlight = () => page.evaluate(() => {
         const doc = document.querySelector(".reader-viewport iframe").contentDocument;
         const highlights = doc.defaultView.CSS.highlights;
