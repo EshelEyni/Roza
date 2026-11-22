@@ -20,6 +20,7 @@ import readerRouter from "./routers/reader/readerRouter";
 import devBoardRouter from "./routers/devBoard/devBoardRouter";
 import stagingRoomRouter from "./routers/stagingRoom/stagingRoomRouter";
 import { requestLimiter } from "./services/rateLimiterService";
+import { createConnectorRouterFromEnv } from "./mcp/connectorRouter";
 
 const isProdEnv = process.env.NODE_ENV === "production";
 
@@ -42,6 +43,11 @@ app.use(
   }),
 );
 app.use(cookieParser());
+
+// Claude connector (OAuth + /mcp). Off unless its env vars are set.
+const connectorRouter = createConnectorRouterFromEnv();
+if (connectorRouter) app.use(connectorRouter);
+
 app.use(express.json({ limit: "5000kb" }));
 
 app.use(requestLimiter);

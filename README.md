@@ -311,6 +311,10 @@ The root browser route redirects to `/home`. All listed screens except `/home` u
 | `/api/book` | List, retrieve, create, and update books. |
 | `/api/book-review` | List, retrieve, create, and update review collections. |
 
+### Claude connector
+
+`/mcp` is an MCP server for Claude's custom connectors. From any Claude app, Claude can work on your Dev Board and Staging Room: tickets, attachments, staged projects and chapters. It cannot reach the live books, users or anything else, and it cannot permanently delete anything. Staged changes reach the live books only when you push them in the Staging Room. Sign-in uses OAuth with a connector passphrase. The connector is off unless `MCP_DB_URL`, `MCP_PUBLIC_URL`, `MCP_TOKEN_SECRET`, `MCP_PASSPHRASE` and `MCP_OWNER_USER_ID` are set. See [docs/claude-connector.md](docs/claude-connector.md) for setup, the MongoDB user it needs, and how to rotate its keys.
+
 Book and review updates use `PATCH /:id`. Archiving is represented by entity fields rather than dedicated delete routes. Consult `backend/src/routers/` and controllers for exact payloads and access checks; a frontend route guard does not establish API authorization. Responses use shared JSend-style response types in `shared/types/system.ts`.
 
 ## Development guide
