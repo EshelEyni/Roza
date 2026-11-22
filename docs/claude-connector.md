@@ -1,5 +1,7 @@
 # Claude connector (Ticket #75)
 
+The same Roza MCP endpoint also supports [ChatGPT and Codex](roza-openai-mcp.md).
+
 The Claude connector lets Claude work on your **Dev Board** and **Staging Room** from any Claude app: web, desktop or phone. For example: "add a ticket for the reader bug", or "save this as chapter 5 of the My Lost Time project".
 
 Claude cannot reach anything else. It cannot read or change the live books (Writing Studio), your account, users, reviews or the reader. It cannot permanently delete anything.
@@ -84,7 +86,7 @@ Every non-empty line becomes its own paragraph. This keeps line breaks in dialog
 ## Security
 
 - **Sign-in:** OAuth 2.1 with PKCE (S256). Claude opens a ROZA page that asks for the **connector passphrase** (`MCP_PASSPHRASE`). This is not your ROZA password. The connector never reads the `users` collection. Everything it does belongs to `MCP_OWNER_USER_ID`. Only 10 passphrase attempts are allowed per 15 minutes.
-- **Redirects:** Only Claude's callback (`https://claude.ai/api/mcp/auth_callback`, and the `claude.com` one) and local loopback addresses can register. Add others with `MCP_EXTRA_REDIRECT_URIS`.
+- **Redirects:** Registration accepts the exact Claude and ChatGPT callbacks, and HTTP loopback callbacks for local clients such as Codex. Add other exact callback URLs with `MCP_EXTRA_REDIRECT_URIS`.
 - **Tokens:** Access tokens last 1 hour. Refresh tokens last 30 days and work only once. The database stores only HMACs of tokens.
 - **Limits:** The `/mcp` body limit is 1 MB. Changes are limited to 60 per 15 minutes. Requests to `/mcp` and `/oauth/*` are rate-limited per IP.
 - **Audit log:** Every change, refusal and error goes to `mcp_audit_log` and the server log: time, tool, target, outcome.

@@ -17,6 +17,7 @@ const REFRESH_TTL = 30 * 24 * 60 * 60 * 1000;
 const DEFAULT_REDIRECTS = [
   "https://claude.ai/api/mcp/auth_callback",
   "https://claude.com/api/mcp/auth_callback",
+  "https://chatgpt.com/connector_platform_oauth_redirect",
 ];
 
 export type OAuthOptions = {
@@ -62,6 +63,7 @@ export function createOAuthRouter(options: OAuthOptions): Router {
 
   const serverMetadata = {
     issuer: publicUrl,
+    authorization_response_iss_parameter_supported: true,
     authorization_endpoint: `${publicUrl}/oauth/authorize`,
     token_endpoint: `${publicUrl}/oauth/token`,
     registration_endpoint: `${publicUrl}/oauth/register`,
@@ -131,7 +133,7 @@ export function createOAuthRouter(options: OAuthOptions): Router {
     };
     const client = params.client_id ? await db.Clients.findOne({ clientId: params.client_id }).lean() : null;
     // Without a known client and an exact redirect match we must not redirect.
-    if (!client) return { params, fatal: "Unknown client. Remove the connector in Claude and add it again." };
+    if (!client) return { params, fatal: "Unknown client. Remove the ROZA connector and add it again." };
     if (!client.redirectUris.some(uri => sameRedirect(uri, params.redirect_uri)))
       return { params, fatal: "The redirect URI does not match this client." };
     let error = "";
@@ -147,7 +149,7 @@ export function createOAuthRouter(options: OAuthOptions): Router {
     try {
       const { params, fatal, error } = await readAuthorizeParams(req.query as Record<string, unknown>);
       if (fatal) return res.status(400).type("text/plain").send(fatal);
-      if (error) return res.redirect(redirectWith(params.redirect_uri, { error, state: params.state }));
+      if (error) return res.redirect(redirectWith(params.redirect_uri, { error, state: params.state, iss: publicUrl }));
       sendSignInPage(res, params);
     } catch (err) {
       next(err);
@@ -160,9 +162,9 @@ export function createOAuthRouter(options: OAuthOptions): Router {
     try {
       const { params, fatal, error } = await readAuthorizeParams(req.body || {});
       if (fatal) return res.status(400).type("text/plain").send(fatal);
-      if (error) return res.redirect(redirectWith(params.redirect_uri, { error, state: params.state }));
+      if (error) return res.redirect(redirectWith(params.redirect_uri, { error, state: params.state, iss: publicUrl }));
       if (req.body.action === "deny")
-        return res.redirect(redirectWith(params.redirect_uri, { error: "access_denied", state: params.state }));
+        return res.redirect(redirectWith(params.redirect_uri, { error: "access_denied", state: params.state, iss: publicUrl }));
       let userId: string;
       try {
         userId = await options.authenticate(String(req.body.passphrase || ""));
@@ -193,6 +195,8 @@ export function createOAuthRouter(options: OAuthOptions): Router {
       const body = req.body || {};
       const client = await authenticateClient(req, body);
       if (!client) return oauthError(res, 401, "invalid_client", "Client authentication failed.");
+      if (body.resource !== undefined && body.resource !== resourceUrl(publicUrl))
+        return oauthError(res, 400, "invalid_target", "This token endpoint only serves the ROZA MCP resource.");
 
       if (body.grant_type === "authorization_code") {
         const code = typeof body.code === "string" ? body.code : "";
@@ -330,7 +334,7 @@ function sendSignInPage(
   res.setHeader("Cache-Control", "no-store");
   res.status(status).type("html").send(`<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Connect Claude to ROZA</title>
+<title>Connect to ROZA</title>
 <style>
 body{font-family:system-ui,sans-serif;background:#f6f4ef;color:#222;margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:16px}
 main{background:#fff;border-radius:12px;box-shadow:0 2px 12px #0002;padding:24px;max-width:360px;width:100%}
@@ -339,8 +343,8 @@ label{display:block;font-size:.9rem;margin:12px 0 4px}input[type=password]{width
 .row{display:flex;gap:8px;margin-top:20px}button{flex:1;padding:10px;border-radius:8px;border:0;font-size:1rem;cursor:pointer}
 .ok{background:#3b5bdb;color:#fff}.no{background:#eee}.err{color:#c92a2a;margin:8px 0 0}
 </style></head><body><main>
-<h1>Connect Claude to ROZA</h1>
-<p>Claude will be able to read and change your Dev Board and Staging Room. It cannot reach your live books or account, and it cannot permanently delete anything.</p>
+<h1>Connect to ROZA</h1>
+<p>The connecting app will be able to read and change your Dev Board and Staging Room.</p>
 <form method="post" action="/oauth/authorize">${hidden}
 <label for="p">Connector passphrase</label><input id="p" name="passphrase" type="password" autocomplete="current-password" required>
 ${message ? `<p class="err" role="alert">${escapeHtml(message)}</p>` : ""}
