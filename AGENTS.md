@@ -17,3 +17,7 @@ Ticket #23 reproduced this on 2026-11-14: readerProgressSettingsController.ts im
 # UI component reuse
 
 Always reuse existing built-in app components and their styles when an appropriate component exists. Before adding a UI control, inspect the existing component library and nearby screens. In the reader, use ReaderSelect for dropdowns and reuse established compact action-button patterns instead of native unstyled selects or oversized custom controls.
+
+# Repository shorthand
+
+DRM means the main branch in the C:\dev\Roza checkout.
