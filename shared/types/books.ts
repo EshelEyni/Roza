@@ -70,6 +70,8 @@ export interface Book {
 }
 
 export type ManuscriptSort = "recent" | "title" | "words";
+/** Library shelves: all, has chapters, no chapters yet, published as EPUB. */
+export type ManuscriptFilter = "all" | "writing" | "blank" | "epub";
 
 export interface ManuscriptSummary {
   id: string;
@@ -77,13 +79,17 @@ export interface ManuscriptSummary {
   updatedAt: Date | string;
   chapterCount: number;
   wordCount: number;
+  wordGoal?: number;
   cover?: string;
   readerBookId?: string;
 }
 
 export interface ManuscriptPage {
   manuscripts: ManuscriptSummary[];
+  /** Matches for the requested filter. */
   total: number;
+  /** Matches for each filter, with the same search term. */
+  counts: Record<ManuscriptFilter, number>;
   nextOffset: number | null;
 }
 

@@ -7,7 +7,7 @@ import { isWordGoal } from "../../models/books/schemas/bookSchema";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
 import { NextFunction, Request, Response } from "express";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
-import type { Book, ManuscriptPage, ManuscriptSummary } from "../../../../shared/types/books";
+import type { Book, ManuscriptFilter, ManuscriptPage, ManuscriptSummary } from "../../../../shared/types/books";
 import { countWords } from "../../services/stagingRoom/slate";
 
 const getBooks = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
@@ -34,14 +34,16 @@ const getBooks = asyncErrorCatcher(async (req: Request, res: Response, next: Nex
 });
 
 const manuscriptPageSize = 6;
+const manuscriptFilters: ManuscriptFilter[] = ["all", "writing", "blank", "epub"];
 
 const getManuscripts = asyncErrorCatcher(async (req: Request, res: Response) => {
   const userId = getLoggedInUserIdFromReq();
   if (!userId) throw new AppError("User not logged in", 401);
 
-  const { q = "", sort = "recent", offset: rawOffset = "0" } = req.query;
+  const { q = "", sort = "recent", filter: show = "all", offset: rawOffset = "0" } = req.query;
   if (typeof q !== "string" || q.length > 200 ||
       (sort !== "recent" && sort !== "title" && sort !== "words") ||
+      !manuscriptFilters.some(name => name === show) ||
       typeof rawOffset !== "string" || !/^\d+$/.test(rawOffset)) {
     throw new AppError("Invalid manuscript query", 400);
   }
@@ -52,13 +54,21 @@ const getManuscripts = asyncErrorCatcher(async (req: Request, res: Response) => 
 
   const term = q.trim();
   const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const filter = {
+  const base = {
     userId,
     isArchived: { $ne: true },
     ...(term && { name: { $regex: escapedTerm, $options: "i" } }),
   };
+  const hasChapter = { $elemMatch: { isArchived: { $ne: true } } };
+  const filters: Record<ManuscriptFilter, object> = {
+    all: base,
+    writing: { ...base, chapters: hasChapter },
+    blank: { ...base, chapters: { $not: hasChapter } },
+    epub: { ...base, "publishing.readerBookId": { $exists: true, $ne: null } },
+  };
+  const filter = filters[show as ManuscriptFilter];
   const query = BookModel.find(filter)
-    .select("name updatedAt chapters.text chapters.isArchived publishing.cover publishing.readerBookId")
+    .select("name updatedAt wordGoal chapters.text chapters.isArchived publishing.cover publishing.readerBookId")
     .lean();
   if (sort === "title") {
     query.collation({ locale: "en", strength: 2 }).sort({ name: 1, _id: 1 });
@@ -67,10 +77,13 @@ const getManuscripts = asyncErrorCatcher(async (req: Request, res: Response) => 
   }
   if (sort !== "words") query.skip(offset).limit(manuscriptPageSize + 1);
 
-  const [books, total] = await Promise.all([
+  const [books, ...totals] = await Promise.all([
     query.exec(),
-    BookModel.countDocuments(filter).exec(),
+    ...manuscriptFilters.map(name => BookModel.countDocuments(filters[name]).exec()),
   ]);
+  const counts = Object.fromEntries(
+    manuscriptFilters.map((name, index) => [name, totals[index]]),
+  ) as Record<ManuscriptFilter, number>;
   const summaries: ManuscriptSummary[] = books.map(book => {
     const chapters = (book.chapters ?? []).filter(chapter => !chapter.isArchived);
     return {
@@ -79,6 +92,7 @@ const getManuscripts = asyncErrorCatcher(async (req: Request, res: Response) => 
       updatedAt: book.updatedAt,
       chapterCount: chapters.length,
       wordCount: chapters.reduce((total, chapter) => total + countWords(chapter.text), 0),
+      wordGoal: book.wordGoal,
       cover: book.publishing?.cover,
       readerBookId: book.publishing?.readerBookId?.toString(),
     };
@@ -88,7 +102,8 @@ const getManuscripts = asyncErrorCatcher(async (req: Request, res: Response) => 
     : summaries;
   const data: ManuscriptPage = {
     manuscripts: page.slice(0, manuscriptPageSize),
-    total,
+    total: counts[show as ManuscriptFilter],
+    counts,
     nextOffset: page.length > manuscriptPageSize ? offset + manuscriptPageSize : null,
   };
   res.set("Cache-Control", "no-store").json({ status: "success", data });

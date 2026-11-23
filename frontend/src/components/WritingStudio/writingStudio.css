@@ -13,6 +13,8 @@
   --ws-focus: var(--roza-focus);
   --ws-cover: var(--roza-cover);
   --ws-brand: var(--roza-brand);
+  --ws-card: var(--roza-card);
+  --ws-chip: #f3e9d9;
   box-sizing: border-box;
   background: var(--ws-bg);
   color: var(--ws-ink);
@@ -142,6 +144,8 @@
   --ws-focus: #dcaa76;
   --ws-cover: #3b3b33;
   --ws-brand: #d2a87f;
+  --ws-card: #2b2d28;
+  --ws-chip: #31332e;
   color-scheme: dark;
 }
 
@@ -180,59 +184,128 @@
 }
 
 .ws-library-inner {
-  max-width: 1150px;
-  padding: 64px 36px 28px;
+  max-width: 1240px;
+  padding: 52px 36px 48px;
   margin: auto;
 }
 
 .ws-library-heading {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  margin-bottom: 54px;
+  margin-bottom: 36px;
+}
+
+.ws-library-heading .ws-eyebrow {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
 }
 
 .ws-library-heading h1 {
-  font:
-    normal clamp(34px, 4vw, 52px) / 1.15 Georgia,
-    serif;
-  letter-spacing: -1.5px;
-  margin: 18px 0;
+  font: normal 44px/1.2 var(--roza-font-display);
+  margin: 8px 0 12px;
+  text-wrap: balance;
 }
 
 .ws-library-heading p {
   color: var(--ws-muted);
-  font-size: 15px;
+  max-width: 520px;
+  line-height: 1.6;
 }
 
+/* Control bar: same pattern as the Reading Room library. */
+.ws-library-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 24px;
+  padding: 8px 14px;
+  border: 1px solid var(--ws-line);
+  border-radius: 14px;
+  background: var(--ws-paper);
+  font-size: 0.875rem;
+}
+
+.ws-library-filters,
 .ws-library-tools {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--ws-line);
-  padding-bottom: 20px;
-  margin-bottom: 28px;
-  gap: 16px;
+  flex-wrap: wrap;
+  gap: 5px;
 }
 
-.ws-library-tools h2 {
-  font-size: 18px;
-  font-weight: 500;
+.ws .ws-library-filters button,
+.ws .ws-library-layout button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: inherit;
 }
 
-.ws-library-tools h2 span {
-  color: var(--ws-muted);
-  font-size: 13px;
-  margin-inline-start: 8px;
+.ws .ws-library-filters button:hover { background: var(--ws-soft); }
+.ws .ws-library-filters button[aria-pressed="true"] { background: var(--ws-accent); color: var(--ws-on-accent); }
+.ws-library-filters button span {
+  padding-inline: 6px;
+  border-radius: 999px;
+  background: var(--ws-chip);
+  font-size: 0.75em;
+  font-variant-numeric: tabular-nums;
+}
+.ws-library-filters button[aria-pressed="true"] span { background: color-mix(in srgb, var(--ws-on-accent) 22%, transparent); }
+
+.ws-library-tools {
+  flex-wrap: nowrap;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  margin-inline-start: auto;
 }
 
-.ws-library-tools>div {
+.ws-library-search,
+.ws .ws-library-sort .reader-select > button,
+.ws-library-layout {
+  min-height: 38px;
+  border: 1px solid var(--ws-line);
+  border-radius: 999px;
+  background: var(--ws-chip);
+}
+
+.ws-library-search {
   display: flex;
-  gap: 10px;
+  align-items: center;
+  gap: 8px;
+  width: 237px;
+  min-width: 0;
+  padding-inline: 12px;
 }
+.ws-library-search svg { flex: none; }
+.ws .ws-library-search input {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 0;
+  border: 0;
+  background: transparent;
+  outline: none;
+}
+.ws-library-search:focus-within { outline: 2px solid var(--ws-focus); outline-offset: 2px; }
 
-.ws-library-sort { width: 190px; }
+.ws .ws-library-sort .reader-select > button { padding: 6px 12px; gap: 4px; }
+.ws-library-sort .reader-select-value { display: flex; gap: 7px; font-weight: 600; }
+.ws-library-sort .reader-select-value > span { font-weight: 400; color: var(--ws-muted); }
+
+.ws-library-layout { display: flex; align-items: center; padding: 2px; }
+.ws .ws-library-layout button { min-width: 32px; min-height: 32px; padding: 4px; }
+.ws .ws-library-layout button[aria-pressed="true"] { background: var(--ws-paper); box-shadow: 0 0 0 1px var(--ws-line); }
 
 /* ReaderSelect inside the studio: keep its own field look over the generic .ws button rule. */
 .ws .reader-select > button {
@@ -248,78 +321,200 @@
 
 .ws-book-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 32px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 28px;
+}
+
+.ws-book-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--ws-line);
+  border-radius: var(--roza-radius-card);
+  background: var(--ws-card);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.ws-book-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 24px #49331a16;
+}
+
+.ws-book-card:focus-within:has(.ws-book-card-link:focus-visible) {
+  outline: 3px solid var(--ws-focus);
+  outline-offset: 3px;
+}
+
+/* The whole card opens the manuscript; the EPUB link sits above it. */
+.ws-book-card-link {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  outline: none;
 }
 
 .ws-book-cover {
-  display: flex;
   position: relative;
-  flex-direction: column;
-  min-height: 270px;
-  padding: 30px;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+  place-items: center;
+  height: 245px;
+  padding: 20px;
   background: var(--ws-cover);
-  border-inline-start: 5px solid var(--roza-progress);
-  border-radius: 2px 6px 6px 2px;
-  transition: transform 0.18s;
 }
 
-.ws-book-cover:hover {
-  transform: translateY(-3px);
+.ws-book-cover-image,
+.ws-book-cloth {
+  height: 100%;
+  min-height: 0;
+  width: auto;
+  aspect-ratio: 2 / 3;
+  max-width: 100%;
+  border-radius: 2px 4px 4px 2px;
+  box-shadow: 3px 5px 12px #30201230;
 }
 
-.ws-book-cover[data-color="1"] {
-  background: #e3d1b8;
-  border-color: var(--roza-brand);
-}
+.ws-book-cover-image { object-fit: cover; }
 
-.ws-book-cover[data-color="2"] {
-  background: #d5c0a4;
-  border-color: var(--roza-primary);
-}
-
-.ws-book-cover[data-color="3"] {
-  background: #e8dac6;
-  border-color: var(--roza-progress);
-}
-
-.ws-book-cover h3 {
-  font:
-    normal 30px/1.2 Georgia,
-    serif;
-  overflow-wrap: anywhere;
-  margin: 30px 0 24px;
-}
-
-.ws-cover-rule {
-  width: 32px;
-  border-top: 1px solid var(--roza-ink-3);
-  margin-top: auto;
-  margin-bottom: 14px;
-}
-
-.ws-book-cover small {
-  color: var(--roza-ink-2);
-}
-
-.ws-book-meta {
+/* Generated cloth cover for manuscripts without artwork. */
+.ws-book-cloth {
+  position: relative;
   display: flex;
+  flex-direction: column;
   justify-content: space-between;
-  color: var(--ws-muted);
-  font-size: 12px;
-  margin: 16px 0;
+  align-items: center;
+  overflow: hidden;
+  padding: 16% 12% 12%;
+  background: #6f4e37;
+  color: #f1e1c6;
+  text-align: center;
+}
+.ws-book-cloth[data-color="1"] { background: #3f5a55; color: #e8e0cc; }
+.ws-book-cloth[data-color="2"] { background: #8a5a44; color: #f6e5cf; }
+.ws-book-cloth[data-color="3"] { background: #4a4560; color: #e9e2d4; }
+.ws-book-cloth::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 7%;
+  background: linear-gradient(90deg, #00000026, transparent);
+}
+.ws-book-cloth::after {
+  content: "";
+  position: absolute;
+  inset: 7% 8%;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+}
+.ws-book-cloth b {
+  position: relative;
+  font: normal 16px/1.2 var(--roza-font-display);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+.ws-book-cloth small {
+  position: relative;
+  font-size: 7px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+.ws-book-cloth span {
+  position: relative;
+  font: 12px var(--roza-font-display);
+  opacity: 0.55;
 }
 
-.ws-book-links {
+.ws-book-badge {
+  position: absolute;
+  bottom: 10px;
+  inset-inline-end: 10px;
+  padding: 3px 6px;
+  border: 1px solid var(--ws-line);
+  border-radius: 3px;
+  background: var(--ws-card);
+  color: var(--ws-brand);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+}
+
+.ws-book-info {
   display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 18px 20px 20px;
+}
+
+.ws .ws-book-info h3 {
+  margin-bottom: 8px;
+  font: normal 21px/1.3 var(--roza-font-display);
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+}
+
+.ws .ws-book-facts {
+  margin-bottom: 18px;
+  color: var(--ws-muted);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.ws-book-goal {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin-top: auto;
+  color: var(--roza-ink-3);
+  font-size: 11px;
+}
+
+.ws-book-goal progress {
+  width: 100%;
+  height: 4px;
+  accent-color: #92714e;
+}
+
+.ws-book-open {
+  display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
+  margin-top: auto;
+  padding-top: 18px;
+  color: var(--ws-brand);
+  font-size: 13px;
+  font-weight: 600;
 }
 
-.ws-book-links a {
-  font-weight: 600;
-  color: var(--ws-accent);
+.ws-book-goal + .ws-book-open { margin-top: 0; }
+
+.ws-book-open .ws-book-epub {
+  position: relative;
+  z-index: 2;
+  padding: 3px 9px;
+  border: 1px solid var(--ws-line);
+  border-radius: 999px;
+  color: var(--ws-brand);
+  font-size: 12px;
 }
+.ws-book-open .ws-book-epub:hover { background: var(--ws-soft); }
+
+/* List layout. */
+.ws-book-grid.ws-book-list { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.ws-book-list .ws-book-card { display: grid; grid-template-columns: 84px minmax(0, 1fr); }
+.ws-book-list .ws-book-cover { height: auto; min-height: 112px; padding: 8px; }
+.ws-book-list .ws-book-cover-image,
+.ws-book-list .ws-book-cloth { height: 96px; }
+.ws-book-list .ws-book-cloth b { font-size: 8px; }
+.ws-book-list .ws-book-cloth small,
+.ws-book-list .ws-book-cloth span,
+.ws-book-list .ws-book-badge,
+.ws-book-list .ws-book-goal { display: none; }
+.ws-book-list .ws-book-info { padding: 12px 16px; }
+.ws .ws-book-list .ws-book-info h3 { margin-bottom: 4px; font-size: 1.15rem; }
+.ws .ws-book-list .ws-book-facts { margin-bottom: 0; }
+.ws-book-list .ws-book-open { padding-top: 6px; }
 
 .ws-library-pagination {
   margin-block-start: 24px;
@@ -877,14 +1072,6 @@ dialog.ws-options-dialog .ws-options p {
     padding: 12px 16px;
   }
 
-  .ws-book-grid {
-    gap: 20px;
-  }
-
-  .ws-book-cover {
-    padding: 24px;
-  }
-
   .ws-header .ws-save {
     max-width: 130px;
   }
@@ -892,55 +1079,115 @@ dialog.ws-options-dialog .ws-options p {
 
 @media (max-width: 700px) {
   .ws-library-inner {
-    padding: 32px 20px;
+    padding: 22px 16px 40px;
   }
 
   .ws-library-heading {
-    align-items: flex-start;
+    align-items: stretch;
     flex-direction: column;
-    gap: 8px;
-    margin-bottom: 35px;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .ws-library-heading .ws-eyebrow {
+    display: none;
   }
 
   .ws-library-heading h1 {
-    font-size: 38px;
+    margin: 0 0 4px;
+    font-size: 30px;
+  }
+
+  .ws-library-controls {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 10px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+
+  .ws-library-filters {
+    min-width: 0;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .ws .ws-library-filters button {
+    flex: none;
+    white-space: nowrap;
   }
 
   .ws-library-tools {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .ws-library-tools>div {
-    width: 100%;
-  }
-
-  .ws-library-tools input {
-    width: 100%;
-  }
-
-  .ws-book-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 24px 14px;
-  }
-
-  .ws-book-cover {
-    min-height: 230px;
-    padding: 20px 15px;
-  }
-
-  .ws-book-cover h3 {
-    font-size: 24px;
-  }
-
-  .ws-book-cover .ws-eyebrow {
-    font-size: 8px;
-    letter-spacing: 1px;
-  }
-
-  .ws-book-links {
     flex-wrap: wrap;
+    margin: 0;
+  }
+
+  .ws-library-search {
+    flex: 1 1 100%;
+    width: auto;
+  }
+
+  .ws-library-sort {
+    flex: 1;
+  }
+
+  .ws-book-grid:not(.ws-book-list) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 14px;
+  }
+
+  .ws-book-grid:not(.ws-book-list) .ws-book-card {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+  }
+
+  .ws-book-grid:not(.ws-book-list) .ws-book-card:hover {
+    transform: none;
+    box-shadow: none;
+  }
+
+  .ws-book-grid:not(.ws-book-list) .ws-book-cover {
+    height: auto;
+    padding: 0;
+    background: transparent;
+  }
+
+  .ws-book-grid:not(.ws-book-list) .ws-book-cover-image,
+  .ws-book-grid:not(.ws-book-list) .ws-book-cloth {
+    width: 100%;
+    height: auto;
+  }
+
+  .ws-book-grid:not(.ws-book-list) .ws-book-info {
+    padding: 10px 2px 0;
+  }
+
+  .ws .ws-book-grid:not(.ws-book-list) .ws-book-info h3 {
+    margin-bottom: 4px;
+    font-size: 15px;
+  }
+
+  .ws .ws-book-grid:not(.ws-book-list) .ws-book-facts {
+    margin: 0;
     font-size: 12px;
+  }
+
+  .ws-book-grid:not(.ws-book-list) .ws-book-goal,
+  .ws-book-grid:not(.ws-book-list) .ws-book-badge,
+  .ws-book-grid:not(.ws-book-list) .ws-book-open > span {
+    display: none;
+  }
+
+  .ws-book-grid:not(.ws-book-list) .ws-book-open {
+    padding-top: 8px;
+  }
+
+  .ws-book-grid:not(.ws-book-list) .ws-book-open:not(:has(.ws-book-epub)) {
+    display: none;
   }
 
   .ws-create>div {
@@ -1118,16 +1365,6 @@ dialog.ws-options-dialog .ws-options p {
   border: 1px solid var(--ws-line);
   padding: 4px;
   z-index: 4;
-}
-
-.ws-book-links {
-  align-items: center;
-}
-
-.ws-book-links>button {
-  font-size: 11px;
-  color: var(--ws-muted);
-  padding: 5px;
 }
 
 html.writing-studio-open,
@@ -2864,29 +3101,6 @@ body:has(.ws-floating-audio) .ws-draft-mode .ws-draft-pane:has([data-ws-audioboo
   background: var(--ws-accent);
   color: var(--ws-on-accent);
   outline: 1px solid var(--ws-accent-hover);
-}
-
-/* Published EPUB cover on the Studio library card. */
-.ws-book-cover[data-has-cover] {
-  padding-inline-end: calc(30px + min(38%, 150px));
-}
-
-.ws-book-cover-image {
-  position: absolute;
-  inset-block: 24px;
-  inset-inline-end: 24px;
-  width: min(38%, 150px);
-  height: calc(100% - 48px);
-  max-height: 225px;
-  margin-block: auto;
-  object-fit: cover;
-  border-radius: 3px;
-  box-shadow: 0 6px 16px rgb(36 24 15 / 28%);
-}
-
-.ws-book-links .ws-book-epub {
-  font-weight: 600;
-  color: var(--ws-brand);
 }
 
 .ws-header .ws-more-menu .ws-menu-danger {

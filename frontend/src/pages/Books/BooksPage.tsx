@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
@@ -6,10 +6,28 @@ import { useFeatureAccess } from "../../hooks/useFeatureAccess";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import bookApi from "../../services/bookApiService";
 import { getDefaultBook } from "../../services/bookUtilService";
-import type { ManuscriptSort } from "../../../../shared/types/books";
+import type { ManuscriptFilter, ManuscriptPage, ManuscriptSort } from "../../../../shared/types/books";
 import "../../components/WritingStudio/writingStudio.css";
 import { ReaderSelect } from "../../components/Reader/ReaderSelect";
 import { useTranslation } from "react-i18next";
+import { FiGrid, FiList, FiSearch } from "react-icons/fi";
+
+type LibraryLayout = "grid" | "list";
+const layoutKey = "roza.studioLibraryLayout";
+const manuscriptFilters: { value: ManuscriptFilter; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "writing", label: "In progress" },
+  { value: "blank", label: "Not started" },
+  { value: "epub", label: "Has EPUB" },
+];
+
+function readLayout(): LibraryLayout {
+  try {
+    return localStorage.getItem(layoutKey) === "list" ? "list" : "grid";
+  } catch {
+    return "grid";
+  }
+}
 
 export default function BooksPage() {
   const { t } = useTranslation();
@@ -28,11 +46,14 @@ export default function BooksPage() {
   }, [term]);
   const waitingForSearch = term !== debouncedTerm;
   const [sort, setSort] = useState<ManuscriptSort>("recent");
+  const [filter, setFilter] = useState<ManuscriptFilter>("all");
+  const [layout, setLayout] = useState<LibraryLayout>(readLayout);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
   const query = useInfiniteQuery({
-    queryKey: ["books", "studio", loggedInUser?.id, debouncedTerm, sort],
-    queryFn: ({ pageParam, signal }) => bookApi.queryManuscripts(debouncedTerm, sort, pageParam, signal),
+    queryKey: ["books", "studio", loggedInUser?.id, debouncedTerm, sort, filter],
+    queryFn: ({ pageParam, signal }) =>
+      bookApi.queryManuscripts(debouncedTerm, sort, filter, pageParam, signal),
     initialPageParam: 0,
     getNextPageParam: page => page.nextOffset ?? undefined,
     enabled: !!loggedInUser && !waitingForSearch,
@@ -48,7 +69,20 @@ export default function BooksPage() {
   const books = waitingForSearch ? [] : Array.from(new Map(
     query.data?.pages.flatMap(page => page.manuscripts).map(book => [book.id, book]),
   ).values());
+  // Keep the chip counts steady while another filter loads.
+  const lastCounts = useRef<ManuscriptPage["counts"]>();
+  if (query.data?.pages[0]?.counts) lastCounts.current = query.data.pages[0].counts;
+  const counts = waitingForSearch ? undefined : lastCounts.current;
+  const filtered = !!term || filter !== "all";
   const loading = waitingForSearch || query.isLoading;
+  function changeLayout(next: LibraryLayout) {
+    setLayout(next);
+    try {
+      localStorage.setItem(layoutKey, next);
+    } catch {
+      // The layout choice is a convenience; ignore blocked storage.
+    }
+  }
   const loadError = !waitingForSearch && query.isError && !query.isFetchNextPageError;
   function submit(event: FormEvent) {
     event.preventDefault();
@@ -59,12 +93,9 @@ export default function BooksPage() {
       <div className="ws-library-inner">
         <header className="ws-library-heading">
           <div>
-            <span className="ws-eyebrow">ROZA / YOUR WRITING LIFE</span>
-            <h1>
-              A little space.
-              <br />A world of stories.
-            </h1>
-            <p>Your manuscripts, ready for the next chapter.</p>
+            <span className="ws-eyebrow">Writing Studio</span>
+            <h1>Your manuscripts</h1>
+            <p>Every story you are writing, on one shelf. Pick one up where you left it.</p>
           </div>
           <button
             className="ws-primary"
@@ -109,19 +140,32 @@ export default function BooksPage() {
             )}
           </form>
         )}
-        <div className="ws-library-tools">
-          <h2>
-            Your manuscripts <span>{waitingForSearch ? 0 : query.data?.pages[0]?.total ?? 0}</span>
-          </h2>
-          <div>
-            <input
-              type="search"
-              maxLength={200}
-              aria-label="Search manuscripts"
-              placeholder="Search manuscripts…"
-              value={search}
-              onChange={event => setSearch(event.target.value)}
-            />
+        <div className="ws-library-controls">
+          <div className="ws-library-filters" role="group" aria-label="Show manuscripts">
+            {manuscriptFilters.map(({ value, label }) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={filter === value}
+                onClick={() => setFilter(value)}
+              >
+                {label}
+                {counts && <span aria-hidden="true">{counts[value]}</span>}
+              </button>
+            ))}
+          </div>
+          <div className="ws-library-tools">
+            <label className="ws-library-search">
+              <FiSearch aria-hidden="true" />
+              <input
+                type="search"
+                maxLength={200}
+                aria-label="Search manuscripts"
+                placeholder="Search manuscripts"
+                value={search}
+                onChange={event => setSearch(event.target.value)}
+              />
+            </label>
             <span id="manuscript-sort-label" className="ws-sr-only">
               Sort manuscripts
             </span>
@@ -130,6 +174,7 @@ export default function BooksPage() {
                 id="manuscript-sort"
                 labelId="manuscript-sort-label"
                 value={sort}
+                prefix="Sort"
                 options={[
                   { value: "recent", label: "Recently edited" },
                   { value: "title", label: "Title A–Z" },
@@ -137,6 +182,16 @@ export default function BooksPage() {
                 ]}
                 onChange={setSort}
               />
+            </div>
+            <div className="ws-library-layout" role="group" aria-label="Layout">
+              <button type="button" aria-pressed={layout === "grid"} aria-label="Grid view"
+                title="Grid view" onClick={() => changeLayout("grid")}>
+                <FiGrid aria-hidden="true" />
+              </button>
+              <button type="button" aria-pressed={layout === "list"} aria-label="List view"
+                title="List view" onClick={() => changeLayout("list")}>
+                <FiList aria-hidden="true" />
+              </button>
             </div>
           </div>
         </div>
@@ -154,64 +209,87 @@ export default function BooksPage() {
         {query.isSuccess && !loading && !books.length && (
           <div className="ws-empty">
             <h2>
-              {term ? "No matching manuscripts" : "Your story belongs here."}
+              {filtered ? "No matching manuscripts" : "Your story belongs here."}
             </h2>
             <p>
               {term
                 ? "Try a different title."
-                : "Start a manuscript. Gather your ideas. Find your rhythm."}
+                : filtered
+                  ? "No manuscripts on this shelf yet."
+                  : "Start a manuscript. Gather your ideas. Find your rhythm."}
             </p>
-            {!term && (
+            {!filtered && (
               <button className="ws-primary" onClick={() => setCreating(true)}>
                 Create your first manuscript
               </button>
             )}
           </div>
         )}
-        <div className="ws-book-grid">
-          {books.map((book, index) => (
-            <article key={book.id} className="ws-book-card">
-              <Link
-                to={`/book-edit/${book.id}`}
-                className="ws-book-cover"
-                data-color={index % 4}
-                data-has-cover={book.cover ? "true" : undefined}
-                aria-label={`Write ${book.name}`}
-              >
-                {book.cover && (
-                  <img className="ws-book-cover-image" src={book.cover} alt="" />
-                )}
-                <span className="ws-eyebrow">
-                  MANUSCRIPT / {String(index + 1).padStart(2, "0")}
-                </span>
-                <h3 dir="auto">{book.name}</h3>
-                <span className="ws-cover-rule" />
-                <small>
-                  {book.chapterCount}{" "}
-                  chapters
-                </small>
-              </Link>
-              <div className="ws-book-meta">
-                <span>{book.wordCount.toLocaleString()} words</span>
-                <time dateTime={String(book.updatedAt)}>
-                  {new Date(book.updatedAt).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                  })}
-                </time>
-              </div>
-              <div className="ws-book-links">
-                <Link to={`/book-edit/${book.id}`}>
-                  Continue writing <span aria-hidden="true">→</span>
-                </Link>
-                {readerAccess && publishingAccess && book.readerBookId && (
-                  <Link to={`/reader/${book.readerBookId}`} className="ws-book-epub">
-                    Read EPUB
-                  </Link>
-                )}
-              </div>
-            </article>
-          ))}
+        <div className={`ws-book-grid${layout === "list" ? " ws-book-list" : ""}`}>
+          {books.map((book, index) => {
+            const showEpub = readerAccess && publishingAccess && !!book.readerBookId;
+            const goal = book.wordGoal && book.wordCount ? book.wordGoal : 0;
+            return (
+              <article key={book.id} className="ws-book-card">
+                <Link
+                  to={`/book-edit/${book.id}`}
+                  className="ws-book-card-link"
+                  aria-label={`Write ${book.name}`}
+                />
+                <div className="ws-book-cover">
+                  {book.cover ? (
+                    <img className="ws-book-cover-image" src={book.cover} alt="" />
+                  ) : (
+                    <span className="ws-book-cloth" data-color={index % 4} aria-hidden="true">
+                      <small>Manuscript</small>
+                      <b dir="auto">{book.name}</b>
+                      <span>❦</span>
+                    </span>
+                  )}
+                  {showEpub && <span className="ws-book-badge">EPUB</span>}
+                </div>
+                <div className="ws-book-info">
+                  <h3 dir="auto">{book.name}</h3>
+                  <p className="ws-book-facts">
+                    {book.chapterCount
+                      ? `${book.chapterCount} ${book.chapterCount === 1 ? "chapter" : "chapters"} · ${book.wordCount.toLocaleString()} words`
+                      : "No chapters yet"}
+                    {" · "}
+                    <time dateTime={String(book.updatedAt)}>
+                      {new Date(book.updatedAt).toLocaleDateString(undefined, {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </time>
+                  </p>
+                  {goal ? (
+                    <div className="ws-book-goal">
+                      <span>
+                        {Math.round(Math.min(1, book.wordCount / goal) * 100)}% of{" "}
+                        {goal.toLocaleString()} word goal
+                      </span>
+                      <progress max={goal} value={Math.min(book.wordCount, goal)} />
+                    </div>
+                  ) : !book.chapterCount ? (
+                    <div className="ws-book-goal">
+                      <span>Blank page · ready for chapter one</span>
+                    </div>
+                  ) : null}
+                  <div className="ws-book-open">
+                    <span>
+                      {book.chapterCount ? "Continue writing" : "Start writing"}{" "}
+                      <span aria-hidden="true">→</span>
+                    </span>
+                    {showEpub && (
+                      <Link to={`/reader/${book.readerBookId}`} className="ws-book-epub">
+                        Read EPUB
+                      </Link>
+                    )}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
         </div>
         {!waitingForSearch && query.hasNextPage && (
           <div className="ws-library-pagination">

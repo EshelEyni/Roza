@@ -1,6 +1,6 @@
 import axios from "axios";
 import { JsendResponse } from "../../../shared/types/system";
-import type { Book, ManuscriptPage, ManuscriptSort } from "../../../shared/types/books";
+import type { Book, ManuscriptFilter, ManuscriptPage, ManuscriptSort } from "../../../shared/types/books";
 import httpService from "./httpService";
 import { handleServerResponseData } from "./utilService";
 import { BookQueryParams } from "../types/app";
@@ -19,9 +19,15 @@ async function query({
   return handleServerResponseData<Book[]>(response);
 }
 
-async function queryManuscripts(q: string, sort: ManuscriptSort, offset: number, signal: AbortSignal) {
+async function queryManuscripts(
+  q: string,
+  sort: ManuscriptSort,
+  filter: ManuscriptFilter,
+  offset: number,
+  signal: AbortSignal,
+) {
   const response = await axios.get<JsendResponse<ManuscriptPage>>(`/api/${baseUrl}/manuscripts`, {
-    params: { q, sort, offset },
+    params: { q, sort, filter, offset },
     signal,
     withCredentials: true,
   });
