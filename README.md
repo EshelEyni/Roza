@@ -210,10 +210,18 @@ Run each command in the directory shown.
 
 | Directory | Command | Purpose |
 | --- | --- | --- |
-| Root | `npm run dev` | Start both apps and open VS Code windows. |
-| Root | `npm run dev:backend` | Open the backend in VS Code and start it. |
-| Root | `npm run dev:frontend` | Open the frontend in VS Code and start it. |
-| Root | `npm run dev:translate` | Open the locale directory in VS Code. |
+| Root | `npm run dev` | Start the backend and frontend dev servers together. |
+| Root | `npm run dev:backend` | Start only the backend dev server (nodemon + ts-node). |
+| Root | `npm run dev:frontend` | Start only the frontend dev server. |
+| Root | `npm run desktop:dev` | Open the desktop app from source against the local backend. Starts the backend if it isn't running. |
+| Root | `npm run desktop:build` | Build the desktop app for this computer and open the new build. |
+| Root | `npm run docker:publish` | Build the Docker image and push it to Docker Hub as `esheleyni/roza:latest`. Does not deploy. |
+| Root | `npm run deploy:roza` | **Production.** Start the GitHub deploy workflow: AWS pulls the latest image and restarts Roza. |
+| Root | `npm run deploy:watch` | Follow the latest GitHub Actions run in the terminal. |
+| Root | `npm run deploy:all` | **Production.** `docker:publish`, then the GitHub deploy workflow. Waits for it and shows a Windows alert. |
+| Root | `npm run deploy:local` | **Production.** `desktop:build`, `docker:publish`, then redeploy AWS over SSH from this computer. |
+| Root | `npm run deploy:local:restart` | **Production.** Only the last step of `deploy:local`: AWS pulls the latest image and restarts Roza over SSH. |
+| Root | `npm run gi` | Install npm packages in `backend` and `frontend`. |
 | Frontend | `npm run build` | Type-check and build to `frontend/dist/`. |
 | Frontend | `npm run lint` | Run ESLint. |
 | Frontend | `npm run preview` | Preview a built frontend; this does not start the backend. |
