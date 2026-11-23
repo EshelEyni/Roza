@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import mongoose from "mongoose";
 import type { PipelineStage } from "mongoose";
 import type { ReaderLibraryCounts, ReaderLibrarySort } from "../../../../shared/types/reader";
@@ -60,7 +61,8 @@ export async function listReaderBooks(userId: string, query: Record<string, unkn
     throw new AppError("Invalid library search.", 400);
   }
   const term = search.trim();
-  const scope = JSON.stringify([userId, archived, mode, term, status]);
+  const ignorePins = query.ignorePins === "true";
+  const scope = JSON.stringify([userId, archived, mode, term, status, ...(ignorePins ? [true] : [])]);
   const cursor = parseCursor(query.cursor, scope, mode === "title" || mode === "author");
   const literal = term.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\$&");
   const contains = { $regex: literal, $options: "i" };
@@ -74,7 +76,7 @@ export async function listReaderBooks(userId: string, query: Record<string, unkn
       archived: archived ? true : { $ne: true },
       ...(term && { $or: [{ title: contains }, { author: contains }] }),
     } },
-    { $addFields: { pin: { $cond: ["$pinned", 1, 0] }, key: sortKeys[mode] } },
+    { $addFields: { pin: ignorePins ? { $literal: 0 } : { $cond: ["$pinned", 1, 0] }, key: sortKeys[mode] } },
   ];
   if (cursor) {
     pipeline.push({ $match: { $or: [
@@ -86,7 +88,7 @@ export async function listReaderBooks(userId: string, query: Record<string, unkn
   pipeline.push(
     { $sort: { pin: -1, key: direction, _id: direction } },
     { $limit: pageSize + 1 },
-    { $project: { fileId: 0, originalFileId: 0, userId: 0 } },
+    { $project: { ...(!ignorePins && { fileId: 0 }), originalFileId: 0, userId: 0 } },
   );
   const [books, totals, resumable] = await Promise.all([
     ReaderBookModel.aggregate(pipeline),
@@ -120,7 +122,10 @@ export async function listReaderBooks(userId: string, query: Record<string, unkn
     id: String(last._id), scope,
   })).toString("base64url") : null;
   return {
-    books: page.map(({ pin, key, ...book }) => ReaderBookModel.hydrate(book).toJSON()),
+    books: page.map(({ pin, key, fileId, ...book }) => ({
+      ...ReaderBookModel.hydrate(book).toJSON(),
+      ...(ignorePins && fileId && { fileRevision: createHash("sha256").update(String(fileId)).digest("hex") }),
+    })),
     nextCursor,
     ...(counts && { counts }),
     ...(resumable?.[0] && { resume: ReaderBookModel.hydrate(resumable[0]).toJSON() }),

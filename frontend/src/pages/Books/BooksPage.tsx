@@ -35,6 +35,7 @@ export default function BooksPage() {
     queryFn: ({ pageParam, signal }) => bookApi.queryManuscripts(debouncedTerm, sort, pageParam, signal),
     initialPageParam: 0,
     getNextPageParam: page => page.nextOffset ?? undefined,
+    networkMode: "always",
     enabled: !!loggedInUser && !waitingForSearch,
   });
   const create = useMutation({

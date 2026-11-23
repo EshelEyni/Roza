@@ -45,6 +45,7 @@ export type ReaderBook = {
   author: string;
   cover: string;
   filename: string;
+  fileRevision?: string;
   size: number;
   state: ReaderState;
   createdAt: string;

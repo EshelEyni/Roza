@@ -10,6 +10,7 @@ export function useGetReaderBooks(enabled: boolean, view: ReaderLibraryView, sor
     initialPageParam: null as string | null,
     queryFn: ({ pageParam, signal }) => readerApiService.query(view, sort, search, pageParam, signal, resume),
     getNextPageParam: page => page.nextCursor ?? undefined,
+    networkMode: "always",
     enabled,
     staleTime: 0,
     refetchOnMount: "always",
