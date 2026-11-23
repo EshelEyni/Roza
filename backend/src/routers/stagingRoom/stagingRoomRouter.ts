@@ -26,6 +26,7 @@ import {
   readLiveBook,
   readView,
 } from "../../services/stagingRoom/changes";
+import { browseOutline, chapterVersion, elementView, isElementKind } from "../../services/stagingRoom/browse";
 import { changesFromCopy, isV2, LegacyCopy, ProjectRow } from "../../services/stagingRoom/project";
 import { checkSlate, countWords } from "../../services/stagingRoom/slate";
 
@@ -299,6 +300,33 @@ router.post("/projects/import", asyncErrorCatcher(async (req, res) => {
 
 router.get("/projects/:slug", asyncErrorCatcher(async (req, res) => {
   res.json(bookView(await withFreshLive(await findRow(req))));
+}));
+
+/* ---------- browse the live book (read only) ---------- */
+
+router.get("/projects/:slug/browse", asyncErrorCatcher(async (req, res) => {
+  const row = await withFreshLive(await findRow(req));
+  res.json(browseOutline(row.live, row.changes));
+}));
+
+router.get("/projects/:slug/browse/chapters/:id", asyncErrorCatcher(async (req, res) => {
+  const row = await withFreshLive(await findRow(req));
+  if (!row.live) throw new AppError("This book is not in Writing Studio yet.", 404);
+  const version = typeof req.query.version === "string" && req.query.version ? req.query.version : "main";
+  const book = version === "main" || !row.liveBookId ? null : await readLiveBook(conn(), row.liveBookId, row.userId);
+  const view = chapterVersion(row.live, book, String(req.params.id), version);
+  if (!view) throw new AppError("This chapter or draft is no longer in Writing Studio.", 404);
+  res.json(view);
+}));
+
+router.get("/projects/:slug/browse/:kind/:index", asyncErrorCatcher(async (req, res) => {
+  const kind = req.params.kind;
+  const index = Number(req.params.index);
+  if (!isElementKind(kind) || !Number.isInteger(index) || index < 0) throw new AppError("Unknown item.", 400);
+  const row = await withFreshLive(await findRow(req));
+  const view = row.live ? elementView(row.live, kind, index) : null;
+  if (!view) throw new AppError("This item is no longer in Writing Studio.", 404);
+  res.json(view);
 }));
 
 /* ---------- one change ---------- */

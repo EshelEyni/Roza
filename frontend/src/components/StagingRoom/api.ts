@@ -1,6 +1,9 @@
 import type {
   ApproveResult,
+  BrowseOutline,
+  BrowseText,
   ChangeTextView,
+  EntityKind,
   LiveBookOption,
   ReadView,
   SlateElement,
@@ -45,6 +48,11 @@ export const api = {
     request<{ updatedAt: string }>(changeUrl(slug, id) + "/text", "PUT", { text, updatedAt }),
   approve: (slug: string, ids: string[], confirm = false) =>
     request<ApproveResult>(projectUrl(slug) + "/approve", "POST", { ids, confirm }),
+  browse: (slug: string) => request<BrowseOutline>(projectUrl(slug) + "/browse"),
+  browseChapter: (slug: string, id: string, version: string) =>
+    request<BrowseText>(projectUrl(slug) + "/browse/chapters/" + encodeURIComponent(id) + "?version=" + encodeURIComponent(version)),
+  browseElement: (slug: string, kind: EntityKind, index: number) =>
+    request<BrowseText>(projectUrl(slug) + "/browse/" + kind + "/" + index),
   discard: (slug: string, ids: string[]) => request<{ discarded: number }>(projectUrl(slug) + "/discard", "POST", { ids }),
 };
 

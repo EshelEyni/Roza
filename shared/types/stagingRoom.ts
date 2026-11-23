@@ -280,6 +280,29 @@ export interface ReadView {
   paragraphs: { align?: string; segments: { text: string; isNew: boolean }[] }[];
 }
 
+/** Browse book: the live book's contents, read only. */
+export interface BrowseOutline {
+  /** false: the book is not in Writing Studio yet, so there is nothing to browse */
+  linked: boolean;
+  chapters: {
+    id: string;
+    name: string;
+    words: number;
+    /** changes waiting for this chapter */
+    waiting: number;
+    drafts: { id: string; name: string; words: number }[];
+  }[];
+  elements: Record<EntityKind, { name: string; words: number }[]>;
+}
+
+/** Browse book: one chapter version or story element, read only. */
+export interface BrowseText {
+  title: string;
+  subtitle: string;
+  words: number;
+  paragraphs: { align?: string; text: string }[];
+}
+
 /** The editor's copy of a text change. */
 export interface ChangeTextView {
   id: string;

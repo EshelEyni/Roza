@@ -21,6 +21,7 @@ function groupsOf(changes: ChangeView[]): Group[] {
 const LIVE_MS = 3 * 60_000;
 
 export function ChangesView({
+  tabs,
   book,
   busy,
   onBack,
@@ -29,6 +30,7 @@ export function ChangesView({
   onApprove,
   onDiscard,
 }: {
+  tabs: React.ReactNode;
   book: StagedBookView;
   busy: boolean;
   onBack: () => void;
@@ -69,6 +71,7 @@ export function ChangesView({
           </button>
         )}
       </header>
+      {tabs}
 
       {live && (
         <p className="sr-live" role="status">

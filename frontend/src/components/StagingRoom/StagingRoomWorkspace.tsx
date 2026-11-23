@@ -5,21 +5,34 @@ import { api, errorText } from "./api";
 import { importProjects } from "./importProjects";
 import "./staging-room.scss";
 import { BookList } from "./components/BookList";
+import { BookTabs } from "./components/BookTabs";
+import { BrowseView } from "./components/BrowseView";
 import { ChangesView } from "./components/ChangesView";
 import { ReadingView } from "./components/ReadingView";
 import { StagingEditor } from "./components/StagingEditor";
+import { SidebarIcon } from "./components/SidebarIcon";
+import { useConfirmation } from "../Modals/useConfirmation";
 
 /*
  * Staging Room v2 (docs/staging-room-prd.md): Claude's changes wait here as a list.
  * Read them, edit them, then approve or discard. Nothing reaches the live book before you approve.
  */
 
-type Screen = { kind: "changes" } | { kind: "read"; id: string } | { kind: "edit"; id: string };
+type Screen = { kind: "changes" } | { kind: "browse" } | { kind: "read"; id: string } | { kind: "edit"; id: string };
 type Notice = { tone: "ok" | "danger"; text: string; lines?: string[] };
 type Confirm = { ids: string[]; titles: string[] };
 
 const REFRESH_MS = 5000;
 const DEFAULT_PREFS: StagingPrefs = { order: [], pinned: [], filter: "pinned" };
+const BOOKS_CLOSED_KEY = "roza.stagingRoom.booksClosed";
+
+function readBooksClosed() {
+  try {
+    return window.localStorage.getItem(BOOKS_CLOSED_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
 
 export function StagingRoomWorkspace() {
   const { t } = useTranslation();
@@ -32,6 +45,8 @@ export function StagingRoomWorkspace() {
   const [importing, setImporting] = useState(false);
   const [notice, setNotice] = useState<Notice>();
   const [confirm, setConfirm] = useState<Confirm>();
+  const [booksClosed, setBooksClosed] = useState(readBooksClosed);
+  const { confirm: ask, confirmationDialog } = useConfirmation();
   const selectedRef = useRef(selected);
   selectedRef.current = selected;
 
@@ -107,8 +122,16 @@ export function StagingRoomWorkspace() {
 
   const discard = async (ids: string[]) => {
     if (!selected) return;
-    const what = ids.length === 1 ? "this change" : `these ${ids.length} changes`;
-    if (!window.confirm(`Discard ${what}? It is removed from Staging. Writing Studio is not changed.`)) return;
+    const one = ids.length === 1 ? book?.changes.find((c) => c.id === ids[0]) : undefined;
+    const ok = await ask({
+      title: ids.length === 1 ? "Discard this change?" : `Discard ${ids.length} changes?`,
+      message:
+        ids.length === 1
+          ? `${one ? `“${one.title}”` : "This change"} is removed from Staging. Writing Studio is not changed.`
+          : "These changes are removed from Staging. Writing Studio is not changed.",
+      confirmLabel: "Discard",
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       await api.discard(selected, ids);
@@ -149,6 +172,21 @@ export function StagingRoomWorkspace() {
     }
   };
 
+  const toggleBooks = () => {
+    setBooksClosed((closed) => {
+      try {
+        window.localStorage.setItem(BOOKS_CLOSED_KEY, closed ? "0" : "1");
+      } catch {
+        /* the choice is kept for this visit only */
+      }
+      return !closed;
+    });
+  };
+
+  const tabs = book && (
+    <BookTabs tab={screen.kind === "browse" ? "browse" : "changes"} waiting={book.changes.length} onChange={(tab) => setScreen({ kind: tab })} />
+  );
+
   const closeEditor = () => {
     setScreen({ kind: "changes" });
     if (selected) loadBook(selected);
@@ -159,11 +197,12 @@ export function StagingRoomWorkspace() {
       <div className="roza-staging-room sr-editing">
         <StagingEditor slug={selected} id={screen.id} busy={busy} onClose={closeEditor} onApprove={() => approve([screen.id])} />
         {confirm && <ConfirmDialog confirm={confirm} onCancel={() => setConfirm(undefined)} onConfirm={() => approve(confirm.ids, true)} />}
+        {confirmationDialog}
       </div>
     );
 
   return (
-    <div className={`roza-staging-room ${selected ? "has-book" : ""}`}>
+    <div className={`roza-staging-room ${selected ? "has-book" : ""} ${booksClosed ? "books-closed" : ""}`}>
       <header className="sr-topbar">
         <img src="/images/icon-512X512.png" alt="" />
         <span className="sr-brand">Roza</span>
@@ -190,7 +229,18 @@ export function StagingRoomWorkspace() {
         </div>
       )}
       <div className="sr-workspace">
+        {booksClosed && (
+          <aside className="sr-books-rail" aria-label="Staged books">
+            <button className="sr-icon-btn" onClick={toggleBooks} aria-label="Open books sidebar" title="Open books sidebar">
+              <SidebarIcon open={false} />
+            </button>
+            <span className="sr-eyebrow sr-rail-label" aria-hidden="true">
+              Books
+            </span>
+          </aside>
+        )}
         <BookList
+          onClose={toggleBooks}
           books={books}
           prefs={prefs}
           selected={selected}
@@ -221,8 +271,25 @@ export function StagingRoomWorkspace() {
               onApprove={() => approve([screen.id])}
               onDiscard={() => discard([screen.id])}
             />
+          ) : screen.kind === "browse" ? (
+            <BrowseView
+              slug={selected}
+              onShowChanges={() => setScreen({ kind: "changes" })}
+              header={
+                <>
+                  <button className="sr-back sr-mobile-only" onClick={() => setSelected(undefined)}>
+                    ← Books
+                  </button>
+                  <h1 id="sr-book-title" className="sr-title" dir="auto">
+                    {book.bookName}
+                  </h1>
+                  {tabs}
+                </>
+              }
+            />
           ) : (
             <ChangesView
+              tabs={tabs}
               book={book}
               busy={busy}
               onBack={() => setSelected(undefined)}
@@ -235,6 +302,7 @@ export function StagingRoomWorkspace() {
         </main>
       </div>
       {confirm && <ConfirmDialog confirm={confirm} onCancel={() => setConfirm(undefined)} onConfirm={() => approve(confirm.ids, true)} />}
+      {confirmationDialog}
     </div>
   );
 }

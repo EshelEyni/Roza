@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { LiveBookOption, StagedBookSummary, StagingPrefs } from "../../../../../shared/types/stagingRoom";
 import { api, errorText } from "../api";
+import { SidebarIcon } from "./SidebarIcon";
 
 const FILTERS: { id: StagingPrefs["filter"]; label: string }[] = [
   { id: "pinned", label: "Pinned" },
@@ -26,7 +27,9 @@ export function BookList({
   onImport,
   onPrefs,
   onStaged,
+  onClose,
 }: {
+  onClose: () => void;
   books: StagedBookSummary[];
   prefs: StagingPrefs;
   selected?: string;
@@ -46,7 +49,12 @@ export function BookList({
   return (
     <aside className="sr-books" aria-label="Staged books">
       <div className="sr-books-head">
-        <h2 className="sr-eyebrow">Books</h2>
+        <div className="sr-books-title">
+          <h2 className="sr-eyebrow">Books</h2>
+          <button className="sr-icon-btn sr-desktop-only" onClick={onClose} aria-label="Close books sidebar" title="Close books sidebar">
+            <SidebarIcon open />
+          </button>
+        </div>
         <div className="sr-row">
           <input
             hidden
