@@ -142,7 +142,7 @@ export function ReadingView({
           <div className="sr-read-actions">
             <button
               className="sr-icon-btn sm"
-              onClick={openFind}
+              onClick={() => (findOpen ? setFindOpen(false) : openFind())}
               aria-label="Find in text"
               title="Find in text (Ctrl+Alt+F)"
               aria-pressed={findOpen}
