@@ -7,7 +7,8 @@ import { isWordGoal } from "../../models/books/schemas/bookSchema";
 import { AppError, asyncErrorCatcher } from "../../services/error/errorService";
 import { NextFunction, Request, Response } from "express";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
-import { Book } from "../../../../shared/types/books";
+import type { Book, ManuscriptPage, ManuscriptSummary } from "../../../../shared/types/books";
+import { countWords } from "../../services/stagingRoom/slate";
 
 const getBooks = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
   const loggedInUserId = getLoggedInUserIdFromReq();
@@ -30,6 +31,67 @@ const getBooks = asyncErrorCatcher(async (req: Request, res: Response, next: Nex
     results: books.length,
     data: books,
   });
+});
+
+const manuscriptPageSize = 6;
+
+const getManuscripts = asyncErrorCatcher(async (req: Request, res: Response) => {
+  const userId = getLoggedInUserIdFromReq();
+  if (!userId) throw new AppError("User not logged in", 401);
+
+  const { q = "", sort = "recent", offset: rawOffset = "0" } = req.query;
+  if (typeof q !== "string" || q.length > 200 ||
+      (sort !== "recent" && sort !== "title" && sort !== "words") ||
+      typeof rawOffset !== "string" || !/^\d+$/.test(rawOffset)) {
+    throw new AppError("Invalid manuscript query", 400);
+  }
+  const offset = Number(rawOffset);
+  if (!Number.isSafeInteger(offset + manuscriptPageSize)) {
+    throw new AppError("Invalid manuscript offset", 400);
+  }
+
+  const term = q.trim();
+  const escapedTerm = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const filter = {
+    userId,
+    isArchived: { $ne: true },
+    ...(term && { name: { $regex: escapedTerm, $options: "i" } }),
+  };
+  const query = BookModel.find(filter)
+    .select("name updatedAt chapters.text chapters.isArchived publishing.cover publishing.readerBookId")
+    .lean();
+  if (sort === "title") {
+    query.collation({ locale: "en", strength: 2 }).sort({ name: 1, _id: 1 });
+  } else {
+    query.sort({ updatedAt: -1, _id: 1 });
+  }
+  if (sort !== "words") query.skip(offset).limit(manuscriptPageSize + 1);
+
+  const [books, total] = await Promise.all([
+    query.exec(),
+    BookModel.countDocuments(filter).exec(),
+  ]);
+  const summaries: ManuscriptSummary[] = books.map(book => {
+    const chapters = (book.chapters ?? []).filter(chapter => !chapter.isArchived);
+    return {
+      id: String(book._id),
+      name: book.name,
+      updatedAt: book.updatedAt,
+      chapterCount: chapters.length,
+      wordCount: chapters.reduce((total, chapter) => total + countWords(chapter.text), 0),
+      cover: book.publishing?.cover,
+      readerBookId: book.publishing?.readerBookId?.toString(),
+    };
+  });
+  const page = sort === "words"
+    ? summaries.sort((a, b) => b.wordCount - a.wordCount).slice(offset, offset + manuscriptPageSize + 1)
+    : summaries;
+  const data: ManuscriptPage = {
+    manuscripts: page.slice(0, manuscriptPageSize),
+    total,
+    nextOffset: page.length > manuscriptPageSize ? offset + manuscriptPageSize : null,
+  };
+  res.set("Cache-Control", "no-store").json({ status: "success", data });
 });
 
 const getBookById = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
@@ -150,4 +212,4 @@ function validateWordGoal(value: unknown) {
     throw new AppError("Manuscript word goal must be a whole number from 1 to 10,000,000.", 400);
 }
 
-export { getBooks, getBookById, addBook, updateBook };
+export { getBooks, getManuscripts, getBookById, addBook, updateBook };

@@ -1,6 +1,6 @@
 import axios from "axios";
 import { JsendResponse } from "../../../shared/types/system";
-import { Book } from "../../../shared/types/books";
+import type { Book, ManuscriptPage, ManuscriptSort } from "../../../shared/types/books";
 import httpService from "./httpService";
 import { handleServerResponseData } from "./utilService";
 import { BookQueryParams } from "../types/app";
@@ -17,6 +17,15 @@ async function query({
   const response = (await httpService.get(url)) as unknown as JsendResponse;
 
   return handleServerResponseData<Book[]>(response);
+}
+
+async function queryManuscripts(q: string, sort: ManuscriptSort, offset: number, signal: AbortSignal) {
+  const response = await axios.get<JsendResponse<ManuscriptPage>>(`/api/${baseUrl}/manuscripts`, {
+    params: { q, sort, offset },
+    signal,
+    withCredentials: true,
+  });
+  return handleServerResponseData(response.data);
 }
 
 async function getById(id: string): Promise<Book> {
@@ -70,4 +79,4 @@ async function archive(id: string): Promise<void> {
   }
 }
 
-export default { query, getById, add, update, archive };
+export default { query, queryManuscripts, getById, add, update, archive };

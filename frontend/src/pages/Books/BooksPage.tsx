@@ -1,12 +1,12 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLoginWithToken } from "../../hooks/reactQuery/get/useLoginWithToken";
 import { useFeatureAccess } from "../../hooks/useFeatureAccess";
 import { useDocumentTitle } from "../../hooks/useDocumentTitle";
 import bookApi from "../../services/bookApiService";
 import { getDefaultBook } from "../../services/bookUtilService";
-import { manuscriptWords } from "../../components/WritingStudio/manuscript";
+import type { ManuscriptSort } from "../../../../shared/types/books";
 import "../../components/WritingStudio/writingStudio.css";
 import { ReaderSelect } from "../../components/Reader/ReaderSelect";
 import { useTranslation } from "react-i18next";
@@ -20,13 +20,22 @@ export default function BooksPage() {
   const navigate = useNavigate();
   const client = useQueryClient();
   const [search, setSearch] = useState("");
-  const [sort, setSort] = useState("recent");
+  const term = search.trim();
+  const [debouncedTerm, setDebouncedTerm] = useState("");
+  useEffect(() => {
+    const timeout = window.setTimeout(() => setDebouncedTerm(term), 250);
+    return () => window.clearTimeout(timeout);
+  }, [term]);
+  const waitingForSearch = term !== debouncedTerm;
+  const [sort, setSort] = useState<ManuscriptSort>("recent");
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
-  const query = useQuery({
-    queryKey: ["books", "studio", loggedInUser?.id],
-    queryFn: () => bookApi.query({ limit: 10000, sort: "-updatedAt" }),
-    enabled: !!loggedInUser,
+  const query = useInfiniteQuery({
+    queryKey: ["books", "studio", loggedInUser?.id, debouncedTerm, sort],
+    queryFn: ({ pageParam, signal }) => bookApi.queryManuscripts(debouncedTerm, sort, pageParam, signal),
+    initialPageParam: 0,
+    getNextPageParam: page => page.nextOffset ?? undefined,
+    enabled: !!loggedInUser && !waitingForSearch,
   });
   const create = useMutation({
     mutationFn: () =>
@@ -36,17 +45,11 @@ export default function BooksPage() {
       navigate(`/book-edit/${book.id}`);
     },
   });
-  const books = [...(query.data || [])]
-    .filter(book =>
-      book.name.toLocaleLowerCase().includes(search.toLocaleLowerCase()),
-    )
-    .sort((a, b) =>
-      sort === "title"
-        ? a.name.localeCompare(b.name)
-        : sort === "words"
-          ? manuscriptWords(b) - manuscriptWords(a)
-          : new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-    );
+  const books = waitingForSearch ? [] : Array.from(new Map(
+    query.data?.pages.flatMap(page => page.manuscripts).map(book => [book.id, book]),
+  ).values());
+  const loading = waitingForSearch || query.isLoading;
+  const loadError = !waitingForSearch && query.isError && !query.isFetchNextPageError;
   function submit(event: FormEvent) {
     event.preventDefault();
     if (name.trim() && loggedInUser && !create.isPending) create.mutate();
@@ -108,11 +111,12 @@ export default function BooksPage() {
         )}
         <div className="ws-library-tools">
           <h2>
-            Your manuscripts <span>{query.data?.length ?? 0}</span>
+            Your manuscripts <span>{waitingForSearch ? 0 : query.data?.pages[0]?.total ?? 0}</span>
           </h2>
           <div>
             <input
               type="search"
+              maxLength={200}
               aria-label="Search manuscripts"
               placeholder="Search manuscripts…"
               value={search}
@@ -136,28 +140,28 @@ export default function BooksPage() {
             </div>
           </div>
         </div>
-        {query.isLoading && (
+        {loading && (
           <p role="status" className="ws-muted">
             Gathering your stories…
           </p>
         )}
-        {query.isError && (
+        {loadError && (
           <div className="ws-notice ws-error" role="alert">
             Unable to load your library.{" "}
             <button onClick={() => void query.refetch()}>Try again</button>
           </div>
         )}
-        {!query.isLoading && !query.isError && !books.length && (
+        {query.isSuccess && !loading && !books.length && (
           <div className="ws-empty">
             <h2>
-              {search ? "No matching manuscripts" : "Your story belongs here."}
+              {term ? "No matching manuscripts" : "Your story belongs here."}
             </h2>
             <p>
-              {search
+              {term
                 ? "Try a different title."
                 : "Start a manuscript. Gather your ideas. Find your rhythm."}
             </p>
-            {!search && (
+            {!term && (
               <button className="ws-primary" onClick={() => setCreating(true)}>
                 Create your first manuscript
               </button>
@@ -171,11 +175,11 @@ export default function BooksPage() {
                 to={`/book-edit/${book.id}`}
                 className="ws-book-cover"
                 data-color={index % 4}
-                data-has-cover={book.publishing?.cover ? "true" : undefined}
+                data-has-cover={book.cover ? "true" : undefined}
                 aria-label={`Write ${book.name}`}
               >
-                {book.publishing?.cover && (
-                  <img className="ws-book-cover-image" src={book.publishing.cover} alt="" />
+                {book.cover && (
+                  <img className="ws-book-cover-image" src={book.cover} alt="" />
                 )}
                 <span className="ws-eyebrow">
                   MANUSCRIPT / {String(index + 1).padStart(2, "0")}
@@ -183,12 +187,12 @@ export default function BooksPage() {
                 <h3 dir="auto">{book.name}</h3>
                 <span className="ws-cover-rule" />
                 <small>
-                  {book.chapters.filter(chapter => !chapter.isArchived).length}{" "}
+                  {book.chapterCount}{" "}
                   chapters
                 </small>
               </Link>
               <div className="ws-book-meta">
-                <span>{manuscriptWords(book).toLocaleString()} words</span>
+                <span>{book.wordCount.toLocaleString()} words</span>
                 <time dateTime={String(book.updatedAt)}>
                   {new Date(book.updatedAt).toLocaleDateString(undefined, {
                     month: "short",
@@ -200,8 +204,8 @@ export default function BooksPage() {
                 <Link to={`/book-edit/${book.id}`}>
                   Continue writing <span aria-hidden="true">→</span>
                 </Link>
-                {readerAccess && publishingAccess && book.publishing?.readerBookId && (
-                  <Link to={`/reader/${book.publishing.readerBookId}`} className="ws-book-epub">
+                {readerAccess && publishingAccess && book.readerBookId && (
+                  <Link to={`/reader/${book.readerBookId}`} className="ws-book-epub">
                     Read EPUB
                   </Link>
                 )}
@@ -209,7 +213,21 @@ export default function BooksPage() {
             </article>
           ))}
         </div>
-        <footer className="ws-library-footer">One page at a time.</footer>
+        {!waitingForSearch && query.hasNextPage && (
+          <div className="ws-library-pagination">
+            {query.isFetchNextPageError && (
+              <p role="alert">Unable to load more manuscripts.</p>
+            )}
+            <button
+              type="button"
+              disabled={query.isFetching}
+              aria-busy={query.isFetchingNextPage}
+              onClick={() => void query.fetchNextPage()}
+            >
+              <span>{query.isFetchingNextPage ? "Loading…" : query.isFetchNextPageError ? "Try again" : "Load more"}</span>
+            </button>
+          </div>
+        )}
       </div>
     </main>
   );

@@ -321,13 +321,26 @@
   color: var(--ws-accent);
 }
 
-.ws-library-footer {
+.ws-library-pagination {
+  margin-block-start: 24px;
   text-align: center;
-  font:
-    italic 18px Georgia,
-    serif;
-  color: var(--ws-muted);
-  padding: 65px 0 20px;
+}
+
+.ws .ws-library-pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  background: transparent;
+  color: var(--ws-accent);
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.ws .ws-library-pagination button:enabled:hover span,
+.ws .ws-library-pagination button:focus-visible span {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
 }
 
 .ws-create {

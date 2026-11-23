@@ -197,7 +197,7 @@ function ReaderLibrary({ userId }: { userId: string }) {
         onMove={onMove} />
       {!waitingForSearch && books.isFetchNextPageError && <p className="reader-message" role="alert">{t("reader.libraryError")}</p>}
       {!waitingForSearch && books.hasNextPage && (
-        <div className="reader-message">
+        <div className="reader-library-pagination">
           <button type="button" className="reader-button" disabled={books.isFetching || change.isPending}
             aria-busy={books.isFetchingNextPage} onClick={() => void books.fetchNextPage()}>
             {t(books.isFetchingNextPage ? "reader.loading" : books.isFetchNextPageError ? "reader.retry" : "reader.loadMore")}

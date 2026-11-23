@@ -69,6 +69,24 @@ export interface Book {
   publishing?: BookPublishing;
 }
 
+export type ManuscriptSort = "recent" | "title" | "words";
+
+export interface ManuscriptSummary {
+  id: string;
+  name: string;
+  updatedAt: Date | string;
+  chapterCount: number;
+  wordCount: number;
+  cover?: string;
+  readerBookId?: string;
+}
+
+export interface ManuscriptPage {
+  manuscripts: ManuscriptSummary[];
+  total: number;
+  nextOffset: number | null;
+}
+
 export type BookLanguage = "he" | "en";
 
 /** What the author chooses in the Publish EPUB dialog. */

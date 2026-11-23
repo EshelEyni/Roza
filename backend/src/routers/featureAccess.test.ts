@@ -12,6 +12,7 @@ jest.mock("../services/token/tokenService");
 jest.mock("../models/user/userModel", () => ({ UserModel: { findById: jest.fn(), create: jest.fn() } }));
 jest.mock("../controllers/book/bookController", () => ({
   getBooks: (_req: express.Request, res: express.Response) => res.sendStatus(204),
+  getManuscripts: (_req: express.Request, res: express.Response) => res.sendStatus(204),
   getBookById: jest.fn(), addBook: jest.fn(), updateBook: jest.fn(),
 }));
 jest.mock("../controllers/reader/studioPublicationController", () => ({
@@ -39,6 +40,7 @@ function account(id: string, roles?: unknown) {
 
 const paths = [
   "/api/book",
+  "/api/book/manuscripts",
   "/api/dev-board/access",
   "/api/auth/features/staging-room",
   "/api/auth/features/local-audiobooks",

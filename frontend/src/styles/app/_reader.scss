@@ -8,6 +8,12 @@
   max-width: 1240px;
   padding: 52px 36px 80px;
 }
+.reader-library-pagination {
+  display: flex;
+  justify-content: center;
+  margin-block-start: 24px;
+}
+
 .reader-library-heading {
   display: flex;
   justify-content: space-between;
