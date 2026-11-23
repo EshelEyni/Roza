@@ -23,6 +23,7 @@ type Notice = { tone: "ok" | "danger"; text: string; lines?: string[] };
 type Confirm = { ids: string[]; titles: string[] };
 
 const REFRESH_MS = 5000;
+const NOTICE_MS = 8000;
 const DEFAULT_PREFS: StagingPrefs = { order: [], pinned: [], filter: "pinned" };
 const BOOKS_CLOSED_KEY = "roza.stagingRoom.booksClosed";
 
@@ -80,6 +81,13 @@ export function StagingRoomWorkspace() {
       }
     });
   }, [loadBooks]);
+
+  // Good news closes by itself. Errors stay until closed.
+  useEffect(() => {
+    if (notice?.tone !== "ok") return;
+    const timer = window.setTimeout(() => setNotice(undefined), NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [notice]);
 
   useEffect(() => {
     setBook(undefined);
