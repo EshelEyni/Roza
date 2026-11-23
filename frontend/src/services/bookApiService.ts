@@ -1,4 +1,5 @@
 import axios from "axios";
+import { readOfflineBooks, saveOfflineBooks, withOfflineBook } from "./offlineBooks";
 import { JsendResponse } from "../../../shared/types/system";
 import type { Book, ManuscriptFilter, ManuscriptPage, ManuscriptSort } from "../../../shared/types/books";
 import httpService from "./httpService";
@@ -19,7 +20,7 @@ async function query({
   return handleServerResponseData<Book[]>(response);
 }
 
-async function queryManuscripts(
+async function fetchManuscripts(
   q: string,
   sort: ManuscriptSort,
   filter: ManuscriptFilter,
@@ -34,11 +35,55 @@ async function queryManuscripts(
   return handleServerResponseData(response.data);
 }
 
-async function getById(id: string): Promise<Book> {
-  const response = (await httpService.get(
-    `${baseUrl}/${id}`,
-  )) as unknown as JsendResponse;
-  return handleServerResponseData<Book>(response);
+async function queryManuscripts(q: string, sort: ManuscriptSort, filter: ManuscriptFilter, offset: number, signal: AbortSignal) {
+  return withOfflineBook<ManuscriptPage>(() => fetchManuscripts(q, sort, filter, offset, signal), async userId => {
+    const snapshot = await readOfflineBooks("studio", userId);
+    if (!snapshot) return;
+    const term = q.trim().toLowerCase();
+    const matches = snapshot.map(entry => entry.summary).filter(summary => summary.name.toLowerCase().includes(term));
+    const shelves = {
+      all: matches,
+      writing: matches.filter(book => book.chapterCount > 0),
+      blank: matches.filter(book => book.chapterCount === 0),
+      epub: matches.filter(book => Boolean(book.readerBookId)),
+    };
+    const counts = { all: shelves.all.length, writing: shelves.writing.length, blank: shelves.blank.length, epub: shelves.epub.length };
+    const manuscripts = shelves[filter];
+    if (sort === "title") manuscripts.sort((a, b) => a.name.localeCompare(b.name));
+    if (sort === "words") manuscripts.sort((a, b) => b.wordCount - a.wordCount);
+    return { manuscripts: offset ? [] : manuscripts, total: manuscripts.length, counts, nextOffset: null };
+  });
+}
+
+async function fetchBook(id: string, signal?: AbortSignal): Promise<Book> {
+  try {
+    const { data } = await axios.get<JsendResponse<Book>>(`/api/${baseUrl}/${id}`, {
+      withCredentials: true, signal,
+    });
+    return handleServerResponseData(data);
+  } catch (error) {
+    if (axios.isAxiosError<JsendResponse<Book>>(error) && error.response?.data) {
+      return handleServerResponseData(error.response.data);
+    }
+    throw error;
+  }
+}
+
+function getById(id: string): Promise<Book> {
+  return withOfflineBook(() => fetchBook(id), async userId =>
+    (await readOfflineBooks("studio", userId))?.find(entry => entry.summary.id === id)?.book);
+}
+
+export async function refreshOfflineStudio(userId: string, signal: AbortSignal) {
+  const previous = await readOfflineBooks("studio", userId);
+  const { manuscripts } = await fetchManuscripts("", "recent", "all", 0, signal);
+  const saved = [];
+  for (const summary of manuscripts.slice(0, 6)) {
+    const existing = previous?.find(entry => entry.summary.id === summary.id);
+    const book = existing && existing.summary.updatedAt === summary.updatedAt ? existing.book : await fetchBook(summary.id, signal);
+    saved.push({ summary, book });
+  }
+  if (!signal.aborted) await saveOfflineBooks("studio", userId, saved);
 }
 
 async function add(book: Book): Promise<Book> {

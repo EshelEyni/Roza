@@ -14,6 +14,7 @@ function ReaderDetailsContent() {
   const book = useQuery({
     queryKey: ["readerBook", loggedInUser?.id, id],
     queryFn: () => readerApiService.getById(id),
+    networkMode: "always",
     retry: false,
     refetchOnWindowFocus: false,
   });

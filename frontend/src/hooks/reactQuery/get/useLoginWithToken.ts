@@ -13,6 +13,8 @@ export function useLoginWithToken(): UseLoginWithTokenResult {
   } = useQuery({
     queryKey: ["loggedInUser"],
     queryFn: authApiService.loginWithToken,
+    networkMode: "always",
+    refetchOnReconnect: true,
     retry: 0,
     refetchInterval: 30_000,
   });

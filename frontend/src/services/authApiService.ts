@@ -1,3 +1,5 @@
+import axios from "axios";
+import { connectionFailed, offlineAccount, rememberOfflineAccount } from "./offlineBooks";
 import { JsendResponse } from "../../../shared/types/system";
 import { User, UserCredenitials } from "../../../shared/types/user";
 import { UpdatePasswordParams } from "../types/app";
@@ -7,10 +9,23 @@ import { handleServerResponseData } from "./utilService";
 const baseUrl = "auth";
 
 async function loginWithToken(): Promise<User | null> {
-  const response = (await httpService.get(
-    `${baseUrl}/login/with-token`,
-  )) as unknown as JsendResponse;
-  return handleServerResponseData<User>(response);
+  try {
+    const { data } = await axios.get<JsendResponse<User | null>>(
+      `/api/${baseUrl}/login/with-token`, { withCredentials: true, timeout: 10000 },
+    );
+    const user = handleServerResponseData(data);
+    await rememberOfflineAccount(user);
+    return user;
+  } catch (error) {
+    if (connectionFailed(error)) {
+      const user = await offlineAccount();
+      if (user) return user;
+    }
+    if (axios.isAxiosError(error) && [401, 403].includes(error.response?.status ?? 0)) {
+      await rememberOfflineAccount(null);
+    }
+    throw error;
+  }
 }
 
 async function login(username: string, password: string): Promise<User> {
@@ -19,7 +34,9 @@ async function login(username: string, password: string): Promise<User> {
     password,
   })) as unknown as JsendResponse;
 
-  return handleServerResponseData<User>(response);
+  const user = handleServerResponseData<User>(response);
+  await rememberOfflineAccount(user);
+  return user;
 }
 
 async function signup(userCredentials: UserCredenitials): Promise<User> {
@@ -28,11 +45,14 @@ async function signup(userCredentials: UserCredenitials): Promise<User> {
     userCredentials,
   )) as unknown as JsendResponse;
 
-  return handleServerResponseData<User>(response);
+  const user = handleServerResponseData<User>(response);
+  await rememberOfflineAccount(user);
+  return user;
 }
 
 async function logout(): Promise<void> {
-  await httpService.post(`${baseUrl}/logout`);
+  await axios.post(`/api/${baseUrl}/logout`, null, { withCredentials: true });
+  await rememberOfflineAccount(null);
 }
 
 async function update(user: User): Promise<User> {

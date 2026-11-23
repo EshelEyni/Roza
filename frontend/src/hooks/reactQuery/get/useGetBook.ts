@@ -15,6 +15,7 @@ export function useGetBook(bookId: string | undefined): UseGetBookResult {
       if (!bookId) return undefined;
       return bookApiService.getById(bookId);
     },
+    networkMode: "always",
     enabled: !!bookId,
   });
 

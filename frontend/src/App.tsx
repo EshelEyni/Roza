@@ -11,6 +11,7 @@ import {
 import { routes } from "./routes";
 import { useTranslation } from "react-i18next";
 import { useLoginWithToken } from "./hooks/reactQuery/get/useLoginWithToken";
+import { useOfflineBooks } from "./hooks/useOfflineBooks";
 import { AuthGuard } from "./guards/AuthGuard";
 import { Route as TypeOfRoute } from "./types/app";
 import { AppHeader } from "./components/App/AppHeader";
@@ -63,6 +64,7 @@ function geRouteElement(route: TypeOfRoute) {
 function App() {
   const { i18n } = useTranslation();
   const { loggedInUser, isFetchedLoggedInUser } = useLoginWithToken();
+  useOfflineBooks(loggedInUser);
   const { updateUser } = useUpdateUser();
   const [restoredAccountKey, setRestoredAccountKey] = useState<string | null>(null);
   const lastProfilePage = useRef<{ key: string; pathname: string } | null>(null);
