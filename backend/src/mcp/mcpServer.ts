@@ -4,6 +4,7 @@ import type { ConnectorDb } from "./connectorDb";
 import { ConnectorError } from "./connectorError";
 import { createDevBoardStore, MAX_ATTACHMENT_BYTES } from "./devBoardStore";
 import { createStagingStore } from "./stagingStore";
+import { MAX_EDITS } from "./textEdits";
 import { logger } from "../services/logger/loggerService";
 
 // The tools Claude can call. They reach only the Dev Board and Staging Room
@@ -46,6 +47,8 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
         "ROZA tools for the author's Dev Board (tickets) and Staging Room (staged books). " +
         "Staging Room is a safe place for book edits: you add pending changes, and nothing reaches the author's live book in Writing Studio until they approve it. " +
         "Edit chapter text with staging_write_draft (a new draft based on the current Main). Use staging_edit_main only when the author asks to edit Main. " +
+        "For small changes, don't resend the chapter: start a draft with staging_copy_draft, then use staging_edit_text (find/replace). " +
+        "Read only what you need with staging_get_chapter's version, paragraphs and search options. " +
         "Save after each step while working with the author: saving again updates the same pending draft, and the author sees it live. " +
         "Chapter text is Markdown: # and ## headings, > quotes, - and 1. lists, **bold**, *italic*, <u>underline</u>; each line is its own paragraph. " +
         "For screenplays, read chapters with view \"full\" and send Slate nodes. " +
@@ -166,11 +169,25 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
     {
       title: "Read a chapter",
       description:
-        'Reads a chapter\'s current Main text from Writing Studio, plus your pending draft or Main edit for it. view "markdown" (default) or "full" (Slate nodes, keeps alignment and screenplay layout).',
-      inputSchema: { slug, number: chapterNumber, view: z.enum(["markdown", "full"]).optional() },
+        'Reads a chapter\'s current Main text from Writing Studio, plus the pending drafts and Main edit for it. view "markdown" (default) or "full" (Slate nodes, keeps alignment and screenplay layout). ' +
+        'Keep reads small: version reads one text only ("main", or a pending draft name or changeId) with its notes. ' +
+        'paragraphs {from, to} (0-based, inclusive) or search return only those paragraphs, each with its index. ' +
+        'Without version, pending texts are included for view "markdown" and left out for view "full" (set includeDrafts to change that).',
+      inputSchema: {
+        slug,
+        number: chapterNumber,
+        view: z.enum(["markdown", "full"]).optional(),
+        version: z.string().min(1).max(200).optional().describe('"main", or a pending draft name or changeId.'),
+        includeDrafts: z.boolean().optional(),
+        paragraphs: z
+          .object({ from: z.number().int().min(0).optional(), to: z.number().int().min(0).optional() })
+          .optional()
+          .describe("0-based paragraph range, inclusive."),
+        search: z.string().min(1).max(2000).optional().describe("Returns only paragraphs that contain this text (case-insensitive)."),
+      },
       annotations: read,
     },
-    async args => run(() => staging.getChapter(args.slug, args.number, args.view)),
+    async ({ slug: project, number, view, ...options }) => run(() => staging.getChapter(project, number, view, options)),
   );
   server.registerTool(
     "staging_create_project",
@@ -195,7 +212,10 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
       description:
         "The default way to edit chapter text. Saves the full new text as a pending draft of the chapter, based on its current Main. " +
         "Calling it again for the same chapter updates the same pending draft (so you can save after each step while working with the author). " +
-        "Set newDraft only when the author asks for a separate draft. On approval it becomes a normal draft in Writing Studio; Main is not touched.",
+        "Pass name to update the pending draft with that name. Set newDraft only when the author asks for a separate draft. " +
+        "On approval it becomes a normal draft in Writing Studio; Main is not touched. " +
+        "To change a few sentences, use staging_edit_text instead of resending the whole chapter. " +
+        "notes are added to the draft's notes. Notes are never removed: they follow their sentence, or become general notes when it is gone.",
       inputSchema: {
         slug,
         number: chapterNumber,
@@ -226,6 +246,55 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
     },
     async ({ slug: project, ...rest }) =>
       runWrite("staging_edit_main", `${project}#${rest.number}`, () => staging.editMain({ slug: project, ...rest } as never)),
+  );
+  server.registerTool(
+    "staging_edit_text",
+    {
+      title: "Make small text edits",
+      description:
+        "The fastest way to change a few sentences. Find/replace on one text of a chapter, applied by ROZA; you never resend the chapter. " +
+        'target: a pending draft name or changeId; "main" edits the pending Main edit (or starts one; only when the author asks to edit Main); ' +
+        "left out, the chapter's only pending draft. " +
+        "find is matched against the Markdown that staging_get_chapter shows (**bold**, *italic*, escaped \\*), with paragraphs joined by a blank line. " +
+        "Each find must match exactly once, or nothing is saved. A replace with a blank line makes new paragraphs; an empty replace deletes the text, and an emptied paragraph. " +
+        "Untouched paragraphs keep their exact layout. Notes follow their sentence; a note whose sentence is gone becomes a general note and is reported. " +
+        "dryRun shows each edit before and after, without saving.",
+      inputSchema: {
+        slug,
+        number: chapterNumber,
+        target: z.string().min(1).max(200).optional(),
+        edits: z
+          .array(z.object({ find: z.string().min(1).max(20_000), replace: z.string().max(100_000) }))
+          .min(1)
+          .max(MAX_EDITS)
+          .describe("Applied in order. Each find sees the text after the edits before it."),
+        dryRun: z.boolean().optional(),
+      },
+      annotations: write,
+    },
+    async ({ slug: project, ...rest }) =>
+      rest.dryRun
+        ? run(() => staging.editText({ slug: project, ...rest }))
+        : runWrite("staging_edit_text", `${project}#${rest.number}`, () => staging.editText({ slug: project, ...rest })),
+  );
+  server.registerTool(
+    "staging_copy_draft",
+    {
+      title: "Copy a text into a new draft",
+      description:
+        'Starts a new pending draft of a chapter as a copy of its Main ("main") or of a pending draft (name or changeId). No text is sent. ' +
+        "withNotes also copies the notes. Then change it with staging_edit_text. Drafts already in Writing Studio can't be copied here.",
+      inputSchema: {
+        slug,
+        number: chapterNumber,
+        from: z.string().min(1).max(200).describe('"main", or a pending draft name or changeId.'),
+        name: z.string().min(1).max(200).describe("Name of the new draft."),
+        withNotes: z.boolean().optional(),
+      },
+      annotations: write,
+    },
+    async ({ slug: project, ...rest }) =>
+      runWrite("staging_copy_draft", `${project}#${rest.number}`, () => staging.copyDraft({ slug: project, ...rest })),
   );
   server.registerTool(
     "staging_add_chapter",

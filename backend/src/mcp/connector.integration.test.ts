@@ -176,6 +176,11 @@ run("Claude connector", () => {
     expect(chapter.main).toBe("Old text");
     expect(chapter.pending[0]).toMatchObject({ kind: "draft", text: "She ran faster." });
 
+    const edited = await ok("staging_edit_text", { slug, number: 1, edits: [{ find: "faster", replace: "slower" }] });
+    expect(edited).toMatchObject({ changeId: first.changeId, summary: "applied 1 edit; words 3 → 3", notesMovedToGeneral: [{ quote: "faster" }] });
+    const one = await ok("staging_get_chapter", { slug, number: 1, version: first.changeId });
+    expect(one).toMatchObject({ text: "She ran slower.", notes: [{ content: "Check pace", quote: "faster", general: true }] });
+
     await ok("staging_edit_main", { slug, number: 1, text: "New Main" });
     await ok("staging_add_chapter", { slug, title: "Two", text: "Second **chapter**", after: 1 });
     await ok("staging_set_element", { slug, kind: "characters", name: "Rosa", text: "The narrator" });

@@ -203,6 +203,8 @@ export interface LiveChapter {
   text: SlateElement[];
   /** hash of the Main text */
   mainHash: string;
+  /** notes on the Main text (missing in copies made before they were kept) */
+  annotations?: ChapterAnnotation[];
   drafts: { id: string; name: string; words: number }[];
 }
 export interface LiveElement {

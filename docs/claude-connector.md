@@ -30,10 +30,14 @@ Staging Room works like suggestions on top of the live book (see [staging-room-p
 
 - **Chapter text** goes into a new draft by default (`staging_write_draft`). Saving again updates the same draft, so you can work with Claude step by step and watch the text change in the Staging Room. On approval it becomes a normal draft in Writing Studio; Main is not touched.
 - **Main** changes only when you ask Claude for it (`staging_edit_main`). If you change Main in Writing Studio before approving, the approval adds Claude's version as a draft instead, so your work is never overwritten.
+- **Small edits** don't resend the chapter. Claude copies Main into a new pending draft (`staging_copy_draft`), then changes sentences with find/replace (`staging_edit_text`). Each `find` must match exactly once, or nothing is saved. Paragraphs the edit doesn't touch keep their exact layout, including centered `* * *` breaks and screenplay types.
+- **Notes follow the text.** After a text change, each note is found again by its quote. A note whose quote is gone becomes a general note on the chapter, and Claude is told which ones. Notes are never removed.
 - **New chapters, story elements, notes and tasks** are added on approval.
 - **Nothing is deleted.** There is no tool that removes anything.
 
-Markdown is a convenient way to write text, but it can't hold alignment or screenplay layout. For screenplays, Claude reads with `view: "full"` and sends Slate nodes.
+Markdown is a convenient way to write text, but it can't hold alignment or screenplay layout. For screenplays, Claude reads with `view: "full"` and sends Slate nodes, or uses `staging_edit_text`, which keeps the layout.
+
+Claude can read only Main and pending changes. Drafts already in Writing Studio show only by name, so they can't be copied or edited through these tools.
 
 ### Undo
 
@@ -53,10 +57,12 @@ Markdown is a convenient way to write text, but it can't hold alignment or scree
 | `devboard_read_attachment` | Reads a file. |
 | `staging_list_projects` | Lists staged books and how many changes wait. |
 | `staging_get_project` | Reads the live book's outline and the waiting changes. |
-| `staging_get_chapter` | Reads a chapter's Main text, plus Claude's pending draft for it. |
+| `staging_get_chapter` | Reads a chapter's Main text and pending texts. Can read one version, a paragraph range, or paragraphs that match a search. |
 | `staging_create_project` | Starts a staged book that is not in Writing Studio yet. |
 | `staging_write_draft` | Saves chapter text as a pending draft (the default for text). |
 | `staging_edit_main` | Saves a pending Main edit, only when the author asks. |
+| `staging_edit_text` | Find/replace on a pending draft or Main (up to 50 edits per call, with `dryRun` preview). |
+| `staging_copy_draft` | Starts a pending draft as a copy of Main or another pending draft, optionally with its notes. |
 | `staging_add_chapter` | Adds a pending new chapter. |
 | `staging_set_element` | Adds or changes a character, theme, plotline or note. |
 | `staging_add_notes` | Adds notes to a chapter's Main text. |

@@ -56,6 +56,7 @@ export function liveCopyOf(book: Raw): LiveCopy {
     format: c.format === "screenplay" ? "screenplay" : "prose",
     text: plain(c.text ?? []),
     mainHash: textHash(c.text),
+    annotations: plain(c.annotations ?? []),
     drafts: (c.drafts || [])
       .filter((d: Raw) => d.kind !== "main-backup")
       .map((d: Raw) => ({ id: String(d.id), name: String(d.name ?? ""), words: countWords(d.text) })),
