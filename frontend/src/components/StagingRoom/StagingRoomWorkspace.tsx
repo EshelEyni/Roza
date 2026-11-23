@@ -27,12 +27,16 @@ const NOTICE_MS = 8000;
 const DEFAULT_PREFS: StagingPrefs = { order: [], pinned: [], filter: "pinned" };
 const BOOKS_CLOSED_KEY = "roza.stagingRoom.booksClosed";
 
+/** The author's choice if they made one. Otherwise closed on medium windows, so the text gets the width. */
 function readBooksClosed() {
+  let saved: string | null = null;
   try {
-    return window.localStorage.getItem(BOOKS_CLOSED_KEY) === "1";
+    saved = window.localStorage.getItem(BOOKS_CLOSED_KEY);
   } catch {
-    return false;
+    /* no saved choice */
   }
+  if (saved === "1" || saved === "0") return saved === "1";
+  return window.matchMedia("(min-width: 900px) and (max-width: 1299px)").matches;
 }
 
 export function StagingRoomWorkspace() {

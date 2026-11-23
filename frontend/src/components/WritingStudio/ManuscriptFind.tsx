@@ -1,21 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { FiArrowDown, FiArrowUp, FiMove, FiX } from "react-icons/fi";
 import { Editor, Element, Node, Range } from "slate";
+import { findTextMatches, type ManuscriptFindOptions } from "./manuscriptFindText";
 
-export interface ManuscriptFindOptions {
-  matchCase: boolean;
-  wholeWord: boolean;
-}
+export type { ManuscriptFindOptions } from "./manuscriptFindText";
 
 export function findManuscriptMatches(editor: Editor, query: string, options: ManuscriptFindOptions) {
   const highlights = new Map<string, (Range & { findMatch: number })[]>();
   let count = 0;
   if (!query) return { highlights, count };
 
-  const literal = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const wordCharacter = String.raw`[\p{L}\p{M}\p{N}_]`;
-  const source = options.wholeWord ? `(?<!${wordCharacter})${literal}(?!${wordCharacter})` : literal;
-  const pattern = new RegExp(source, options.matchCase ? "gu" : "giu");
   for (const [block, blockPath] of Editor.nodes(editor, {
     at: [],
     mode: "lowest",
@@ -28,9 +22,7 @@ export function findManuscriptMatches(editor: Editor, query: string, options: Ma
       return { path: blockPath.concat(path), start, end: length };
     });
     let firstLeaf = 0;
-    for (const match of Node.string(block).matchAll(pattern)) {
-      const start = match.index!;
-      const end = start + match[0].length;
+    for (const { start, end } of findTextMatches([Node.string(block)], query, options)) {
       while (leaves[firstLeaf].end <= start) firstLeaf++;
       for (let index = firstLeaf; index < leaves.length && leaves[index].start < end; index++) {
         const leaf = leaves[index];

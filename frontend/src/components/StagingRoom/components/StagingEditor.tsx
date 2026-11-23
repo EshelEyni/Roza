@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { FiArrowLeft } from "react-icons/fi";
 import type { SlateCustomElement } from "../../../../../shared/types/books";
 import type { ChangeTextView, SlateElement } from "../../../../../shared/types/stagingRoom";
 import { ManuscriptEditor } from "../../WritingStudio/ManuscriptEditor";
@@ -139,21 +140,25 @@ export function StagingEditor({
         STAGING COPY · edits here are not in Writing Studio until you approve
       </div>
       <header className="sr-editor-head">
-        <button className="sr-back" onClick={() => leave(onClose)}>
-          ← Back
-        </button>
-        <div className="sr-read-title">
-          <strong dir="auto">{view?.title ?? "…"}</strong>
-          <span className={`small ${save.state === "error" ? "sr-danger" : "sr-muted"}`} role={save.state === "error" ? "alert" : undefined}>
-            {view?.subtitle} · {saveText}
-          </span>
+        <div className="sr-head-bar">
+          <button className="sr-icon-btn sm sr-head-back" onClick={() => leave(onClose)} aria-label="Back" title="Back">
+            <FiArrowLeft aria-hidden="true" />
+          </button>
+          <div className="sr-read-actions">
+            <span className="sr-live-chip">
+              <span className="sr-dot" aria-hidden="true" /> Live with Claude
+            </span>
+            <button className="sr-btn sr-btn-primary sm" disabled={busy} onClick={() => leave(onApprove)}>
+              Approve
+            </button>
+          </div>
         </div>
-        <span className="sr-live-chip">
-          <span className="sr-dot" aria-hidden="true" /> Live with Claude
-        </span>
-        <button className="sr-btn sr-btn-primary" disabled={busy} onClick={() => leave(onApprove)}>
-          Approve
-        </button>
+        <strong className="sr-head-title" dir="auto" title={view?.title}>
+          {view?.title ?? "…"}
+        </strong>
+        <p className={`sr-head-meta ${save.state === "error" ? "sr-danger" : "sr-muted"}`} role={save.state === "error" ? "alert" : undefined}>
+          {view?.subtitle} · {saveText}
+        </p>
       </header>
       {newer && (
         <div className="sr-editor-newer" role="alert">
@@ -194,6 +199,7 @@ export function StagingEditor({
                 annotations={[]}
                 aiEditing={{ bookId: "", chapterId: "", endpoint: stagingAiEditUrl(slug), annotations: [] }}
                 label={`${view.title} (Staging)`}
+                primaryFindTarget
                 onChange={onChange}
               />
             </article>
