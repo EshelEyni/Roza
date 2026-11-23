@@ -19,6 +19,7 @@ type StoredTicket = Record<TextField, string> & {
   owner: string;
   id: string;
   number: number | null;
+  createdAt?: string;
   deletedAt: string | null;
   editedInBoard?: boolean;
 };
@@ -73,6 +74,7 @@ export function createDevBoardStore(db: ConnectorDb, owner: string) {
       title: row.title,
       status: row.status,
       priority: row.priority,
+      createdAt: row.createdAt ?? null,
       inTrash: row.deletedAt !== null,
       attachments: names.get(row.id) ?? [],
     }));
@@ -90,6 +92,7 @@ export function createDevBoardStore(db: ConnectorDb, owner: string) {
       priority: row.priority,
       scope: row.scope,
       repository: row.repository,
+      createdAt: row.createdAt ?? null,
       inTrash: row.deletedAt !== null,
       trashedAt: row.deletedAt,
       attachments: names.get(row.id) ?? [],
@@ -111,7 +114,7 @@ export function createDevBoardStore(db: ConnectorDb, owner: string) {
     if (!data.project || !data.title || !data.markdown.trim())
       throw new ConnectorError("project, title and markdown are required.");
     const id = randomUUID();
-    await tickets().insertOne({ _id: digest(owner, id), owner, id, ...data, deletedAt: null } as never);
+    await tickets().insertOne({ _id: digest(owner, id), owner, id, ...data, createdAt: new Date().toISOString(), deletedAt: null } as never);
     return { id, title: data.title };
   }
 

@@ -19,15 +19,57 @@ function importMessage(result: { conflicts: string[]; failed: string[] }, succes
 const textFields = ['scope', 'repository'] as const;
 const newProject = '\u0000new-project';
 const choices = (values: string[]) => values.map((value) => ({ value, label: value }));
-type GroupBy = 'project' | 'status' | 'priority';
+type GroupBy = 'none' | 'project' | 'status' | 'priority';
 const groupOptions: { value: GroupBy; label: string }[] = [
+  { value: 'none', label: 'None' },
   { value: 'project', label: 'Project' },
   { value: 'status', label: 'Status' },
   { value: 'priority', label: 'Priority' },
 ];
-const groupKey = (ticket: Ticket, by: GroupBy) =>
+const groupKey = (ticket: Ticket, by: Exclude<GroupBy, 'none'>) =>
   by === 'status' ? normalizeStatus(ticket.status) : by === 'priority' ? normalizePriority(ticket.priority) : ticket.project;
-const groupOrder: Record<GroupBy, string[]> = { project: [], status: statuses, priority: [...priorities].reverse() };
+const groupOrder: Record<Exclude<GroupBy, 'none'>, string[]> = { project: [], status: statuses, priority: [...priorities].reverse() };
+
+function groupTickets(tickets: Ticket[], by: GroupBy): [string | null, Ticket[]][] {
+  if (!tickets.length) return [];
+  if (by === 'none') return [[null, tickets]];
+
+  const groups = new Map<string, Ticket[]>();
+  for (const ticket of tickets) {
+    const key = groupKey(ticket, by);
+    const group = groups.get(key);
+    if (group) group.push(ticket);
+    else groups.set(key, [ticket]);
+  }
+  const order = groupOrder[by];
+  return [...groups].sort(([a], [b]) => order.length ? order.indexOf(a) - order.indexOf(b) : a.localeCompare(b));
+}
+
+type SortBy = 'default' | 'id' | 'date';
+const sortOptions: { value: SortBy; label: string }[] = [
+  { value: 'default', label: 'Default' },
+  { value: 'id', label: 'Ticket ID' },
+  { value: 'date', label: 'Date' },
+];
+type SortDirection = 'asc' | 'desc';
+const directionOptions: { value: SortDirection; label: string }[] = [
+  { value: 'asc', label: 'Ascending' },
+  { value: 'desc', label: 'Descending' },
+];
+const ticketIdOrder = new Intl.Collator(undefined, { numeric: true });
+
+function compareTicketIds(a: Ticket, b: Ticket, direction = 1) {
+  const unnumberedLast = Number(a.number === null) - Number(b.number === null);
+  return unnumberedLast || direction * (
+    (a.number ?? 0) - (b.number ?? 0) || ticketIdOrder.compare(a.id, b.id)
+  );
+}
+
+function compareTicketDates(a: Ticket, b: Ticket, direction: number) {
+  // Creation dates are ISO UTC strings. Empty dates follow dated tickets.
+  const undatedLast = Number(!a.createdAt) - Number(!b.createdAt);
+  return undatedLast || direction * (a.createdAt ?? '').localeCompare(b.createdAt ?? '') || compareTicketIds(a, b);
+}
 
 export function DevBoard({ account }: { account: string }) {
   const api = useMemo(() => createDevBoardApi(account), [account]);
@@ -39,6 +81,8 @@ export function DevBoard({ account }: { account: string }) {
   const [project, setProject] = useState('');
   const [trash, setTrash] = useState(false);
   const [groupBy, setGroupBy] = useState<GroupBy>('project');
+  const [sortBy, setSortBy] = useState<SortBy>('default');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [selected, setSelected] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
@@ -137,10 +181,12 @@ export function DevBoard({ account }: { account: string }) {
     const searchText = [ticket.number, ticket.title, ticket.project, ticket.status, ticket.priority, ticket.scope, ticket.repository, ticket.markdown].join(' ');
     return matchesProject && searchText.toLowerCase().includes(query.trim().toLowerCase().replace(/^#(?=\d)/, ''));
   });
-  const groups = [...new Set(visible.map((ticket) => groupKey(ticket, groupBy)))].sort((a, b) => {
-    const order = groupOrder[groupBy];
-    return order.length ? order.indexOf(a) - order.indexOf(b) : a.localeCompare(b);
-  });
+  if (sortBy !== 'default') {
+    const direction = sortDirection === 'asc' ? 1 : -1;
+    const compare = sortBy === 'id' ? compareTicketIds : compareTicketDates;
+    visible.sort((a, b) => compare(a, b, direction));
+  }
+  const groups = groupTickets(visible, groupBy);
   const heading = trash ? 'Trash' : projects.includes(project) ? project : 'All tickets';
 
   return (
@@ -160,10 +206,18 @@ export function DevBoard({ account }: { account: string }) {
         </header>
         <div className="toolbar">
           <input className="ui-input" type="search" aria-label="Search tickets" placeholder="Search tickets…" value={query} onChange={(event) => setQuery(event.target.value)} />
-          <div className="groupBy">
+          <div className="toolbarField">
             <span id="group-by-label">Group by</span>
             <ReaderSelect id="group-by" labelId="group-by-label" value={groupBy} options={groupOptions} onChange={setGroupBy} />
           </div>
+          <div className="toolbarField">
+            <span id="sort-by-label">Sort by</span>
+            <ReaderSelect id="sort-by" labelId="sort-by-label" value={sortBy} options={sortOptions} onChange={setSortBy} />
+          </div>
+          {sortBy !== 'default' && <div className="toolbarField">
+            <span id="sort-direction-label">Direction</span>
+            <ReaderSelect id="sort-direction" labelId="sort-direction-label" value={sortDirection} options={directionOptions} onChange={setSortDirection} />
+          </div>}
           {desktopFiles && <Button isSmall disabled={busy} onClick={() => void action(async () => {
             try {
               if (!await api.chooseImport()) return;
@@ -176,11 +230,11 @@ export function DevBoard({ account }: { account: string }) {
         {importNotice && <p role="status">{importNotice}</p>}
         {error && <p className="alert" role="alert">{error}</p>}
         {!error && !visible.length && <p className="empty">{query.trim() ? 'No tickets match your search.' : trash ? 'Trash is empty.' : 'Paste a ticket to get started.'}</p>}
-        {groups.map((name) => (
-          <section className="group" key={name}>
-            <h2>{name}<span>{visible.filter((ticket) => groupKey(ticket, groupBy) === name).length}</span></h2>
+        {groups.map(([name, group]) => (
+          <section className={name === null ? undefined : 'group'} key={name ?? 'ungrouped'}>
+            {name !== null && <h2>{name}<span>{group.length}</span></h2>}
             <div className="cards">
-              {visible.filter((ticket) => groupKey(ticket, groupBy) === name).map((ticket) => (
+              {group.map((ticket) => (
                 <button className="ui-card card" key={ticket.id} onClick={() => { setNotice(''); setSelected(ticket.id); }}>
                   <div className="cardTop"><span className="ticketNumber">{ticket.number === null ? 'Ticket' : '#' + ticket.number}</span><span className="priority">{normalizePriority(ticket.priority)} priority</span></div>
                   <h3>{ticket.title}</h3>

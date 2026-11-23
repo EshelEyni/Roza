@@ -15,6 +15,7 @@ type StoredTicket = Content & {
   _id: string;
   owner: string;
   id: string;
+  createdAt?: string;
   deletedAt: string | null;
   importHash?: string;
   editedInBoard?: boolean;
@@ -83,9 +84,10 @@ async function list(account: string): Promise<DevTicket[]> {
     values.push(file.filename);
     names.set(file.ticket, values);
   }
-  return rows.map(({ id, deletedAt, ...row }) => ({
+  return rows.map(({ id, createdAt, deletedAt, ...row }) => ({
     ...content(row),
     id,
+    createdAt: createdAt ?? null,
     deletedAt,
     attachments: (names.get(id) ?? []).sort((a, b) => a.localeCompare(b)),
   }));
@@ -120,7 +122,7 @@ router.post("/", asyncErrorCatcher(async (req, res) => {
     if (!result.matchedCount) throw new AppError("Ticket is unavailable.", 404);
   } else {
     const id = randomUUID();
-    await tickets().insertOne({ _id: digest(account, id), owner: account, id, ...data, deletedAt: null });
+    await tickets().insertOne({ _id: digest(account, id), owner: account, id, ...data, createdAt: new Date().toISOString(), deletedAt: null });
   }
   res.json(await list(account));
 }));
@@ -130,6 +132,7 @@ router.post("/import", asyncErrorCatcher(async (req, res) => {
   if (req.body?.version !== 1 || !Array.isArray(req.body.tickets)) {
     throw new AppError("Expected a version 1 ticket file.", 400);
   }
+  const importedAt = new Date().toISOString();
   const incoming: StoredTicket[] = req.body.tickets.map((entry: Record<string, unknown>) => {
     const data = content(entry);
     const id = ticketId(entry.id);
@@ -138,7 +141,7 @@ router.post("/import", asyncErrorCatcher(async (req, res) => {
       throw new AppError("Invalid Trash state.", 400);
     }
     return {
-      _id: digest(account, id), owner: account, id, ...data, deletedAt,
+      _id: digest(account, id), owner: account, id, ...data, createdAt: importedAt, deletedAt,
       importHash: digest(JSON.stringify(data), JSON.stringify(deletedAt)),
     };
   });

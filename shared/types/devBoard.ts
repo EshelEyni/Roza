@@ -8,11 +8,12 @@ export type DevTicket = {
   scope: string;
   repository: string;
   markdown: string;
+  createdAt: string | null;
   deletedAt: string | null;
   attachments: string[];
 };
 
-export type DevTicketDraft = Omit<DevTicket, "id" | "deletedAt" | "attachments"> & { id?: string };
+export type DevTicketDraft = Omit<DevTicket, "id" | "createdAt" | "deletedAt" | "attachments"> & { id?: string };
 
 export type DevBoardFiles = {
   readImport(): Promise<{ content: string; attachments: { id: string; filename: string }[] } | null>;
