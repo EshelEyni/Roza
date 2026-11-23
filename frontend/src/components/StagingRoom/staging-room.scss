@@ -1039,14 +1039,14 @@
     .sr-change-body {
       flex-basis: calc(100% - 120px);
     }
+    /* Compact buttons under the title, aligned to the end like on desktop. */
     .sr-change-actions {
       width: 100%;
+      justify-content: flex-end;
+      gap: 6px;
       .sr-btn {
-        flex: 1;
-        min-height: 44px;
-      }
-      .sr-btn-primary {
-        flex: 2;
+        min-height: 36px;
+        padding: 6px 14px;
       }
     }
     .sr-bottom-bar {
