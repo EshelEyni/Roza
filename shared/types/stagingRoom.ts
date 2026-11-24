@@ -138,12 +138,41 @@ export type EntityKind = "characters" | "themes" | "plotlines" | "notes";
 /* See docs/staging-room-prd.md.                                       */
 /* ------------------------------------------------------------------ */
 
-/** A task Claude adds to the book's task board. */
+/** A task Claude adds to a task board. */
 export interface StagedTask {
   title: string;
   description?: string;
   /** live chapter id the card links to */
   chapterId?: string;
+  /** true: add the card to that chapter's own board instead of the book board */
+  onChapterBoard?: boolean;
+  /** the list to add it to, by title; made when missing. Default: the board's first list. */
+  list?: string;
+  /** YYYY-MM-DD */
+  dueDate?: string;
+  /** checklist item titles */
+  checklist?: string[];
+}
+
+/** One link from a chapter to a character, theme or plotline (the chapter's planning). */
+export interface PlanningLink {
+  entityId: string;
+  note: string;
+}
+export type PlanningKind = "characters" | "themes" | "plotlines";
+export type ChapterPlanningLinks = Record<PlanningKind, PlanningLink[]>;
+
+/** New values for an existing task card. Left out = unchanged. */
+export interface TaskEdit {
+  title?: string;
+  description?: string;
+  completed?: boolean;
+  /** YYYY-MM-DD, or "" to clear */
+  dueDate?: string;
+  /** the full new checklist */
+  checklist?: { title: string; done: boolean }[];
+  /** move the card to this list, by title; made when missing */
+  list?: string;
 }
 
 interface ChangeBase {
@@ -190,10 +219,57 @@ export type StagedChange = ChangeBase &
         baseHash: string | null;
       }
     | { kind: "notes"; chapterId: string; notes: ChapterAnnotation[] }
+    | {
+        kind: "summary";
+        /** live chapter id */
+        chapterId: string;
+        /** the new chapter summary (the Bible's Summary tab) */
+        text: SlateElement[];
+        /** hash of the chapter's summary when it was read */
+        baseHash: string;
+      }
+    | {
+        kind: "planning";
+        chapterId: string;
+        /** the new links for each kind given; kinds left out stay as they are */
+        planning: Partial<ChapterPlanningLinks>;
+        /** hash of the chapter's planning when it was read */
+        baseHash: string;
+      }
+    | {
+        kind: "chapterSettings";
+        chapterId: string;
+        name?: string;
+        format?: "prose" | "screenplay";
+        /** move the chapter after this live chapter id; null = first */
+        move?: { afterId: string | null };
+      }
     | { kind: "tasks"; tasks: StagedTask[] }
+    | {
+        kind: "taskEdit";
+        cardId: string;
+        /** the chapter whose own board holds the card; left out = the book board */
+        boardChapterId?: string;
+        /** the card's title when it was read */
+        cardTitle: string;
+        edit: TaskEdit;
+        /** hash of the card when it was read */
+        baseHash: string;
+      }
   );
 
 export type StagedChangeKind = StagedChange["kind"];
+
+/** A draft in Writing Studio. Text is missing in copies made before drafts were kept. */
+export interface LiveDraft {
+  id: string;
+  name: string;
+  words: number;
+  text?: SlateElement[];
+  annotations?: ChapterAnnotation[];
+  summary?: string;
+  format?: "prose" | "screenplay";
+}
 
 /** The read-only copy of the live book kept on the staging row (the connector can't read live books). */
 export interface LiveChapter {
@@ -203,17 +279,29 @@ export interface LiveChapter {
   text: SlateElement[];
   /** hash of the Main text */
   mainHash: string;
+  /** the chapter summary (the Bible's Summary tab; missing in copies made before it was kept) */
+  summary?: SlateElement[];
+  summaryHash?: string;
+  /** links to characters, themes and plotlines */
+  planning?: ChapterPlanningLinks;
+  planningHash?: string;
+  /** the chapter's own task board */
+  taskBoard?: TaskBoard;
   /** notes on the Main text (missing in copies made before they were kept) */
   annotations?: ChapterAnnotation[];
-  drafts: { id: string; name: string; words: number }[];
+  drafts: LiveDraft[];
 }
 export interface LiveElement {
+  /** live element id (missing in old copies) */
+  id?: string;
   name: string;
   color?: string;
   text: SlateElement[];
   hash: string;
 }
 export interface LiveCopy {
+  /** what this copy holds; older copies are refreshed when the Staging Room opens */
+  copyVersion?: number;
   bookId: string;
   name: string;
   updatedAt: string;
@@ -222,6 +310,8 @@ export interface LiveCopy {
   themes: LiveElement[];
   plotlines: LiveElement[];
   notes: LiveElement[];
+  /** the book task board */
+  taskBoard?: TaskBoard;
   copiedAt: string;
 }
 

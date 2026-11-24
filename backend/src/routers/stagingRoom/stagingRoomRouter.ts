@@ -22,6 +22,7 @@ import {
   ApproveError,
   approveChanges,
   changeViews,
+  COPY_VERSION,
   liveCopyOf,
   readLiveBook,
   readView,
@@ -136,7 +137,9 @@ async function withFreshLive(row: ProjectRow): Promise<ProjectRow> {
   const book = await readLiveBook(conn(), row.liveBookId, row.userId);
   if (!book) return row;
   const live = liveCopyOf(book);
-  if (row.live?.updatedAt === live.updatedAt && row.live.bookId === live.bookId) return row;
+  // Copies that keep less than this version knows (summaries, planning, drafts, tasks) are refreshed once.
+  const current = (row.live?.copyVersion ?? 0) >= COPY_VERSION;
+  if (row.live?.updatedAt === live.updatedAt && row.live.bookId === live.bookId && current) return row;
   await projects().updateOne({ _id: row._id }, { $set: { live }, $inc: { revision: 1 } });
   return { ...row, live, revision: row.revision + 1 };
 }

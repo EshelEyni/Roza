@@ -112,7 +112,8 @@ test("names the problem when the target is unclear", async () => {
   await store.copyDraft({ slug: "book", number: 1, from: "A", name: "B" });
   await expect(store.editText({ slug: "book", number: 1, edits: [{ find: "x", replace: "y" }] })).rejects.toThrow(/2 pending drafts: "A", "B"/);
   await expect(store.copyDraft({ slug: "book", number: 1, from: "main", name: "a" })).rejects.toThrow(/already has a pending draft/);
-  await expect(store.copyDraft({ slug: "book", number: 1, from: "Old studio draft", name: "C" })).rejects.toThrow(/draft in Writing Studio/);
+  // A copy made before draft texts were kept can't copy a Writing Studio draft until it is refreshed.
+  await expect(store.copyDraft({ slug: "book", number: 1, from: "Old studio draft", name: "C" })).rejects.toThrow(/open Staging Room once/);
 });
 
 test("writing the whole draft again keeps its notes", async () => {

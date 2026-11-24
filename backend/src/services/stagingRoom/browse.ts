@@ -21,7 +21,7 @@ export function browseOutline(live: LiveCopy | undefined, changes: StagedChange[
       name: c.name,
       words: countWords(c.text),
       waiting: waiting.get(c.id) ?? 0,
-      drafts: c.drafts,
+      drafts: c.drafts.map((d) => ({ id: d.id, name: d.name, words: d.words })),
     })),
     elements: Object.fromEntries(
       ELEMENT_KINDS.map((k) => [k, (live?.[k] ?? []).map((x) => ({ name: x.name, words: countWords(x.text) }))]),

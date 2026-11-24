@@ -1,17 +1,29 @@
 import { createHash, randomUUID } from "node:crypto";
 import type {
   ChapterAnnotation,
+  ChapterPlanningLinks,
   EntityKind,
   LiveCopy,
+  PlanningKind,
   SlateElement,
   StagedChange,
   StagedTask,
+  TaskEdit,
 } from "../../../shared/types/stagingRoom";
 import type { ConnectorDb } from "./connectorDb";
 import { ConnectorError } from "./connectorError";
 import { markdownToSlate, slateToMarkdown, slateToPlainText } from "./slateMarkdown";
 import { applyEdits, followNotes, LostNote, mergeNotes, TextEdit } from "./textEdits";
-import { changeTitle, elementHash } from "../services/stagingRoom/changes";
+import {
+  boardCards,
+  cardHash,
+  changeTitle,
+  COPY_VERSION,
+  elementHash,
+  PLANNING_KINDS,
+  planningOf,
+  textHash,
+} from "../services/stagingRoom/changes";
 import { isV2, ProjectRow } from "../services/stagingRoom/project";
 import { checkSlate, countWords } from "../services/stagingRoom/slate";
 
@@ -160,6 +172,24 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
     };
   }
 
+  /** Refuses when the row's live copy is older than what this tool needs. */
+  function needFreshCopy(row: ProjectRow) {
+    if ((liveOf(row).copyVersion ?? 0) < COPY_VERSION)
+      throw new ConnectorError(`"${row.slug}" has an older copy of the book. Ask the author to open Staging Room once, then try again.`);
+  }
+
+  /** A Writing Studio draft by id or name. */
+  const studioDraft = (chapter: LiveChapter, ref: string) =>
+    chapter.drafts.find((d) => d.id === ref) ?? chapter.drafts.find((d) => d.name === ref) ?? chapter.drafts.find((d) => sameName(d.name, ref));
+
+  /** A Writing Studio draft's text and notes. Refused for copies made before draft texts were kept. */
+  function studioDraftText(row: ProjectRow, chapter: LiveChapter, ref: string) {
+    const draft = studioDraft(chapter, ref);
+    if (!draft) return undefined;
+    if (!draft.text) needFreshCopy(row);
+    return { draft, text: (draft.text ?? []) as SlateElement[], notes: draft.annotations };
+  }
+
   /** The pending drafts and Main edit of a chapter (by anyone). */
   const pendingTexts = (row: ProjectRow, chapter: LiveChapter) =>
     row.changes.filter((c): c is TextChange => (c.kind === "draft" || c.kind === "main") && c.chapterId === chapter.id);
@@ -172,10 +202,10 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
       list.find((c) => c.kind === "draft" && c.name === ref) ??
       list.find((c) => c.kind === "draft" && sameName(c.name, ref));
     if (found) return found;
-    if (chapter.drafts.some((d) => d.id === ref || sameName(d.name, ref)))
+    if (studioDraft(chapter, ref))
       throw new ConnectorError(
-        `"${ref}" is a draft in Writing Studio. These tools can read only Main and pending drafts. ` +
-          "Copy Main with staging_copy_draft, or ask the author to make that draft Main or paste it.",
+        `"${ref}" is a draft in Writing Studio. It can't be changed in place. ` +
+          `Copy it with staging_copy_draft (from "${ref}"), then edit the copy.`,
       );
     const names = list.filter((c) => c.kind === "draft").map((c) => `"${(c as { name: string }).name}"`);
     throw new ConnectorError(`Chapter ${chapter.name} has no pending draft "${ref}".${names.length ? ` Pending drafts: ${names.join(", ")}.` : ""}`);
@@ -199,6 +229,49 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
     }
     const change = pendingByRef(row, chapter, ref);
     return { change, text: change.text, label: label(change) };
+  }
+
+  /** The chapter's summary (the Bible's Summary tab), or a note when the copy predates summaries. */
+  function summaryView(chapter: LiveChapter, view: "markdown" | "full") {
+    if (chapter.summaryHash === undefined)
+      return { summary: null, summaryNote: "This copy of the book has no summaries yet. Ask the author to open Staging Room once, then read again." };
+    const text = chapter.summary ?? [];
+    return { summary: view === "full" ? text : slateToMarkdown(text) };
+  }
+
+  /** The pending summary for a chapter (by anyone). */
+  const summaryChange = (row: ProjectRow, chapter: LiveChapter) =>
+    row.changes.find((c): c is Extract<StagedChange, { kind: "summary" }> => c.kind === "summary" && c.chapterId === chapter.id);
+
+  type Pending<K extends StagedChange["kind"]> = Extract<StagedChange, { kind: K }>;
+  const planningChange = (row: ProjectRow, chapter: LiveChapter) =>
+    row.changes.find((c): c is Pending<"planning"> => c.kind === "planning" && c.chapterId === chapter.id);
+  const settingsChange = (row: ProjectRow, chapter: LiveChapter) =>
+    row.changes.find((c): c is Pending<"chapterSettings"> => c.kind === "chapterSettings" && c.chapterId === chapter.id);
+
+  /** Planning links with element names instead of ids. */
+  function planningView(live: LiveCopy, planning: Partial<ChapterPlanningLinks>) {
+    const out: Partial<Record<PlanningKind, { name: string; note?: string }[]>> = {};
+    for (const k of PLANNING_KINDS) {
+      const links = planning[k];
+      if (!links) continue;
+      out[k] = links.map((l) => ({ name: live[k].find((x) => x.id === l.entityId)?.name ?? "(removed element)", ...(l.note ? { note: l.note } : {}) }));
+    }
+    return out;
+  }
+
+  const chapterNumberOf = (live: LiveCopy, id: string | undefined | null) => {
+    const i = id ? live.chapters.findIndex((c) => c.id === id) : -1;
+    return i >= 0 ? i + 1 : null;
+  };
+
+  function settingsView(live: LiveCopy, c: Pending<"chapterSettings">) {
+    return {
+      changeId: c.id,
+      ...(c.name !== undefined ? { title: c.name } : {}),
+      ...(c.format ? { format: c.format } : {}),
+      ...(c.move ? { after: c.move.afterId ? chapterNumberOf(live, c.move.afterId) : 0 } : {}),
+    };
   }
 
   const notesView = (notes: ChapterAnnotation[] | undefined) =>
@@ -228,6 +301,10 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
       }
       return { totalParagraphs: text.length, paragraphs: hits };
     };
+    const pendingSummary = summaryChange(row, chapter);
+    const pendingPlanning = planningChange(row, chapter);
+    const pendingSettings = settingsChange(row, chapter);
+    const live = liveOf(row);
     const head = {
       slug,
       number,
@@ -235,6 +312,11 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
       format: chapter.format,
       words: countWords(chapter.text),
       drafts: chapter.drafts.map((d) => d.name),
+      ...summaryView(chapter, view),
+      ...(pendingSummary ? { pendingSummary: { changeId: pendingSummary.id, text: show(pendingSummary.text) } } : {}),
+      ...(chapter.planning ? { planning: planningView(live, chapter.planning) } : {}),
+      ...(pendingPlanning ? { pendingPlanning: { changeId: pendingPlanning.id, ...planningView(live, pendingPlanning.planning) } } : {}),
+      ...(pendingSettings ? { pendingSettings: settingsView(live, pendingSettings) } : {}),
     };
     const pendingInfo = (c: TextChange) => ({
       changeId: c.id,
@@ -247,12 +329,22 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
     if (options.version !== undefined) {
       if (isMain(options.version))
         return { ...head, version: "Main", ...select(chapter.text), notes: notesView(chapter.annotations), pending: pending.map(pendingInfo) };
+      const isPending = pending.some((c) => c.id === options.version || (c.kind === "draft" && sameName(c.name, options.version!)));
+      const studio = isPending ? undefined : studioDraftText(row, chapter, options.version);
+      if (studio)
+        return {
+          ...head,
+          version: { writingStudioDraft: studio.draft.name, words: studio.draft.words, ...(studio.draft.summary ? { summary: studio.draft.summary } : {}) },
+          ...select(studio.text),
+          notes: notesView(studio.notes),
+        };
       const change = pendingByRef(row, chapter, options.version);
       return { ...head, version: pendingInfo(change), ...select(change.text), notes: notesView(change.notes) };
     }
     const withTexts = !sliced && (options.includeDrafts ?? view !== "full");
     return {
       ...head,
+      mainNotes: notesView(chapter.annotations),
       main: sliced ? select(chapter.text) : show(chapter.text),
       pending: pending.map((c) => ({ ...pendingInfo(c), ...(withTexts ? { text: show(c.text) } : {}) })),
     };
@@ -344,9 +436,11 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
     if (!name) throw new ConnectorError("name is required.");
     if (pendingTexts(row, chapter).some((c) => c.kind === "draft" && sameName(c.name, name)))
       throw new ConnectorError(`Chapter "${chapter.name}" already has a pending draft named "${name}". Pick another name.`);
+    const isPending = pendingTexts(row, chapter).some((c) => c.id === input.from || (c.kind === "draft" && sameName(c.name, input.from)));
+    const studio = isMain(input.from) || isPending ? undefined : studioDraftText(row, chapter, input.from);
     const source = isMain(input.from)
       ? { text: chapter.text, notes: chapter.annotations }
-      : (({ text, notes }) => ({ text, notes }))(pendingByRef(row, chapter, input.from));
+      : studio ?? (({ text, notes }) => ({ text, notes }))(pendingByRef(row, chapter, input.from));
     const notes = input.withNotes && source.notes?.length ? source.notes.map((n) => ({ ...n, id: randomUUID() })) : undefined;
     const text = JSON.parse(JSON.stringify(source.text)) as SlateElement[];
     const saved = await save(row, { ...stamp(), kind: "draft", chapterId: chapter.id, name, text, baseHash: chapter.mainHash, ...(notes ? { notes } : {}) });
@@ -385,6 +479,55 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
     return save(row, { ...stamp(), kind: "element", element: input.kind, name, ...(color ? { color } : {}), text, baseHash: current?.hash ?? null });
   }
 
+  /** Proposes a new chapter summary. Saving again updates the same pending summary. */
+  async function setSummary(input: { slug: string; number: number; text: Text }) {
+    const row = await load(input.slug);
+    const chapter = chapterAt(row, input.number);
+    if (chapter.summaryHash === undefined)
+      throw new ConnectorError("This copy of the book has no summaries yet. Ask the author to open Staging Room once, then try again.");
+    const text = toSlate(input.text);
+    if (!text.some((n) => slateToPlainText([n]).trim())) throw new ConnectorError("text is empty. These tools can't remove a summary.");
+    const existing = summaryChange(row, chapter);
+    if (existing) return save(row, { ...existing, text, updatedAt: new Date().toISOString() }, existing);
+    if (textHash(text) === chapter.summaryHash) return { slug: row.slug, unchanged: true, note: "The summary already reads like this in Writing Studio." };
+    return save(row, { ...stamp(), kind: "summary", chapterId: chapter.id, text, baseHash: chapter.summaryHash });
+  }
+
+  /** The text of story elements. With name, only that element. */
+  async function getElements(input: { slug: string; kind: EntityKind; name?: string; view?: "markdown" | "full" }) {
+    const row = await load(input.slug);
+    const live = liveOf(row);
+    const show = (text: SlateElement[]) => (input.view === "full" ? text : slateToMarkdown(text));
+    const pending = row.changes.filter((c): c is Extract<StagedChange, { kind: "element" }> => c.kind === "element" && c.element === input.kind);
+    const pendingOf = (name: string) => pending.find((c) => c.name === name);
+    let items = live[input.kind];
+    if (input.name !== undefined) {
+      const name = input.name;
+      items = items.filter((x) => x.name === name);
+      if (!items.length) items = live[input.kind].filter((x) => sameName(x.name, name));
+      if (!items.length && !pending.some((c) => sameName(c.name, name)))
+        throw new ConnectorError(`No ${input.kind} named "${name}". It has: ${live[input.kind].map((x) => `"${x.name}"`).join(", ") || "none"}.`);
+    }
+    const listed = new Set(items.map((x) => x.name));
+    const newOnes = pending.filter((c) => !listed.has(c.name) && (input.name === undefined || sameName(c.name, input.name)));
+    return {
+      slug: row.slug,
+      kind: input.kind,
+      items: [
+        ...items.map((x) => {
+          const p = pendingOf(x.name);
+          return {
+            name: x.name,
+            ...(x.color ? { color: x.color } : {}),
+            text: show(x.text),
+            ...(p ? { pendingChange: { changeId: p.id, text: show(p.text), ...(p.color ? { color: p.color } : {}) } } : {}),
+          };
+        }),
+        ...newOnes.map((p) => ({ name: p.name, new: true, pendingChange: { changeId: p.id, text: show(p.text), ...(p.color ? { color: p.color } : {}) } })),
+      ],
+    };
+  }
+
   async function addNotes(input: { slug: string; number: number; notes: NoteInput[] }) {
     const row = await load(input.slug);
     const chapter = chapterAt(row, input.number);
@@ -392,17 +535,177 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
     return save(row, { ...stamp(), kind: "notes", chapterId: chapter.id, notes: notesOf(input.notes)! });
   }
 
-  async function addTasks(input: { slug: string; tasks: { title: string; description?: string; chapter?: number }[] }) {
+  type TaskInput = {
+    title: string;
+    description?: string;
+    chapter?: number;
+    onChapterBoard?: boolean;
+    list?: string;
+    dueDate?: string;
+    checklist?: string[];
+  };
+
+  async function addTasks(input: { slug: string; tasks: TaskInput[] }) {
     const row = await load(input.slug);
     if (!input.tasks.length) throw new ConnectorError("tasks is empty.");
-    const tasks: StagedTask[] = input.tasks.map((t) => ({
-      title: t.title.trim(),
-      ...(t.description ? { description: t.description } : {}),
-      ...(t.chapter ? { chapterId: chapterAt(row, t.chapter).id } : {}),
-    }));
+    const tasks: StagedTask[] = input.tasks.map((t) => {
+      if (t.onChapterBoard && !t.chapter) throw new ConnectorError(`The task "${t.title}" has onChapterBoard but no chapter.`);
+      return {
+        title: t.title.trim(),
+        ...(t.description ? { description: t.description } : {}),
+        ...(t.chapter ? { chapterId: chapterAt(row, t.chapter).id } : {}),
+        ...(t.onChapterBoard ? { onChapterBoard: true } : {}),
+        ...(t.list?.trim() ? { list: t.list.trim() } : {}),
+        ...(t.dueDate ? { dueDate: t.dueDate } : {}),
+        ...(t.checklist?.length ? { checklist: t.checklist.map((x) => x.trim()).filter(Boolean) } : {}),
+      };
+    });
     if (tasks.some((t) => !t.title)) throw new ConnectorError("Every task needs a title.");
     return save(row, { ...stamp(), kind: "tasks", tasks });
   }
 
-  return { listProjects, getProject, getChapter, createProject, writeDraft, editMain, editText, copyDraft, addChapter, setElement, addNotes, addTasks };
+  /** Every task card: the book board and the chapters' own boards. */
+  function allCards(live: LiveCopy) {
+    return [
+      ...boardCards(live.taskBoard).map((x) => ({ ...x, chapter: undefined as LiveChapter | undefined })),
+      ...live.chapters.flatMap((chapter) => boardCards(chapter.taskBoard).map((x) => ({ ...x, chapter }))),
+    ];
+  }
+
+  /** Task boards: the book board and every chapter board that has cards, or one chapter's board. */
+  async function getTasks(input: { slug: string; chapter?: number; includeCompleted?: boolean }) {
+    const row = await load(input.slug);
+    needFreshCopy(row);
+    const live = liveOf(row);
+    const showDone = input.includeCompleted ?? true;
+    const pendingEdits = row.changes.filter((c): c is Pending<"taskEdit"> => c.kind === "taskEdit");
+    const card = (c: Record<string, unknown>) => {
+      const p = pendingEdits.find((x) => x.cardId === c.id);
+      return {
+        cardId: String(c.id),
+        title: String(c.title ?? ""),
+        ...(c.description ? { description: String(c.description) } : {}),
+        completed: !!c.completed,
+        ...(c.dueDate ? { dueDate: String(c.dueDate) } : {}),
+        ...((c.checklist as unknown[] | undefined)?.length
+          ? { checklist: (c.checklist as { title: string; done: boolean }[]).map((i) => ({ title: i.title, done: !!i.done })) }
+          : {}),
+        ...((c.labels as unknown[] | undefined)?.length ? { labels: (c.labels as { title: string }[]).map((l) => l.title) } : {}),
+        ...(c.chapterId ? { chapter: chapterNumberOf(live, String(c.chapterId)) } : {}),
+        ...(p ? { pendingEdit: { changeId: p.id, ...p.edit } } : {}),
+      };
+    };
+    const boardView = (board: { lists?: { title?: string; cards?: Record<string, unknown>[] }[] } | undefined) =>
+      (board?.lists ?? []).map((l) => ({ list: String(l.title ?? ""), cards: (l.cards ?? []).filter((c) => showDone || !c.completed).map(card) }));
+    const chapters = input.chapter ? [chapterAt(row, input.chapter)] : live.chapters.filter((c) => boardCards(c.taskBoard).length);
+    const pendingAdds = row.changes.filter((c): c is Pending<"tasks"> => c.kind === "tasks");
+    return {
+      slug: row.slug,
+      ...(input.chapter ? {} : { bookBoard: boardView(live.taskBoard as never) }),
+      chapterBoards: chapters.map((c) => ({ chapter: chapterNumberOf(live, c.id), title: c.name, lists: boardView(c.taskBoard as never) })),
+      ...(pendingAdds.length
+        ? { pendingNewTasks: pendingAdds.map((c) => ({ changeId: c.id, titles: c.tasks.map((t) => t.title) })) }
+        : {}),
+    };
+  }
+
+  /** Proposes changes to an existing task card. Saving again for the same card updates the same pending change. */
+  async function updateTask(input: { slug: string; cardId: string } & TaskEdit) {
+    const row = await load(input.slug);
+    needFreshCopy(row);
+    const { slug: _slug, cardId, ...fields } = input;
+    const edit = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined)) as TaskEdit;
+    if (!Object.keys(edit).length) throw new ConnectorError("Nothing to change. Pass at least one field.");
+    if (edit.title !== undefined && !edit.title.trim()) throw new ConnectorError("title can't be empty.");
+    const found = allCards(liveOf(row)).find((x) => x.card.id === cardId);
+    if (!found) throw new ConnectorError(`No task with cardId ${cardId}. Read the boards with staging_get_tasks.`);
+    const existing = row.changes.find((c): c is Pending<"taskEdit"> => c.kind === "taskEdit" && c.cardId === cardId);
+    if (existing) return save(row, { ...existing, edit: { ...existing.edit, ...edit }, updatedAt: new Date().toISOString() }, existing);
+    return save(row, {
+      ...stamp(),
+      kind: "taskEdit",
+      cardId,
+      ...(found.chapter ? { boardChapterId: found.chapter.id } : {}),
+      cardTitle: found.card.title,
+      edit,
+      baseHash: cardHash(found.card),
+    });
+  }
+
+  type LinkInput = { name: string; note?: string };
+
+  /** Proposes the chapter's links to characters, themes or plotlines. Each kind given replaces that kind's links. */
+  async function setPlanning(input: { slug: string; number: number } & Partial<Record<PlanningKind, LinkInput[]>>) {
+    const row = await load(input.slug);
+    needFreshCopy(row);
+    const live = liveOf(row);
+    const chapter = chapterAt(row, input.number);
+    const planning: Partial<ChapterPlanningLinks> = {};
+    for (const k of PLANNING_KINDS) {
+      const links = input[k];
+      if (!links) continue;
+      const seen = new Set<string>();
+      planning[k] = links.map((l) => {
+        const item = live[k].find((x) => x.name === l.name) ?? live[k].find((x) => sameName(x.name, l.name));
+        if (!item?.id) {
+          const waiting = row.changes.some((c) => c.kind === "element" && c.element === k && sameName(c.name, l.name));
+          throw new ConnectorError(
+            waiting
+              ? `"${l.name}" is still a pending ${k} change. The author must approve it before chapters can link to it.`
+              : `No ${k} named "${l.name}". It has: ${live[k].map((x) => `"${x.name}"`).join(", ") || "none"}.`,
+          );
+        }
+        if (seen.has(item.id)) throw new ConnectorError(`"${item.name}" is listed twice in ${k}.`);
+        seen.add(item.id);
+        return { entityId: item.id, note: l.note ?? "" };
+      });
+    }
+    if (!Object.keys(planning).length) throw new ConnectorError("Pass characters, themes or plotlines.");
+    const existing = planningChange(row, chapter);
+    if (existing) return save(row, { ...existing, planning: { ...existing.planning, ...planning }, updatedAt: new Date().toISOString() }, existing);
+    const current = planningOf(chapter.planning);
+    if (PLANNING_KINDS.every((k) => !planning[k] || JSON.stringify(planning[k]) === JSON.stringify(current[k])))
+      return { slug: row.slug, unchanged: true, note: "The planning already reads like this in Writing Studio." };
+    return save(row, { ...stamp(), kind: "planning", chapterId: chapter.id, planning, baseHash: chapter.planningHash ?? "" });
+  }
+
+  /** Proposes a new title, format or place for a chapter. Saving again updates the same pending change. */
+  async function updateChapter(input: { slug: string; number: number; title?: string; format?: "prose" | "screenplay"; after?: number }) {
+    const row = await load(input.slug);
+    const chapter = chapterAt(row, input.number);
+    if (input.title === undefined && !input.format && input.after === undefined)
+      throw new ConnectorError("Nothing to change. Pass title, format or after.");
+    if (input.title !== undefined && !input.title.trim()) throw new ConnectorError("title can't be empty.");
+    if (input.after === input.number) throw new ConnectorError("A chapter can't go after itself.");
+    const move = input.after === undefined ? undefined : { afterId: input.after === 0 ? null : chapterAt(row, input.after).id };
+    const fields = {
+      ...(input.title !== undefined ? { name: input.title.trim() } : {}),
+      ...(input.format ? { format: input.format } : {}),
+      ...(move ? { move } : {}),
+    };
+    const existing = settingsChange(row, chapter);
+    if (existing) return save(row, { ...existing, ...fields, updatedAt: new Date().toISOString() }, existing);
+    return save(row, { ...stamp(), kind: "chapterSettings", chapterId: chapter.id, ...fields });
+  }
+
+  return {
+    listProjects,
+    getProject,
+    getChapter,
+    getElements,
+    createProject,
+    writeDraft,
+    editMain,
+    editText,
+    copyDraft,
+    addChapter,
+    setElement,
+    setSummary,
+    setPlanning,
+    updateChapter,
+    addNotes,
+    addTasks,
+    getTasks,
+    updateTask,
+  };
 }

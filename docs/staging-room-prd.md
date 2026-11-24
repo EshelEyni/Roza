@@ -105,7 +105,7 @@ Compare, Pull, Push dialog, the Accept-without-push mark, the six Reject scopes,
 Reading:
 - `staging_list_projects`
 - `staging_get_project`: the live book merged with pending changes, so Claude sees the latest.
-- `staging_get_chapter`: Main text, drafts, and Claude's pending draft.
+- `staging_get_chapter`: Main text, drafts, Claude's pending draft, and the chapter summary.
 
 Writing (all of them only add to the change set):
 - `staging_create_project` (link a live book).
@@ -113,7 +113,13 @@ Writing (all of them only add to the change set):
 - `staging_edit_main(chapter, text)`: only when the author asks for Main.
 - `staging_add_chapter(name, position, text)`.
 - `staging_set_element(kind, name, value)`: for characters, themes, plotlines and notes; new or changed.
-- `staging_add_notes(chapter, notes[])`, `staging_add_tasks(tasks[])`. Planning links and book settings come later.
+- `staging_get_elements(kind, name?)`: reads the text of story elements.
+- `staging_set_summary(number, text)`: proposes a new chapter summary (the Bible's Summary tab).
+- `staging_set_planning(number, characters?, themes?, plotlines?)`: proposes a chapter's planning links.
+- `staging_update_chapter(number, title?, after?, format?)`: proposes a rename, a move or a format change.
+- `staging_add_notes(chapter, notes[])`, `staging_add_tasks(tasks[])` (book board or a chapter's own board).
+- `staging_get_tasks(chapter?)`, `staging_update_task(cardId, ...)`: read task boards and change existing cards.
+- Book settings (word goal, name, publishing, narrator) come later.
 
 Removed: `staging_remove_chapter`, `staging_restore_backup`, `staging_import_project` for Claude (import stays in the UI), and whole-project overwrite.
 

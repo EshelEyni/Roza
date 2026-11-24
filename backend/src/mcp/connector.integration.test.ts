@@ -156,13 +156,29 @@ run("Claude connector", () => {
     // The ROZA backend keeps a copy of the live book on the row. Simulate one.
     const para = (text: string) => ({ type: "paragraph", children: [{ text }] });
     const chapterId = new Types.ObjectId().toString();
+    const rosaId = new Types.ObjectId().toString();
+    const lossId = new Types.ObjectId().toString();
     await connection.db!.collection("staging_room_projects").updateOne({ _id: hash(owner, slug) } as never, {
       $set: {
         liveBookId: new Types.ObjectId().toString(),
         live: {
+          copyVersion: 2,
           bookId: "x", name: "My Lost Time", updatedAt: new Date().toISOString(), copiedAt: new Date().toISOString(),
-          chapters: [{ id: chapterId, name: "One", format: "prose", text: [para("Old text")], mainHash: "h1", drafts: [] }],
-          characters: [], themes: [], plotlines: [], notes: [],
+          chapters: [
+            {
+              id: chapterId, name: "One", format: "prose", text: [para("Old text")], mainHash: "h1", summary: [para("Old summary")], summaryHash: "s1",
+              annotations: [{ id: "n1", content: "Slow start", quote: "", anchor: null, general: true }],
+              planning: { characters: [{ entityId: rosaId, note: "narrates" }], themes: [], plotlines: [] }, planningHash: "p1",
+              taskBoard: { lists: [{ id: "cl", title: "Chapter work", cards: [] }] },
+              drafts: [{ id: "d1", name: "Studio draft", words: 2, text: [para("Studio text")], annotations: [], summary: "Tried a colder start" }],
+            },
+          ],
+          characters: [{ id: rosaId, name: "Rosa", text: [para("A girl")], hash: "c1" }],
+          themes: [{ id: lossId, name: "Loss", color: "#112233", text: [para("Grief")], hash: "t1" }],
+          plotlines: [], notes: [],
+          taskBoard: { lists: [{ id: "l1", title: "To do", cards: [
+            { id: "card1", title: "Fix dates", description: "", chapterId, completed: false, dueDate: "", checklist: [], labels: [], createdAt: "x", updatedAt: "x" },
+          ] }] },
         },
       },
     });
@@ -174,9 +190,19 @@ run("Claude connector", () => {
 
     const chapter = await ok("staging_get_chapter", { slug, number: 1 });
     expect(chapter.main).toBe("Old text");
+    expect(chapter.summary).toBe("Old summary");
+    expect(chapter.mainNotes).toEqual([{ content: "Slow start", general: true }]);
+    expect(chapter.planning).toEqual({ characters: [{ name: "Rosa", note: "narrates" }], themes: [], plotlines: [] });
     expect(chapter.pending[0]).toMatchObject({ kind: "draft", text: "She ran faster." });
 
-    const edited = await ok("staging_edit_text", { slug, number: 1, edits: [{ find: "faster", replace: "slower" }] });
+    // Writing Studio drafts: read, and copy into a pending draft.
+    const studio = await ok("staging_get_chapter", { slug, number: 1, version: "studio draft" });
+    expect(studio).toMatchObject({ text: "Studio text", version: { writingStudioDraft: "Studio draft", summary: "Tried a colder start" } });
+    const copied = await ok("staging_copy_draft", { slug, number: 1, from: "Studio draft", name: "From studio" });
+    expect(copied).toMatchObject({ name: "From studio", words: 2 });
+    expect((await call("staging_edit_text", { slug, number: 1, target: "Studio draft", edits: [{ find: "Studio", replace: "x" }] })).text).toContain("Copy it");
+
+    const edited = await ok("staging_edit_text", { slug, number: 1, target: first.changeId, edits: [{ find: "faster", replace: "slower" }] });
     expect(edited).toMatchObject({ changeId: first.changeId, summary: "applied 1 edit; words 3 → 3", notesMovedToGeneral: [{ quote: "faster" }] });
     const one = await ok("staging_get_chapter", { slug, number: 1, version: first.changeId });
     expect(one).toMatchObject({ text: "She ran slower.", notes: [{ content: "Check pace", quote: "faster", general: true }] });
@@ -184,18 +210,48 @@ run("Claude connector", () => {
     await ok("staging_edit_main", { slug, number: 1, text: "New Main" });
     await ok("staging_add_chapter", { slug, title: "Two", text: "Second **chapter**", after: 1 });
     await ok("staging_set_element", { slug, kind: "characters", name: "Rosa", text: "The narrator" });
+    const rosa = await ok("staging_get_elements", { slug, kind: "characters", name: "rosa" });
+    expect(rosa.items).toEqual([{ name: "Rosa", text: "A girl", pendingChange: { changeId: expect.any(String), text: "The narrator" } }]);
     await ok("staging_add_notes", { slug, number: 1, notes: [{ content: "General thought" }] });
     await ok("staging_add_tasks", { slug, tasks: [{ title: "Check the timeline", chapter: 1 }] });
+    const summary = await ok("staging_set_summary", { slug, number: 1, text: "She runs." });
+    const again = await ok("staging_set_summary", { slug, number: 1, text: "She runs away." });
+    expect(again.changeId).toBe(summary.changeId);
+    expect((await ok("staging_get_chapter", { slug, number: 1 })).pendingSummary).toEqual({ changeId: summary.changeId, text: "She runs away." });
+
+    // Planning: names in, ids stored, names back out.
+    expect((await call("staging_set_planning", { slug, number: 1, themes: [{ name: "Hope" }] })).text).toContain('No themes named "Hope"');
+    const planning = await ok("staging_set_planning", { slug, number: 1, themes: [{ name: "loss", note: "the move" }] });
+    const read = await ok("staging_get_chapter", { slug, number: 1 });
+    expect(read.pendingPlanning).toEqual({ changeId: planning.changeId, themes: [{ name: "Loss", note: "the move" }] });
+
+    // Chapter settings.
+    await ok("staging_update_chapter", { slug, number: 1, title: "Opening" });
+    const settings = await ok("staging_update_chapter", { slug, number: 1, format: "screenplay" });
+    expect((await ok("staging_get_chapter", { slug, number: 1 })).pendingSettings).toEqual({ changeId: settings.changeId, title: "Opening", format: "screenplay" });
+
+    // Tasks: read both boards, add to a chapter board, change an existing card.
+    const boards = await ok("staging_get_tasks", { slug });
+    expect(boards.bookBoard).toEqual([{ list: "To do", cards: [{ cardId: "card1", title: "Fix dates", completed: false, chapter: 1 }] }]);
+    expect(boards.chapterBoards).toEqual([]);
+    await ok("staging_add_tasks", { slug, tasks: [{ title: "Cut the intro", chapter: 1, onChapterBoard: true, dueDate: "2026-12-01" }] });
+    await ok("staging_update_task", { slug, cardId: "card1", completed: true });
+    const task = await ok("staging_update_task", { slug, cardId: "card1", dueDate: "2026-12-24" });
+    const after = await ok("staging_get_tasks", { slug });
+    expect(after.bookBoard[0].cards[0].pendingEdit).toEqual({ changeId: task.changeId, completed: true, dueDate: "2026-12-24" });
+    expect((await call("staging_update_task", { slug, cardId: "nope", completed: true })).text).toContain("No task with cardId");
 
     const project = await ok("staging_get_project", { slug });
-    expect(project.pendingChanges.map((c: { kind: string }) => c.kind)).toEqual(["draft", "main", "chapter", "element", "notes", "tasks"]);
+    expect(project.pendingChanges.map((c: { kind: string }) => c.kind)).toEqual([
+      "draft", "draft", "main", "chapter", "element", "notes", "tasks", "summary", "planning", "chapterSettings", "tasks", "taskEdit",
+    ]);
     const listed = await ok("staging_list_projects");
-    expect(listed.projects[0]).toMatchObject({ slug, pendingChanges: 6 });
+    expect(listed.projects[0]).toMatchObject({ slug, pendingChanges: 12 });
 
     const row = await connection.db!.collection("staging_room_projects").findOne({ _id: hash(owner, slug) } as never);
     expect(row).toMatchObject({ owner, slug, version: 2, userId: owner });
     expect(row!.changes[0]).toMatchObject({ kind: "draft", chapterId, baseHash: "h1", by: "connector" });
-  });
+  }, 60_000); // many tool calls against a remote test database
 
   test("never opens collections outside the Dev Board, Staging Room and its own", () => {
     const allowed = new Set<string>(Object.values(CONNECTOR_COLLECTIONS));

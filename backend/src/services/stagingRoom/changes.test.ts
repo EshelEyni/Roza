@@ -1,6 +1,6 @@
 import mongoose, { Types } from "mongoose";
 import type { StagedChange } from "../../../../shared/types/stagingRoom";
-import { approveChanges, changeViews, liveCopyOf, readView, textHash } from "./changes";
+import { approveChanges, cardHash, changeViews, liveCopyOf, readView, textHash } from "./changes";
 import { changesFromCopy } from "./project";
 import { markNew } from "./textDiff";
 
@@ -114,6 +114,93 @@ describe("approve", () => {
     expect(JSON.stringify(chapters[1].text)).toContain("Allan waits.");
     expect(chapters[1].drafts).toHaveLength(1);
     expect(result.messages.join(" ")).toContain("added as a draft");
+  });
+
+  it("writes a chapter summary, and asks first when the summary changed since", async () => {
+    const book = liveBook();
+    const live = liveCopyOf(book);
+    expect(live.chapters[0].summaryHash).toBe(textHash(book.chapters[0].description));
+    const summary: StagedChange = { ...base("s"), kind: "summary", chapterId: String(ch1), text: [para("Ann leaves home.")], baseHash: live.chapters[0].summaryHash! };
+    expect(changeViews([summary], live)[0]).toMatchObject({ tag: "NEW SUMMARY", title: "Chapter summary", group: { name: "One" }, readable: true });
+    expect(readView(summary, live).paragraphs[0].segments[0]).toEqual({ text: "Ann leaves home.", isNew: true });
+
+    const { conn, writes } = fakeConn(book);
+    const result = await approveChanges(conn, project, [summary], false, noBackup);
+    expect(result.applied).toEqual(["s"]);
+    const chapters = writes[0].update.$set.chapters as { description: unknown; text: unknown }[];
+    expect(JSON.stringify(chapters[0].description)).toContain("Ann leaves home.");
+    expect(JSON.stringify(chapters[0].text)).toContain("Ann walks.");
+
+    const stale: StagedChange = { ...summary, id: "s2", baseHash: "old" };
+    const second = fakeConn(book);
+    const asked = await approveChanges(second.conn, project, [stale], false, noBackup);
+    expect(asked.conflicts?.map((c) => c.id)).toEqual(["s2"]);
+    expect(second.writes).toHaveLength(0);
+  });
+
+  it("sets chapter planning links, leaves other kinds alone, and asks first when planning changed", async () => {
+    const book = liveBook();
+    const annId = String(book.characters[0]._id);
+    const themeId = new Types.ObjectId();
+    (book as Record<string, unknown>).themes = [{ _id: themeId, bookId, type: "themes", name: "Loss", color: "#112233", description: [para("x")], createdAt: new Date(at), updatedAt: new Date(at) }];
+    (book.chapters[0] as Record<string, unknown>).planning = { characters: [], themes: [{ entityId: String(themeId), note: "start" }], plotlines: [] };
+    const live = liveCopyOf(book);
+    expect(live.characters[0].id).toBe(annId);
+    const planning: StagedChange = {
+      ...base("p"), kind: "planning", chapterId: String(ch1), planning: { characters: [{ entityId: annId, note: "leaves" }] }, baseHash: live.chapters[0].planningHash!,
+    };
+    expect(changeViews([planning], live)[0]).toMatchObject({ tag: "PLANNING", meta: expect.stringContaining("1 character") });
+    expect(readView(planning, live).paragraphs.map((p) => p.segments[0].text)).toEqual(["Characters: ", "• Ann — leaves"]);
+
+    const { conn, writes } = fakeConn(book);
+    await approveChanges(conn, project, [planning], false, noBackup);
+    const saved = (writes[0].update.$set.chapters as { planning: Record<string, { entityId: string; note: string }[]> }[])[0].planning;
+    expect(saved.characters).toEqual([{ entityId: annId, note: "leaves" }]);
+    expect(saved.themes).toEqual([{ entityId: String(themeId), note: "start" }]);
+
+    const stale = fakeConn(book);
+    const asked = await approveChanges(stale.conn, project, [{ ...planning, id: "p2", baseHash: "old" }], false, noBackup);
+    expect(asked.conflicts?.map((c) => c.id)).toEqual(["p2"]);
+  });
+
+  it("renames, moves and reformats a chapter", async () => {
+    const book = liveBook();
+    const settings: StagedChange = { ...base("s"), kind: "chapterSettings", chapterId: String(ch2), name: "Second", format: "screenplay", move: { afterId: null } };
+    expect(readView(settings, liveCopyOf(book)).paragraphs.map((p) => p.segments[0].text)).toEqual([
+      "Rename to “Second”", "Change the format to screenplay", "Move to the start of the book",
+    ]);
+    const { conn, writes } = fakeConn(book);
+    await approveChanges(conn, project, [settings], false, noBackup);
+    const chapters = writes[0].update.$set.chapters as { name: string; format: string }[];
+    expect(chapters.map((c) => c.name)).toEqual(["Second", "One"]);
+    expect(chapters[0].format).toBe("screenplay");
+  });
+
+  it("adds a card to a chapter's own board and edits an existing card", async () => {
+    const book = liveBook() as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const card = { id: "card1", title: "Fix dates", description: "", chapterId: "", completed: false, dueDate: "", checklist: [], labels: [], createdAt: at, updatedAt: at };
+    book.taskBoard = { lists: [{ id: "l1", title: "To do", cards: [card] }] };
+    const live = liveCopyOf(book);
+    const add: StagedChange = { ...base("t"), kind: "tasks", tasks: [{ title: "Tighten", chapterId: String(ch1), onChapterBoard: true, list: "Edit", checklist: ["Cut"] }] };
+    const edit: StagedChange = {
+      ...base("e"), kind: "taskEdit", cardId: "card1", cardTitle: "Fix dates",
+      edit: { completed: true, list: "Done", checklist: [{ title: "Check", done: true }] }, baseHash: cardHash(live.taskBoard!.lists[0].cards[0]),
+    };
+    expect(changeViews([edit], live)[0]).toMatchObject({ tag: "TASK EDIT", warning: undefined });
+
+    const { conn, writes } = fakeConn(book);
+    const result = await approveChanges(conn, project, [add, edit], false, noBackup);
+    expect(result.applied.sort()).toEqual(["e", "t"]);
+    const $set = writes[0].update.$set as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const chapterBoard = $set.chapters[0].taskBoard.lists[0];
+    expect(chapterBoard.title).toBe("Edit");
+    expect(chapterBoard.cards[0]).toMatchObject({ title: "Tighten", chapterId: String(ch1), checklist: [{ title: "Cut", done: false }] });
+    expect($set.taskBoard.lists.map((l: { title: string; cards: unknown[] }) => [l.title, l.cards.length])).toEqual([["To do", 0], ["Done", 1]]);
+    expect($set.taskBoard.lists[1].cards[0]).toMatchObject({ completed: true, checklist: [{ title: "Check", done: true }] });
+
+    const stale = fakeConn(book);
+    const asked = await approveChanges(stale.conn, project, [{ ...edit, id: "e2", baseHash: "old" }], false, noBackup);
+    expect(asked.conflicts?.map((c) => c.id)).toEqual(["e2"]);
   });
 
   it("places a new chapter, adds tasks, and asks before overwriting a changed element", async () => {

@@ -23,6 +23,7 @@ const ticketId = z.string().min(1).max(200).describe("Ticket id from devboard_li
 const slug = z.string().min(1).max(200).describe("Staged project name (slug) from staging_list_projects.");
 const chapterNumber = z.number().int().min(0).max(100_000).describe("Chapter number as shown by staging_get_project.");
 const markdown = z.string().max(MAX_TEXT_CHARS);
+const dueDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).describe("YYYY-MM-DD");
 const ticketFields = {
   project: z.string().max(200).optional(),
   title: z.string().max(500).optional(),
@@ -169,15 +170,18 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
     {
       title: "Read a chapter",
       description:
-        'Reads a chapter\'s current Main text from Writing Studio, plus the pending drafts and Main edit for it. view "markdown" (default) or "full" (Slate nodes, keeps alignment and screenplay layout). ' +
-        'Keep reads small: version reads one text only ("main", or a pending draft name or changeId) with its notes. ' +
+        'Reads a chapter\'s current Main text from Writing Studio, plus the pending drafts and Main edit for it. ' +
+        "It also returns the notes on Main (mainNotes), the chapter's summary (the Bible's Summary tab), its planning links to characters, themes and plotlines, " +
+        "and any pending summary, planning or chapter settings change. " +
+        'view "markdown" (default) or "full" (Slate nodes, keeps alignment and screenplay layout). ' +
+        'Keep reads small: version reads one text only ("main", a pending draft name or changeId, or a Writing Studio draft name) with its notes. ' +
         'paragraphs {from, to} (0-based, inclusive) or search return only those paragraphs, each with its index. ' +
         'Without version, pending texts are included for view "markdown" and left out for view "full" (set includeDrafts to change that).',
       inputSchema: {
         slug,
         number: chapterNumber,
         view: z.enum(["markdown", "full"]).optional(),
-        version: z.string().min(1).max(200).optional().describe('"main", or a pending draft name or changeId.'),
+        version: z.string().min(1).max(200).optional().describe('"main", a pending draft name or changeId, or a Writing Studio draft name.'),
         includeDrafts: z.boolean().optional(),
         paragraphs: z
           .object({ from: z.number().int().min(0).optional(), to: z.number().int().min(0).optional() })
@@ -282,12 +286,12 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
     {
       title: "Copy a text into a new draft",
       description:
-        'Starts a new pending draft of a chapter as a copy of its Main ("main") or of a pending draft (name or changeId). No text is sent. ' +
-        "withNotes also copies the notes. Then change it with staging_edit_text. Drafts already in Writing Studio can't be copied here.",
+        'Starts a new pending draft of a chapter as a copy of its Main ("main"), a pending draft (name or changeId), or a draft in Writing Studio (name). No text is sent. ' +
+        "withNotes also copies the notes. Then change it with staging_edit_text. This is how to change a Writing Studio draft: copy it, then edit the copy.",
       inputSchema: {
         slug,
         number: chapterNumber,
-        from: z.string().min(1).max(200).describe('"main", or a pending draft name or changeId.'),
+        from: z.string().min(1).max(200).describe('"main", a pending draft name or changeId, or a Writing Studio draft name.'),
         name: z.string().min(1).max(200).describe("Name of the new draft."),
         withNotes: z.boolean().optional(),
       },
@@ -322,6 +326,7 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
       title: "Add or change a story element",
       description:
         "Adds a new character, theme, plotline or note, or changes the text of an existing one (matched by name). " +
+        "The text replaces the whole element, so read it first with staging_get_elements. " +
         "Text is Markdown or Slate nodes. Themes and plotlines take a colour (#rrggbb).",
       inputSchema: {
         slug,
@@ -336,6 +341,36 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
       runWrite("staging_set_element", `${project}/${rest.kind}/${rest.name}`, () => staging.setElement({ slug: project, ...rest } as never)),
   );
   server.registerTool(
+    "staging_get_elements",
+    {
+      title: "Read story elements",
+      description:
+        "Reads the text of the book's characters, themes, plotlines or notes (the Bible), with any pending change to each. " +
+        'Pass name to read one element. view "markdown" (default) or "full" (Slate nodes).',
+      inputSchema: {
+        slug,
+        kind: z.enum(["characters", "themes", "plotlines", "notes"]),
+        name: z.string().min(1).max(300).optional(),
+        view: z.enum(["markdown", "full"]).optional(),
+      },
+      annotations: read,
+    },
+    async ({ slug: project, ...rest }) => run(() => staging.getElements({ slug: project, ...rest })),
+  );
+  server.registerTool(
+    "staging_set_summary",
+    {
+      title: "Propose a chapter summary",
+      description:
+        "Proposes a new summary for a chapter (the Bible's Summary tab). It replaces the whole summary when the author approves it. " +
+        "Read the current summary first with staging_get_chapter. Saving again updates the same pending summary. Text is Markdown or Slate nodes.",
+      inputSchema: { slug, number: chapterNumber, text: z.union([markdown, slate]) },
+      annotations: write,
+    },
+    async ({ slug: project, ...rest }) =>
+      runWrite("staging_set_summary", `${project}#${rest.number}`, () => staging.setSummary({ slug: project, ...rest } as never)),
+  );
+  server.registerTool(
     "staging_add_notes",
     {
       title: "Add notes to a chapter",
@@ -348,18 +383,101 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
   server.registerTool(
     "staging_add_tasks",
     {
-      title: "Add tasks to the book board",
-      description: "Adds tasks to the book's task board (first list). A task can link to a chapter by number.",
+      title: "Add tasks",
+      description:
+        "Adds new task cards. By default a card goes to the book's task board, in its first list. " +
+        "chapter links the card to a chapter. With onChapterBoard, the card goes to that chapter's own board instead. " +
+        "list picks a list by title (made when missing). To change existing cards, use staging_update_task.",
       inputSchema: {
         slug,
         tasks: z
-          .array(z.object({ title: z.string().min(1).max(300), description: z.string().max(10_000).optional(), chapter: chapterNumber.optional() }))
+          .array(
+            z.object({
+              title: z.string().min(1).max(300),
+              description: z.string().max(10_000).optional(),
+              chapter: chapterNumber.optional(),
+              onChapterBoard: z.boolean().optional(),
+              list: z.string().min(1).max(300).optional(),
+              dueDate: dueDate.optional(),
+              checklist: z.array(z.string().min(1).max(300)).max(100).optional().describe("Checklist item titles."),
+            }),
+          )
           .min(1)
           .max(100),
       },
       annotations: write,
     },
     async args => runWrite("staging_add_tasks", args.slug, () => staging.addTasks(args as never)),
+  );
+  server.registerTool(
+    "staging_get_tasks",
+    {
+      title: "Read task boards",
+      description:
+        "Reads the book's task board and the chapters' own boards: lists, cards (cardId, title, description, done, due date, checklist, labels, linked chapter) " +
+        "and pending task changes. Pass chapter to read only that chapter's board.",
+      inputSchema: { slug, chapter: chapterNumber.optional(), includeCompleted: z.boolean().optional().describe("Default true.") },
+      annotations: read,
+    },
+    async args => run(() => staging.getTasks(args)),
+  );
+  server.registerTool(
+    "staging_update_task",
+    {
+      title: "Change a task",
+      description:
+        "Proposes changes to an existing task card (cardId from staging_get_tasks): title, description, done, due date, checklist or list. " +
+        "Fields left out stay as they are. checklist replaces the whole checklist. Saving again for the same card updates the same pending change.",
+      inputSchema: {
+        slug,
+        cardId: z.string().min(1).max(200),
+        title: z.string().min(1).max(300).optional(),
+        description: z.string().max(10_000).optional(),
+        completed: z.boolean().optional(),
+        dueDate: dueDate.or(z.literal("")).optional().describe('YYYY-MM-DD, or "" to remove it.'),
+        checklist: z.array(z.object({ title: z.string().min(1).max(300), done: z.boolean() })).max(100).optional(),
+        list: z.string().min(1).max(300).optional().describe("Move the card to this list (by title; made when missing)."),
+      },
+      annotations: write,
+    },
+    async args => runWrite("staging_update_task", `${args.slug}/${args.cardId}`, () => staging.updateTask(args)),
+  );
+  const links = z
+    .array(z.object({ name: z.string().min(1).max(300), note: z.string().max(50_000).optional() }))
+    .max(500)
+    .optional();
+  server.registerTool(
+    "staging_set_planning",
+    {
+      title: "Change a chapter's planning",
+      description:
+        "Proposes which characters, themes and plotlines a chapter links to, each with an optional note (the chapter's planning). " +
+        "Elements are named as in staging_get_project. Each kind you pass replaces all links of that kind; kinds left out stay as they are. " +
+        "Pass an empty list to remove all links of a kind. Read the current planning first with staging_get_chapter.",
+      inputSchema: { slug, number: chapterNumber, characters: links, themes: links, plotlines: links },
+      annotations: write,
+    },
+    async ({ slug: project, ...rest }) =>
+      runWrite("staging_set_planning", `${project}#${rest.number}`, () => staging.setPlanning({ slug: project, ...rest })),
+  );
+  server.registerTool(
+    "staging_update_chapter",
+    {
+      title: "Rename, move or reformat a chapter",
+      description:
+        "Proposes chapter settings: a new title, a new place (after: the chapter number it should follow; 0 = first), " +
+        'or a new format ("prose" or "screenplay"; the Main text is converted as Writing Studio does). Saving again updates the same pending change.',
+      inputSchema: {
+        slug,
+        number: chapterNumber,
+        title: z.string().min(1).max(200).optional(),
+        format: z.enum(["prose", "screenplay"]).optional(),
+        after: chapterNumber.optional(),
+      },
+      annotations: write,
+    },
+    async ({ slug: project, ...rest }) =>
+      runWrite("staging_update_chapter", `${project}#${rest.number}`, () => staging.updateChapter({ slug: project, ...rest })),
   );
 
   // ---- helpers ---------------------------------------------------------------

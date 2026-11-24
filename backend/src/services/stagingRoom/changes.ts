@@ -14,10 +14,12 @@ import type {
   ChangeGroup,
   ChangeView,
   ChapterAnnotation,
+  ChapterPlanningLinks,
   EntityKind,
   LiveChapter,
   LiveCopy,
   LiveElement,
+  PlanningKind,
   ReadView,
   SlateElement,
   StagedChange,
@@ -26,6 +28,7 @@ import { DEFAULT_COLOR, findQuote, hashOf, reattachNotes } from "./fullData";
 import { validatePlanning } from "./planningValidation";
 import { bookModelFor } from "./rozaSchema";
 import { countWords, elementText, toSlate } from "./slate";
+import { proseBlocks, screenplayStart } from "./screenplay";
 import { markNew } from "./textDiff";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -45,8 +48,22 @@ export const elementHash = (color: string | undefined, text: unknown) => hashOf(
 function liveElement(kind: EntityKind, x: Raw): LiveElement {
   const text = plain((kind === "notes" ? x.text : x.description) ?? []) as SlateElement[];
   const color = kind === "themes" || kind === "plotlines" ? x.color || DEFAULT_COLOR : undefined;
-  return { name: String(x.name ?? ""), ...(color ? { color } : {}), text, hash: elementHash(color, text) };
+  return { id: String(x._id ?? ""), name: String(x.name ?? ""), ...(color ? { color } : {}), text, hash: elementHash(color, text) };
 }
+
+/** Bump when the live copy starts keeping something new. Older copies are refreshed. */
+export const COPY_VERSION = 2;
+
+export const PLANNING_KINDS: PlanningKind[] = ["characters", "themes", "plotlines"];
+
+/** A chapter's planning links, with every kind present. */
+export function planningOf(planning: Raw | undefined): ChapterPlanningLinks {
+  return Object.fromEntries(
+    PLANNING_KINDS.map((k) => [k, (planning?.[k] || []).map((l: Raw) => ({ entityId: String(l.entityId), note: String(l.note ?? "") }))]),
+  ) as ChapterPlanningLinks;
+}
+export const planningHash = (planning: Raw | undefined) => hashOf(planningOf(planning));
+export const cardHash = (card: unknown) => hashOf(plain(card));
 
 /** The read-only copy of a live book that Claude and the Staging Room read. */
 export function liveCopyOf(book: Raw): LiveCopy {
@@ -56,20 +73,35 @@ export function liveCopyOf(book: Raw): LiveCopy {
     format: c.format === "screenplay" ? "screenplay" : "prose",
     text: plain(c.text ?? []),
     mainHash: textHash(c.text),
+    summary: plain(c.description ?? []),
+    summaryHash: textHash(c.description),
+    planning: planningOf(c.planning),
+    planningHash: planningHash(c.planning),
+    ...(c.taskBoard ? { taskBoard: plain(c.taskBoard) } : {}),
     annotations: plain(c.annotations ?? []),
     drafts: (c.drafts || [])
       .filter((d: Raw) => d.kind !== "main-backup")
-      .map((d: Raw) => ({ id: String(d.id), name: String(d.name ?? ""), words: countWords(d.text) })),
+      .map((d: Raw) => ({
+        id: String(d.id),
+        name: String(d.name ?? ""),
+        words: countWords(d.text),
+        text: plain(d.text ?? []),
+        annotations: plain(d.annotations ?? []),
+        ...(d.summary ? { summary: String(d.summary) } : {}),
+        ...(d.format ? { format: d.format } : {}),
+      })),
   }));
   const elements = Object.fromEntries(
     ELEMENT_KINDS.map((k) => [k, liveItems(book[k]).map((x) => liveElement(k, x))]),
   ) as Record<EntityKind, LiveElement[]>;
   return {
+    copyVersion: COPY_VERSION,
     bookId: String(book._id),
     name: String(book.name ?? ""),
     updatedAt: new Date(book.updatedAt ?? 0).toISOString(),
     chapters,
     ...elements,
+    ...(book.taskBoard ? { taskBoard: plain(book.taskBoard) } : {}),
     copiedAt: new Date().toISOString(),
   };
 }
@@ -98,10 +130,97 @@ export function changeTitle(c: StagedChange, live: LiveCopy | undefined): string
       return `${SINGULAR[c.element]} · ${c.name}`;
     case "notes":
       return `${plural(c.notes.length, "note")} · ${chapter(c.chapterId)}`;
+    case "summary":
+      return `Summary · ${chapter(c.chapterId)}`;
+    case "planning":
+      return `Planning · ${chapter(c.chapterId)}`;
+    case "chapterSettings":
+      return `Chapter settings · ${chapter(c.chapterId)}`;
     case "tasks":
       return plural(c.tasks.length, "task");
+    case "taskEdit":
+      return `Task · ${c.cardTitle}`;
   }
 }
+
+/* ---------- planning and task helpers ---------- */
+
+/** True when the chapter's planning changed in Writing Studio since Claude read it. */
+function planningConflict(c: Extract<StagedChange, { kind: "planning" }>, live: LiveCopy | undefined): boolean {
+  const ch = live?.chapters.find((x) => x.id === c.chapterId);
+  return !!ch && ch.planningHash !== undefined && ch.planningHash !== c.baseHash;
+}
+
+type Card = Raw & { id: string; title: string };
+
+/** The cards of a board, with the list each one is in. */
+export function boardCards(board: Raw | undefined): { card: Card; list: Raw }[] {
+  return ((board?.lists as Raw[] | undefined) ?? []).flatMap((list) => ((list.cards as Card[] | undefined) ?? []).map((card) => ({ card, list })));
+}
+
+/** The live card a task edit points at, or undefined when it is gone. */
+function liveCard(c: Extract<StagedChange, { kind: "taskEdit" }>, live: LiveCopy | undefined) {
+  const board = c.boardChapterId ? live?.chapters.find((x) => x.id === c.boardChapterId)?.taskBoard : live?.taskBoard;
+  return boardCards(board).find((x) => x.card.id === c.cardId)?.card;
+}
+
+/** True when the card changed in Writing Studio since Claude read it. */
+function taskConflict(c: Extract<StagedChange, { kind: "taskEdit" }>, live: LiveCopy | undefined): boolean {
+  const card = liveCard(c, live);
+  return !!card && cardHash(card) !== c.baseHash;
+}
+
+/** Plain lines that describe a task edit, for the Changes screen. */
+function taskEditLines(edit: StagedChange & { kind: "taskEdit" }): string[] {
+  const e = edit.edit;
+  return [
+    ...(e.title !== undefined ? [`Title: ${e.title}`] : []),
+    ...(e.completed !== undefined ? [e.completed ? "Mark as done" : "Mark as not done"] : []),
+    ...(e.description !== undefined ? [`Description: ${e.description || "(empty)"}`] : []),
+    ...(e.dueDate !== undefined ? [e.dueDate ? `Due: ${e.dueDate}` : "Remove the due date"] : []),
+    ...(e.list !== undefined ? [`Move to list “${e.list}”`] : []),
+    ...(e.checklist ? [`Checklist: ${e.checklist.map((i) => `${i.done ? "☑" : "☐"} ${i.title}`).join(", ") || "(empty)"}`] : []),
+  ];
+}
+
+/** Plain lines that describe chapter settings, for the Changes screen. */
+function settingsLines(c: Extract<StagedChange, { kind: "chapterSettings" }>, live: LiveCopy | undefined): string[] {
+  const after = c.move ? (c.move.afterId ? live?.chapters.find((x) => x.id === c.move!.afterId)?.name ?? "a removed chapter" : null) : undefined;
+  return [
+    ...(c.name !== undefined ? [`Rename to “${c.name}”`] : []),
+    ...(c.format ? [`Change the format to ${c.format}`] : []),
+    ...(after === null ? ["Move to the start of the book"] : after !== undefined ? [`Move after “${after}”`] : []),
+  ];
+}
+
+const KIND_WORD: Record<PlanningKind, [string, string]> = { characters: ["character", "Characters"], themes: ["theme", "Themes"], plotlines: ["plotline", "Plotlines"] };
+
+/** Plain lines that list a planning change, with the element names. */
+function planningLines(c: Extract<StagedChange, { kind: "planning" }>, live: LiveCopy | undefined) {
+  const current = live?.chapters.find((x) => x.id === c.chapterId)?.planning;
+  return PLANNING_KINDS.filter((k) => c.planning[k]).map((k) => {
+    const name = (id: string) => live?.[k].find((x) => x.id === id)?.name ?? "a removed element";
+    const links = c.planning[k]!;
+    return {
+      heading: `${KIND_WORD[k][1]}: ${links.length ? "" : "none"}`,
+      links: links.map((l) => ({ text: `${name(l.entityId)}${l.note ? ` — ${l.note}` : ""}`, isNew: !current?.[k].some((x) => x.entityId === l.entityId && x.note === l.note) })),
+    };
+  });
+}
+
+function planningMeta(c: Extract<StagedChange, { kind: "planning" }>): string {
+  const parts = PLANNING_KINDS.filter((k) => c.planning[k]).map((k) => plural(c.planning[k]!.length, KIND_WORD[k][0]));
+  return `Links ${parts.join(", ")} · replaces those links in the chapter’s planning`;
+}
+
+/** True when the chapter's summary changed in Writing Studio since Claude read it. */
+function summaryConflict(c: Extract<StagedChange, { kind: "summary" }>, live: LiveCopy | undefined): boolean {
+  const ch = live?.chapters.find((x) => x.id === c.chapterId);
+  return !!ch && (ch.summaryHash ?? textHash(ch.summary)) !== c.baseHash;
+}
+
+/** A summary with no words counts as empty. */
+const isBlank = (text: SlateElement[] | undefined) => !(text ?? []).some((n) => elementText(n).trim());
 
 function elementConflict(c: Extract<StagedChange, { kind: "element" }>, live: LiveCopy | undefined): boolean {
   if (!live) return false;
@@ -195,10 +314,64 @@ export function changeViews(changes: StagedChange[], live: LiveCopy | undefined)
           editable: false,
           warning: missing(c.chapterId),
         };
+      case "summary": {
+        const isNew = isBlank(live?.chapters.find((x) => x.id === c.chapterId)?.summary);
+        return {
+          ...base,
+          title: "Chapter summary",
+          group: chapterGroup(c.chapterId),
+          tag: isNew ? "NEW SUMMARY" : "SUMMARY",
+          tone: isNew ? "new" : "changed",
+          meta: `${words(c.text)} words · replaces the summary in the Bible`,
+          readable: true,
+          editable: false,
+          warning: missing(c.chapterId) ?? (summaryConflict(c, live) ? "Changed in Writing Studio since Claude read it." : undefined),
+        };
+      }
+      case "planning":
+        return {
+          ...base,
+          title: "Chapter planning",
+          group: chapterGroup(c.chapterId),
+          tag: "PLANNING",
+          tone: "changed",
+          meta: planningMeta(c),
+          readable: true,
+          editable: false,
+          warning: missing(c.chapterId) ?? (planningConflict(c, live) ? "Changed in Writing Studio since Claude read it." : undefined),
+        };
+      case "chapterSettings":
+        return {
+          ...base,
+          title: "Chapter settings",
+          group: chapterGroup(c.chapterId),
+          tag: "SETTINGS",
+          tone: "changed",
+          meta: settingsLines(c, live).join(" · "),
+          readable: true,
+          editable: false,
+          warning: missing(c.chapterId),
+        };
+      case "taskEdit": {
+        const lines = taskEditLines(c);
+        return {
+          ...base,
+          title: `Task “${c.cardTitle}”`,
+          group: { type: "tasks" },
+          tag: "TASK EDIT",
+          tone: "changed",
+          meta: lines.length > 1 ? `${lines[0]} and ${lines.length - 1} more` : lines[0] ?? "",
+          readable: true,
+          editable: false,
+          warning: live && !liveCard(c, live) ? "This task is no longer in Writing Studio." : taskConflict(c, live) ? "Changed in Writing Studio since Claude read it." : undefined,
+        };
+      }
       case "tasks":
         return {
           ...base,
-          title: `${plural(c.tasks.length, "new task")} on the book board`,
+          title: c.tasks.every((t) => t.onChapterBoard)
+            ? `${plural(c.tasks.length, "new task")} on chapter boards`
+            : `${plural(c.tasks.length, "new task")} on the book board`,
           group: { type: "tasks" },
           tag: plural(c.tasks.length, "TASK").toUpperCase(),
           tone: "new",
@@ -254,12 +427,53 @@ export function readView(c: StagedChange, live: LiveCopy | undefined): ReadView 
         words: 0,
         paragraphs: c.notes.map((n) => ({ segments: [{ text: `${n.quote ? `“${n.quote}” — ` : ""}${n.content}`, isNew: true }] })),
       };
+    case "summary": {
+      const old = chapter(c.chapterId)?.summary;
+      return {
+        ...base,
+        title: chapter(c.chapterId)?.name ?? "Removed chapter",
+        subtitle: isBlank(old) ? "New summary" : "Summary changed",
+        words: countWords(c.text),
+        paragraphs: isBlank(old) ? marked(c.text, undefined, true) : marked(c.text, old),
+      };
+    }
+    case "planning":
+      return {
+        ...base,
+        title: chapter(c.chapterId)?.name ?? "Removed chapter",
+        subtitle: "Chapter planning",
+        words: 0,
+        paragraphs: planningLines(c, live).flatMap((k) => [
+          { segments: [{ text: k.heading, isNew: false }] },
+          ...k.links.map((l) => ({ segments: [{ text: `• ${l.text}`, isNew: l.isNew }] })),
+        ]),
+      };
+    case "chapterSettings":
+      return {
+        ...base,
+        title: chapter(c.chapterId)?.name ?? "Removed chapter",
+        subtitle: "Chapter settings",
+        words: 0,
+        paragraphs: settingsLines(c, live).map((text) => ({ segments: [{ text, isNew: true }] })),
+      };
+    case "taskEdit":
+      return {
+        ...base,
+        subtitle: c.boardChapterId ? `Task board of “${chapter(c.boardChapterId)?.name ?? "a removed chapter"}”` : "Book task board",
+        words: 0,
+        paragraphs: taskEditLines(c).map((text) => ({ segments: [{ text, isNew: true }] })),
+      };
     case "tasks":
       return {
         ...base,
         subtitle: "Book task board",
         words: 0,
-        paragraphs: c.tasks.map((t) => ({ segments: [{ text: t.description ? `${t.title} — ${t.description}` : t.title, isNew: true }] })),
+        paragraphs: c.tasks.map((t) => {
+          const where = t.onChapterBoard && t.chapterId ? ` (board of “${chapter(t.chapterId)?.name ?? "a new chapter"}”)` : "";
+          const extra = [t.list ? `list “${t.list}”` : "", t.dueDate ? `due ${t.dueDate}` : "", t.checklist?.length ? `checklist: ${t.checklist.join(", ")}` : ""].filter(Boolean);
+          const text = `${t.title}${where}${t.description ? ` — ${t.description}` : ""}${extra.length ? ` · ${extra.join(" · ")}` : ""}`;
+          return { segments: [{ text, isNew: true }] };
+        }),
       };
   }
 }
@@ -273,6 +487,20 @@ export function anchorNotes(text: SlateElement[], notes: ChapterAnnotation[] | u
     const found = findQuote(text, n.quote);
     return found ? { ...n, anchor: found } : n;
   });
+}
+
+const sameTitle = (a: unknown, b: string) => String(a ?? "").trim().toLowerCase() === b.trim().toLowerCase();
+
+/** The list on a board with this title, made when missing. No title: the first list (made as "To do" when the board is empty). */
+function listOn(board: Raw, title?: string): Raw & { cards: Raw[] } {
+  board.lists ||= [];
+  let list = title?.trim() ? board.lists.find((l: Raw) => sameTitle(l.title, title)) : board.lists[0];
+  if (!list) {
+    list = { id: randomUUID(), title: title?.trim() || "To do", cards: [] };
+    board.lists.push(list);
+  }
+  list.cards ||= [];
+  return list;
 }
 
 const draftName = (d = new Date()) => `Claude · ${d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })}`;
@@ -297,7 +525,13 @@ export async function approveChanges(
 
   const live = book ? liveCopyOf(book) : undefined;
   const conflicts = chosen
-    .filter((c): c is Extract<StagedChange, { kind: "element" }> => c.kind === "element" && elementConflict(c, live))
+    .filter(
+      (c) =>
+        (c.kind === "element" && elementConflict(c, live)) ||
+        (c.kind === "summary" && summaryConflict(c, live)) ||
+        (c.kind === "planning" && planningConflict(c, live)) ||
+        (c.kind === "taskEdit" && taskConflict(c, live)),
+    )
     .map((c) => ({ id: c.id, title: changeTitle(c, live) }));
   if (conflicts.length && !confirm) return { approved: 0, messages: [], conflicts, applied: [], bookId: project.liveBookId ?? "" };
 
@@ -429,27 +663,128 @@ export async function approveChanges(
         touched.add("chapters");
         break;
       }
+      case "summary": {
+        const ch = findChapter(c.chapterId);
+        if (!ch) {
+          messages.push("Skipped a summary: its chapter is no longer in Writing Studio.");
+          continue;
+        }
+        ch.description = c.text;
+        ch.updatedAt = now;
+        messages.push(`Updated the summary of “${ch.name}”.`);
+        touched.add("chapters");
+        break;
+      }
       case "tasks": {
-        const board = (doc.taskBoard ||= { lists: [] });
-        board.lists ||= [];
-        if (!board.lists.length) board.lists.push({ id: randomUUID(), title: "To do", cards: [] });
-        const list = board.lists[0];
-        list.cards ||= [];
-        for (const t of c.tasks)
+        const added: string[] = [];
+        for (const t of c.tasks) {
+          const chapterId = t.chapterId ? newChapterIds.get(t.chapterId) ?? t.chapterId : "";
+          const ch = t.onChapterBoard && chapterId ? findChapter(chapterId) : undefined;
+          if (t.onChapterBoard && !ch) {
+            messages.push(`Skipped the task “${t.title}”: its chapter is no longer in Writing Studio.`);
+            continue;
+          }
+          const list = listOn(ch ? (ch.taskBoard ||= { lists: [] }) : (doc.taskBoard ||= { lists: [] }), t.list);
           list.cards.push({
             id: randomUUID(),
             title: t.title,
             description: t.description ?? "",
-            chapterId: t.chapterId ? newChapterIds.get(t.chapterId) ?? t.chapterId : "",
+            chapterId,
             completed: false,
-            dueDate: "",
-            checklist: [],
+            dueDate: t.dueDate ?? "",
+            checklist: (t.checklist ?? []).map((title) => ({ id: randomUUID(), title, done: false })),
             labels: [],
             createdAt: iso,
             updatedAt: iso,
           });
-        messages.push(`Added ${plural(c.tasks.length, "task")} to “${list.title}”.`);
-        touched.add("taskBoard");
+          if (ch) ch.updatedAt = now;
+          touched.add(ch ? "chapters" : "taskBoard");
+          added.push(`“${list.title}”${ch ? ` on the board of “${ch.name}”` : ""}`);
+        }
+        if (added.length) messages.push(`Added ${plural(added.length, "task")} to ${[...new Set(added)].join(", ")}.`);
+        break;
+      }
+      case "taskEdit": {
+        const ch = c.boardChapterId ? findChapter(c.boardChapterId) : undefined;
+        const board = c.boardChapterId ? ch?.taskBoard : doc.taskBoard;
+        const found = boardCards(board).find((x) => x.card.id === c.cardId);
+        if (!board || !found) {
+          messages.push(`Skipped the task “${c.cardTitle}”: it is no longer in Writing Studio.`);
+          continue;
+        }
+        const { card, list } = found;
+        const e = c.edit;
+        if (e.title !== undefined) card.title = e.title;
+        if (e.description !== undefined) card.description = e.description;
+        if (e.completed !== undefined) card.completed = e.completed;
+        if (e.dueDate !== undefined) card.dueDate = e.dueDate;
+        if (e.checklist)
+          card.checklist = e.checklist.map((item) => {
+            const old = ((card.checklist as Raw[] | undefined) ?? []).find((x) => x.title === item.title);
+            return { id: old?.id ?? randomUUID(), title: item.title, done: item.done };
+          });
+        card.updatedAt = iso;
+        if (e.list !== undefined && !sameTitle(list.title, e.list)) {
+          list.cards = list.cards.filter((x: Raw) => x !== card);
+          listOn(board, e.list).cards.push(card);
+        }
+        if (ch) ch.updatedAt = now;
+        touched.add(ch ? "chapters" : "taskBoard");
+        messages.push(`Updated the task “${card.title}”.`);
+        break;
+      }
+      case "planning": {
+        const ch = findChapter(c.chapterId);
+        if (!ch) {
+          messages.push("Skipped planning: its chapter is no longer in Writing Studio.");
+          continue;
+        }
+        const planning = planningOf(ch.planning);
+        let dropped = 0;
+        for (const k of PLANNING_KINDS) {
+          const links = c.planning[k];
+          if (!links) continue;
+          const ids = new Set(liveItems(doc[k]).map((x) => String(x._id)));
+          planning[k] = links.filter((l) => ids.has(l.entityId));
+          dropped += links.length - planning[k].length;
+        }
+        ch.planning = planning;
+        ch.updatedAt = now;
+        messages.push(`Updated the planning of “${ch.name}”.${dropped ? ` ${plural(dropped, "link")} to removed elements left out.` : ""}`);
+        touched.add("chapters");
+        break;
+      }
+      case "chapterSettings": {
+        const ch = findChapter(c.chapterId);
+        if (!ch) {
+          messages.push("Skipped chapter settings: the chapter is no longer in Writing Studio.");
+          continue;
+        }
+        const done: string[] = [];
+        if (c.name !== undefined && c.name.trim() && c.name.trim() !== ch.name) {
+          done.push(`renamed “${ch.name}” to “${c.name.trim()}”`);
+          ch.name = c.name.trim();
+        }
+        const format = ch.format === "screenplay" ? "screenplay" : "prose";
+        if (c.format && c.format !== format) {
+          ch.text = c.format === "prose" ? proseBlocks(ch.text ?? []) : screenplayStart(ch.text ?? []);
+          ch.format = c.format;
+          done.push(`changed “${ch.name}” to ${c.format}`);
+        }
+        if (c.move) {
+          const afterId = c.move.afterId ? newChapterIds.get(c.move.afterId) ?? c.move.afterId : null;
+          const rest = doc.chapters.filter((x: Raw) => x !== ch);
+          const at = afterId ? rest.findIndex((x: Raw) => String(x._id) === afterId) : -1;
+          if (afterId && at < 0) messages.push(`Did not move “${ch.name}”: the chapter it goes after is gone.`);
+          else {
+            rest.splice(at + 1, 0, ch);
+            doc.chapters = rest;
+            done.push(`moved “${ch.name}”`);
+          }
+        }
+        ch.updatedAt = now;
+        messages.push(done.length ? `Chapter settings: ${done.join(", ")}.` : `“${ch.name}” already had these settings.`);
+        touched.add("chapters");
         break;
       }
     }
