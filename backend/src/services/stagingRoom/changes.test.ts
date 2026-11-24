@@ -203,6 +203,45 @@ describe("approve", () => {
     expect(asked.conflicts?.map((c) => c.id)).toEqual(["e2"]);
   });
 
+  it("links a task to a chapter, and deletes a task, a draft and a character only on approval", async () => {
+    const book = liveBook() as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    const card = (id: string, title: string) => ({ id, title, description: "", chapterId: "", completed: false, dueDate: "", checklist: [], labels: [], createdAt: at, updatedAt: at });
+    book.taskBoard = { lists: [{ id: "l1", title: "To do", cards: [card("k1", "Keep"), card("k2", "Duplicate")] }] };
+    book.chapters[0].drafts = [{ id: "d1", chapterId: String(ch1), name: "Old", text: [para("Old.")], createdAt: at, updatedAt: at }];
+    const live = liveCopyOf(book);
+    const cards = live.taskBoard!.lists[0].cards;
+    const link: StagedChange = { ...base("e"), kind: "taskEdit", cardId: "k1", cardTitle: "Keep", edit: { chapterId: String(ch2) }, baseHash: cardHash(cards[0]) };
+    const delTask: StagedChange = { ...base("x1"), kind: "delete", target: { type: "task", cardId: "k2", title: "Duplicate" }, baseHash: cardHash(cards[1]) };
+    const delDraft: StagedChange = { ...base("x2"), kind: "delete", target: { type: "draft", chapterId: String(ch1), draftId: "d1", name: "Old" }, baseHash: null };
+    const delChar: StagedChange = { ...base("x3"), kind: "delete", target: { type: "element", element: "characters", name: "Ann" }, baseHash: live.characters[0].hash };
+
+    expect(changeViews([link, delTask, delDraft, delChar], live).map((v) => [v.tag, v.tone, v.warning])).toEqual([
+      ["TASK EDIT", "changed", undefined],
+      ["DELETE", "removed", undefined],
+      ["DELETE", "removed", undefined],
+      ["DELETE", "removed", undefined],
+    ]);
+    expect(readView(link, live).paragraphs[0].segments[0].text).toBe("Link to chapter “Two”");
+    expect(readView(delChar, live).paragraphs[0].segments).toEqual([{ text: "Lead", isNew: false }]);
+
+    const { conn, writes } = fakeConn(book);
+    const result = await approveChanges(conn, project, [link, delTask, delDraft, delChar], false, noBackup);
+    expect(result.applied.sort()).toEqual(["e", "x1", "x2", "x3"]);
+    const $set = writes[0].update.$set as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
+    expect($set.taskBoard.lists[0].cards.map((c: { id: string; chapterId: string }) => [c.id, c.chapterId])).toEqual([["k1", String(ch2)]]);
+    expect($set.chapters[0].drafts).toHaveLength(0);
+    // Story elements are archived, as Writing Studio does, not removed from the book.
+    expect($set.characters).toHaveLength(1);
+    expect($set.characters[0].isArchived).toBe(true);
+
+    // A task the author changed since asks first; one that is gone is skipped.
+    const asked = await approveChanges(fakeConn(book).conn, project, [{ ...delTask, id: "x4", baseHash: "old" }], false, noBackup);
+    expect(asked.conflicts?.map((c) => c.id)).toEqual(["x4"]);
+    const gone: StagedChange = { ...base("x5"), kind: "delete", target: { type: "task", cardId: "nope", title: "Gone" }, baseHash: "h" };
+    const skipped = await approveChanges(fakeConn(book).conn, project, [gone], false, noBackup);
+    expect(skipped.messages.join(" ")).toContain("Skipped deleting the task “Gone”");
+  });
+
   it("places a new chapter, adds tasks, and asks before overwriting a changed element", async () => {
     const book = liveBook();
     const chapter: StagedChange = { ...base("c"), kind: "chapter", name: "One and a half", afterId: String(ch1), text: [para("Between.")] };

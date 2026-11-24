@@ -4,7 +4,7 @@ import type { ProjectRow } from "../services/stagingRoom/project";
 import { createStagingStore } from "./stagingStore";
 
 // The store against a tiny in-memory stand-in for the staging_room_projects collection.
-// It supports only what the store uses: findOne by _id, and updateOne with $push or "changes.$".
+// It supports only what the store uses: findOne by _id, and updateOne with $push, $pull or "changes.$".
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 function fakeDb(row: ProjectRow) {
@@ -15,6 +15,7 @@ function fakeDb(row: ProjectRow) {
       const at = match ? row.changes.findIndex((c) => c.id === match.id && c.updatedAt === match.updatedAt) : -1;
       if (filter._id !== row._id || (match && at < 0)) return { matchedCount: 0 };
       if (update.$push) row.changes.push(update.$push.changes);
+      else if (update.$pull) row.changes = row.changes.filter((c) => c.id !== update.$pull.changes.id);
       else row.changes[at] = update.$set["changes.$"];
       row.revision += update.$inc.revision;
       return { matchedCount: 1 };
@@ -55,7 +56,7 @@ function setup() {
           drafts: [{ id: "d1", name: "Old studio draft", words: 3 }],
         },
       ],
-      characters: [],
+      characters: [{ name: "Dona", text: [p("Friend")], hash: "hc" }],
       themes: [],
       plotlines: [],
       notes: [],
@@ -138,4 +139,63 @@ test("small reads: one version, a paragraph range, or a search", async () => {
   const found: any = await store.getChapter("book", 1, "markdown", { version: "main", search: "SAID" });
   expect(found.paragraphs).toEqual([{ index: 2, text: "She said no." }]);
   expect(found.notes).toEqual([{ content: "Main note", quote: "said no" }]);
+});
+
+/** The setup row with a current copy and one card on the book board. */
+function withTasks() {
+  const s = setup();
+  const card = { id: "k1", title: "Fix the opening", description: "", chapterId: "c1", completed: false, dueDate: "", checklist: [], labels: [], createdAt: "", updatedAt: "" };
+  Object.assign(s.row.live!, { copyVersion: 99, taskBoard: { lists: [{ id: "l1", title: "To do", cards: [card] }] } });
+  return s;
+}
+
+test("edits a pending new task in place, and links or unlinks a live task's chapter", async () => {
+  const { row, store } = withTasks();
+  const added: any = await store.addTasks({ slug: "book", tasks: [{ title: "Chapter 1 pacing" }, { title: "Chapter 1 pacing again" }] });
+  const boards: any = await store.getTasks({ slug: "book" });
+  expect(boards.pendingNewTasks).toEqual([
+    { changeId: added.changeId, byClaude: true, tasks: [{ cardId: `${added.changeId}/1`, title: "Chapter 1 pacing" }, { cardId: `${added.changeId}/2`, title: "Chapter 1 pacing again" }] },
+  ]);
+
+  await store.updateTask({ slug: "book", cardId: `${added.changeId}/1`, description: "Slow the middle.", chapter: 1 });
+  await store.deleteItem({ slug: "book", kind: "task", cardId: `${added.changeId}/2` });
+  expect(row.changes).toHaveLength(1);
+  expect((row.changes[0] as any).tasks).toEqual([{ title: "Chapter 1 pacing", description: "Slow the middle.", chapterId: "c1" }]);
+  // Taking out the last pending task withdraws the whole change.
+  await store.deleteItem({ slug: "book", kind: "task", cardId: `${added.changeId}/1` });
+  expect(row.changes).toHaveLength(0);
+
+  await store.updateTask({ slug: "book", cardId: "k1", chapter: null });
+  expect(row.changes[0]).toMatchObject({ kind: "taskEdit", cardId: "k1", edit: { chapterId: "" } });
+});
+
+test("deletes are pending changes, never direct removals", async () => {
+  const { row, store } = withTasks();
+  const task: any = await store.deleteItem({ slug: "book", kind: "task", cardId: "k1" });
+  expect(task.note).toMatch(/Nothing is removed until the author approves/);
+  await store.deleteItem({ slug: "book", kind: "draft", number: 1, name: "old studio draft" });
+  await store.deleteItem({ slug: "book", kind: "characters", name: "Dona" });
+  expect(row.changes.map((c: any) => c.target)).toEqual([
+    { type: "task", cardId: "k1", title: "Fix the opening" },
+    { type: "draft", chapterId: "c1", draftId: "d1", name: "Old studio draft" },
+    { type: "element", element: "characters", name: "Dona" },
+  ]);
+  const twice: any = await store.deleteItem({ slug: "book", kind: "characters", name: "Dona" });
+  expect(twice.unchanged).toBe(true);
+  expect(row.live!.taskBoard!.lists[0].cards).toHaveLength(1);
+
+  await store.copyDraft({ slug: "book", number: 1, from: "main", name: "Mine" });
+  await expect(store.deleteItem({ slug: "book", kind: "draft", number: 1, name: "Mine" })).rejects.toThrow(/staging_withdraw/);
+  await expect(store.deleteItem({ slug: "book", kind: "themes", name: "Nope" })).rejects.toThrow(/No themes named/);
+});
+
+test("withdraws only Claude's own pending changes", async () => {
+  const { row, store } = withTasks();
+  const mine: any = await store.addTasks({ slug: "book", tasks: [{ title: "Extra" }] });
+  row.changes.push({ id: "author-1", createdAt: "x", updatedAt: "x", by: "editor", kind: "tasks", tasks: [{ title: "Author's" }] });
+  const result: any = await store.withdraw({ slug: "book", changeId: mine.changeId });
+  expect(result).toMatchObject({ changeId: mine.changeId, withdrawn: "1 task" });
+  await expect(store.withdraw({ slug: "book", changeId: "author-1" })).rejects.toThrow(/by the author/);
+  await expect(store.updateTask({ slug: "book", cardId: "author-1/1", title: "x" })).rejects.toThrow(/not added by Claude/);
+  expect(row.changes.map((c) => c.id)).toEqual(["author-1"]);
 });

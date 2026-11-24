@@ -2,10 +2,11 @@
  * Staging Room v2: a basket of changes on top of the live Writing Studio book.
  * See docs/staging-room-prd.md.
  *
- * - The live book is always the truth. Staging only holds additions.
+ * - The live book is always the truth. Staging holds pending changes on top of it.
  * - Text changes remember the hash of the Main text they were based on. Approving
  *   never overwrites manual work: a Main edit whose base changed becomes a draft.
- * - Nothing here deletes anything from the live book.
+ * - Deletes (tasks, drafts, story elements) are pending changes too. Only the author's
+ *   approval applies them. Story elements are archived, as Writing Studio does.
  */
 import { randomUUID } from "node:crypto";
 import mongoose, { Connection, Model, Types } from "mongoose";
@@ -15,6 +16,7 @@ import type {
   ChangeView,
   ChapterAnnotation,
   ChapterPlanningLinks,
+  DeleteTarget,
   EntityKind,
   LiveChapter,
   LiveCopy,
@@ -140,7 +142,44 @@ export function changeTitle(c: StagedChange, live: LiveCopy | undefined): string
       return plural(c.tasks.length, "task");
     case "taskEdit":
       return `Task · ${c.cardTitle}`;
+    case "delete":
+      return `Delete ${deleteLabel(c.target, live)}`;
   }
+}
+
+function deleteLabel(t: DeleteTarget, live: LiveCopy | undefined): string {
+  switch (t.type) {
+    case "task":
+      return `task “${t.title}”`;
+    case "element":
+      return `${SINGULAR[t.element].toLowerCase()} “${t.name}”`;
+    case "draft":
+      return `draft “${t.name}” · ${live?.chapters.find((x) => x.id === t.chapterId)?.name ?? "a removed chapter"}`;
+  }
+}
+
+/** The live item a delete points at, with its hash, or undefined when it is gone. */
+function deleteSubject(t: DeleteTarget, live: LiveCopy | undefined): { hash?: string; text?: SlateElement[] } | undefined {
+  if (!live) return undefined;
+  switch (t.type) {
+    case "task": {
+      const board = t.boardChapterId ? live.chapters.find((x) => x.id === t.boardChapterId)?.taskBoard : live.taskBoard;
+      const card = boardCards(board).find((x) => x.card.id === t.cardId)?.card;
+      return card ? { hash: cardHash(card) } : undefined;
+    }
+    case "element":
+      return live[t.element].find((x) => x.name === t.name);
+    case "draft": {
+      const draft = live.chapters.find((x) => x.id === t.chapterId)?.drafts.find((d) => d.id === t.draftId);
+      return draft ? { text: draft.text } : undefined;
+    }
+  }
+}
+
+/** True when the author changed the item in Writing Studio since Claude read it. */
+function deleteConflict(c: Extract<StagedChange, { kind: "delete" }>, live: LiveCopy | undefined): boolean {
+  const subject = deleteSubject(c.target, live);
+  return !!subject && c.baseHash !== null && subject.hash !== c.baseHash;
 }
 
 /* ---------- planning and task helpers ---------- */
@@ -171,10 +210,12 @@ function taskConflict(c: Extract<StagedChange, { kind: "taskEdit" }>, live: Live
 }
 
 /** Plain lines that describe a task edit, for the Changes screen. */
-function taskEditLines(edit: StagedChange & { kind: "taskEdit" }): string[] {
+function taskEditLines(edit: StagedChange & { kind: "taskEdit" }, live?: LiveCopy): string[] {
   const e = edit.edit;
+  const chapterName = (id: string) => live?.chapters.find((x) => x.id === id)?.name ?? "a new chapter";
   return [
     ...(e.title !== undefined ? [`Title: ${e.title}`] : []),
+    ...(e.chapterId !== undefined ? [e.chapterId ? `Link to chapter “${chapterName(e.chapterId)}”` : "Remove the chapter link"] : []),
     ...(e.completed !== undefined ? [e.completed ? "Mark as done" : "Mark as not done"] : []),
     ...(e.description !== undefined ? [`Description: ${e.description || "(empty)"}`] : []),
     ...(e.dueDate !== undefined ? [e.dueDate ? `Due: ${e.dueDate}` : "Remove the due date"] : []),
@@ -353,7 +394,7 @@ export function changeViews(changes: StagedChange[], live: LiveCopy | undefined)
           warning: missing(c.chapterId),
         };
       case "taskEdit": {
-        const lines = taskEditLines(c);
+        const lines = taskEditLines(c, live);
         return {
           ...base,
           title: `Task “${c.cardTitle}”`,
@@ -364,6 +405,25 @@ export function changeViews(changes: StagedChange[], live: LiveCopy | undefined)
           readable: true,
           editable: false,
           warning: live && !liveCard(c, live) ? "This task is no longer in Writing Studio." : taskConflict(c, live) ? "Changed in Writing Studio since Claude read it." : undefined,
+        };
+      }
+      case "delete": {
+        const t = c.target;
+        const warning =
+          live && !deleteSubject(t, live)
+            ? "Already gone from Writing Studio. Approving does nothing."
+            : deleteConflict(c, live)
+              ? "Changed in Writing Studio since Claude read it."
+              : undefined;
+        const common = { ...base, tag: "DELETE", tone: "removed" as const, readable: true, editable: false, warning };
+        if (t.type === "draft")
+          return { ...common, title: `Draft “${t.name}”`, group: chapterGroup(t.chapterId), meta: "Approving deletes this draft. Main stays as it is." };
+        if (t.type === "task") return { ...common, title: `Task “${t.title}”`, group: { type: "tasks" }, meta: "Approving removes it from the task board." };
+        return {
+          ...common,
+          title: `${SINGULAR[t.element]} · ${t.name}`,
+          group: { type: "elements" },
+          meta: `Approving removes this ${SINGULAR[t.element].toLowerCase()} from Writing Studio.`,
         };
       }
       case "tasks":
@@ -461,8 +521,24 @@ export function readView(c: StagedChange, live: LiveCopy | undefined): ReadView 
         ...base,
         subtitle: c.boardChapterId ? `Task board of “${chapter(c.boardChapterId)?.name ?? "a removed chapter"}”` : "Book task board",
         words: 0,
-        paragraphs: taskEditLines(c).map((text) => ({ segments: [{ text, isNew: true }] })),
+        paragraphs: taskEditLines(c, live).map((text) => ({ segments: [{ text, isNew: true }] })),
       };
+    case "delete": {
+      const t = c.target;
+      const old = (lines: string[]) => lines.map((text) => ({ segments: [{ text, isNew: false }] }));
+      if (t.type === "task") {
+        const board = t.boardChapterId ? chapter(t.boardChapterId)?.taskBoard : live?.taskBoard;
+        const card = boardCards(board).find((x) => x.card.id === t.cardId)?.card;
+        return { ...base, subtitle: "Delete task", words: 0, paragraphs: old([String(card?.title ?? t.title), ...(card?.description ? [String(card.description)] : [])]) };
+      }
+      const text = deleteSubject(t, live)?.text ?? [];
+      return {
+        ...base,
+        subtitle: t.type === "draft" ? `Delete draft “${t.name}”` : `Delete ${SINGULAR[t.element].toLowerCase()}`,
+        words: countWords(text),
+        paragraphs: text.length ? marked(text, text) : old(["It is no longer in Writing Studio."]),
+      };
+    }
     case "tasks":
       return {
         ...base,
@@ -530,7 +606,8 @@ export async function approveChanges(
         (c.kind === "element" && elementConflict(c, live)) ||
         (c.kind === "summary" && summaryConflict(c, live)) ||
         (c.kind === "planning" && planningConflict(c, live)) ||
-        (c.kind === "taskEdit" && taskConflict(c, live)),
+        (c.kind === "taskEdit" && taskConflict(c, live)) ||
+        (c.kind === "delete" && deleteConflict(c, live)),
     )
     .map((c) => ({ id: c.id, title: changeTitle(c, live) }));
   if (conflicts.length && !confirm) return { approved: 0, messages: [], conflicts, applied: [], bookId: project.liveBookId ?? "" };
@@ -718,6 +795,7 @@ export async function approveChanges(
         if (e.description !== undefined) card.description = e.description;
         if (e.completed !== undefined) card.completed = e.completed;
         if (e.dueDate !== undefined) card.dueDate = e.dueDate;
+        if (e.chapterId !== undefined) card.chapterId = e.chapterId ? newChapterIds.get(e.chapterId) ?? e.chapterId : "";
         if (e.checklist)
           card.checklist = e.checklist.map((item) => {
             const old = ((card.checklist as Raw[] | undefined) ?? []).find((x) => x.title === item.title);
@@ -731,6 +809,46 @@ export async function approveChanges(
         if (ch) ch.updatedAt = now;
         touched.add(ch ? "chapters" : "taskBoard");
         messages.push(`Updated the task “${card.title}”.`);
+        break;
+      }
+      case "delete": {
+        const t = c.target;
+        const gone = (what: string) => messages.push(`Skipped deleting ${what}: it is no longer in Writing Studio.`);
+        if (t.type === "task") {
+          const ch = t.boardChapterId ? findChapter(t.boardChapterId) : undefined;
+          const board = t.boardChapterId ? ch?.taskBoard : doc.taskBoard;
+          const found = boardCards(board).find((x) => x.card.id === t.cardId);
+          if (!found) {
+            gone(`the task “${t.title}”`);
+            continue;
+          }
+          found.list.cards = found.list.cards.filter((x: Raw) => x !== found.card);
+          if (ch) ch.updatedAt = now;
+          touched.add(ch ? "chapters" : "taskBoard");
+          messages.push(`Deleted the task “${found.card.title}”.`);
+        } else if (t.type === "element") {
+          const current = liveItems(doc[t.element]).find((x) => x.name === t.name);
+          if (!current) {
+            gone(`${SINGULAR[t.element].toLowerCase()} “${t.name}”`);
+            continue;
+          }
+          // Writing Studio deletes story elements the same way: it archives them.
+          current.isArchived = true;
+          current.updatedAt = now;
+          touched.add(t.element);
+          messages.push(`Deleted ${SINGULAR[t.element].toLowerCase()} “${t.name}”.`);
+        } else {
+          const ch = findChapter(t.chapterId);
+          if (!ch || !(ch.drafts || []).some((d: Raw) => d.id === t.draftId)) {
+            gone(`draft “${t.name}”`);
+            continue;
+          }
+          ch.drafts = ch.drafts.filter((d: Raw) => d.id !== t.draftId);
+          if (ch.mainSourceDraftId === t.draftId) ch.mainSourceDraftId = undefined;
+          ch.updatedAt = now;
+          touched.add("chapters");
+          messages.push(`Deleted draft “${t.name}” from “${ch.name}”.`);
+        }
         break;
       }
       case "planning": {

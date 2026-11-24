@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import type {
   ChapterAnnotation,
   ChapterPlanningLinks,
+  DeleteTarget,
   EntityKind,
   LiveCopy,
   PlanningKind,
@@ -29,10 +30,11 @@ import { checkSlate, countWords } from "../services/stagingRoom/slate";
 
 // Staging Room access for the Claude connector (Staging Room v2, docs/staging-room-prd.md).
 //
-// Claude only ADDS pending changes to a staged book: new drafts (the default for chapter
-// text), Main edits when the author asks, new chapters, story elements, notes and tasks.
-// It never deletes anything and never writes the live books. The author approves each
-// change in the Staging Room.
+// Claude only adds PENDING changes to a staged book: new drafts (the default for chapter
+// text), Main edits when the author asks, new chapters, story elements, notes, tasks,
+// task edits, and deletes of tasks, drafts and story elements. It never writes the live
+// books. The author approves each change in the Staging Room. Claude can withdraw its
+// own pending changes; it can't remove the author's.
 //
 // The connector's database user cannot read the live books. It reads the copy of the
 // live book that the ROZA backend keeps on each staging row (row.live).
@@ -132,6 +134,20 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
     return { slug: row.slug, changeId: change.id, pending: change.kind, title: changeTitle(change, row.live), saved: replaces ? "updated" : "added" };
   }
 
+  /** Takes a pending change out of the basket. Refused while an approval is writing. */
+  async function remove(row: ProjectRow, change: StagedChange) {
+    const filter = {
+      _id: row._id,
+      owner,
+      $or: [{ lease: { $exists: false } }, { "lease.until": { $lte: new Date() } }],
+      changes: { $elemMatch: { id: change.id, updatedAt: change.updatedAt } },
+    };
+    const r = await projects().updateOne(filter as never, { $pull: { changes: { id: change.id } }, $inc: { revision: 1 } } as never);
+    if (!r.matchedCount)
+      throw new ConnectorError(`"${row.slug}" changed while saving (the author may be approving or editing). Nothing was withdrawn. Read it again and retry.`);
+    return { slug: row.slug, changeId: change.id, withdrawn: changeTitle(change, row.live) };
+  }
+
   async function listProjects() {
     const rows = (await projects().find({ owner }).sort({ slug: 1 }).toArray()) as unknown as (ProjectRow | { slug: string; version?: number })[];
     return {
@@ -168,7 +184,7 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
       themes: (live?.themes ?? []).map((x) => x.name),
       plotlines: (live?.plotlines ?? []).map((x) => x.name),
       notes: (live?.notes ?? []).map((x) => x.name),
-      pendingChanges: row.changes.map((c) => ({ changeId: c.id, kind: c.kind, title: changeTitle(c, live), updatedAt: c.updatedAt })),
+      pendingChanges: row.changes.map((c) => ({ changeId: c.id, kind: c.kind, title: changeTitle(c, live), byClaude: c.by === "connector", updatedAt: c.updatedAt })),
     };
   }
 
@@ -604,19 +620,64 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
       ...(input.chapter ? {} : { bookBoard: boardView(live.taskBoard as never) }),
       chapterBoards: chapters.map((c) => ({ chapter: chapterNumberOf(live, c.id), title: c.name, lists: boardView(c.taskBoard as never) })),
       ...(pendingAdds.length
-        ? { pendingNewTasks: pendingAdds.map((c) => ({ changeId: c.id, titles: c.tasks.map((t) => t.title) })) }
+        ? {
+            pendingNewTasks: pendingAdds.map((c) => ({
+              changeId: c.id,
+              byClaude: c.by === "connector",
+              tasks: c.tasks.map((t, i) => ({ cardId: pendingTaskId(c.id, i), title: t.title })),
+            })),
+          }
         : {}),
     };
   }
 
-  /** Proposes changes to an existing task card. Saving again for the same card updates the same pending change. */
-  async function updateTask(input: { slug: string; cardId: string } & TaskEdit) {
+  /** A task in a pending "tasks" change is addressed as "<changeId>/<n>" (n from 1). */
+  const pendingTaskId = (changeId: string, index: number) => `${changeId}/${index + 1}`;
+  function pendingTask(row: ProjectRow, ref: string): { change: Pending<"tasks">; index: number } | undefined {
+    const m = /^(.+)\/(\d+)$/.exec(ref.trim());
+    if (!m) return undefined;
+    const change = row.changes.find((c): c is Pending<"tasks"> => c.kind === "tasks" && c.id === m[1]);
+    const index = Number(m[2]) - 1;
+    if (!change || !change.tasks[index]) throw new ConnectorError(`No pending task ${ref}. Read the boards with staging_get_tasks.`);
+    if (change.by !== "connector") throw new ConnectorError("That pending task was not added by Claude. Ask the author to change or discard it.");
+    return { change, index };
+  }
+
+  /** Edits one of Claude's pending new tasks in place. */
+  async function editPendingTask(row: ProjectRow, pending: { change: Pending<"tasks">; index: number }, edit: TaskEdit) {
+    if (edit.completed !== undefined) throw new ConnectorError("A pending new task can't be marked done. Change its other fields.");
+    const tasks = pending.change.tasks.map((t, i): StagedTask => {
+      if (i !== pending.index) return t;
+      const next: StagedTask = { ...t };
+      if (edit.title !== undefined) next.title = edit.title.trim();
+      if (edit.description !== undefined) next.description = edit.description || undefined;
+      if (edit.dueDate !== undefined) next.dueDate = edit.dueDate || undefined;
+      if (edit.list !== undefined) next.list = edit.list.trim() || undefined;
+      if (edit.checklist) next.checklist = edit.checklist.map((x) => x.title);
+      if (edit.chapterId !== undefined) {
+        next.chapterId = edit.chapterId || undefined;
+        if (!next.chapterId) delete next.onChapterBoard;
+      }
+      return JSON.parse(JSON.stringify(next)) as StagedTask;
+    });
+    const saved = await save(row, { ...pending.change, tasks, updatedAt: new Date().toISOString() }, pending.change);
+    return { ...saved, note: "Updated your pending new task in place." };
+  }
+
+  /**
+   * Proposes changes to an existing task card. Saving again for the same card updates the same pending change.
+   * A cardId like "<changeId>/<n>" edits Claude's pending new task in place.
+   */
+  async function updateTask(input: { slug: string; cardId: string; chapter?: number | null } & Omit<TaskEdit, "chapterId">) {
     const row = await load(input.slug);
-    needFreshCopy(row);
-    const { slug: _slug, cardId, ...fields } = input;
+    const { slug: _slug, cardId, chapter, ...fields } = input;
     const edit = Object.fromEntries(Object.entries(fields).filter(([, v]) => v !== undefined)) as TaskEdit;
+    if (chapter !== undefined) edit.chapterId = chapter ? chapterAt(row, chapter).id : "";
     if (!Object.keys(edit).length) throw new ConnectorError("Nothing to change. Pass at least one field.");
     if (edit.title !== undefined && !edit.title.trim()) throw new ConnectorError("title can't be empty.");
+    const pending = pendingTask(row, cardId);
+    if (pending) return editPendingTask(row, pending, edit);
+    needFreshCopy(row);
     const found = allCards(liveOf(row)).find((x) => x.card.id === cardId);
     if (!found) throw new ConnectorError(`No task with cardId ${cardId}. Read the boards with staging_get_tasks.`);
     const existing = row.changes.find((c): c is Pending<"taskEdit"> => c.kind === "taskEdit" && c.cardId === cardId);
@@ -630,6 +691,69 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
       edit,
       baseHash: cardHash(found.card),
     });
+  }
+
+  type DeleteInput = { slug: string; kind: "task" | "draft" | EntityKind; cardId?: string; name?: string; number?: number };
+
+  /** Proposes removing a task, a Writing Studio draft or a story element. Claude's pending new task is just taken out. */
+  async function deleteItem(input: DeleteInput) {
+    const row = await load(input.slug);
+    let target: DeleteTarget;
+    let baseHash: string | null;
+    if (input.kind === "task") {
+      if (!input.cardId) throw new ConnectorError("Give the task's cardId from staging_get_tasks.");
+      const pending = pendingTask(row, input.cardId);
+      if (pending) {
+        const tasks = pending.change.tasks.filter((_, i) => i !== pending.index);
+        if (!tasks.length) return remove(row, pending.change);
+        const saved = await save(row, { ...pending.change, tasks, updatedAt: new Date().toISOString() }, pending.change);
+        return { ...saved, removedPendingTask: pending.change.tasks[pending.index].title, note: "Taken out of your pending new tasks. Nothing to approve." };
+      }
+      needFreshCopy(row);
+      const found = allCards(liveOf(row)).find((x) => x.card.id === input.cardId);
+      if (!found) throw new ConnectorError(`No task with cardId ${input.cardId}. Read the boards with staging_get_tasks.`);
+      target = { type: "task", cardId: found.card.id, ...(found.chapter ? { boardChapterId: found.chapter.id } : {}), title: found.card.title };
+      baseHash = cardHash(found.card);
+    } else if (input.kind === "draft") {
+      if (input.number === undefined || !input.name?.trim()) throw new ConnectorError("Give the chapter number and the draft's name.");
+      const chapter = chapterAt(row, input.number);
+      const draft = studioDraft(chapter, input.name.trim());
+      if (!draft) {
+        const own = pendingTexts(row, chapter).find((c) => c.kind === "draft" && (c.id === input.name || sameName(c.name, input.name!)));
+        if (own) throw new ConnectorError(`"${input.name}" is a pending draft, not in Writing Studio yet. Withdraw it with staging_withdraw (changeId ${own.id}).`);
+        throw new ConnectorError(
+          `Chapter ${input.number} has no draft "${input.name}" in Writing Studio.${chapter.drafts.length ? ` Drafts: ${chapter.drafts.map((d) => `"${d.name}"`).join(", ")}.` : ""}`,
+        );
+      }
+      target = { type: "draft", chapterId: chapter.id, draftId: draft.id, name: draft.name };
+      baseHash = null;
+    } else {
+      const name = input.name?.trim();
+      if (!name) throw new ConnectorError("Give the name of the item to delete.");
+      const live = liveOf(row);
+      const current = live[input.kind].find((x) => x.name === name) ?? live[input.kind].find((x) => sameName(x.name, name));
+      if (!current) {
+        const own = row.changes.find((c) => c.kind === "element" && c.element === input.kind && sameName(c.name, name) && c.baseHash === null);
+        if (own) throw new ConnectorError(`"${name}" is a pending new item, not in Writing Studio yet. Withdraw it with staging_withdraw (changeId ${own.id}).`);
+        throw new ConnectorError(`No ${input.kind} named "${name}" in Writing Studio. Call staging_get_project.`);
+      }
+      target = { type: "element", element: input.kind, name: current.name };
+      baseHash = current.hash;
+    }
+    const same = row.changes.find((c) => c.kind === "delete" && JSON.stringify(c.target) === JSON.stringify(target));
+    if (same) return { slug: row.slug, changeId: same.id, unchanged: true, note: "This delete is already waiting for the author's approval." };
+    const saved = await save(row, { ...stamp(), kind: "delete", target, baseHash });
+    return { ...saved, note: "Nothing is removed until the author approves it in the Staging Room." };
+  }
+
+  /** Takes back one of Claude's own pending changes. The author's changes can't be withdrawn here. */
+  async function withdraw(input: { slug: string; changeId: string }) {
+    const row = await load(input.slug);
+    const change = row.changes.find((c) => c.id === input.changeId.trim());
+    if (!change) throw new ConnectorError(`No pending change ${input.changeId}. Call staging_get_project to see pending changes.`);
+    if (change.by !== "connector")
+      throw new ConnectorError(`That change was made ${change.by === "editor" ? "by the author" : "by Import folder"}, not by Claude. Ask the author to discard it.`);
+    return remove(row, change);
   }
 
   type LinkInput = { name: string; note?: string };
@@ -707,5 +831,7 @@ export function createStagingStore(db: ConnectorDb, owner: string, clientId?: st
     addTasks,
     getTasks,
     updateTask,
+    deleteItem,
+    withdraw,
   };
 }

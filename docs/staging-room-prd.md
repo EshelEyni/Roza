@@ -20,7 +20,7 @@ Staging is **a basket of additions on top of the live book**. It is not a second
 - new chapters,
 - new or changed story elements, tasks, notes and settings.
 
-Claude never deletes. Each item can be approved on its own or all together. Approval is final: the item goes live at once and leaves Staging.
+Claude never deletes directly. It can propose a delete, which waits for approval like any other change. Each item can be approved on its own or all together. Approval is final: the item goes live at once and leaves Staging.
 
 ## 3. What Claude can add (the change set)
 
@@ -34,12 +34,13 @@ Each staged book holds a list of pending changes. Every change records what it w
 | **Story element** (character, theme, plotline, note): new or changed | The live value when Claude read it (for changes) | Created or updated. If the live value changed meanwhile, the item shows "Changed in Writing Studio since Claude read it", and approval asks for a confirmation. |
 | **Chapter notes** (annotations) | — | Added to the chapter (or to the draft they belong to). |
 | **Tasks** (book or chapter task board) | — | Added to the board. |
+| **Delete** (task, chapter draft, character, theme, plotline, note) | The live item when Claude read it | Tasks and drafts are removed. Story elements are archived, as Writing Studio does. If the item changed meanwhile, approval asks for a confirmation. If it is already gone, nothing happens. |
 | **Book settings** (word goal, etc.) | Live value | *Later — not in the first build.* |
 | **Planning links** (chapter ↔ character/theme/plotline) | — | *Later — not in the first build.* |
 
 Rules:
 - **Repeated saves merge.** While the author works with Claude ("change this paragraph, save… now this one, save"), every save updates *the same* pending draft. The list shows one row: "Chapter 3 · new draft". On approval it goes to Writing Studio as one draft. Claude keeps editing that draft until it is approved. A second draft only appears if the author asks for one.
-- **No deletes.** There is no connector tool that removes anything live, and no change type for deletion.
+- **Deletes are pending changes.** No connector tool removes anything live. `staging_delete` adds a pending delete, shown with a DELETE tag. Claude can withdraw only its own pending changes (`staging_withdraw`).
 - **Discard.** Every pending item can be discarded, which removes it from Staging only. "Approve" and "Discard" are the only two decisions.
 - **Backup.** Before each approval, the live book is backed up silently, as Push does today. There is no Undo button. Approval is final.
 
@@ -123,7 +124,7 @@ Writing (all of them only add to the change set):
 
 Removed: `staging_remove_chapter`, `staging_restore_backup`, `staging_import_project` for Claude (import stays in the UI), and whole-project overwrite.
 
-Tool descriptions must say: "Text edits go into a new draft unless the author explicitly asks to edit Main. You cannot delete anything."
+Tool descriptions must say: "Text edits go into a new draft unless the author explicitly asks to edit Main. Deletes are only proposed; the author approves them."
 
 ## 6. Data and migration
 
@@ -142,13 +143,13 @@ Import compares the folder with the live book and turns the differences into pen
 - a missing chapter becomes a new chapter,
 - new or changed story elements become element changes.
 
-Nothing is deleted. If the book is not live yet, approving creates it.
+Nothing is deleted without approval. If the book is not live yet, approving creates it.
 
 ## 7. Out of scope (for now)
 - A reason attached to each change.
 - Undo after approval (backups exist, with no UI).
 - Showing deleted text.
-- Claude deleting anything.
+- Claude deleting anything without approval.
 
 ## 8. Rules
 - No production deploy without the author's explicit instruction.

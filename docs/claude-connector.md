@@ -4,7 +4,7 @@ The same Roza MCP endpoint also supports [ChatGPT and Codex](roza-openai-mcp.md)
 
 The Claude connector lets Claude work on your **Dev Board** and **Staging Room** from any Claude app: web, desktop or phone. For example: "add a ticket for the reader bug", or "tighten the dialogue in chapter 3 of My Lost Time".
 
-Claude cannot reach anything else. It cannot change the live books (Writing Studio), your account, users, reviews or the reader. It cannot delete anything. It reads a staged book through a copy that the ROZA backend keeps on the staging row; its database user never opens `books`.
+Claude cannot reach anything else. It cannot change the live books (Writing Studio), your account, users, reviews or the reader. It can only propose deletes, and nothing leaves a live book until you approve it. It reads a staged book through a copy that the ROZA backend keeps on the staging row; its database user never opens `books`.
 
 The connector is a small MCP server inside the ROZA backend, at `/mcp`. It is off until its environment variables are set.
 
@@ -33,7 +33,8 @@ Staging Room works like suggestions on top of the live book (see [staging-room-p
 - **Small edits** don't resend the chapter. Claude copies Main into a new pending draft (`staging_copy_draft`), then changes sentences with find/replace (`staging_edit_text`). Each `find` must match exactly once, or nothing is saved. Paragraphs the edit doesn't touch keep their exact layout, including centered `* * *` breaks and screenplay types.
 - **Notes follow the text.** After a text change, each note is found again by its quote. A note whose quote is gone becomes a general note on the chapter, and Claude is told which ones. Notes are never removed.
 - **New chapters, story elements, notes and tasks** are added on approval.
-- **Nothing is deleted.** There is no tool that removes anything.
+- **Deletes wait for you.** `staging_delete` proposes deleting a task, a chapter draft, or a character, theme, plotline or note. It shows in the Staging Room with a DELETE tag. Nothing is removed until you approve it. On approval, tasks and drafts are removed, and story elements are archived, the same way Writing Studio deletes them. If you changed the item in Writing Studio since Claude read it, approving asks you first.
+- **Claude fixes its own mistakes instead of adding duplicates.** It edits a task in place with `staging_update_task`, including its linked chapter. For a pending new task that Claude added, the edit changes that task directly. `staging_withdraw` takes back one of Claude's own pending changes. It can't remove changes you made or ones from Import folder.
 
 Markdown is a convenient way to write text, but it can't hold alignment or screenplay layout. For screenplays, Claude reads with `view: "full"` and sends Slate nodes, or uses `staging_edit_text`, which keeps the layout.
 
@@ -72,4 +73,6 @@ Claude can read only Main and pending changes. Drafts already in Writing Studio 
 | `staging_add_notes` | Adds notes to a chapter's Main text. |
 | `staging_add_tasks` | Adds tasks to the book's task board or to a chapter's own board, with a list, due date and checklist. |
 | `staging_get_tasks` | Reads the book's task board and the chapters' own boards. |
-| `staging_update_task` | Proposes changes to an existing task: title, description, done, due date, checklist or list. |
+| `staging_update_task` | Proposes changes to an existing task: title, description, linked chapter, done, due date, checklist or list. Edits Claude's own pending new task in place. |
+| `staging_delete` | Proposes deleting a task, a chapter draft, or a character, theme, plotline or note. Applied only on approval. |
+| `staging_withdraw` | Removes one of Claude's own pending changes. |

@@ -173,6 +173,8 @@ export interface TaskEdit {
   checklist?: { title: string; done: boolean }[];
   /** move the card to this list, by title; made when missing */
   list?: string;
+  /** link the card to this live chapter id; "" = no chapter */
+  chapterId?: string;
 }
 
 interface ChangeBase {
@@ -256,7 +258,25 @@ export type StagedChange = ChangeBase &
         /** hash of the card when it was read */
         baseHash: string;
       }
+    | {
+        kind: "delete";
+        target: DeleteTarget;
+        /** hash of the live item when it was read; null = not checked (drafts) */
+        baseHash: string | null;
+      }
   );
+
+/** What a pending delete removes from the live book when approved. */
+export type DeleteTarget =
+  | {
+      type: "task";
+      cardId: string;
+      /** the chapter whose own board holds the card; left out = the book board */
+      boardChapterId?: string;
+      title: string;
+    }
+  | { type: "element"; element: EntityKind; name: string }
+  | { type: "draft"; chapterId: string; draftId: string; name: string };
 
 export type StagedChangeKind = StagedChange["kind"];
 
@@ -340,7 +360,7 @@ export interface ChangeView {
   group: ChangeGroup;
   /** e.g. NEW DRAFT, 2 NOTES, CHANGED */
   tag: string;
-  tone: "new" | "changed";
+  tone: "new" | "changed" | "removed";
   title: string;
   meta: string;
   readable: boolean;

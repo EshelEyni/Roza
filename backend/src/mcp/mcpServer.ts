@@ -8,8 +8,9 @@ import { MAX_EDITS } from "./textEdits";
 import { logger } from "../services/logger/loggerService";
 
 // The tools Claude can call. They reach only the Dev Board and Staging Room
-// collections. No tool hard-deletes anything, writes the live books, or touches
-// users. Staging tools read the copy of the live book kept on each staging row.
+// collections. No tool writes the live books or touches users. Deletes are pending
+// changes the author approves; staging_withdraw removes only Claude's own pending
+// changes. Staging tools read the copy of the live book kept on each staging row.
 
 export const MAX_TEXT_CHARS = 900_000; // stays under the 1 MB request limit
 const WRITE_LIMIT = 60;
@@ -53,7 +54,9 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
         "Save after each step while working with the author: saving again updates the same pending draft, and the author sees it live. " +
         "Chapter text is Markdown: # and ## headings, > quotes, - and 1. lists, **bold**, *italic*, <u>underline</u>; each line is its own paragraph. " +
         "For screenplays, read chapters with view \"full\" and send Slate nodes. " +
-        "Nothing can be deleted through these tools.",
+        "Fix your own mistakes instead of adding duplicates: read tasks with staging_get_tasks first and change them with staging_update_task, " +
+        "and take back your own pending changes with staging_withdraw. " +
+        "staging_delete only proposes a delete: nothing leaves the live book until the author approves it.",
     },
   );
   const devBoard = createDevBoardStore(db, userId);
@@ -426,13 +429,17 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
     {
       title: "Change a task",
       description:
-        "Proposes changes to an existing task card (cardId from staging_get_tasks): title, description, done, due date, checklist or list. " +
-        "Fields left out stay as they are. checklist replaces the whole checklist. Saving again for the same card updates the same pending change.",
+        "Proposes changes to an existing task card (cardId from staging_get_tasks): title, description, linked chapter, done, due date, checklist or list. " +
+        "Fields left out stay as they are. chapter null removes the link. checklist replaces the whole checklist. " +
+        "Saving again for the same card updates the same pending change. " +
+        'For your own pending new task (cardId "<changeId>/<n>" from pendingNewTasks) it edits that task in place. ' +
+        "Use this instead of adding a near-duplicate task.",
       inputSchema: {
         slug,
         cardId: z.string().min(1).max(200),
         title: z.string().min(1).max(300).optional(),
         description: z.string().max(10_000).optional(),
+        chapter: chapterNumber.nullable().optional().describe("Chapter number to link the task to, or null to unlink."),
         completed: z.boolean().optional(),
         dueDate: dueDate.or(z.literal("")).optional().describe('YYYY-MM-DD, or "" to remove it.'),
         checklist: z.array(z.object({ title: z.string().min(1).max(300), done: z.boolean() })).max(100).optional(),
@@ -441,6 +448,40 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
       annotations: write,
     },
     async args => runWrite("staging_update_task", `${args.slug}/${args.cardId}`, () => staging.updateTask(args)),
+  );
+  server.registerTool(
+    "staging_delete",
+    {
+      title: "Propose deleting an item",
+      description:
+        "Proposes deleting a task, a chapter draft in Writing Studio, or a character, theme, plotline or note. " +
+        "It is saved as a pending delete; nothing is removed until the author approves it. " +
+        'kind "task": cardId from staging_get_tasks (your own pending new task is taken out at once). ' +
+        'kind "draft": number (chapter) and name (draft name). Other kinds: name. ' +
+        "To take back something you added that is still pending, use staging_withdraw instead.",
+      inputSchema: {
+        slug,
+        kind: z.enum(["task", "draft", "characters", "themes", "plotlines", "notes"]),
+        cardId: z.string().min(1).max(200).optional().describe("Task cardId (kind task)."),
+        name: z.string().min(1).max(300).optional().describe("Draft name, or the name of the character, theme, plotline or note."),
+        number: chapterNumber.optional().describe("Chapter number (kind draft)."),
+      },
+      annotations: write,
+    },
+    async ({ slug: project, ...rest }) =>
+      runWrite("staging_delete", `${project}/${rest.kind}/${rest.cardId ?? rest.name ?? ""}`, () => staging.deleteItem({ slug: project, ...rest })),
+  );
+  server.registerTool(
+    "staging_withdraw",
+    {
+      title: "Withdraw your pending change",
+      description:
+        "Removes one of your own pending changes before the author approves it (changeId from staging_get_project). " +
+        "Changes made by the author or by Import folder can't be withdrawn. Nothing in the live book changes.",
+      inputSchema: { slug, changeId: z.string().min(1).max(100) },
+      annotations: write,
+    },
+    async args => runWrite("staging_withdraw", `${args.slug}/${args.changeId}`, () => staging.withdraw(args)),
   );
   const links = z
     .array(z.object({ name: z.string().min(1).max(300), note: z.string().max(50_000).optional() }))
