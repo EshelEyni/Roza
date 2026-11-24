@@ -4,6 +4,7 @@ import { requireFeature } from "../../middlewares/authGuards/featureAccessMiddle
 import { editChapterText } from "../../controllers/book/writingAiController";
 import { addBook, getBookById, getBooks, getManuscripts, updateBook } from "../../controllers/book/bookController";
 
+import { saveBookChanges } from "../../controllers/book/bookChangesController";
 import { loadStudioNarrator, saveStudioNarrator } from "../../controllers/book/studioNarratorController";
 
 const router = express.Router();
@@ -16,6 +17,7 @@ router.post("/:id([a-fA-F0-9]{24})/chapters/:chapterId([a-fA-F0-9]{24})/ai-edit"
 router.get("/:id([a-fA-F0-9]{24})/audiobook/narrator", loadStudioNarrator);
 router.patch("/:id([a-fA-F0-9]{24})/audiobook/narrator", saveStudioNarrator);
 router.post("/", addBook);
+router.patch("/:id([a-fA-F0-9]{24})/changes", saveBookChanges);
 router.patch("/:id", updateBook);
 
 export default router;

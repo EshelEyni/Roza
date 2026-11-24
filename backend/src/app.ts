@@ -21,6 +21,7 @@ import devBoardRouter from "./routers/devBoard/devBoardRouter";
 import stagingRoomRouter from "./routers/stagingRoom/stagingRoomRouter";
 import { requestLimiter } from "./services/rateLimiterService";
 import { createConnectorRouterFromEnv } from "./mcp/connectorRouter";
+import { startServerTiming } from "./services/serverTiming";
 
 const isProdEnv = process.env.NODE_ENV === "production";
 
@@ -48,6 +49,8 @@ app.use(cookieParser());
 const connectorRouter = createConnectorRouterFromEnv();
 if (connectorRouter) app.use(connectorRouter);
 
+// Starts before body parsing, so book save timings include the upload wait.
+app.use("/api/book", startServerTiming);
 app.use(express.json({ limit: "5000kb" }));
 
 app.use(requestLimiter);

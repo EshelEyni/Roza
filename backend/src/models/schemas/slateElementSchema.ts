@@ -35,6 +35,7 @@ const SlateCustomElementSchema = new Schema<ISlateCustomElement>({
     type: String,
     enum: ["left", "center", "right", "justify"],
   },
-});
+// Nothing reads a paragraph id. An id on every paragraph made each save ~10% larger.
+}, { _id: false });
 
 export { SlateCustomTextSchema, SlateCustomElementSchema };

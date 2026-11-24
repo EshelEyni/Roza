@@ -1,5 +1,6 @@
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const { applySave, manuscriptsPage } = require("./fixtures/bookSaveMock.cjs");
 const path = require("node:path");
 const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
@@ -109,11 +110,15 @@ async function runAnnotations(exactSelectionOnly) {
     const books = [saved];
     server.middlewares.use("/api/", async (req, res) => {
       res.setHeader("Content-Type", "application/json");
-      if (req.url.startsWith("/auth"))
+      if (req.url.startsWith("/book/manuscripts"))
+        return res.end(JSON.stringify({ status: "success", data: manuscriptsPage(books) }));
+      if (req.url.startsWith("/book-review"))
+        return res.end(JSON.stringify({ status: "success", data: [] }));
+      if (req.url.startsWith("/auth") || req.url.startsWith("/user"))
         return res.end(
           JSON.stringify({
             status: "success",
-            data: { id: initial.userId, language: "en" },
+            data: { id: initial.userId, language: "en", roles: ["admin"] },
           }),
         );
       if (req.method === "PATCH" || req.method === "POST") {
@@ -144,7 +149,7 @@ async function runAnnotations(exactSelectionOnly) {
               }),
             );
           }
-          saved = { ...incoming, updatedAt: new Date().toISOString() };
+          saved = { ...applySave(saved, incoming), updatedAt: new Date().toISOString() };
           books[books.findIndex((b) => b.id === saved.id)] = saved;
         }
         return res.end(JSON.stringify({ status: "success", data: saved }));
@@ -200,7 +205,7 @@ async function runAnnotations(exactSelectionOnly) {
           type: "paragraph",
           children: [{ text: "Paragraph 1. A quiet" }, { text: " moment", bold: true }, { text: " in the story." }],
         }];
-        await page.getByRole("link", { name: "Continue writing" }).click();
+        await page.getByRole("link", { name: "Write The Shape of Quiet", exact: true }).click();
         await checkExactNoteSelections(page, () => saved.chapters[0]);
         assert.deepEqual(errors, []);
         return;
@@ -208,7 +213,7 @@ async function runAnnotations(exactSelectionOnly) {
       await page.screenshot({
         path: path.join(screenshots, "library-desktop.png"),
       });
-      await page.getByRole("link", { name: "Continue writing" }).click();
+      await page.getByRole("link", { name: "Write The Shape of Quiet", exact: true }).click();
       const editor = page.locator('[aria-label="Manuscript"]');
       await editor.waitFor();
       const categoryMenu = page.getByRole('combobox', {name:'Manuscript category'});

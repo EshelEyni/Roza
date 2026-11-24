@@ -11,6 +11,7 @@ async function toggleOverview(page) {
 }
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const { applySave } = require("./fixtures/bookSaveMock.cjs");
 const path = require("node:path");
 const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
@@ -190,7 +191,7 @@ test(
               }),
             );
           }
-          saved = { ...incoming, updatedAt: new Date().toISOString() };
+          saved = { ...applySave(saved, incoming), updatedAt: new Date().toISOString() };
           books[books.findIndex((b) => b.id === saved.id)] = saved;
         }
         return res.end(JSON.stringify({ status: "success", data: saved }));

@@ -9,6 +9,7 @@ import { NextFunction, Request, Response } from "express";
 import { getLoggedInUserIdFromReq } from "../../services/ALSService";
 import type { Book, ManuscriptFilter, ManuscriptPage, ManuscriptSummary } from "../../../../shared/types/books";
 import { countWords } from "../../services/stagingRoom/slate";
+import { markTiming, sendTimedJson } from "../../services/serverTiming";
 
 const getBooks = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
   const loggedInUserId = getLoggedInUserIdFromReq();
@@ -138,6 +139,7 @@ const addBook = asyncErrorCatcher(async (req: Request, res: Response, next: Next
 });
 
 const updateBook = asyncErrorCatcher(async (req: Request, res: Response, next: NextFunction) => {
+  markTiming(res, "pre");
   const { id } = req.params;
   const loggedInUserId = getLoggedInUserIdFromReq();
   if (!loggedInUserId) throw new AppError("User not logged in", 401);
@@ -147,6 +149,7 @@ const updateBook = asyncErrorCatcher(async (req: Request, res: Response, next: N
     userId: new Types.ObjectId(loggedInUserId),
     isArchived: { $ne: true },
   });
+  markTiming(res, "read");
   if (!current) throw new AppError("Book not found", 404);
   const expected = req.body.updatedAt;
   if (expected && new Date(expected).getTime() !== new Date(current.updatedAt).getTime())
@@ -201,6 +204,7 @@ const updateBook = asyncErrorCatcher(async (req: Request, res: Response, next: N
   } catch (error) {
     throw new AppError((error as Error).message, 400);
   }
+  markTiming(res, "validate");
   // Atomic compare-and-swap protects simultaneous requests too.
   const book = await BookModel.findOneAndUpdate(
     { _id: id, userId: loggedInUserId, updatedAt: current.updatedAt },
@@ -212,6 +216,7 @@ const updateBook = asyncErrorCatcher(async (req: Request, res: Response, next: N
     },
     { new: true, runValidators: true, timestamps: false },
   );
+  markTiming(res, "write");
   if (!book)
     throw new AppError("This manuscript changed while saving. Export your draft and reload.", 409);
 
@@ -219,7 +224,7 @@ const updateBook = asyncErrorCatcher(async (req: Request, res: Response, next: N
   refreshLiveCopies(mongoose.connection, id).catch(error =>
     logger.error("Staging Room live copy refresh failed:", error as Error),
   );
-  res.json({ status: "success", data: book });
+  sendTimedJson(req, res, { status: "success", data: book });
 });
 
 function validateWordGoal(value: unknown) {

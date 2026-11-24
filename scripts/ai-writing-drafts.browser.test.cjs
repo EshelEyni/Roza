@@ -20,6 +20,7 @@ async function toggleOverview(page) {
 }
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const { applySave, manuscriptsPage } = require("./fixtures/bookSaveMock.cjs");
 const path = require("node:path");
 const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
@@ -171,11 +172,15 @@ test(
         return res.end(
           JSON.stringify({ status: "success", data: { enabled: false } }),
         );
-      if (req.url.startsWith("/auth"))
+      if (req.url.startsWith("/book/manuscripts"))
+        return res.end(JSON.stringify({ status: "success", data: manuscriptsPage(books) }));
+      if (req.url.startsWith("/book-review"))
+        return res.end(JSON.stringify({ status: "success", data: [] }));
+      if (req.url.startsWith("/auth") || req.url.startsWith("/user"))
         return res.end(
           JSON.stringify({
             status: "success",
-            data: { id: initial.userId, language: "en" },
+            data: { id: initial.userId, language: "en", roles: ["admin"] },
           }),
         );
       if (req.method === "PATCH" || req.method === "POST") {
@@ -221,7 +226,7 @@ test(
               }),
             );
           }
-          saved = { ...incoming, updatedAt: new Date().toISOString() };
+          saved = { ...applySave(saved, incoming), updatedAt: new Date().toISOString() };
           books[books.findIndex((b) => b.id === saved.id)] = saved;
         }
         return res.end(JSON.stringify({ status: "success", data: saved }));
@@ -369,7 +374,15 @@ test(
       await page
         .getByRole("button", { name: "Create blank draft", exact: true })
         .click();
-      assert.equal((await draft.innerText()).trim(), "");
+      // A blank draft shows the editor placeholder, which is not draft text.
+      assert.equal(
+        await draft.evaluate((el) => {
+          const copy = el.cloneNode(true);
+          copy.querySelectorAll("[data-slate-placeholder]").forEach((node) => node.remove());
+          return copy.textContent.replace(/﻿/g, "").trim();
+        }),
+        "",
+      );
       await draft.fill("Second draft pending");
       await page.locator('.ws-draft-pane:visible summary[aria-label="Switch draft"]').click();
       await page
@@ -426,7 +439,8 @@ test(
       assert.equal(await backups.locator("button").first().isVisible(), false);
       await backups.locator("summary").click();
       await backups.locator("button").first().click();
-      assert.equal(await draft.innerText(), mainText);
+      // Main backups open read-only, so the editor is not a textbox.
+      assert.equal(await page.locator('[aria-label="Draft manuscript"]:visible').innerText(), mainText);
       await page.getByRole("button", { name: "Restore to Main", exact: true }).click();
       await page.getByRole("dialog").getByRole("button", { name: "Restore to Main", exact: true }).click();
       assert.equal(await main.innerText(), mainText);

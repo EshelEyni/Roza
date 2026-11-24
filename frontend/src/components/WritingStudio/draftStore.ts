@@ -2,6 +2,8 @@ import { Book } from "../../../../shared/types/books";
 
 export type SaveState = "saved" | "pending" | "saving" | "error";
 export type Recovery = { book: Book; base: string };
+/** What a save confirms. The server no longer sends the whole book back. */
+export type SaveResult = Pick<Book, "id" | "updatedAt" | "wordGoal">;
 export const maxWordGoal = 10_000_000;
 
 function isWordGoal(value: number) {
@@ -23,6 +25,8 @@ export class DraftStore {
   private revision = 0;
   private savedRevision = 0;
   private base: string;
+  /** The last version the server confirmed. Saves send only the changes since it. */
+  private confirmed: Book;
   private running: Promise<void> | null = null;
   private timer: ReturnType<typeof setTimeout> | undefined;
   private listeners = new Set<() => void>();
@@ -32,10 +36,11 @@ export class DraftStore {
 
   constructor(
     book: Book,
-    private save: (book: Book) => Promise<Book>,
+    private save: (book: Book, confirmed: Book) => Promise<SaveResult>,
     private storage: Pick<Storage, "getItem" | "setItem" | "removeItem">,
   ) {
     this.book = structuredClone(book);
+    this.confirmed = structuredClone(book);
     this.base = String(book.updatedAt);
     this.key = `roza:writing-draft:${book.userId}:${book.id}`;
     this.legacyGoalKey = `roza:studio:${book.userId}:${book.id}:goal`;
@@ -154,9 +159,10 @@ export class DraftStore {
       this.error = "";
       this.emit();
       try {
-        const saved = await this.save(snapshot);
+        const saved = await this.save(snapshot, this.confirmed);
         if (!saved?.id || !saved.updatedAt)
           throw new Error("The server did not confirm the save.");
+        this.confirmed = { ...snapshot, updatedAt: saved.updatedAt };
         this.base = String(saved.updatedAt);
         this.book = { ...this.book, updatedAt: saved.updatedAt };
         if (snapshot.wordGoal !== undefined && saved.wordGoal !== snapshot.wordGoal)

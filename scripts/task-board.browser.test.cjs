@@ -11,6 +11,7 @@ async function toggleOverview(page) {
 }
 const { test } = require("node:test");
 const assert = require("node:assert/strict");
+const { applySave, manuscriptsPage } = require("./fixtures/bookSaveMock.cjs");
 const path = require("node:path");
 const fs = require("node:fs");
 const { pathToFileURL } = require("node:url");
@@ -132,11 +133,15 @@ test(
         return res.end(
           JSON.stringify({ status: "success", data: { enabled: false } }),
         );
-      if (req.url.startsWith("/auth"))
+      if (req.url.startsWith("/book/manuscripts"))
+        return res.end(JSON.stringify({ status: "success", data: manuscriptsPage(books) }));
+      if (req.url.startsWith("/book-review"))
+        return res.end(JSON.stringify({ status: "success", data: [] }));
+      if (req.url.startsWith("/auth") || req.url.startsWith("/user"))
         return res.end(
           JSON.stringify({
             status: "success",
-            data: { id: initial.userId, language: "en" },
+            data: { id: initial.userId, language: "en", roles: ["admin"] },
           }),
         );
       if (req.method === "PATCH" || req.method === "POST") {
@@ -167,7 +172,7 @@ test(
               }),
             );
           }
-          saved = { ...incoming, updatedAt: new Date().toISOString() };
+          saved = { ...applySave(saved, incoming), updatedAt: new Date().toISOString() };
           books[books.findIndex((b) => b.id === saved.id)] = saved;
         }
         return res.end(JSON.stringify({ status: "success", data: saved }));

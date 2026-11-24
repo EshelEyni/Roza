@@ -286,3 +286,36 @@ export interface SlateCustomText {
   italic?: boolean;
   underline?: boolean;
 }
+
+/**
+ * One change in a Writing Studio save. A save sends only the changes since the
+ * last confirmed version, not the whole book. Every change is idempotent, so a
+ * retry after an uncertain response is safe; the server also checks updatedAt.
+ */
+export type BookCollection = "chapters" | "characters" | "themes" | "plotlines" | "notes";
+export type BookFieldChanges = Partial<
+  Pick<Book, "name" | "filterBy" | "isReadMode" | "wordGoal" | "taskBoard">
+>;
+export type BookChange =
+  /** Sets book-level fields. */
+  | { type: "book"; set: BookFieldChanges }
+  /** Creates the item, or sets these top-level fields on it. `unset` removes fields. */
+  | { type: "item"; collection: BookCollection; id: string; set: Record<string, unknown>; unset?: string[] }
+  /** The new order of the collection. Unlisted archived items stay; unlisted others are removed. */
+  | { type: "order"; collection: BookCollection; ids: string[] }
+  /** Creates a chapter draft, or sets these top-level fields on it. */
+  | { type: "draft"; chapterId: string; id: string; set: Partial<ChapterDraft>; unset?: string[] }
+  /** The new order of a chapter's drafts. Unlisted drafts are removed. */
+  | { type: "draftOrder"; chapterId: string; ids: string[] };
+
+export interface BookChangesRequest {
+  /** The updatedAt the client last saw. The save fails with 409 if the book changed since. */
+  updatedAt: string;
+  changes: BookChange[];
+}
+
+export interface BookChangesResult {
+  id: string;
+  updatedAt: string;
+  wordGoal?: number;
+}

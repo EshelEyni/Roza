@@ -1,7 +1,15 @@
 import axios from "axios";
 import { readOfflineBooks, saveOfflineBooks, withOfflineBook } from "./offlineBooks";
 import { JsendResponse } from "../../../shared/types/system";
-import type { Book, ManuscriptFilter, ManuscriptPage, ManuscriptSort } from "../../../shared/types/books";
+import type {
+  Book,
+  BookChangesRequest,
+  BookChangesResult,
+  ManuscriptFilter,
+  ManuscriptPage,
+  ManuscriptSort,
+} from "../../../shared/types/books";
+import { diffBook } from "../components/WritingStudio/bookChanges";
 import httpService from "./httpService";
 import { handleServerResponseData } from "./utilService";
 import { BookQueryParams } from "../types/app";
@@ -94,20 +102,24 @@ async function add(book: Book): Promise<Book> {
   return handleServerResponseData<Book>(response);
 }
 
-async function update(book: Book): Promise<Book> {
+/**
+ * Saves only what changed between `base` (the last version the server
+ * confirmed) and `book`. A note or a task sends a few KB, not the whole book.
+ * Publishing settings are saved by the Publish EPUB dialog and never diffed.
+ */
+async function update(book: Book, base: Book): Promise<BookChangesResult> {
+  const changes = diffBook(base, book);
+  if (!changes.length) return { id: book.id, updatedAt: String(book.updatedAt), wordGoal: book.wordGoal };
+  const request: BookChangesRequest = { updatedAt: String(book.updatedAt), changes };
   try {
     // Keep timeout scoped to manuscript writes; an uncertain response retains
     // the recovery draft and the server version check makes retries safe.
-    // Publishing settings and the cover are saved by the Publish EPUB dialog.
-    // Leaving them out keeps every autosave small.
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const { publishing, ...manuscript } = book;
     const response = await axios.patch<JsendResponse>(
-      `/api/${baseUrl}/${book.id}`,
-      manuscript,
+      `/api/${baseUrl}/${book.id}/changes`,
+      request,
       { withCredentials: true, timeout: 20000 },
     );
-    return handleServerResponseData<Book>(response.data);
+    return handleServerResponseData<BookChangesResult>(response.data);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       throw new Error(
