@@ -239,7 +239,10 @@ export function ManuscriptEditor({
     findRoot.current?.querySelector(`[data-ws-find-match="${currentMatch}"]`)
       ?.scrollIntoView({ block: "center", inline: "nearest" });
   }, [currentMatch, matches, findFocus, findRoot]);
-  const activeSentence = annotationSentenceRange(editor, activeAnchor ?? null);
+  const noteAnchor = activeAnchor ?? null;
+  const activeHighlight = reading && validAnchor(editor, noteAnchor) && Range.isExpanded(noteAnchor)
+    ? noteAnchor
+    : annotationSentenceRange(editor, noteAnchor);
   const persistNotes = (next: ChapterAnnotation[]) => {
     notes.current = next;
     onChange(editor.children as SlateCustomElement[], next);
@@ -464,9 +467,9 @@ export function ManuscriptEditor({
             if (!Text.isText(node)) return [];
             const key = path.join(".");
             const found = matches.highlights.get(key) ?? [];
-            const intersection = activeSentence && Range.intersection(
+            const intersection = activeHighlight && Range.intersection(
               Editor.range(editor, path),
-              activeSentence,
+              activeHighlight,
             );
             const decorations = intersection ? [...found, { ...intersection, annotationActive: true }] : found;
             const comparison = draftComparison?.get(key);

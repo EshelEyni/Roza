@@ -586,6 +586,10 @@ async function checkExactNoteSelections(page, chapter) {
     } else await addNote.click();
     await quote.waitFor();
     assert.equal(await quote.textContent(), entry.expected);
+    if (await editor.getAttribute("contenteditable") === "false") {
+      const highlighted = await editor.locator(".ws-annotation-highlight").allTextContents();
+      assert.equal(highlighted.join(""), entry.expected);
+    }
     await noteField.fill(entry.name);
     await noteField.press("Enter");
     await saved.waitFor();
