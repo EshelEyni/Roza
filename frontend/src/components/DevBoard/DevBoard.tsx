@@ -159,6 +159,14 @@ export function DevBoard({ account }: { account: string }) {
     }
   }
 
+  function updateMetadata(ticket: Ticket, field: 'status' | 'priority', value: string) {
+    if (writing.current || ticket[field] === value) return;
+    void action(async () => {
+      setTickets(await api.updateMetadata(ticket.id, field, value));
+      setNotice(field === 'status' ? 'Status saved.' : 'Priority saved.');
+    });
+  }
+
   function save(event: FormEvent) {
     event.preventDefault();
     if (!draft) return;
@@ -297,6 +305,18 @@ export function DevBoard({ account }: { account: string }) {
           <footer className="modalFoot"><span role="status">{notice}</span><Button variant="primary" type="submit" disabled={busy}>Save ticket</Button></footer>
         </form> : current && <>
           <div className="modalBody">
+            {!current.deletedAt && <fieldset className="fields ticketMetadata" disabled={busy} aria-label="Ticket status and priority">
+              <div className="field">
+                <span id="detail-status-label">Status</span>
+                <ReaderSelect id="detail-status" labelId="detail-status-label" value={normalizeStatus(current.status)}
+                  options={choices(statuses)} onChange={(value) => updateMetadata(current, 'status', value)} />
+              </div>
+              <div className="field">
+                <span id="detail-priority-label">Priority</span>
+                <ReaderSelect id="detail-priority" labelId="detail-priority-label" value={normalizePriority(current.priority)}
+                  options={choices(priorities)} onChange={(value) => updateMetadata(current, 'priority', value)} />
+              </div>
+            </fieldset>}
             <section className="attachments" aria-labelledby="attachments-title">
               <div className="sourceHead">
                 <h3 id="attachments-title">Attachments</h3>

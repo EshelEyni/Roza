@@ -83,6 +83,9 @@ export function createDevBoardApi(account: string) {
     async save(draft: DevTicketDraft): Promise<DevTicket[]> {
       return (await request("", json("POST", draft))).json();
     },
+    async updateMetadata(id: string, field: "status" | "priority", value: string): Promise<DevTicket[]> {
+      return (await request(`/${encodeURIComponent(id)}/metadata`, json("PATCH", { field, value }))).json();
+    },
     async trash(id: string, deleted: boolean): Promise<DevTicket[]> {
       return (await request(`/${encodeURIComponent(id)}/trash`, json("PATCH", { deleted }))).json();
     },

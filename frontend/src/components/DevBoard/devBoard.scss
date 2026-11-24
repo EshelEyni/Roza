@@ -56,6 +56,7 @@
   .sourceHead button { font-size: 12px; }
   textarea { width: 100%; min-height: 185px; resize: vertical; font-family: Consolas, monospace; font-size: 13px; }
   .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 14px; margin-top: 14px; }
+  .ticketMetadata { border: 0; margin: 0 0 16px; padding: 0; min-inline-size: 0; }
   .fields label, .fields .field { display: grid; align-content: start; text-transform: capitalize; gap: 3px; font-weight: 600; font-size: 13px; }
   .fields .field { gap: 3px 0; }
   .fields .field input { margin-top: 5px; }

@@ -131,6 +131,22 @@ router.post("/", asyncErrorCatcher(async (req, res) => {
   res.json(await list(account));
 }));
 
+router.patch("/:id/metadata", asyncErrorCatcher(async (req, res) => {
+  const account = owner();
+  const id = ticketId(req.params.id);
+  const { field, value } = req.body ?? {};
+  if ((field !== "status" && field !== "priority") || typeof value !== "string" || !value.trim()) {
+    throw new AppError("Expected a ticket status or priority.", 400);
+  }
+
+  const result = await tickets().updateOne(
+    { _id: digest(account, id), owner: account, deletedAt: null },
+    { $set: { [field]: value, updatedAt: new Date().toISOString(), editedInBoard: true } },
+  );
+  if (!result.matchedCount) throw new AppError("Ticket is unavailable.", 404);
+  res.json(await list(account));
+}));
+
 router.post("/import", asyncErrorCatcher(async (req, res) => {
   const account = owner();
   if (req.body?.version !== 1 || !Array.isArray(req.body.tickets)) {
