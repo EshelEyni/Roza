@@ -14,6 +14,7 @@ import {
   studioSections,
   StudioSection,
 } from "./studioNavigation";
+import { studioItemLabels } from "./studioItemLabels";
 import { useConfirmation } from "../Modals/useConfirmation";
 import { ReaderColorSelect } from "../Reader/ReaderColorSelect";
 import "../Modals/confirmDialog.css";
@@ -251,7 +252,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const sentenceForeground = sentenceTextColor || markForeground(sentenceColor);
   const [formatChapter, setFormatChapter] = useState<string | null>(null);
   const [restoreKey, setRestoreKey] = useState(0);
-  const [archived, setArchived] = useState<BookDataItem[]>([]);
+  const [removed, setRemoved] = useState<BookDataItem[]>([]);
+  const labels = studioItemLabels(category);
+  const lastRemoved = removed[removed.length - 1];
   const items = book[category].filter(item => !item.isArchived);
   const item = items.find(item => item.id === selected);
   const filtered = items.filter((item, index) =>
@@ -457,19 +460,33 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     setSearch("");
     select(entry.id);
   }
-  async function archive() {
+  async function removeItem() {
     if (
       !item ||
       !(await confirm({
-        title: "Archive this page?",
-        message: `Archive “${itemName(item, items.indexOf(item))}”? You can undo this here before leaving the studio.`,
-        confirmLabel: "Archive",
+        title: labels.removeTitle,
+        message: labels.removeMessage(itemName(item, items.indexOf(item))),
+        confirmLabel: "Delete",
       }))
     )
       return;
-    setArchived(current => [...current, item]);
+    // A soft delete: the item is archived, so links to it stay valid.
+    setRemoved(current => [...current, item]);
     updateItem({ isArchived: true });
     select(items.find(entry => entry.id !== item.id)?.id || "");
+  }
+  function undoRemove() {
+    const entry = lastRemoved;
+    if (!entry) return;
+    store.edit(current => ({
+      ...current,
+      [entry.type]: current[entry.type].map(i =>
+        i.id === entry.id ? { ...i, isArchived: false } : i,
+      ),
+    }));
+    setSelection(current => ({ ...current, [entry.type]: entry.id }));
+    changeSection(entry.type, entry.id);
+    setRemoved(current => current.slice(0, -1));
   }
   async function archiveBook() {
     if (
@@ -688,7 +705,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               {pageControls && item && (
                 <>
                   <span className="ws-eyebrow">
-                    {category === "chapters" ? "THIS CHAPTER" : "THIS PAGE"}
+                    {labels.menuHeading}
                   </span>
                   {item.type === "chapters" && !preview && (
                     <button
@@ -699,8 +716,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       Chapter Format
                     </button>
                   )}
-                  <button disabled={!!store.recovery} onClick={archive}>
-                    Archive page
+                  <button disabled={!!store.recovery} onClick={removeItem}>
+                    {labels.remove}
                   </button>
                   <hr />
                 </>
@@ -951,7 +968,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 ))}
                 {!filtered.length && (
                   <p className="ws-muted">
-                    {search ? "No matching pages." : "A fresh page awaits."}
+                    {search ? labels.noMatches : labels.emptyList}
                   </p>
                 )}
               </nav>
@@ -960,7 +977,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 disabled={!!store.recovery}
                 onClick={addItem}
               >
-                ＋ {category === "chapters" ? "Add chapter" : "Add page"}
+                ＋ {labels.add}
               </button>
             </>
           )}
@@ -1020,16 +1037,10 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   <input
                     dir="auto"
                     className="ws-chapter-title"
-                    aria-label={
-                      category === "notes"
-                        ? "Note title"
-                        : "Chapter or page title"
-                    }
+                    aria-label={labels.titleField}
                     value={item.name || ""}
                     readOnly={preview || !!store.recovery || !!activeDraft}
-                    placeholder={
-                      category === "notes" ? "Untitled note" : "Untitled"
-                    }
+                    placeholder={labels.untitled}
                     onChange={event => updateItem({ name: event.target.value })}
                   />
                 )}
@@ -1112,42 +1123,21 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                 with a blank page.
               </h1>
               <p>
-                Add your first{" "}
-                {category === "chapters" ? "chapter" : "planning page"}, and
-                make it yours.
+                Add your first {labels.noun}, and make it yours.
               </p>
               <button
                 className="ws-primary"
                 disabled={!!store.recovery}
                 onClick={addItem}
               >
-                ＋{" "}
-                {category === "chapters" ? "Create a chapter" : "Create a page"}
+                ＋ {labels.create}
               </button>
             </div>
           )}
-          {!!archived.length && (
+          {lastRemoved && (
             <div className="ws-notice">
-              Page archived.{" "}
-              <button
-                onClick={() => {
-                  const entry = archived[archived.length - 1];
-                  store.edit(current => ({
-                    ...current,
-                    [entry.type]: current[entry.type].map(i =>
-                      i.id === entry.id ? { ...i, isArchived: false } : i,
-                    ),
-                  }));
-                  setSelection(current => ({
-                    ...current,
-                    [entry.type]: entry.id,
-                  }));
-                  changeSection(entry.type, entry.id);
-                  setArchived(current => current.slice(0, -1));
-                }}
-              >
-                Undo archive
-              </button>
+              {studioItemLabels(lastRemoved.type).removedNotice}{" "}
+              <button onClick={undoRemove}>Undo delete</button>
             </div>
           )}
         </section>

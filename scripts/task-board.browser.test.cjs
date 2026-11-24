@@ -387,7 +387,7 @@ test(
       assert.equal(saved.taskBoard.lists.flatMap((l) => l.cards).length, 0);
       await chooseWorkspace(page, "Chapters");
       await page
-        .getByRole("textbox", { name: "Chapter or page title", exact: true })
+        .getByRole("textbox", { name: "Chapter title", exact: true })
         .waitFor();
       assert.deepEqual(errors, []);
     } finally {

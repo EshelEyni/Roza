@@ -569,7 +569,7 @@ test(
       await page.locator(".ws-line-number").first().hover();
       await page.getByRole('button', {name:'Add note to line 1', exact:true}).click();
       await page.getByRole('textbox', {name:'Annotation text', exact:true}).fill('A note attached to the first row.');
-      await page.getByRole('textbox', {name:'Chapter or page title', exact:true}).click();
+      await page.getByRole('textbox', {name:'Chapter title', exact:true}).click();
       assert.equal(await page.locator('.ws-annotation-card.is-active').count(),0);
       await page.waitForTimeout(150);
       const alignment=await page.evaluate(()=>{

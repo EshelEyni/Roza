@@ -577,7 +577,7 @@ test(
         "Second chapter revised.",
       );
       for (const section of ["Chapter Overview", "Tasks", "Notes", "Chapters"]) await chooseWorkspace(page, section);
-      assert.equal(await page.getByRole("textbox", { name: "Chapter or page title", exact: true }).inputValue(), "An unopened letter");
+      assert.equal(await page.getByRole("textbox", { name: "Chapter title", exact: true }).inputValue(), "An unopened letter");
       assert.equal(await editor.innerText(), "Second chapter revised.");
       delay = 300;
       await editor.fill("While saving");
@@ -616,7 +616,7 @@ test(
         .getByRole("button", { name: "＋ Add chapter", exact: true })
         .click();
       await page
-        .getByRole("textbox", { name: "Chapter or page title" })
+        .getByRole("textbox", { name: "Chapter title" })
         .fill("New chapter");
       await editor.fill("A fresh start.");
       await toggleOverview(page);
@@ -643,11 +643,11 @@ test(
       await page.locator('.ws-eyebrow').first().click();
       assert.equal(await writingMenu.getAttribute('open'), null);
       await writingMenu.locator('summary').click();
-      await page.getByRole('button', { name: 'Archive page', exact: true }).click();
-      const archivePageDialog = page.getByRole("dialog", {
-        name: "Archive this page?",
+      await page.getByRole('button', { name: 'Delete chapter', exact: true }).click();
+      const deleteChapterDialog = page.getByRole("dialog", {
+        name: "Delete this chapter?",
       });
-      await archivePageDialog
+      await deleteChapterDialog
         .getByRole("button", { name: "Cancel", exact: true })
         .click();
       assert.ok(
@@ -656,19 +656,42 @@ test(
       );
       await page.getByText("More", { exact: true }).click();
       await page
-        .getByRole("button", { name: "Archive page", exact: true })
+        .getByRole("button", { name: "Delete chapter", exact: true })
         .click();
-      await archivePageDialog
-        .getByRole("button", { name: "Archive", exact: true })
+      await deleteChapterDialog
+        .getByRole("button", { name: "Delete", exact: true })
         .click();
       await page
-        .getByRole("button", { name: "Undo archive", exact: true })
+        .getByRole("button", { name: "Undo delete", exact: true })
         .click();
       await page.getByRole("button", { name: "All changes saved" }).waitFor();
       assert.ok(
         saved.chapters.some((c) => c.name === "New chapter" && !c.isArchived),
       );
       assert.equal(saved.chapters.at(-1).name, "New chapter");
+      await chooseWorkspace(page, "Notes");
+      assert.equal(await page.getByText("No notes yet.", { exact: true }).isVisible(), true);
+      await page.getByRole("button", { name: "＋ Add note", exact: true }).click();
+      await page.getByRole("textbox", { name: "Note title", exact: true }).fill("Chapter 5 continuity");
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
+      assert.ok(saved.notes.some(n => n.name === "Chapter 5 continuity"));
+      const deleteNote = async () => {
+        await page.getByText("More", { exact: true }).click();
+        await page.getByText("THIS NOTE", { exact: true }).waitFor();
+        await page.getByRole("button", { name: "Delete note", exact: true }).click();
+        await page.getByRole("dialog", { name: "Delete this note?" })
+          .getByRole("button", { name: "Delete", exact: true }).click();
+        await page.getByRole("button", { name: "All changes saved" }).waitFor();
+      };
+      await deleteNote();
+      assert.ok(saved.notes.some(n => n.name === "Chapter 5 continuity" && n.isArchived));
+      await page.getByText("Note deleted.").waitFor();
+      await page.getByRole("button", { name: "Undo delete", exact: true }).click();
+      await page.getByRole("button", { name: "All changes saved" }).waitFor();
+      assert.ok(saved.notes.some(n => n.name === "Chapter 5 continuity" && !n.isArchived));
+      await deleteNote();
+      assert.ok(saved.notes.every(n => n.isArchived));
+      await chooseWorkspace(page, "Chapters");
       await page.getByRole("button", { name: "Options", exact: true }).click();
       const studioOptions = page.getByRole("dialog", { name: "Studio options" });
       assert.equal(await studioOptions.isVisible(), true);
@@ -917,7 +940,7 @@ test(
       );
       await page.evaluate(() => (document.documentElement.dir = "rtl"));
       await page
-        .getByRole("textbox", { name: "Chapter or page title" })
+        .getByRole("textbox", { name: "Chapter title" })
         .fill("פרק ראשון — מסע הביתה");
       await editor.fill("זהו סיפור חדש. המילים נשמרות גם מימין לשמאל.");
       await page.keyboard.press("Control+s");

@@ -314,7 +314,7 @@ test("reading mode keyboard: Page Down limit and sentence-only navigation", { ti
 
     // Focus outside the reading surface keeps the browser's own Page Down.
     await clickWord("tide");
-    await page.getByLabel("Chapter or page title").focus();
+    await page.getByLabel("Chapter title").focus();
     await page.keyboard.press("PageDown");
     assert.equal(await page.evaluate(() => window.lastPageDownPrevented), false);
     assert.equal((await state()).sentence, wrapped);
