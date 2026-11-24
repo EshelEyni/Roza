@@ -55,6 +55,25 @@ const initial = {
     },
   ],
 };
+const draftText = "This opening belongs to the alternate draft.";
+const alternateDraft = {
+  id: "555555555555555555555555",
+  chapterId: initial.chapters[0].id,
+  name: "Alternate draft",
+  text: [...paragraph("Alternate draft introduction."), ...paragraph(draftText)],
+  createdAt: initial.createdAt,
+  updatedAt: initial.updatedAt,
+  annotations: [{
+    id: "draft-opening-note",
+    content: "Check the alternate opening.",
+    quote: draftText,
+    anchor: { anchor: { path: [1, 0], offset: 0 }, focus: { path: [1, 0], offset: draftText.length } },
+  }],
+};
+initial.chapters[0].drafts = [
+  alternateDraft,
+  { ...alternateDraft, id: "666666666666666666666666", name: "Unannotated draft", annotations: undefined },
+];
 if (process.env.CARD_SCROLL_ONLY === '1') initial.chapters[0].description = paragraph('A complete chapter summary with selectable text. '.repeat(100));
 initial.taskBoard = {lists:[{id:'todo',title:'To Do',cards:[{id:'other-task',title:'Other chapter research',chapterId:initial.chapters[1].id,description:'',dueDate:'',labels:[],checklist:[],createdAt:'2026-11-01',updatedAt:'2026-11-01'}]},{id:'progress',title:'In Progress',cards:[]},{id:'done',title:'Done',cards:[]}]};
 test(
@@ -310,6 +329,31 @@ test(
       assert.equal(await inlineNotes.count(), 0);
       assert.equal(saved.chapters[0].annotations.filter(note => note.id === inlineId).length, 1);
       await toggle.check();
+
+      const versions = page.getByTitle("Chapter versions", { exact: true });
+      const versionMenu = page.locator(".ws-version-menu");
+      async function selectVersion(name) {
+        await versions.click();
+        await versionMenu.getByRole("button", { name }).click();
+      }
+      await selectVersion(/Alternate draft/);
+      assert.equal(await inlineNotes.getByRole("textbox").count(), 1);
+      assert.equal(await inlineNote.inputValue(), "Check the alternate opening.");
+      assert.equal(await inlineNotes.locator("blockquote").innerText(), draftText);
+      assert.equal(await inlineNotes.getByText("Block 2", { exact: true }).count(), 1);
+      await inlineNote.fill("Alternate opening revised.");
+      await save();
+      assert.equal(saved.chapters[0].drafts[0].annotations[0].content, "Alternate opening revised.");
+      assert.equal(saved.chapters[0].annotations.find(note => note.id === inlineId).content, "Check the opening.");
+      await selectVersion(/Unannotated draft/);
+      await inlineNotes.getByText("No inline notes in this chapter.").waitFor();
+      assert.equal(await inlineNotes.getByRole("textbox").count(), 0);
+      await writeButton.click();
+      await bibleButton.click();
+      assert.equal(await inlineNotes.getByRole("textbox").count(), 0);
+      await selectVersion(/^Main$/);
+      assert.equal(await inlineNotes.getByRole("textbox").count(), 1);
+      assert.equal(await inlineNote.inputValue(), "Check the opening.");
 
       await page.locator(".ws-chapters").getByRole("button", { name: /An unopened letter/ }).click();
       await inlineNotes.getByText("No inline notes in this chapter.").waitFor();

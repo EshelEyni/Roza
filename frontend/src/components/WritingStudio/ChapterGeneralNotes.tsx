@@ -1,9 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { createEditor, Editor, Range } from "slate";
-import { Chapter, ChapterAnnotation } from "../../../../shared/types/books";
+import { Chapter, ChapterAnnotation, ChapterDraft } from "../../../../shared/types/books";
 import { useConfirmation } from "../Modals/useConfirmation";
 import { DraftStore } from "./draftStore";
 import { validAnchor } from "./annotations";
+import { changeChapterDraft, isMainBackup } from "./chapterDrafts";
 
 function NoteCard({ note, index, readOnly, focus, onEdit, onDelete, context }: {
   note: ChapterAnnotation; index: number; readOnly: boolean; focus: boolean;
@@ -60,19 +61,25 @@ function inlineNoteContext(editor: Editor, note: ChapterAnnotation) {
   };
 }
 
-export function ChapterGeneralNotes({ store, chapter, inline = false }: {
-  store: DraftStore; chapter: Chapter; inline?: boolean;
+export function ChapterGeneralNotes({ store, chapter, inline = false, draft }: {
+  store: DraftStore; chapter: Chapter; inline?: boolean; draft?: ChapterDraft;
 }) {
   const { confirm, confirmationDialog } = useConfirmation();
   const [newNote, setNewNote] = useState<string>();
-  const notes = (chapter.annotations || []).filter(note => inline ? !note.general : note.general);
+  const version = draft ?? chapter;
+  const notes = (version.annotations || []).filter(note => inline ? !note.general : note.general);
+  const readOnly = !!store.recovery || (!!draft && isMainBackup(draft));
   const editor = inline ? createEditor() : null;
-  if (editor) editor.children = chapter.text;
+  if (editor) editor.children = version.text;
   const title = inline ? "Inline notes" : "Notes";
   function change(update: (notes: ChapterAnnotation[]) => ChapterAnnotation[]) {
-    store.edit(book => ({ ...book, chapters: book.chapters.map(current =>
-      current.id === chapter.id ? { ...current, annotations: update(current.annotations || []) } : current,
-    ) }));
+    store.edit(book => ({ ...book, chapters: book.chapters.map(current => {
+      if (current.id !== chapter.id) return current;
+      if (!draft) return { ...current, annotations: update(current.annotations || []) };
+      const currentDraft = current.drafts?.find(candidate => candidate.id === draft.id);
+      if (!currentDraft) return current;
+      return changeChapterDraft(current, draft.id, { annotations: update(currentDraft.annotations || []) });
+    }) }));
   }
   function addNote() {
     const id = crypto.randomUUID();
@@ -85,7 +92,7 @@ export function ChapterGeneralNotes({ store, chapter, inline = false }: {
       <div><div className="cp-notes-title"><h2>{title}</h2><span>{notes.length}</span></div>{!inline && <p>Ideas, questions, and reminders for this chapter.</p>}</div>
       {!inline && <button type="button" className="cp-notes-add" disabled={!!store.recovery} onClick={addNote}><span aria-hidden="true">+</span> Add note</button>}
     </header>
-    {notes.length ? <div className="cp-notes-grid">{notes.map((note, index) => <NoteCard key={note.id} note={note} index={index} readOnly={!!store.recovery} focus={newNote === note.id}
+    {notes.length ? <div className="cp-notes-grid">{notes.map((note, index) => <NoteCard key={note.id} note={note} index={index} readOnly={readOnly} focus={newNote === note.id}
       context={editor ? inlineNoteContext(editor, note) : undefined}
       onEdit={content => change(all => all.map(current => current.id === note.id ? { ...current, content } : current))}
       onDelete={async () => {

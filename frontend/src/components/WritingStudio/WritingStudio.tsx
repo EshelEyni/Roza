@@ -274,9 +274,9 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const mainSourceLabel = mainSourceDraft
     ? isMainBackup(mainSourceDraft) ? "Restored from backup" : `Promoted from ${mainSourceDraft.name}`
     : matchingDraft ? `Matches ${matchingDraft.name}` : undefined;
-  function openDraft(id: string, reading = preview) {
+  function openDraft(id: string, nextView: typeof view = view) {
     setVisitedDrafts(ids => ids.includes(id) ? ids : [...ids, id]);
-    updateStudioUrl({ studioItem: selected, draft: id, tab: reading ? "read" : "write",
+    updateStudioUrl({ studioItem: selected, draft: id, tab: nextView,
       audiobook: undefined, line: undefined, word: undefined });
     setDrawer(false); setMobilePane("draft");
   }
@@ -294,7 +294,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     while (drafts.some(draft => draft.name === `Draft ${number}`)) number++;
     const draft = createChapterDraft(chapter, `Draft ${number}`, blank);
     editChapter(c => ({ ...c, drafts: [...(c.drafts || []), draft] }));
-    openDraft(draft.id, false);
+    openDraft(draft.id, "write");
   }
   function aiDraft(text: SlateCustomElement[], annotations: ChapterAnnotation[], name: string) {
     if (!chapter || store.recovery) return;
@@ -365,7 +365,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
       if (activeDraft) setMobilePane("draft");
     }
     updateStudioUrl({
-      tab: next, studioItem: selected, draft: next === "bible" ? undefined : draftId || undefined,
+      tab: next, studioItem: selected, draft: draftId || undefined,
       audiobook: undefined,
       ...(next === "bible" && draftId ? { line: undefined, word: undefined } : {}),
     });
@@ -536,7 +536,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
 
   return (
     <main
-      className={`ws ws-studio ${tasks ? "ws-tasks-open" : ""} ${dark ? "ws-dark" : ""} ${activeDraft ? "ws-draft-mode" : ""}`}
+      className={`ws ws-studio ${tasks ? "ws-tasks-open" : ""} ${dark ? "ws-dark" : ""} ${activeDraft && !chapterBible ? "ws-draft-mode" : ""}`}
       style={{
         "--ws-font-size": `${size}px`,
         "--ws-word-highlight": wordColor,
@@ -659,6 +659,11 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
               </summary>
               <div className="ws-version-menu">
                 <span className="ws-eyebrow">VERSIONS</span>
+                {chapterBible && (
+                  <button aria-current={!activeDraft || undefined} onClick={closeDraft}>
+                    Main
+                  </button>
+                )}
                 {drafts.map(d => (
                   <button
                     key={d.id}
@@ -689,7 +694,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     <summary>Main backups ({mainBackups.length})</summary>
                     {mainBackups.map(backup => (
                       <button key={backup.id} aria-current={backup.id === activeDraft?.id || undefined}
-                        onClick={() => openDraft(backup.id, false)}>
+                        onClick={() => openDraft(backup.id, chapterBible ? "bible" : "write")}>
                         {draftTimestamp(backup) || "Main backup"}
                         {backup.id === mainSourceDraft?.id && <small className="ws-version-meta">Restored to Main</small>}
                       </button>
@@ -1025,12 +1030,12 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
         >
           {item ? (
             <>
-              {activeDraft && <nav className="ws-draft-mobile-switch" aria-label="Writing panel"><button aria-pressed={mobilePane === "main"} onClick={() => setMobilePane("main")}>Main</button><button aria-pressed={mobilePane === "draft"} onClick={() => setMobilePane("draft")}>Draft</button></nav>}
+              {activeDraft && !chapterBible && <nav className="ws-draft-mobile-switch" aria-label="Writing panel"><button aria-pressed={mobilePane === "main"} onClick={() => setMobilePane("main")}>Main</button><button aria-pressed={mobilePane === "draft"} onClick={() => setMobilePane("draft")}>Draft</button></nav>}
               <div className={`ws-draft-layout ws-show-${mobilePane}`}>
               <article
                 className={`ws-page ws-main-pane ${chapterBible && item.type === "chapters" ? "ws-chapter-bible-page" : ""}`}
               >
-                {activeDraft && (
+                {activeDraft && !chapterBible && (
                   <h2 className="ws-main-label">
                     Main{mainSourceLabel && ` · ${mainSourceLabel}`}
                   </h2>
@@ -1055,6 +1060,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                       activeTab={bibleTab}
                       onTabChange={setBibleTab}
                       showInlineNotes={showInlineNotes}
+                      inlineNotesDraft={activeDraft}
                       onShowInlineNotesChange={setShowInlineNotes}
                       store={store}
                       chapter={item}
@@ -1108,7 +1114,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                   </>
                 )}
               </article>
-              {chapter && chapter.drafts?.filter(d => d.id === draftId || visitedDrafts.includes(d.id)).map(draft => <DraftPane key={`${chapter.id}:${draft.id}:${restoreKey}`} chapter={chapter} draft={draft} active={draft.id === activeDraft?.id} readOnly={!!store.recovery || preview}
+              {chapter && chapter.drafts?.filter(d => d.id === draftId || visitedDrafts.includes(d.id)).map(draft => <DraftPane key={`${chapter.id}:${draft.id}:${restoreKey}`} chapter={chapter} draft={draft} active={!chapterBible && draft.id === activeDraft?.id} readOnly={!!store.recovery || preview}
                 manuscriptId={book.id}
                 matchingMain={draft.id === matchingDraft?.id}
                 reading={draft.id === activeDraft?.id && view === "read" && pageControls} audiobookKey={mobilePane} audiobookHeader={audiobookHeader}

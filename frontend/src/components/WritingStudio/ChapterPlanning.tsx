@@ -5,6 +5,7 @@ import { chapterBoard, withChapterBoard, chapterTasks, storyKinds } from "./plan
 import {
   Book,
   Chapter,
+  ChapterDraft,
   StoryKind,
   TaskCard,
 } from "../../../../shared/types/books";
@@ -108,6 +109,7 @@ export function ChapterPlanning({
   activeTab = page ? "summary" : "characters",
   onTabChange,
   showInlineNotes = false,
+  inlineNotesDraft,
   onShowInlineNotesChange,
 }: {
   store: DraftStore;
@@ -117,6 +119,7 @@ export function ChapterPlanning({
   activeTab?: ChapterBibleTab;
   onTabChange?: (tab: ChapterBibleTab) => void;
   showInlineNotes?: boolean;
+  inlineNotesDraft?: ChapterDraft;
   onShowInlineNotesChange?: (show: boolean) => void;
 } & PlanningNavigation) {
   const Container = page ? "section" : "details";
@@ -561,7 +564,7 @@ export function ChapterPlanning({
             ))}
           </fieldset>
           {page && showInlineNotes && (
-            <ChapterGeneralNotes store={store} chapter={chapter} inline />
+            <ChapterGeneralNotes store={store} chapter={chapter} inline draft={inlineNotesDraft} />
           )}
         </div>
       )}
