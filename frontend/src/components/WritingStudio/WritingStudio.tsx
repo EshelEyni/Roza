@@ -2,7 +2,7 @@ import { FiArrowLeft, FiBook, FiBookOpen, FiChevronDown, FiEdit3 } from "react-i
 import { DraftPane } from "./DraftPane";
 import { createChapterDraft, changeChapterDraft, draftDisplayName, draftTimestamp, isMainBackup, matchingMainDraft, promoteChapterDraft } from "./chapterDrafts";
 import { Chapter, ChapterAnnotation } from "../../../../shared/types/books";
-import { ChapterPlanning } from "./ChapterPlanning";
+import { ChapterPlanning, type ChapterBibleTab } from "./ChapterPlanning";
 import { ChapterFormatDialog } from "./ChapterFormatDialog";
 import { proseBlocks, screenplayStart } from "./screenplay";
 import { downloadScreenplayPdf } from "./screenplayPdf";
@@ -217,13 +217,13 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     setSelection(current => ({ ...current, [category]: id }));
     if (id !== selected) updateStudioUrl({
       studioItem: id, draft: undefined, audiobook: undefined, line: undefined, word: undefined,
-      tab: view === "bible" ? "write" : view,
+      tab: view,
     });
   }
   function changeSection(next: StudioSection, itemId?: string) {
     setTaskChapterTarget(undefined);
     if (next !== section || itemId) updateStudioUrl({
-      workspace: next, studioItem: itemId, tab: "write", draft: undefined,
+      workspace: next, studioItem: itemId, tab: next === section && chapterBible ? "bible" : "write", draft: undefined,
       audiobook: undefined, line: undefined, word: undefined,
     });
     setDrawer(false);
@@ -235,6 +235,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
   const [audiobookHeader, setAudiobookHeader] = useState<HTMLDivElement | null>(null);
   const [drawer, setDrawer] = useState(false);
   const [showInlineNotes, setShowInlineNotes] = useState(false);
+  const [bibleTab, setBibleTab] = useState<ChapterBibleTab>("summary");
   const [search, setSearch] = useState("");
   const [dark, setDark] = useState(
     () => preference("roza:studio:theme", "light") === "dark",
@@ -358,6 +359,7 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
     : "WRITING STUDIO";
   function showView(next: typeof view) {
     if (next === view) return;
+    if (next === "bible") setBibleTab("summary");
     if (next === "read") {
       setDrawer(false);
       if (activeDraft) setMobilePane("draft");
@@ -1050,6 +1052,8 @@ export function Workspace({ initialBook }: { initialBook: Book }) {
                     <ChapterPlanning
                       key={`bible:${item.id}:${restoreKey}`}
                       page
+                      activeTab={bibleTab}
+                      onTabChange={setBibleTab}
                       showInlineNotes={showInlineNotes}
                       onShowInlineNotesChange={setShowInlineNotes}
                       store={store}

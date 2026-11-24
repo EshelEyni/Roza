@@ -95,6 +95,8 @@ function PlanningGroup({
     </details>
   );
 }
+export type ChapterBibleTab = StoryKind | "tasks" | "summary" | "general-notes";
+
 export function ChapterPlanning({
   store,
   chapter,
@@ -103,6 +105,8 @@ export function ChapterPlanning({
   onTask,
   summaryElsewhere = false,
   page = false,
+  activeTab = page ? "summary" : "characters",
+  onTabChange,
   showInlineNotes = false,
   onShowInlineNotesChange,
 }: {
@@ -110,12 +114,11 @@ export function ChapterPlanning({
   chapter: Chapter;
   summaryElsewhere?: boolean;
   page?: boolean;
+  activeTab?: ChapterBibleTab;
+  onTabChange?: (tab: ChapterBibleTab) => void;
   showInlineNotes?: boolean;
   onShowInlineNotesChange?: (show: boolean) => void;
 } & PlanningNavigation) {
-  const [active, setActive] = useState<StoryKind | "tasks" | "summary" | "general-notes">(
-    page ? "summary" : "characters",
-  );
   const Container = page ? "section" : "details";
   const [expanded, setExpanded] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
@@ -198,8 +201,8 @@ export function ChapterPlanning({
             ).map(tab => (
               <button
                 key={tab}
-                aria-pressed={active === tab}
-                onClick={() => setActive(tab)}
+                aria-pressed={activeTab === tab}
+                onClick={() => onTabChange?.(tab)}
               >
                 {tab === "general-notes" ? "Notes" : tab[0].toUpperCase() + tab.slice(1)}
               </button>
@@ -229,7 +232,7 @@ export function ChapterPlanning({
           <fieldset disabled={!!store.recovery}>
             <PlanningGroup
               page={page}
-              visible={active === "summary"}
+              visible={activeTab === "summary"}
               title={page ? null : "Summary"}
               onToggle={setSummaryOpen}
             >
@@ -240,7 +243,7 @@ export function ChapterPlanning({
                   <ManuscriptEditor
                     key={chapter.id}
                     value={chapter.description}
-                    primaryFindTarget={page && active === "summary"}
+                    primaryFindTarget={page && activeTab === "summary"}
                     label={page ? "Chapter summary" : "Planning summary"}
                     placeholder="Summarize what happens in this chapter…"
                     aiEditing={{ bookId: store.book.id, chapterId: chapter.id, summary: true }}
@@ -259,7 +262,7 @@ export function ChapterPlanning({
             </PlanningGroup>
             <PlanningGroup
               page={page}
-              visible={active === "tasks"}
+              visible={activeTab === "tasks"}
               title={
                 page ? null : (
                   <>
@@ -396,14 +399,14 @@ export function ChapterPlanning({
                 </>
               )}
             </PlanningGroup>
-            <PlanningGroup page={page} visible={active === "general-notes"} title={page ? null : "Notes"}>
+            <PlanningGroup page={page} visible={activeTab === "general-notes"} title={page ? null : "Notes"}>
               <ChapterGeneralNotes store={store} chapter={chapter} />
             </PlanningGroup>
             {storyKinds.map(kind => (
               <PlanningGroup
                 key={kind}
                 page={page}
-                visible={active === kind}
+                visible={activeTab === kind}
                 title={
                   page ? null : (
                     <>

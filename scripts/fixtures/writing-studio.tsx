@@ -23,6 +23,7 @@ const client = new QueryClient({
 client.setQueryData(["loggedInUser"], {
   id: "111111111111111111111111",
   language: "en",
+  roles: ["admin"],
 });
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>

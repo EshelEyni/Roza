@@ -130,15 +130,17 @@ test(
     const books = [saved];
     server.middlewares.use("/api/", async (req, res) => {
       res.setHeader("Content-Type", "application/json");
+      if (req.url.startsWith("/book-review"))
+        return res.end(JSON.stringify({ status: "success", data: [] }));
       if (req.url.startsWith("/reader"))
         return res.end(
           JSON.stringify({ status: "success", data: { enabled: false } }),
         );
-      if (req.url.startsWith("/auth"))
+      if (req.url.startsWith("/auth") || req.url.startsWith("/user"))
         return res.end(
           JSON.stringify({
             status: "success",
-            data: { id: initial.userId, language: "en" },
+            data: { id: initial.userId, language: "en", roles: ["admin"] },
           }),
         );
       if (req.method === "PATCH" || req.method === "POST") {
@@ -205,15 +207,14 @@ test(
         viewport: { width: 1365, height: 900 },
       });
       const errors = [];
-      page.on("pageerror", (error) => errors.push(error.message));
+      page.on("pageerror", (error) => errors.push(error.stack || error.message));
       page.on("dialog", (dialog) => {
         if (dialog.type() === "beforeunload") { void dialog.accept(); return; }
         errors.push("Unexpected native confirmation");
         void dialog.dismiss();
       });
       const base = server.resolvedUrls.local[0];
-      await page.goto(base + "books");
-      await page.getByRole('link',{name:'Write The Shape of Quiet',exact:true}).click();
+      await page.goto(base + `book-edit/${initial.id}`);
 
       const save=async()=>{ await page.getByRole('button',{name:/All changes saved|Unsaved changes|Saving…/}).first().click(); await page.getByRole('button',{name:'All changes saved',exact:true}).waitFor(); };
       async function board(title) {
@@ -230,6 +231,25 @@ test(
       const bibleButton = page.getByRole("button", { name: "Chapter Bible", exact: true });
       const bible = page.getByRole("region", { name: "Chapter Bible", exact: true });
       const writeButton = page.getByRole("button", { name: "Write", exact: true });
+      const chapters = page.locator(".ws-chapters");
+      const firstChapter = chapters.getByRole("button", { name: /The house by the sea/ });
+      const secondChapter = chapters.getByRole("button", { name: /An unopened letter/ });
+      await bibleButton.click();
+      for (const name of ["Summary", "Characters", "Themes", "Plotlines", "Notes", "Tasks"]) {
+        const tab = bible.getByRole("button", { name, exact: true });
+        await tab.click();
+        for (const chapter of [secondChapter, firstChapter]) {
+          await chapter.click();
+          assert.equal(await bibleButton.getAttribute("aria-pressed"), "true");
+          assert.equal(await tab.getAttribute("aria-pressed"), "true");
+          assert.equal(
+            await bible.locator(".cp-chapter-context bdi").innerText(),
+            await chapter.locator(".ws-chapter-label strong").innerText(),
+          );
+        }
+      }
+      await writeButton.click();
+      assert.equal(await writeButton.getAttribute("aria-pressed"), "true");
       async function openChapterNotes() {
         await bibleButton.click();
         await bible.getByRole("button", { name: "Notes", exact: true }).click();
@@ -292,9 +312,9 @@ test(
       await toggle.check();
 
       await page.locator(".ws-chapters").getByRole("button", { name: /An unopened letter/ }).click();
-      await bibleButton.click();
       await inlineNotes.getByText("No inline notes in this chapter.").waitFor();
       await page.locator(".ws-chapters").getByRole("button", { name: /The house by the sea/ }).click();
+      await writeButton.click();
       await inlineCard.getByRole("button", { name: "Open note", exact: true }).click();
       await annotationText.fill("Opening revised.");
       await save();
