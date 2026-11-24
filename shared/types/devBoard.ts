@@ -1,6 +1,7 @@
 export type DevTicket = {
   id: string;
   number: number | null;
+  position: number;
   project: string;
   title: string;
   status: string;
@@ -9,11 +10,12 @@ export type DevTicket = {
   repository: string;
   markdown: string;
   createdAt: string | null;
+  updatedAt: string | null;
   deletedAt: string | null;
   attachments: string[];
 };
 
-export type DevTicketDraft = Omit<DevTicket, "id" | "createdAt" | "deletedAt" | "attachments"> & { id?: string };
+export type DevTicketDraft = Omit<DevTicket, "id" | "position" | "createdAt" | "updatedAt" | "deletedAt" | "attachments"> & { id?: string };
 
 export type DevBoardFiles = {
   readImport(): Promise<{ content: string; attachments: { id: string; filename: string }[] } | null>;

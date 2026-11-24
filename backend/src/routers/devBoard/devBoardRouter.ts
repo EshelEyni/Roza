@@ -16,6 +16,7 @@ type StoredTicket = Content & {
   owner: string;
   id: string;
   createdAt?: string;
+  updatedAt?: string;
   deletedAt: string | null;
   importHash?: string;
   editedInBoard?: boolean;
@@ -84,10 +85,12 @@ async function list(account: string): Promise<DevTicket[]> {
     values.push(file.filename);
     names.set(file.ticket, values);
   }
-  return rows.map(({ id, createdAt, deletedAt, ...row }) => ({
+  return rows.map(({ id, createdAt, updatedAt, deletedAt, ...row }, index) => ({
     ...content(row),
     id,
+    position: index + 1,
     createdAt: createdAt ?? null,
+    updatedAt: updatedAt ?? null,
     deletedAt,
     attachments: (names.get(id) ?? []).sort((a, b) => a.localeCompare(b)),
   }));
@@ -113,16 +116,17 @@ router.post("/", asyncErrorCatcher(async (req, res) => {
   if (!data.title.trim() || !data.project.trim() || !data.markdown.trim()) {
     throw new AppError("Project, title, and Markdown are required.", 400);
   }
+  const now = new Date().toISOString();
   if (req.body.id !== undefined) {
     const id = ticketId(req.body.id);
     const result = await tickets().updateOne(
       { _id: digest(account, id), owner: account, deletedAt: null },
-      { $set: { ...data, editedInBoard: true } },
+      { $set: { ...data, updatedAt: now, editedInBoard: true } },
     );
     if (!result.matchedCount) throw new AppError("Ticket is unavailable.", 404);
   } else {
     const id = randomUUID();
-    await tickets().insertOne({ _id: digest(account, id), owner: account, id, ...data, createdAt: new Date().toISOString(), deletedAt: null });
+    await tickets().insertOne({ _id: digest(account, id), owner: account, id, ...data, createdAt: now, updatedAt: now, deletedAt: null });
   }
   res.json(await list(account));
 }));
@@ -141,7 +145,7 @@ router.post("/import", asyncErrorCatcher(async (req, res) => {
       throw new AppError("Invalid Trash state.", 400);
     }
     return {
-      _id: digest(account, id), owner: account, id, ...data, createdAt: importedAt, deletedAt,
+      _id: digest(account, id), owner: account, id, ...data, createdAt: importedAt, updatedAt: importedAt, deletedAt,
       importHash: digest(JSON.stringify(data), JSON.stringify(deletedAt)),
     };
   });
@@ -168,7 +172,7 @@ router.post("/import", asyncErrorCatcher(async (req, res) => {
       if (existing?.importHash && !existing.editedInBoard) {
         const result = await tickets().updateOne(
           { _id: row._id, owner: account, importHash: existing.importHash, editedInBoard: { $ne: true } },
-          { $set: { ...content(row), deletedAt: row.deletedAt, importHash: row.importHash } },
+          { $set: { ...content(row), updatedAt: new Date().toISOString(), deletedAt: row.deletedAt, importHash: row.importHash } },
         );
         if (result.matchedCount) continue;
       }
@@ -196,8 +200,9 @@ router.patch("/:id/trash", asyncErrorCatcher(async (req, res) => {
   const account = owner();
   const ticket = await requireTicket(req, account);
   if (typeof req.body?.deleted !== "boolean") throw new AppError("Invalid Trash state.", 400);
+  const now = new Date().toISOString();
   await tickets().updateOne({ _id: ticket._id }, {
-    $set: { deletedAt: req.body.deleted ? new Date().toISOString() : null, editedInBoard: true },
+    $set: { deletedAt: req.body.deleted ? now : null, updatedAt: now, editedInBoard: true },
   });
   res.json(await list(account));
 }));

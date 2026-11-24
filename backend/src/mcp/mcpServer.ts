@@ -66,7 +66,7 @@ export function createMcpServer({ db, userId, clientId }: Context): McpServer {
     "devboard_list_tickets",
     {
       title: "List Dev Board tickets",
-      description: "Lists tickets: id, number, project, title, status, priority, attachments. Trash is hidden unless includeTrash is true.",
+      description: "Lists tickets with their editable number, 1-based position across the full board, creation and update timestamps, and other summary fields. Trash is hidden unless includeTrash is true.",
       inputSchema: { includeTrash: z.boolean().optional() },
       annotations: read,
     },

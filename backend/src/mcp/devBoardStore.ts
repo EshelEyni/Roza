@@ -20,6 +20,7 @@ type StoredTicket = Record<TextField, string> & {
   id: string;
   number: number | null;
   createdAt?: string;
+  updatedAt?: string;
   deletedAt: string | null;
   editedInBoard?: boolean;
 };
@@ -62,29 +63,36 @@ export function createDevBoardStore(db: ConnectorDb, owner: string) {
   async function listTickets(includeTrash: boolean) {
     const [rows, names] = await Promise.all([
       tickets()
-        .find({ owner, ...(includeTrash ? {} : { deletedAt: null }) }, { projection: { markdown: 0 } })
+        .find({ owner }, { projection: { markdown: 0 } })
         .sort({ _id: 1 })
         .toArray() as unknown as Promise<StoredTicket[]>,
       attachmentNames(),
     ]);
-    return rows.map(row => ({
+    // Assign positions across the full board before hiding Trash.
+    return rows.map((row, index) => ({
       id: row.id,
+      position: index + 1,
       number: row.number,
       project: row.project,
       title: row.title,
       status: row.status,
       priority: row.priority,
       createdAt: row.createdAt ?? null,
+      updatedAt: row.updatedAt ?? null,
       inTrash: row.deletedAt !== null,
       attachments: names.get(row.id) ?? [],
-    }));
+    })).filter(ticket => includeTrash || !ticket.inTrash);
   }
 
   async function getTicket(id: string) {
     const row = await findTicket(id, false);
-    const names = await attachmentNames(row.id);
+    const [names, precedingTickets] = await Promise.all([
+      attachmentNames(row.id),
+      tickets().countDocuments({ owner, _id: { $lt: row._id } } as never),
+    ]);
     return {
       id: row.id,
+      position: precedingTickets + 1,
       number: row.number,
       project: row.project,
       title: row.title,
@@ -93,6 +101,7 @@ export function createDevBoardStore(db: ConnectorDb, owner: string) {
       scope: row.scope,
       repository: row.repository,
       createdAt: row.createdAt ?? null,
+      updatedAt: row.updatedAt ?? null,
       inTrash: row.deletedAt !== null,
       trashedAt: row.deletedAt,
       attachments: names.get(row.id) ?? [],
@@ -114,7 +123,8 @@ export function createDevBoardStore(db: ConnectorDb, owner: string) {
     if (!data.project || !data.title || !data.markdown.trim())
       throw new ConnectorError("project, title and markdown are required.");
     const id = randomUUID();
-    await tickets().insertOne({ _id: digest(owner, id), owner, id, ...data, createdAt: new Date().toISOString(), deletedAt: null } as never);
+    const now = new Date().toISOString();
+    await tickets().insertOne({ _id: digest(owner, id), owner, id, ...data, createdAt: now, updatedAt: now, deletedAt: null } as never);
     return { id, title: data.title };
   }
 
@@ -129,7 +139,7 @@ export function createDevBoardStore(db: ConnectorDb, owner: string) {
     if (!Object.keys(changes).length) throw new ConnectorError("Nothing to change.");
     const result = await tickets().updateOne(
       { _id: digest(owner, id), owner, deletedAt: null } as never,
-      { $set: { ...changes, editedInBoard: true } },
+      { $set: { ...changes, updatedAt: new Date().toISOString(), editedInBoard: true } },
     );
     if (!result.matchedCount) throw new ConnectorError(`Ticket "${id}" changed while saving. Try again.`);
     return { id, changed: Object.keys(changes) };
@@ -137,8 +147,9 @@ export function createDevBoardStore(db: ConnectorDb, owner: string) {
 
   async function setTrash(id: string, trashed: boolean) {
     await findTicket(id, false);
+    const now = new Date().toISOString();
     await tickets().updateOne({ _id: digest(owner, id), owner } as never, {
-      $set: { deletedAt: trashed ? new Date().toISOString() : null, editedInBoard: true },
+      $set: { deletedAt: trashed ? now : null, updatedAt: now, editedInBoard: true },
     });
     return { id, inTrash: trashed };
   }
